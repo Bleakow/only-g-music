@@ -1,48 +1,88 @@
-# Astro Starter Kit: Basics
+# Only G Music
 
-```sh
-npm create astro@latest -- --template basics
+Web-app **mobile-first** de la productora musical **Only G Music**: vitrina de
+artistas, cotizaciones y reservas con disponibilidad y **pago manual**, perfiles
+de artista premium (likes, QR, reproductores YouTube/Spotify), panel de gestión
+con finanzas y **consola del productor**. Estética oscura y cinematográfica
+(inspiración GTA VI), scroll-driven.
+
+> La biblia del proyecto (arquitectura, roadmap, convenciones y decisiones) vive
+> en **[AGENTS.md](AGENTS.md)**. Este README es solo el arranque.
+
+## Stack
+
+| Capa | Tecnología |
+|------|-----------|
+| Framework | Next.js 15 (App Router) + React 19 |
+| Lenguaje | TypeScript (strict) |
+| Estilos | Tailwind v4 |
+| Backend / DB | Firebase (Auth · Firestore · Storage · Cloud Functions) |
+| Animación | GSAP + ScrollTrigger |
+| Gestor de paquetes | **pnpm** (la web) · **npm** (solo `functions/`) |
+
+## Requisitos
+
+- **Node 20+**
+- **pnpm** (`corepack enable` o `npm i -g pnpm`)
+- Un proyecto de **Firebase** (este usa `only-g-music-745ca`). El plan **Blaze**
+  solo hace falta para desplegar Cloud Functions.
+
+## Puesta en marcha (local)
+
+```bash
+pnpm install
+cp .env.example .env.local      # rellena con tu firebaseConfig (valores públicos)
+pnpm dev                        # http://localhost:3000
 ```
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/basics)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/basics)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/basics/devcontainer.json)
+> ⚠️ Las imágenes de `public/hero/` (placeholders / fotos de terceros) **no están
+> en el repo** por copyright. Algunas imágenes semilla de artistas/productores se
+> verán rotas hasta que coloques las tuyas. El fondo de marca del hero sí está.
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Scripts
 
-![just-the-basics](https://github.com/withastro/astro/assets/2244813/a0a5533c-a856-4198-8470-2d67b1d7c554)
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src/
-│   ├── layouts/
-│   │   └── Layout.astro
-│   └── pages/
-│       └── index.astro
-└── package.json
+```bash
+pnpm dev      # desarrollo
+pnpm build    # build de producción (type-check + lint)
+pnpm start    # servir el build
+pnpm lint     # eslint
+pnpm format   # prettier --write .
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+## Estructura
 
-## 🧞 Commands
+```
+src/
+  app/          Rutas (App Router), layout, globals.css
+  features/     Cada dominio autocontenido (home, artists, auth, booking, admin, console…)
+  components/   ui/ (Button, Modal…) · icons/ (SVGs inline)
+  lib/firebase/ ÚNICO punto de acceso a Firebase
+  domain/       Tipos + lógica pura (portable)
+functions/      Cloud Functions (su propio paquete, npm)
+firestore.rules · storage.rules
+```
 
-All commands are run from the root of the project, from a terminal:
+## Firebase
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+El acceso a datos pasa **siempre** por repos (`*-repo.ts`); la UI nunca toca
+Firebase directo. La seguridad real son las **reglas** (la config del cliente es
+pública por diseño).
 
-## 👀 Want to learn more?
+### Reglas
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```bash
+firebase deploy --only firestore:rules,storage:rules
+```
+
+### Cloud Functions (requiere Blaze)
+
+```bash
+cd functions && npm install      # npm, NO pnpm (es su propio paquete)
+cd .. && firebase deploy --only functions
+```
+
+## Roles
+
+`cliente · artista · productor · admin` (acumulables; regla de oro: *"tiene el
+rol"*, nunca *"es el rol"*). Solo `cliente` se auto-asigna al registrarse; el
+resto se otorgan por consola / Admin SDK. Detalle en [AGENTS.md](AGENTS.md).

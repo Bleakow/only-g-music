@@ -1,0 +1,193 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para Only G Music.
+// Desplegar con: firebase deploy --only firestore:rules
+// (o pegar en Consola Firebase → Firestore → Reglas).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ¿El usuario actual tiene rol admin? (lee su doc de usuario).
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
+    }
+
+    // ¿El usuario actual tiene rol artista? (lee su doc de usuario).
+    function esArtista() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['artista']);
+    }
+
+    // ── Cuentas de usuario ───────────────────────────────────────────
+    // Cada quien lee/escribe SU propio documento. Los `roles` NO se pueden
+    // auto-asignar ni escalar desde el cliente: al crear, deben ser
+    // exactamente ['cliente']; al actualizar, deben quedar IGUAL que antes.
+    // Cambiar roles (p. ej. dar 'productor' o 'admin') solo se hace vía
+    // Admin SDK / Cloud Functions, que ignoran estas reglas.
+    match /users/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.roles is list
+        && request.resource.data.roles.size() == 1
+        && request.resource.data.roles[0] == 'cliente';
+
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.roles == resource.data.roles;
+
+      allow delete: if false;
+    }
+
+    // ── Solicitudes de cotización ────────────────────────────────────
+    // El cliente crea SU propia solicitud (estado inicial 'pendiente') y solo
+    // puede leer las suyas. El estudio responde/actualiza vía Admin SDK
+    // (Cloud Functions), que ignora estas reglas.
+    match /quotes/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pendiente';
+
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+
+      // El estudio (admin) responde y cambia el estado; el cliente no edita.
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // ── Reservas ─────────────────────────────────────────────────────
+    // El cliente crea SU reserva (estado inicial 'pendiente_pago') y solo puede
+    // avanzarla a 'pago_en_revision' (subir comprobante). El resto de las
+    // transiciones (confirmar, en_curso, completar…) y la asignación del monto
+    // son server-authoritative vía Admin SDK / ruta protegida por rol.
+    match /bookings/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'pendiente_pago';
+
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+
+      // Admin: cualquier transición. Cliente: solo pendiente_pago → pago_en_revision.
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && resource.data.estado == 'pendiente_pago'
+          && request.resource.data.estado == 'pago_en_revision');
+
+      allow delete: if false;
+    }
+
+    // ── Hilos (chat) de cada solicitud ───────────────────────────────
+    // Subcolección `messages` bajo quotes/bookings. La lee el dueño de la
+    // solicitud; el cliente solo crea mensajes `from:'cliente'` de tipo
+    // `mensaje`/`comprobante`. Las `propuesta`/`sistema` y las respuestas del
+    // estudio van por Admin SDK (panel admin), que ignora estas reglas.
+    match /quotes/{id}/messages/{mid} {
+      allow read: if isAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/quotes/$(id)).data.uid == request.auth.uid);
+      allow create: if isAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/quotes/$(id)).data.uid == request.auth.uid
+          && request.resource.data.from == 'cliente'
+          && request.resource.data.tipo in ['mensaje', 'comprobante']);
+      allow update, delete: if false;
+    }
+    match /bookings/{id}/messages/{mid} {
+      allow read: if isAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/bookings/$(id)).data.uid == request.auth.uid);
+      allow create: if isAdmin()
+        || (request.auth != null
+          && get(/databases/$(database)/documents/bookings/$(id)).data.uid == request.auth.uid
+          && request.resource.data.from == 'cliente'
+          && request.resource.data.tipo in ['mensaje', 'comprobante']);
+      allow update, delete: if false;
+    }
+
+    // ── Perfiles de artista (vitrina pública) ────────────────────────
+    // Lectura PÚBLICA (sin sesión): hace falta para QR, compartir enlace y SEO.
+    // El nombre real / fecha de nacimiento NO viven aquí (son privados en
+    // users/{uid}). Crea/edita el dueño con rol 'artista' o el admin; el cliente
+    // NUNCA toca uid/slug/puntos/premium (eso lo maneja admin/Functions).
+    match /artistProfiles/{slug} {
+      allow read: if true;
+
+      // El artista solo puede crear EL slug que le pertenece (su users/{uid}.artistSlug),
+      // no secuestrar el de otro. Admin puede crear cualquiera.
+      allow create: if isAdmin()
+        || (esArtista()
+          && request.resource.data.uid == request.auth.uid
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug == slug
+          && request.resource.data.puntos == 0
+          && request.resource.data.premium == null);
+
+      // El dueño edita su contenido, sin tocar campos sensibles.
+      allow update: if isAdmin()
+        || (esArtista()
+          && resource.data.uid == request.auth.uid
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt']));
+
+      allow delete: if isAdmin();
+
+      // Likes: un doc por usuario, solo el suyo (el conteo se deriva del tamaño).
+      match /likes/{uid} {
+        allow read: if true;
+        allow create, delete: if request.auth != null && request.auth.uid == uid;
+        allow update: if false;
+      }
+    }
+
+    // ── Sesiones (consola del productor — PROYECCIÓN sin finanzas) ───
+    // No contiene `amount`: el productor ve a quién atiende y cuándo, nunca el
+    // cobro. La lee el admin, el productor asignado o el cliente dueño. La crea
+    // el admin (14a); en 14b la derivará una Cloud Function. El productor solo
+    // cambia estado/tiempos de SU sesión, nada estructural.
+    match /sessions/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null
+          && (resource.data.productorId == request.auth.uid
+            || resource.data.uid == request.auth.uid));
+
+      allow create: if isAdmin();
+
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.productorId == request.auth.uid
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['reservaId', 'productorId', 'uid', 'serviceName', 'sede',
+                       'scheduledStart', 'scheduledEnd', 'createdAt']));
+
+      allow delete: if isAdmin();
+    }
+
+    // ── Slots tomados (proyección pública de reservas) ───────────────
+    // Lo leen todos los autenticados (para pintar la disponibilidad). La
+    // escritura ocurre en la transacción de reserva. MVP: write autenticado;
+    // se endurece en la fase de Route Handlers (server-authoritative).
+    match /daySlots/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // ── Disponibilidad del productor ─────────────────────────────────
+    // La leen todos los autenticados (los clientes la necesitan para ver qué
+    // horas hay libres). Solo la escribe quien tenga rol 'productor' o 'admin'
+    // (se comprueba leyendo su documento de usuario).
+    match /availability/{id} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['productor', 'admin']);
+    }
+
+    // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

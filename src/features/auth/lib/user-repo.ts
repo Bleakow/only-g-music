@@ -1,0 +1,95 @@
+/**
+ * Repositorio (data-access) de cuentas de usuario en Firestore: `users/{uid}`.
+ * Único punto de acceso a los datos de cuenta — la UI nunca toca Firestore directo.
+ */
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  serverTimestamp,
+  type DocumentData,
+} from "firebase/firestore";
+import type { User } from "firebase/auth";
+import { db } from "@/lib/firebase";
+import {
+  type UserAccount,
+  type Role,
+  type ArtistDraft,
+  DEFAULT_ROLES,
+} from "@/domain/user";
+
+const COLLECTION = "users";
+
+/** Mapea un documento de Firestore al modelo de dominio. */
+function toAccount(uid: string, data: DocumentData): UserAccount {
+  return {
+    uid,
+    email: data.email ?? null,
+    displayName: data.displayName ?? null,
+    photoURL: data.photoURL ?? null,
+    roles: (data.roles as Role[]) ?? DEFAULT_ROLES,
+    createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
+    realName: data.realName ?? undefined,
+    birthDate: data.birthDate ?? undefined,
+    artistSlug: data.artistSlug ?? undefined,
+    artistDraft: (data.artistDraft as ArtistDraft) ?? undefined,
+  };
+}
+
+/**
+ * Guarda los datos privados del artista en su propio documento (el alta como
+ * artista). NO toca `roles` (los cambia admin/Functions); las reglas exigen que
+ * `roles` quede igual, así que este update pasa. El `artistDraft` prellena el
+ * editor del perfil tras confirmarse el pago.
+ */
+export async function updateArtistPrivateData(
+  uid: string,
+  data: {
+    realName: string;
+    birthDate: string;
+    artistSlug: string;
+    artistDraft: ArtistDraft;
+  },
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, uid), { ...data });
+}
+
+/** Lee la cuenta de un usuario. Devuelve null si no existe el documento. */
+export async function getUserAccount(uid: string): Promise<UserAccount | null> {
+  const snap = await getDoc(doc(db, COLLECTION, uid));
+  return snap.exists() ? toAccount(uid, snap.data()) : null;
+}
+
+/**
+ * Devuelve la cuenta del usuario; si no existe, la crea con el rol por defecto.
+ * Idempotente — seguro de llamar en cada login. NOTA: NO toca `roles` si la
+ * cuenta ya existe (los roles solo los cambia admin/Cloud Functions, nunca aquí).
+ */
+export async function ensureUserAccount(user: User): Promise<UserAccount> {
+  const ref = doc(db, COLLECTION, user.uid);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
+    return toAccount(user.uid, snap.data());
+  }
+
+  await setDoc(ref, {
+    // `?? null`: Firestore rechaza `undefined`; los campos de Auth pueden venir
+    // sin definir según el proveedor.
+    email: user.email ?? null,
+    displayName: user.displayName ?? null,
+    photoURL: user.photoURL ?? null,
+    roles: DEFAULT_ROLES,
+    createdAt: serverTimestamp(),
+  });
+
+  return {
+    uid: user.uid,
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    roles: DEFAULT_ROLES,
+    createdAt: Date.now(),
+  };
+}

@@ -1,0 +1,7 @@
+# Scripts de build (postinstall) aprobados. pnpm los bloquea por seguridad
+# hasta aprobarlos aquí explícitamente.
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true
+  sharp: true
+  unrs-resolver: true

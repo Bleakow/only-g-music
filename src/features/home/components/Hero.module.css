@@ -1,0 +1,183 @@
+/* Pista de scroll: da recorrido al efecto de máscara (los hijos van fixed). */
+.scrollTrack {
+  position: relative;
+  height: 450vh;
+}
+
+.logoMask {
+  background: white;
+  -webkit-mask-image: url("/only-g-logo-mascara.png");
+  mask-image: url("/only-g-logo-mascara.png");
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center 40%;
+  mask-position: center 40%;
+  /* zoom inicial enorme + recorte en el centro (trazos sólidos): al inicio
+     la máscara cubre todo sin verse un trozo del logo. */
+  -webkit-mask-size: 16000vh;
+  mask-size: 16000vh;
+}
+
+.heroKeyLogo {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  width: clamp(240px, 60vw, 360px);
+  height: auto;
+  transform: translateX(-50%);
+}
+
+/* En móvil: bajar el logo principal para que no quede pegado arriba ni cortado. */
+@media (max-width: 640px) {
+  .heroKeyLogo {
+    top: 20%;
+    width: clamp(200px, 72vw, 300px);
+  }
+}
+
+/* Botón de play con acabado metálico (gradiente radial + sombras). */
+.playButton {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  height: 80px;
+  width: 80px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  color: #e6e6e6;
+  background: radial-gradient(circle at 30% 30%, #d9d9d9, #8c8c8c 60%, #4d4d4d);
+  box-shadow:
+    inset 0 4px 6px rgba(255, 255, 255, 0.6),
+    inset 0 -4px 6px rgba(0, 0, 0, 0.4),
+    0 4px 12px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.3s ease,
+    color 0.3s ease;
+}
+
+.playButton:hover {
+  color: #ffffff;
+  box-shadow:
+    inset 0 4px 6px rgba(255, 255, 255, 0.7),
+    inset 0 -4px 6px rgba(0, 0, 0, 0.5),
+    0 0 20px #00f0ff,
+    0 0 40px #00f0ff;
+  transform: translate(-50%, -50%) scale(1.06);
+}
+
+/* Hamburguesa → X */
+.menuToggle {
+  position: relative;
+  z-index: 100;
+  display: flex;
+  height: 28px;
+  width: 32px;
+  flex-direction: column;
+  justify-content: space-between;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.menuToggle span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  border-radius: 2px;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.menuToggleActive span:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.menuToggleActive span:nth-child(2) {
+  opacity: 0;
+}
+
+.menuToggleActive span:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Panel lateral deslizante */
+.menuPanel {
+  position: fixed;
+  top: 0;
+  right: -50%;
+  z-index: 90;
+  display: flex;
+  height: 100%;
+  width: 50%;
+  flex-direction: column;
+  justify-content: center;
+  padding: 3rem 2rem;
+  background: #0e0e11;
+  color: white;
+  transition: right 0.4s ease;
+}
+
+.menuPanelOpen {
+  right: 0;
+}
+
+/* Fondo oscuro clicable para cerrar el menú */
+.menuBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  border: none;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+/* Botón de cierre dentro del panel */
+.menuClose {
+  position: absolute;
+  right: 1.5rem;
+  top: 1.5rem;
+  z-index: 1;
+  border: none;
+  background: none;
+  color: white;
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.menuPanel ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menuPanel li {
+  margin: 1rem 0;
+  font-size: 2rem;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.menuPanel a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.menuPanel a:hover {
+  color: #ffd6e7;
+}
+
+/* En móvil el panel ocupa toda la pantalla */
+@media (max-width: 768px) {
+  .menuPanel {
+    right: -100%;
+    width: 100%;
+  }
+}

@@ -1,0 +1,244 @@
+# AGENTS.md — Only G (plataforma de productora musical)
+
+> Biblia del proyecto para agentes de IA. Las reglas aquí **mandan** sobre los
+> defaults. Si algo contradice el código real, gana el código: avísalo.
+
+## Qué es esto
+
+Web-app **mobile-first** para una productora musical que gestiona artistas,
+eventos y producciones. Inspiración de diseño: la landing oficial de **GTA VI**
+(Rockstar) — oscura, cinematográfica, scroll-driven. Los artistas se presentan
+al estilo de los personajes del juego.
+
+A futuro: cuentas de fans, contenido exclusivo, tienda de merch y, posiblemente,
+una app móvil nativa. La arquitectura se mantiene **portable** (lógica desacoplada
+de la UI) para no reescribir cuando llegue ese día.
+
+## Stack
+
+| Capa | Tecnología |
+|------|-----------|
+| Framework | Next.js 15 (App Router) + React 19 |
+| Lenguaje | TypeScript (strict) |
+| Estilos | Tailwind v4 (vía `@tailwindcss/postcss`) |
+| Backend / DB | Firebase (Auth + Firestore + Storage) — proyecto `only-g-music-745ca` |
+| Animación | GSAP + ScrollTrigger |
+| PWA | manifest + metadata mobile-first |
+| Gestor de paquetes | **pnpm** (nunca npm ni yarn) |
+
+## Comandos
+
+```bash
+pnpm dev      # desarrollo (http://localhost:3000)
+pnpm build    # build de producción (type-check + lint incluidos)
+pnpm start    # servir el build
+pnpm lint     # eslint
+pnpm format   # prettier --write .
+```
+
+> pnpm bloquea scripts de build de dependencias por seguridad. Los aprobados
+> viven en `pnpm-workspace.yaml` bajo `allowBuilds:` (NO en `package.json`).
+
+## Estructura
+
+```
+src/
+  app/                  Rutas (App Router), layout, globals.css
+  features/<dominio>/    Cada dominio autocontenido (home, artists, auth, events…)
+    components/
+  components/
+    ui/                 Piezas reutilizables (Button, Modal…)
+    icons/              SVGs inlineados como componentes (para currentColor)
+  lib/
+    firebase/           ÚNICO punto de acceso a Firebase
+    gsap/               Utilidades de animación
+  domain/               Tipos + validaciones puras (portables a futuro nativo)
+public/
+  fonts/  logo/  hero/  icons/   manifest.webmanifest
+```
+
+## Estrategia de repositorios y paquetes
+
+**Un solo repo git (monorepo)** vía pnpm workspaces — NO repos git separados. Los
+nuevos paquetes y repositorios se crean **a medida que avanza cada fase**, con un
+consumidor real, nunca de forma especulativa (sin carpetas vacías "por si acaso").
+
+- **Paquetes del workspace** (cada uno cuando llegue su fase):
+  - `apps/web` — la app Next actual (se reestructura a `apps/web` recién cuando exista un 2º paquete; hoy vive en la raíz).
+  - `apps/functions` — Cloud Functions (**Fase 5**: auto-inicio de sesión a 30 min, push FCM, limpieza TTL).
+  - `packages/domain` — tipos puros compartidos (extraer de `src/domain` cuando functions/mobile lo consuman).
+  - `apps/mobile` — app nativa (**Fase 9**, solo si hace falta).
+- **Repository pattern (data-access)**: un `*-repo.ts` por dominio, creado al construir su feature
+  (`user-repo`, `quote-repo`, `booking-repo`, `session-repo`…). La UI nunca toca Firebase directo.
+
+## Convenciones (no negociables)
+
+- **La UI nunca llama a Firebase directo.** Todo acceso pasa por `src/lib/firebase/`.
+  Esto mantiene la lógica portable y testeable.
+- **Organización por feature**, no por tipo de archivo.
+- **Tailwind primero** para estilos. CSS Modules solo para lo que Tailwind no
+  expresa bien (animaciones complejas, máscaras, gradientes con sombras).
+- **`"use client"` solo cuando haga falta** (estado, efectos, GSAP). Mantén los
+  client components pequeños; el resto, Server Components.
+- **Iconos**: inlineados en `components/icons/` para colorearlos con `currentColor`
+  desde Tailwind. No usar `<img>` para SVGs que deban heredar color.
+- **Secrets**: las `NEXT_PUBLIC_FIREBASE_*` van en `.env.local` (gitignored).
+  El config de Firebase es público por diseño; la seguridad real son las
+  **reglas** de Firestore/Storage.
+- **Design tokens**: centralizados en `src/app/globals.css` bajo `@theme`
+  (fuentes OGM, animaciones). No hardcodear valores que ya son tokens.
+- **Aislamiento de roles (invariante de seguridad)**: `productor` ≠ `admin`. Un
+  `productor` sin `admin` NUNCA accede a finanzas/ingresos/cobros ni lee reservas
+  ajenas. Toda función de dinero va gateada por `isAdmin()` en **reglas** (no solo
+  en UI). Como las reglas de Firestore son a nivel de **documento, no de campo**,
+  el productor **nunca lee `bookings`** (llevaría el `amount`): consume la
+  proyección **`sessions`** (`Sesion` en `src/domain/booking.ts`, sin datos
+  financieros). Separar el dinero del dato operativo es de diseño, no de confianza.
+
+## Lenguaje de diseño
+
+Oscuro, cinematográfico, tipografía grande (fuentes de marca **OGM**). Reveals
+guiados por scroll (GSAP ScrollTrigger). Mobile-first siempre: diseña para el
+celular y escala hacia arriba. Limpia los `ScrollTrigger` con `gsap.context` y
+`ctx.revert()` al desmontar.
+
+## Roadmap
+
+Estructura: **fundación común** → **dos tracks paralelos** (Captación · Operativo) →
+**convergencia interna** (admin · consola productor) → **transversales** → **futuro**.
+Tres decisiones lo fijan: pago **manual** (QR + comprobante + confirmación humana,
+*payment-ready* para pasarela futura), **captación y operativo en paralelo**, y
+**backend híbrido escalonado** (reglas+roles → Route Handlers → Cloud Functions).
+
+### Completadas
+
+0. ✅ Cimientos (Next + Firebase + hero con scroll).
+1. ✅ Vitrina pública + perfiles de artista (estilo GTA VI). *Núcleo completo; pendiente contenido real del cliente.*
+2. ✅ Auth + perfiles de usuario — **correo + Google + Facebook**, modelo de cuenta, reglas Firebase. **Roles múltiples**: `roles: Role[]` (`cliente | productor | admin | artista`). Regla: *"tiene el rol"*, nunca *"es el rol"*. *(Pendiente del cliente: desplegar `firestore.rules`.)*
+3. ✅ Área de cuenta — UI de perfil (`UserMenu`, `/cuenta`, guard `RequireAuth`). *Pendiente: edición de perfil.*
+
+### Fase 4 — Fundación transversal *(desbloquea todo lo demás)*
+
+- ✅ **4.1 Auth hardening**: reset de contraseña (modo en `/login`), verificación de email (al registrarse + reenvío en `/cuenta`), guards unificados (`RequireAuth` + `?next=`) y nuevo **`RequireRole`** sobre `hasAnyRole`.
+- ✅ **4.2 `Sede` como entidad de primera clase**: `Sede {id, nombre, ciudad, direccion, qrPagoUrl?, horario, slots, productores[]}` en `src/domain/sede.ts` + `sedes` (data placeholder) + `sedes-repo`. Unificado: el wizard y `BookingCalendar` ya consumen la misma entidad (antes estaba duplicada). `quote.ts` usa `SedeId`.
+- **4.3 Seam de notificaciones**: interfaz `notify(evento, destinatario)` desacoplada; arranca mínima (email vía Route Handler), sustituible sin tocar llamadores.
+- **4.4 Observabilidad mínima**: errores (Sentry) + analytics de embudo.
+
+### Track Captación (público que convierte)
+
+5. 🔨 **Perfiles que venden**: ✅ CTA "Cotizar con [artista]" en `/artistas/[slug]` → `/cotizar?colaborador=slug` (pre-llena el colaborador en el wizard); ✅ social links muertos (`"#"`) ocultos. *Pendiente: bios/tracks/fotos reales (contenido del cliente).*
+6. **Portfolio + prueba social**: `/producciones` y `/eventos` con contenido real (casos, reproductor) + testimonios/reseñas.
+7. **SEO y descubrimiento**: metadata por ruta, OG images, sitemap, structured data (`MusicGroup`), SSG/ISR en artistas/servicios.
+
+### Track Operativo (ciclo end-to-end)
+
+8. 🔨 **Modelo del ciclo de servicio**: ✅ entidades **`Reserva`**/**`Sesion`** + **máquina de estados pura** en `src/domain/booking.ts` (`canReservaTransition`, `nextReservaStates`, `isReservaActiva`) y `quote.ts` (`canQuoteTransition`, `nextQuoteStates`); ✅ `booking-repo` (`createReserva`, `getReservaById`, `listReservasByUser`); ✅ reglas de `bookings` (crea propio `pendiente_pago`, solo avanza a `pago_en_revision`; resto server-authoritative). *Pendiente: migrar `services` a Firestore (cuando exista admin/datos reales).*
+9. ✅ **Reservas reales con disponibilidad** (1 productor/sede): el **productor define su disponibilidad mensual** (plantilla semanal + excepciones por fecha; **plantilla por defecto** Lun–Sáb aplicable con 1 clic; adelantable a meses/todo el año; **aviso estricto** si no la define). El calendario muestra día **libre / parcial (color medio) / lleno / cerrado**, **bloquea slots tomados** (anti-doble-reserva), consume el `?servicio=`, **persiste la reserva** (precio fijo → directa) + confirmación. *Hecho: dominio `availability.ts` + `availability-repo` + reglas; entidades/repos/reglas de `bookings` (fase 8); **editor del productor `/disponibilidad`** (plantilla semanal + excepciones por día + plantilla por defecto + adelantar 2/3 meses + aviso si no definida; gateado `RequireRole`); **calendario de reservas** integrado (consume disponibilidad → colorea libre/parcial/lleno/cerrado, slots tomados con duración multi-hora, **anti-doble-reserva vía transacción + agregado `daySlots`**, consume `?servicio=`, persiste la reserva en `pendiente_pago`). Pendiente real: pago/comprobante (fase 11) y "mis reservas" (fase 12).*
+10. **Ciclo de cotización completo**: el estudio **responde en el hilo** de la solicitud (propuesta: precio + alcance; ruta protegida por rol), el cliente ve el estado y **acepta/rechaza ahí**; `aceptada` → **genera `Reserva`** con el monto (server-authoritative).
+11. **Pago manual + confirmación**: `Reserva(pendiente_pago)` → **QR/datos de la sede** + **se abre un hilo** (chat cliente↔admin) → cliente **sube el comprobante en el hilo** → `pago_en_revision` → **productor/admin confirma** → `confirmada`. Reservas no pagadas **expiran** y liberan el slot.
+12. 🔨 **"Mi cuenta" del cliente**: **mis cotizaciones** y **mis reservas**; cada una abre su **detalle con el hilo (chat) + estado** y queda **guardada y accesible días después**; **entregables descargables**. Cierra los callejones sin salida del embudo. *(Hecho: `/solicitudes` lista + `/solicitudes/[tipo]/[id]` detalle con **hilo en vivo** (`onSnapshot`) + **subir comprobante** (pendiente_pago→pago_en_revision); link en el menú de usuario. Pendiente: aceptar propuesta→genera reserva (server, fase 10), entregables, timeline visual.)*
+
+> **Hilo unificado por solicitud**: cada `quote`/`booking` tiene una subcolección `messages` (chat cliente↔admin: `mensaje | propuesta | comprobante | sistema`) + adjuntos en Storage. Es la **fuente de verdad** (WhatsApp/email solo **notifican**, seam fase 4.3). El mismo mecanismo sirve para responder cotizaciones y para recibir comprobantes de pago.
+
+### Convergencia — operación interna
+
+13. 🔨 **Panel admin** (rol `admin`): gestión de contenido (artistas/servicios/producciones en Firestore), gestión de cotizaciones/reservas/pagos (responder hilos, confirmar pagos), **alta de artistas vinculada a un usuario** (autocompleta nombre/redes/tracks). **Finanzas/ingresos**: **tabla de transacciones** (cliente · servicio · fecha · monto · estado) + **estadísticas** (ingresos por mes comparados, mejores clientes), **derivadas de las reservas `confirmada`/`completada`** (una sola fuente de verdad; denormalizar nombre/email del cliente en la reserva para la tabla). *(Hecho 13a: bandeja `/admin` + `/admin/[tipo]/[id]` para responder el hilo como estudio, **enviar propuesta**, cambiar estado y **confirmar pago**; reglas `isAdmin()`. Hecho 13b: **`/admin/finanzas`** — ingreso total + ingresos por mes (barras) + mejores clientes + tabla de transacciones, derivado de reservas confirmadas (`finanzas.ts` puro); cliente denormalizado en `Reserva`. Pendiente: gestión de contenido (servicios/artistas a Firestore), alta de artistas.)*
+14. 🔨 **Consola del productor** (rol `productor`). Lee la proyección **`sessions`** (sin `amount`/finanzas), NUNCA `bookings` directo — el productor no ve cobros (ver *Aislamiento de roles* en Convenciones).
+    - ✅ **14a (sin Blaze)**: dominio `Sesion` + `SesionEstado` + máquina de estados + gracia de auto-inicio (`GRACIA_AUTO_INICIO_MIN`, `debeAutoIniciar`, `sesionDesdeReserva`) en `booking.ts`; `sessions-repo` (`createSesion`, `subscribeSessionsByProductor` con `onSnapshot`, `start/end/cancelSesion`, `getSesionByReserva`); reglas `sessions` (lee admin/productor-asignado/cliente; el productor solo cambia estado/tiempos de SU sesión); el admin **asigna el UID del productor y crea la sesión** al confirmar (en `AdminSolicitudDetail`); consola **`/consola`** (cola en vivo, temporizador, **auto-inicio a 30 min client-side** mientras la consola esté abierta); link en el menú. *Limitación MVP: no hay registro de productores (sedes con `productores: []`) → el admin pega el UID a mano; el auto-inicio solo dispara con la consola abierta.*
+    - 🔨 **14b (Blaze, en curso)**: ✅ **andamiaje Cloud Functions** (`firebase.json`, `.firebaserc`, `functions/` con TS, 2ª gen). ⚠️ instalar **desde dentro de `functions/`** (`cd functions && npm install`), NUNCA `npm --prefix functions install` desde la raíz: un quirk de npm con `--prefix` sobre un paquete anidado le mete `only-g-web: file:..` (rompería el deploy). `functions/` usa **npm** (excepción a la regla pnpm; es su propio mundo de deploy). ✅ `onBookingConfirmed` deriva la proyección `sessions` al confirmar (id de sesión = id de reserva → idempotente); ✅ `onBookingCreatedAmountGuard` fuerza el precio del perfil server-side; el admin ahora **asigna el UID del productor** (`setBookingProductor`) y el server crea la sesión. *Pendiente: auto-inicio server-authoritative, expiraciones programadas (perfiles 2 meses + aviso, reservas no pagadas), chat efímero TTL 15 días, push FCM, validar montos de reservas de estudio (necesita servicios en Firestore), y el grant automático de rol artista+premium (opción no elegida aún). Reestructura a `apps/web` diferida (functions/ vive en la raíz).* **El deploy lo hace el cliente: `firebase deploy --only functions`.**
+
+### Fase 15 — Perfiles de Artista *(absorbe el pendiente de fase 13: artistas a Firestore + alta vinculada a usuario)*
+
+Producto: el artista paga un **perfil full** (CV) que se muestra en la vitrina y
+genera URL/QR compartible. Al registrarse elige **"solo explorar"** vs **"soy
+artista"** (datos privados: nombre real + fecha nac. + trayectoria + foto
+**obligatoria**). El perfil lo crea admin o el propio artista **tras confirmar el
+pago**; **persiste 2 meses** y se renueva. Tiene **like** estilo red social.
+
+> **Decisión de arquitectura — DOS EJES ORTOGONALES** (no mezclar mérito y dinero):
+> 1. **Insignia/Nivel** (`plata → oro → diamante`): reputación GANADA por actividad
+>    (likes recibidos, colaboraciones, y bonus al pagar). **Permanente.** Desbloquea
+>    descuentos/funciones. Fuente de verdad: `puntos` (la insignia se DERIVA).
+> 2. **Premium**: entitlement PAGADO (`{activo, since, expiresAt}`). **Expira a 2
+>    meses.** Es lo que hace VISIBLE el perfil en la vitrina. El pago da puntos,
+>    pero NO compra la insignia (así la insignia conserva su significado social).
+
+> **Privacidad por diseño — DOS DOCUMENTOS**: `users/{uid}` (PRIVADO: `realName`,
+> `birthDate`, `artistSlug`) vs `artistProfiles/{slug}` (PÚBLICO: identidad
+> artística, fotos, tracks, socials, `puntos`, `premium`). El nombre real nunca
+> sale del doc privado. Likes = subcolección `likes/{uid}` (un doc por usuario; el
+> conteo se DERIVA del tamaño, sin contador que inflar).
+
+- ✅ **15a — Foundation pública (sin Blaze)**: dominio `artist-profile.ts`
+  (insignia/nivel, premium/expiry, trayectoria — todo **puro**) + `artist-profile-repo`
+  (CRUD + like toggle + conteo derivado) + reglas (`artistProfiles` lectura pública;
+  cliente no toca `uid/puntos/premium`; `esArtista()`). **Perfil público full** hecho:
+  `ArtistProfileView` (hero con insignia + "verificado" premium + años de trayectoria,
+  bio, redes, galería, **reproductores YT/Spotify con selector elegido por el
+  visitante**, **like** con UI optimista, **compartir + QR** vía lib `qrcode`).
+  `ProfileTrack` lleva `youtubeUrl?`/`spotifyUrl?` (el visitante elige plataforma);
+  embeds puros en `embeds.ts`; mapper `profile-display.ts` adapta la semilla al modelo
+  (la ruta `/artistas/[slug]` ya usa la vista nueva con `source="seed"`). *Pendiente
+  (pasa a 15b): leer perfiles reales de Firestore con fallback a semilla + migrar la
+  vitrina/grid + `images.remotePatterns` para fotos de Storage.*
+- 🔨 **15b — Onboarding (sin Blaze)**: ✅ alta de artista `/artista/nuevo` (datos
+  privados `realName`/`birthDate` en `users/{uid}` + foto obligatoria + `artistDraft`)
+  que **reusa el pago manual** vía `bookings` con `tipo:'perfil_artista'` (`profile-order.ts`,
+  `PRECIO_PERFIL`) → redirige al hilo a subir comprobante; ✅ **editor del perfil**
+  `/artista/perfil` (`RequireRole artista`; crea/edita `EditableProfile`, prellena del
+  draft; el cliente no toca puntos/premium); ✅ **vista pública lee Firestore** con
+  fallback a semilla (`ArtistProfileLoader`) + `images.remotePatterns` para Storage; ✅
+  **admin `/admin/perfiles`** activa/renueva premium (2 meses, `setPremium`+`activarPremium`);
+  ✅ entradas en menú/vitrina. **Grant del rol `artista` = MANUAL en consola Firebase**
+  (sin Blaze; se automatiza en 15c). *Pendiente: toggle explorar/artista dentro del
+  registro (hoy es CTA aparte); migrar la **vitrina/grid** a perfiles reales (hoy el grid
+  sigue en semilla; el detalle ya es real).*
+- **15c — Blaze (junto a fase 14)**: Cloud Function de **puntos server-authoritative**
+  (reacciones/colaboraciones/pagos → puntos → nivel) · Function programada de
+  **expiración** (oculta vencidos, avisa "renueva") · OG images dinámicas por perfil.
+
+⚠️ "Sonar canción al entrar": el autoplay con sonido lo **bloquea el navegador**;
+se resuelve con botón flotante "▶ Sonando: [tema]" que arranca al primer tap.
+
+### Transversales (cuando aplique, no una fase única)
+
+- **Legal/cumplimiento**: Habeas Data (Ley 1581), términos, **política de cancelación/reembolso** (manual). Antes de operar con datos + dinero reales.
+- **Entregables vs chat efímero**: el producto final (mezcla/master) necesita **almacenamiento durable ligado a la cuenta**, distinto del TTL de 15 días del chat.
+
+### Futuro
+
+15. Tienda de merch *(pospuesto)*.
+16. App nativa *(solo si hace falta)*.
+17. *(opcional)* Pasarela de pago real (Wompi/Mercado Pago) cuando el volumen lo justifique — el flujo ya quedó *payment-ready* desde la Fase 11.
+
+### Máquina de estados del ciclo (spine del negocio)
+
+```
+A cotizar:   Solicitud(pendiente) → [estudio] cotizada → [cliente] aceptada / rechazada
+Precio fijo: /servicios → agendar ──────────────────────────┐
+                                                            ▼
+                                              Reserva(pendiente_pago)
+                              → [sube comprobante] pago_en_revision
+                              → [productor/admin confirma] confirmada
+                              → en_curso → completada → entregables
+                              → cancelada / expirada (libera slot)
+```
+
+Transiciones como **funciones puras en `src/domain`** (`canTransition`, `nextStates`),
+compartidas por cliente y servidor.
+
+> **Secuencia recomendada**: 4 → 8 → (5 ∥ 9) → 10 → 11 → 12 → (6/7) → 13 → 14.
+
+## Skills del proyecto
+
+En `.claude/skills/`. Se activan automáticamente por contexto:
+
+| Skill | Cuándo se usa |
+|-------|---------------|
+| `design-ux` | Diseñar o revisar UI: pantallas, componentes, color, tipografía, layout, accesibilidad. |
+| `gsap-animations` | Animaciones, efectos de scroll, transiciones, el reveal del hero. |
+| `typescript` | Tipos, interfaces, genéricos, modelado de dominio, type-safety. |
+| `react-next` | Componentes, hooks, Server/Client, App Router, Suspense (React 19 + Next 15). |
+| `tailwind` | Estilos con Tailwind v4: tokens `@theme`, responsive, variantes de estado. |
+| `infra-firebase` | Firestore/Storage/Auth/Functions, reglas de seguridad, índices, TTL, deploy. |
+| `clean-code` | Buenas prácticas, patrones, refactor, capas, repository, naming, YAGNI/SOLID. |

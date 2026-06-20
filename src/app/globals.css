@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────── */
+@theme {
+  --font-sans: "OGM", system-ui, sans-serif;
+  --font-narrow: "OGMNarrow", system-ui, sans-serif;
+
+  --animate-bounce-pulse: bounce-pulse 2s ease-in-out infinite;
+
+  /* ── Paleta de marca: plata + amatista ─────────────────────── */
+  /* Plata (metálica) */
+  --color-silver-50: #f7f7fa;
+  --color-silver-100: #e9e9f0;
+  --color-silver-200: #d4d4e0;
+  --color-silver-300: #b8b8c8;
+  --color-silver-400: #9a9ab0;
+  --color-silver-500: #7e7e95;
+
+  /* Amatista (cristal) */
+  --color-amethyst-300: #c4a5ff;
+  --color-amethyst-400: #a87bff;
+  --color-amethyst-500: #8b5cf6;
+  --color-amethyst-600: #7c3aed;
+  --color-amethyst-700: #6d28d9;
+  --color-amethyst-900: #3b0764;
+
+  /* Tinta (fondo oscuro con tinte violeta) */
+  --color-ink: #0c0a12;
+  --color-ink-soft: #15111f;
+}
+
+/* ── Fuentes de marca (OGM) ────────────────────────────────────── */
+@font-face {
+  font-family: "OGM";
+  src: url("/fonts/regular-font.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "OGM";
+  src: url("/fonts/bold-font.woff") format("woff");
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "OGM";
+  src: url("/fonts/semi-bold-font.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "OGMNarrow";
+  src: url("/fonts/narrow-font.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── Animaciones ───────────────────────────────────────────────── */
+@keyframes bounce-pulse {
+  0% {
+    transform: translateY(0);
+    scale: 0.8;
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-5px);
+    scale: 0.9;
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(0);
+    scale: 0.8;
+    opacity: 0.8;
+  }
+}
+
+/* ── Base ──────────────────────────────────────────────────────── */
+@layer base {
+  html,
+  body {
+    margin: 0;
+    width: 100%;
+    background-color: var(--color-ink);
+    color: var(--color-silver-200);
+    /* clip (no hidden): evita scroll horizontal SIN convertir el body en
+       contenedor de scroll, lo que rompía el scroll del hero fijo + GSAP. */
+    overflow-x: clip;
+    overscroll-behavior: none;
+    font-family: var(--font-sans);
+  }
+
+  ::selection {
+    background: var(--color-amethyst-600);
+    color: white;
+  }
+}
+
+/* ── Scrollbar personalizado (plata + amatista) ──────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-amethyst-600) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-ink-soft);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    var(--color-amethyst-600),
+    var(--color-amethyst-400)
+  );
+  border-radius: 9999px;
+  border: 2px solid var(--color-ink-soft);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    var(--color-amethyst-500),
+    var(--color-amethyst-300)
+  );
+}

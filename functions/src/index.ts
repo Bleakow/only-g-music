@@ -195,6 +195,14 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   expira.setMonth(expira.getMonth() + PREMIUM_DURACION_MESES);
   const premium = { activo: true, since: now, expiresAt: expira.getTime() };
 
+  // El pagador del premium es el dueño del perfil (único participante del hilo).
+  const payerUid = Array.isArray(conv.participants)
+    ? conv.participants[0]
+    : undefined;
+  const clientName = payerUid
+    ? ((await db.doc(`users/${payerUid}`).get()).data()?.displayName ?? null)
+    : null;
+
   const batch = db.batch();
   batch.update(db.doc(`artistProfiles/${slug}`), {
     premium,
@@ -209,6 +217,17 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
     from: "sistema",
     tipo: "pago_confirmado",
     monto: conv.pago?.monto ?? PRECIO_PERFIL,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Asiento contable del ingreso (lo lee /admin/finanzas vía `transactions`).
+  batch.set(db.collection("transactions").doc(), {
+    uid: payerUid ?? "",
+    clientName,
+    concepto: "Premium",
+    amount: PRECIO_PERFIL,
+    fecha: now,
+    estado: "confirmada",
+    fuente: "premium",
     createdAt: FieldValue.serverTimestamp(),
   });
   await batch.commit();

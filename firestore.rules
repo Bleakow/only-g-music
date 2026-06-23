@@ -220,6 +220,14 @@ service cloud.firestore {
       }
     }
 
+    // ── Transacciones (libro de ingresos: premium, etc.) ────────────
+    // Solo el admin las lee (panel de finanzas). Los asientos los escribe el
+    // servidor (Cloud Function confirmPayment); el cliente nunca escribe.
+    match /transactions/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

@@ -4,13 +4,15 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
-import type { Reserva } from "@/domain/booking";
+import { listTransactions } from "../lib/transactions-repo";
+import type { Transaccion } from "@/domain/transaccion";
 import { formatCOP } from "@/domain/service";
 import {
   ingresoTotal,
   ingresosPorMes,
   mejoresClientes,
-  reservasContables,
+  reservasATransacciones,
+  ordenarTransacciones,
 } from "../lib/finanzas";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 
@@ -23,16 +25,21 @@ function mesLabel(mes: string, locale: string): string {
 export function AdminFinanzas() {
   const t = useTranslations();
   const locale = useLocale();
-  const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [txs, setTxs] = useState<Transaccion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    listAllBookings()
-      .then((r) => {
+    Promise.all([listAllBookings(), listTransactions()])
+      .then(([bookings, transactions]) => {
         if (!active) return;
-        setReservas(r);
+        setTxs(
+          ordenarTransacciones([
+            ...reservasATransacciones(bookings),
+            ...transactions,
+          ]),
+        );
         setLoading(false);
       })
       .catch((e) => {
@@ -46,10 +53,9 @@ export function AdminFinanzas() {
     };
   }, [t]);
 
-  const total = ingresoTotal(reservas);
-  const porMes = ingresosPorMes(reservas);
-  const top = mejoresClientes(reservas);
-  const tx = reservasContables(reservas);
+  const total = ingresoTotal(txs);
+  const porMes = ingresosPorMes(txs);
+  const top = mejoresClientes(txs);
   const maxMes = Math.max(1, ...porMes.map((m) => m.total));
 
   return (
@@ -86,7 +92,7 @@ export function AdminFinanzas() {
               {formatCOP(total)}
             </p>
             <p className="mt-1 text-sm text-silver-400">
-              {t("adminFinanzas.transactionCount", { count: tx.length })}
+              {t("adminFinanzas.transactionCount", { count: txs.length })}
             </p>
           </div>
 
@@ -153,7 +159,7 @@ export function AdminFinanzas() {
             <h2 className="font-narrow text-2xl font-bold uppercase text-white">
               {t("adminFinanzas.transactions")}
             </h2>
-            {tx.length === 0 ? (
+            {txs.length === 0 ? (
               <p className="mt-2 text-silver-400">{t("adminFinanzas.noTransactions")}</p>
             ) : (
               <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
@@ -168,22 +174,22 @@ export function AdminFinanzas() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
-                    {tx.map((r) => (
-                      <tr key={r.id}>
+                    {txs.map((tx) => (
+                      <tr key={tx.id}>
                         <td className="px-4 py-3 text-silver-100">
-                          {r.clientName ?? t("adminFinanzas.clientFallback")}
+                          {tx.clientName ?? t("adminFinanzas.clientFallback")}
                         </td>
                         <td className="px-4 py-3 text-silver-300">
-                          {r.serviceName}
+                          {tx.concepto}
                         </td>
                         <td className="px-4 py-3 text-silver-400">
-                          {fechaCorta(r.start, locale)}
+                          {fechaCorta(tx.fecha, locale)}
                         </td>
                         <td className="px-4 py-3 text-right font-semibold tabular-nums text-white">
-                          {formatCOP(r.amount ?? 0)}
+                          {formatCOP(tx.amount)}
                         </td>
                         <td className="px-4 py-3 text-silver-300">
-                          {t(`status.${r.estado}`)}
+                          {t(`status.${tx.estado}`)}
                         </td>
                       </tr>
                     ))}

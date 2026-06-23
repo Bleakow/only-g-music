@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { sedes } from "@/features/sedes/data/sedes";
 import type { SedeId } from "@/domain/sede";
@@ -23,14 +24,8 @@ import {
 import { ArrowLeftIcon, ClockIcon } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
 
-const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const MONTHS = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
-
 // Servicios agendables directos: precio fijo y sin variantes (los de variantes
-// o "a cotizar" pasan por el wizard de cotización).
+// o "a cotizar" pasan por el wizard de cotizacion).
 const AGENDABLES = services.filter((s) => !hasVariants(s) && !isQuoteOnly(s));
 
 const ym = (y: number, m: number) =>
@@ -46,6 +41,8 @@ function to12h(hhmm: string): string {
 }
 
 export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [year, setYear] = useState(2026);
@@ -115,7 +112,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
   const estado = (day: number): EstadoDia =>
     estadoDia(ofertados(day), Object.keys(tomados(day)));
 
-  /** Horas consecutivas libres desde un slot (1 ventana/día → slots contiguos). */
+  /** Horas consecutivas libres desde un slot (1 ventana/dia -> slots contiguos). */
   const maxHoras = (day: number, start: string): number => {
     const off = ofertados(day);
     const tk = tomados(day);
@@ -151,6 +148,21 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       : (service.basePrice ?? 0)
     : 0;
 
+  const weekdayHeaders = Array.from({ length: 7 }, (_, i) =>
+    new Intl.DateTimeFormat(locale, { weekday: "short" }).format(
+      new Date(2026, 0, 5 + i),
+    ),
+  );
+
+  const monthLabel = new Intl.DateTimeFormat(locale, {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(year, month, 1));
+
+  const monthName = new Intl.DateTimeFormat(locale, { month: "long" }).format(
+    new Date(year, month, 1),
+  );
+
   async function confirmar() {
     if (!user || !service || !selectedDay || !startSlot) return;
     const fecha = fechaStr(year, month, selectedDay);
@@ -158,7 +170,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
     const off = ofertados(selectedDay);
     const tk = tomados(selectedDay);
     if (slots.some((s) => !off.includes(s) || tk[s])) {
-      setError("Ese horario ya no está disponible. Elige otro.");
+      setError(t("bookingCalendar.error.slotUnavailable"));
       return;
     }
     const [h, m] = startSlot.split(":").map(Number);
@@ -185,8 +197,8 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       const taken = e instanceof Error && e.message === "SLOT_TAKEN";
       setError(
         taken
-          ? "Alguien acaba de tomar ese horario. Elige otro."
-          : "No se pudo reservar. Inténtalo de nuevo.",
+          ? t("bookingCalendar.error.slotTaken")
+          : t("bookingCalendar.error.bookingFailed"),
       );
       getDaySlots(sede, mes).then(setDaySlots).catch(() => {});
     } finally {
@@ -194,7 +206,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
     }
   }
 
-  // ── Pantalla de éxito ───────────────────────────────────────────────
+  // -- Pantalla de exito --
   if (doneId) {
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center py-16 text-center">
@@ -202,24 +214,25 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           <ClockIcon className="size-8" />
         </div>
         <h2 className="mt-6 font-narrow text-3xl font-bold uppercase sm:text-4xl">
-          ¡Reserva registrada!
+          {t("bookingCalendar.success.title")}
         </h2>
         <p className="mt-3 text-silver-300">
-          Tu reserva quedó <strong>pendiente de pago</strong>. Te contactaremos
-          para confirmar el pago y dejarla agendada.
+          {t.rich("bookingCalendar.success.description", {
+            strong: (c) => <strong>{c}</strong>,
+          })}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/cuenta"
             className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
           >
-            Ir a mi cuenta
+            {t("bookingCalendar.success.goToAccount")}
           </Link>
           <Link
             href="/servicios"
             className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
           >
-            Ver servicios
+            {t("bookingCalendar.success.viewServices")}
           </Link>
         </div>
       </div>
@@ -244,7 +257,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       {AGENDABLES.length > 0 && (
         <div className="mb-6">
           <p className="mb-2 text-xs uppercase tracking-[2px] text-silver-300">
-            Servicio
+            {t("bookingCalendar.serviceLabel")}
           </p>
           <div className="flex flex-wrap gap-2">
             {AGENDABLES.map((s) => (
@@ -289,18 +302,18 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           <button
             type="button"
             onClick={() => shift(-1)}
-            aria-label="Mes anterior"
+            aria-label={t("bookingCalendar.prevMonth")}
             className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
           >
             <ArrowLeftIcon className="size-4" />
           </button>
           <span className="font-narrow text-2xl font-bold uppercase">
-            {MONTHS[month]} {year}
+            {monthLabel}
           </span>
           <button
             type="button"
             onClick={() => shift(1)}
-            aria-label="Mes siguiente"
+            aria-label={t("bookingCalendar.nextMonth")}
             className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
           >
             <ArrowLeftIcon className="size-4 rotate-180" />
@@ -309,13 +322,12 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
 
         {dispNoDefinida && (
           <p className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
-            El productor de esta sede aún no publicó su disponibilidad para{" "}
-            {MONTHS[month]}. Prueba otro mes u otra sede.
+            {t("bookingCalendar.noAvailability", { month: monthName })}
           </p>
         )}
 
         <div className="grid grid-cols-7 gap-1 text-center">
-          {WEEKDAYS.map((w) => (
+          {weekdayHeaders.map((w) => (
             <span
               key={w}
               className="py-2 text-xs uppercase tracking-wide text-silver-500"
@@ -349,12 +361,12 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                 data-selected={selectedDay === day}
                 title={
                   est === "lleno"
-                    ? "Sin cupos"
+                    ? t("bookingCalendar.dayTitle.full")
                     : est === "cerrado"
-                      ? "No disponible"
+                      ? t("bookingCalendar.dayTitle.closed")
                       : est === "parcial"
-                        ? "Quedan cupos"
-                        : "Disponible"
+                        ? t("bookingCalendar.dayTitle.partial")
+                        : t("bookingCalendar.dayTitle.free")
                 }
                 className={`aspect-square rounded-lg text-sm transition disabled:cursor-not-allowed enabled:hover:bg-white/5 data-[selected=true]:bg-gradient-to-br data-[selected=true]:from-silver-100 data-[selected=true]:to-amethyst-300 data-[selected=true]:font-bold data-[selected=true]:text-ink ${cls}`}
               >
@@ -367,49 +379,52 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
         {/* Leyenda */}
         <div className="mt-4 flex flex-wrap gap-4 text-xs text-silver-400">
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-white/15" /> Disponible
+            <span className="size-3 rounded bg-white/15" /> {t("bookingCalendar.legend.free")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-amber-500/40" /> Quedan cupos
+            <span className="size-3 rounded bg-amber-500/40" /> {t("bookingCalendar.legend.partial")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-red-500/30" /> Lleno
+            <span className="size-3 rounded bg-red-500/30" /> {t("bookingCalendar.legend.full")}
           </span>
         </div>
       </div>
 
-      {/* Horarios del día */}
+      {/* Horarios del dia */}
       {selectedDay && (
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-8">
           <p className="mb-4 text-sm uppercase tracking-[2px] text-silver-300">
-            Horarios · {selectedDay} {MONTHS[month]}
+            {t("bookingCalendar.slotsHeading", {
+              day: selectedDay,
+              month: monthName,
+            })}
           </p>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-            {selectedOfertados.map((t) => {
-              const taken = !!selectedTomados[t];
+            {selectedOfertados.map((slot) => {
+              const taken = !!selectedTomados[slot];
               return (
                 <button
-                  key={t}
+                  key={slot}
                   type="button"
                   disabled={taken}
                   onClick={() => {
-                    setStartSlot(t);
+                    setStartSlot(slot);
                     setHours(1);
                   }}
-                  data-active={startSlot === t}
+                  data-active={startSlot === slot}
                   className="rounded-lg border border-white/15 py-3 text-sm tabular-nums transition enabled:hover:border-amethyst-300 disabled:cursor-not-allowed disabled:bg-red-500/10 disabled:text-red-300/40 disabled:line-through data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 data-[active=true]:text-white"
                 >
-                  {to12h(t)}
+                  {to12h(slot)}
                 </button>
               );
             })}
           </div>
 
-          {/* Duración (servicios por hora) */}
+          {/* Duracion (servicios por hora) */}
           {startSlot && esPorHora && hMax > 1 && (
             <div className="mt-5">
               <p className="mb-2 text-xs uppercase tracking-[2px] text-silver-300">
-                Duración
+                {t("bookingCalendar.durationLabel")}
               </p>
               <div className="flex flex-wrap gap-2">
                 {Array.from({ length: hMax }, (_, i) => i + 1).map((h) => (
@@ -420,7 +435,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                     data-active={hours === h}
                     className="rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-amethyst-300 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 data-[active=true]:text-white"
                   >
-                    {h} h
+                    {t("bookingCalendar.durationOption", { hours: h })}
                   </button>
                 ))}
               </div>
@@ -443,8 +458,8 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
         {service && selectedDay && startSlot && (
           <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
             <span className="text-silver-300">
-              {service.name} · {selectedDay} {MONTHS[month]} · {to12h(startSlot)}
-              {esPorHora ? ` · ${hours} h` : ""}
+              {service.name} · {selectedDay} {monthName} · {to12h(startSlot)}
+              {esPorHora ? ` · ${t("bookingCalendar.durationOption", { hours })}` : ""}
             </span>
             <span className="font-semibold text-white">{formatCOP(amount)}</span>
           </div>
@@ -456,8 +471,8 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           className="w-full"
         >
           {service && selectedDay && startSlot
-            ? `Reservar · ${formatCOP(amount)}`
-            : "Elige servicio, día y hora"}
+            ? t("bookingCalendar.cta.reserve", { price: formatCOP(amount) })
+            : t("bookingCalendar.cta.placeholder")}
         </Button>
       </div>
     </div>

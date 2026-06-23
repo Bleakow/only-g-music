@@ -1,31 +1,10 @@
-/** Etiquetas y colores de estado para cotizaciones y reservas (UI). */
-import type { QuoteStatus } from "@/domain/quote";
-import type { ReservaEstado, SesionEstado } from "@/domain/booking";
-
-export const QUOTE_LABEL: Record<QuoteStatus, string> = {
-  pendiente: "Pendiente",
-  cotizada: "Cotizada",
-  aceptada: "Aceptada",
-  rechazada: "Rechazada",
-};
-
-export const RESERVA_LABEL: Record<ReservaEstado, string> = {
-  pendiente_pago: "Pendiente de pago",
-  pago_en_revision: "Pago en revisión",
-  confirmada: "Confirmada",
-  en_curso: "En curso",
-  completada: "Completada",
-  cancelada: "Cancelada",
-  expirada: "Expirada",
-};
-
-export const SESION_LABEL: Record<SesionEstado, string> = {
-  programada: "Programada",
-  en_curso: "En curso",
-  finalizada: "Finalizada",
-  cancelada: "Cancelada",
-};
-
+/**
+ * Colores de badge por estado y formato de fecha (UI).
+ *
+ * Las ETIQUETAS de estado viven ahora en el catálogo i18n (namespace `status`):
+ * usa `t(`status.${estado}`)` en las vistas. Antes había aquí mapas
+ * QUOTE_LABEL/RESERVA_LABEL/SESION_LABEL en español; se eliminaron en la fase 4.5b.
+ */
 export function badgeClass(estado: string): string {
   switch (estado) {
     case "pendiente":
@@ -48,8 +27,8 @@ export function badgeClass(estado: string): string {
   }
 }
 
-export function fechaCorta(ms: number): string {
-  return new Date(ms).toLocaleDateString("es-CO", {
+export function fechaCorta(ms: number, locale: string): string {
+  return new Date(ms).toLocaleDateString(locale, {
     day: "numeric",
     month: "short",
     year: "numeric",

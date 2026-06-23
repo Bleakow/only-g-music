@@ -157,6 +157,70 @@ export interface ProfileTrack {
   spotifyUrl?: string;
 }
 
+/** Encuadre de la foto principal (zoom/pan/rotación), estilo recorte de red social. */
+export interface PhotoTransform {
+  /** Escala (1 = normal). */
+  scale: number;
+  /** Desplazamiento horizontal (% del marco). */
+  x: number;
+  /** Desplazamiento vertical (% del marco). */
+  y: number;
+  /** Rotación en grados. */
+  rotation: number;
+}
+
+export const DEFAULT_PHOTO_TRANSFORM: PhotoTransform = {
+  scale: 1,
+  x: 0,
+  y: 0,
+  rotation: 0,
+};
+
+/** Cadena CSS `transform` para aplicar el encuadre a la foto (puro). */
+export function photoTransformCss(t?: PhotoTransform | null): string {
+  const v = t ?? DEFAULT_PHOTO_TRANSFORM;
+  return `translate(${v.x}%, ${v.y}%) scale(${v.scale}) rotate(${v.rotation}deg)`;
+}
+
+/** Tamaño del reproductor sobre la foto. */
+export type PlayerSize = "sm" | "md" | "lg";
+export const DEFAULT_PLAYER_SIZE: PlayerSize = "md";
+
+/**
+ * Posición del reproductor sobre la foto: coordenadas del CENTRO del reproductor
+ * como % del marco (arrastre libre, no presets). Por defecto, centro-derecha.
+ */
+export const DEFAULT_PLAYER_X = 78;
+export const DEFAULT_PLAYER_Y = 50;
+
+// ── Galería bento ───────────────────────────────────────────────────────────
+
+/** Tamaño de una foto dentro del bento (cuadrada, ancha, alta o grande). */
+export type GallerySpan = "sq" | "wide" | "tall" | "big";
+
+/** Foto de la galería con su tamaño en el bento. El orden del array es el orden visual. */
+export interface GalleryItem {
+  url: string;
+  span: GallerySpan;
+}
+
+/** Ciclo de tamaños al pulsar el botón de redimensionar una foto. */
+export const GALLERY_SPAN_CYCLE: GallerySpan[] = ["sq", "wide", "tall", "big"];
+
+/** Siguiente tamaño en el ciclo (puro). */
+export function nextGallerySpan(span: GallerySpan): GallerySpan {
+  const i = GALLERY_SPAN_CYCLE.indexOf(span);
+  return GALLERY_SPAN_CYCLE[(i + 1) % GALLERY_SPAN_CYCLE.length];
+}
+
+/** Clases de grid (col/row span) por tamaño. La grid base es de 2/4 columnas. */
+export const GALLERY_SPAN_CLASS: Record<GallerySpan, string> = {
+  sq: "col-span-1 row-span-1",
+  wide: "col-span-2 row-span-1",
+  tall: "col-span-1 row-span-2",
+  big: "col-span-2 row-span-2",
+};
+
 // ── Entidad ─────────────────────────────────────────────────────────────────
 
 export interface ArtistProfile {
@@ -179,12 +243,21 @@ export interface ArtistProfile {
   // Multimedia
   /** Foto de perfil — OBLIGATORIA. */
   photoURL: string;
-  /** Galería de mejores fotos artísticas. */
-  gallery: string[];
+  /** Encuadre de la foto principal (zoom/pan/rotación). */
+  photoTransform?: PhotoTransform;
+  /** Galería de mejores fotos artísticas (bento: cada foto con su tamaño). */
+  gallery: GalleryItem[];
   /** Temas destacados (botones de reproducción YouTube/Spotify). */
   tracks: ProfileTrack[];
   /** Tema que suena al primer tap del visitante (autoplay con sonido está bloqueado por el navegador). */
   entryTrackUrl?: string;
+  /** Reproductor sobre la foto (true, por defecto) o en una tarjeta debajo (false). */
+  playerOverlay?: boolean;
+  /** Posición (centro) del reproductor sobre la foto, como % del marco. */
+  playerX?: number;
+  playerY?: number;
+  /** Tamaño del reproductor. */
+  playerSize?: PlayerSize;
 
   /** Links directos a todas sus redes. */
   socials: Partial<Record<SocialPlatform, string>>;
@@ -196,11 +269,40 @@ export interface ArtistProfile {
   // insigniaDePuntos(). NO editable por el cliente (solo admin/Functions).
   puntos: number;
 
-  // Premium pagado. Lo activa admin al confirmar el pago (o Functions).
+  // Premium pagado. Lo activa admin al confirmar el pago (o Functions). Tener
+  // premium vigente = el perfil es visible en la vitrina (pagar = publicar).
   premium: Premium | null;
+
+  /**
+   * Curaduría de la vitrina — SOLO admin (las reglas lo blindan):
+   * `orden` = posición en la lista de artistas (menor primero; sin valor = al final).
+   * `featured` = aparece en el menú "Destacados" (máx. MAX_DESTACADOS).
+   */
+  orden?: number;
+  featured?: boolean;
 
   createdAt: number;
   updatedAt: number;
+}
+
+/** Nº máximo de fotos en la galería (bento). */
+export const GALLERY_LIMIT = 6;
+
+/** Nº máximo de artistas en el menú "Destacados". */
+export const MAX_DESTACADOS = 4;
+
+/**
+ * Orden de aparición en la vitrina (puro): primero por `orden` (asc); los que no
+ * tienen orden van al final, desempatando por nombre artístico.
+ */
+export function compararOrden(
+  a: Pick<ArtistProfile, "orden" | "artisticName">,
+  b: Pick<ArtistProfile, "orden" | "artisticName">,
+): number {
+  const ao = a.orden ?? Number.POSITIVE_INFINITY;
+  const bo = b.orden ?? Number.POSITIVE_INFINITY;
+  if (ao !== bo) return ao - bo;
+  return a.artisticName.localeCompare(b.artisticName);
 }
 
 /**
@@ -217,9 +319,14 @@ export type EditableProfile = Pick<
   | "bio"
   | "accent"
   | "photoURL"
+  | "photoTransform"
   | "gallery"
   | "tracks"
   | "entryTrackUrl"
+  | "playerOverlay"
+  | "playerX"
+  | "playerY"
+  | "playerSize"
   | "socials"
   | "trajectoryStartYear"
 >;

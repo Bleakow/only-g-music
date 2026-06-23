@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
+
+// next-intl: enlaza la config de petición (catálogos por locale).
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -19,4 +23,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withNextIntl(nextConfig);

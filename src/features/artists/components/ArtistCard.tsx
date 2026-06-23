@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import type { Artist } from "@/domain/artist";
 import styles from "./ArtistCard.module.css";
 
 export function ArtistCard({ artist }: { artist: Artist }) {
+  const t = useTranslations();
   const cardRef = useRef<HTMLAnchorElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [active, setActive] = useState(false);
@@ -61,7 +63,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
       ) : (
         <Image
           src={artist.image}
-          alt={`Retrato de ${artist.name}`}
+          alt={t("artistProfile.portraitAlt", { name: artist.name })}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className={`${styles.media} ${styles.pan} object-cover`}

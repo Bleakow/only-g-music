@@ -36,3 +36,24 @@ export function artistToProfile(artist: Artist): ArtistProfile {
     updatedAt: now,
   };
 }
+
+/**
+ * Adaptador INVERSO: un perfil real → la forma `Artist` que ya consumen el grid
+ * y las cards de la vitrina. Así reutilizamos esa UI sin tocarla. PURO.
+ */
+export function profileToArtist(p: ArtistProfile): Artist {
+  return {
+    slug: p.slug,
+    name: p.artisticName,
+    tagline: p.tagline,
+    genre: p.genre,
+    bio: p.bio,
+    image: p.photoURL,
+    accent: p.accent,
+    city: p.city,
+    role: "Artista",
+    featured: p.featured ?? false,
+    socials: p.socials,
+    topTracks: p.tracks.map((t) => ({ title: t.title })),
+  };
+}

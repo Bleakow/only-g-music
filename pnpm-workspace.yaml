@@ -1,7 +1,9 @@
-# Scripts de build (postinstall) aprobados. pnpm los bloquea por seguridad
-# hasta aprobarlos aquí explícitamente.
+# Scripts de build (postinstall) aprobados. pnpm los bloquea por seguridad hasta
+# aprobarlos aquí explícitamente. Todos traen binarios prebuilt → aprobar es seguro.
 allowBuilds:
   '@firebase/util': true
+  '@parcel/watcher': true
+  '@swc/core': true
   protobufjs: true
   sharp: true
   unrs-resolver: true

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { CloseIcon } from "@/components/icons";
 import {
@@ -50,6 +51,7 @@ export function FileUpload({
   children?: ReactNode;
 }) {
   const { user } = useAuth();
+  const t = useTranslations();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,7 +61,7 @@ export function FileUpload({
     e.target.value = "";
     if (!files.length) return;
     if (!user) {
-      setError("Inicia sesión para adjuntar archivos.");
+      setError(t("fileUpload.signIn"));
       return;
     }
     setError(null);
@@ -68,7 +70,7 @@ export function FileUpload({
       const uploaded: UploadedFile[] = [];
       for (const file of files) {
         if (file.size > maxSizeMB * 1024 * 1024) {
-          setError(`"${file.name}" supera ${maxSizeMB} MB.`);
+          setError(t("fileUpload.tooLarge", { name: file.name, maxMb: maxSizeMB }));
           continue;
         }
         uploaded.push(await uploadUserFile(user.uid, file));
@@ -76,7 +78,7 @@ export function FileUpload({
       if (uploaded.length) onChange([...value, ...uploaded]);
     } catch (err) {
       console.error("[upload] error:", err);
-      setError("No se pudo subir el archivo. Inténtalo de nuevo.");
+      setError(t("fileUpload.uploadError"));
     } finally {
       setBusy(false);
     }
@@ -95,8 +97,8 @@ export function FileUpload({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={busy}
-            aria-label="Adjuntar archivos"
-            title="Adjuntar archivos"
+            aria-label={t("fileUpload.attachFiles")}
+            title={t("fileUpload.attachFiles")}
             className="flex shrink-0 items-center justify-center px-3 text-silver-300 transition hover:text-white disabled:opacity-50"
           >
             <PaperclipIcon className={`size-5 ${busy ? "animate-pulse" : ""}`} />
@@ -110,7 +112,7 @@ export function FileUpload({
           className="flex min-h-11 w-fit items-center gap-2 rounded-lg border border-white/20 bg-white/5 px-3 text-sm text-silver-100 transition hover:border-amethyst-300 hover:text-white disabled:opacity-60"
         >
           <PaperclipIcon className="size-4" />
-          {busy ? "Subiendo…" : "Adjuntar"}
+          {busy ? t("fileUpload.uploading") : t("fileUpload.attach")}
         </button>
       )}
 
@@ -143,7 +145,7 @@ export function FileUpload({
               <button
                 type="button"
                 onClick={() => remove(i)}
-                aria-label={`Quitar ${f.name}`}
+                aria-label={t("fileUpload.remove", { name: f.name })}
                 className="flex size-8 shrink-0 items-center justify-center rounded-full text-silver-400 transition hover:bg-white/10 hover:text-white"
               >
                 <CloseIcon className="size-4" />

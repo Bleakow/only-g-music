@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { searchArtists } from "@/features/artists/lib/artists-repo";
 import { CloseIcon } from "@/components/icons";
 import type { Artist } from "@/domain/artist";
@@ -23,6 +24,7 @@ export function ArtistPicker({
   value: QuoteCollaborator[];
   onChange: (collaborators: QuoteCollaborator[]) => void;
 }) {
+  const t = useTranslations();
   const [term, setTerm] = useState("");
   const [results, setResults] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(false);
@@ -38,7 +40,7 @@ export function ArtistPicker({
     if (!visible) return;
     let active = true;
     setLoading(true);
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const r = await searchArtists(showAll ? "" : query, showAll ? 30 : 8);
       if (active) {
         setResults(r);
@@ -47,7 +49,7 @@ export function ArtistPicker({
     }, 200);
     return () => {
       active = false;
-      clearTimeout(t);
+      clearTimeout(timer);
     };
   }, [query, showAll, visible]);
 
@@ -92,7 +94,7 @@ export function ArtistPicker({
           onFocus={() => {
             if (term.trim()) setOpen(true);
           }}
-          placeholder="Escribe el nombre del artista…"
+          placeholder={t("artistPicker.placeholder")}
           className={INPUT}
         />
         <button
@@ -104,19 +106,21 @@ export function ArtistPicker({
           }}
           className="shrink-0 rounded-lg border border-amethyst-400/60 px-4 py-2.5 text-sm font-semibold uppercase tracking-[1px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
         >
-          Ver todos
+          {t("artistPicker.seeAll")}
         </button>
       </div>
 
       {visible && (
         <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-white/10 bg-ink-soft p-1 shadow-2xl">
           {loading ? (
-            <p className="px-3 py-2 text-sm text-silver-400">Buscando…</p>
+            <p className="px-3 py-2 text-sm text-silver-400">
+              {t("artistPicker.searching")}
+            </p>
           ) : list.length === 0 ? (
             <p className="px-3 py-2 text-sm text-silver-400">
               {query
-                ? "No hay artistas que coincidan."
-                : "No hay artistas registrados."}
+                ? t("artistPicker.noMatches")
+                : t("artistPicker.noneRegistered")}
             </p>
           ) : (
             <ul>
@@ -163,7 +167,7 @@ export function ArtistPicker({
               <button
                 type="button"
                 onClick={() => remove(c.id)}
-                aria-label={`Quitar ${c.name}`}
+                aria-label={t("artistPicker.remove", { name: c.name })}
                 className="flex size-7 items-center justify-center rounded-full text-silver-400 transition hover:bg-white/10 hover:text-white"
               >
                 <CloseIcon className="size-3.5" />

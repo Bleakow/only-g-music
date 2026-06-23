@@ -1,17 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
-import { hasAnyRole, type Role } from "@/domain/user";
-
-const ROLE_LABEL: Record<Role, string> = {
-  cliente: "Cliente",
-  productor: "Productor",
-  admin: "Admin",
-  artista: "Artista",
-};
+import { hasAnyRole } from "@/domain/user";
 
 function initials(name: string | null, email: string | null): string {
   const base = name?.trim() || email || "?";
@@ -49,6 +42,7 @@ export function UserMenu() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const t = useTranslations();
 
   // Cerrar el dropdown al hacer clic fuera.
   useEffect(() => {
@@ -78,7 +72,7 @@ export function UserMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={user ? "Menú de cuenta" : "Acceder"}
+        aria-label={user ? t("userMenu.account") : t("userMenu.access")}
         aria-expanded={open}
         className="flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold text-silver-100 backdrop-blur-sm transition hover:border-amethyst-300 hover:text-white"
       >
@@ -107,7 +101,7 @@ export function UserMenu() {
                 </div>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">
-                    {name ?? "Usuario"}
+                    {name ?? t("userMenu.user")}
                   </p>
                   <p className="truncate text-xs text-silver-300">{email}</p>
                 </div>
@@ -120,7 +114,7 @@ export function UserMenu() {
                       key={r}
                       className="rounded-full border border-amethyst-300/40 bg-amethyst-500/10 px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-amethyst-200"
                     >
-                      {ROLE_LABEL[r] ?? r}
+                      {t(`roles.${r}`)}
                     </span>
                   ))}
                 </div>
@@ -132,15 +126,19 @@ export function UserMenu() {
                   onClick={() => setOpen(false)}
                   className={ITEM}
                 >
-                  Mis solicitudes
+                  {t("userMenu.myRequests")}
                 </Link>
                 {hasAnyRole(account, ["artista"]) ? (
                   <Link
-                    href="/artista/perfil"
+                    href={
+                      account?.artistSlug
+                        ? `/artistas/${account.artistSlug}`
+                        : "/artista/perfil"
+                    }
                     onClick={() => setOpen(false)}
                     className={ITEM}
                   >
-                    Mi perfil de artista
+                    {t("userMenu.myArtistProfile")}
                   </Link>
                 ) : (
                   <Link
@@ -148,7 +146,7 @@ export function UserMenu() {
                     onClick={() => setOpen(false)}
                     className={ITEM}
                   >
-                    Conviértete en artista
+                    {t("userMenu.becomeArtist")}
                   </Link>
                 )}
                 {hasAnyRole(account, ["admin"]) && (
@@ -157,7 +155,7 @@ export function UserMenu() {
                     onClick={() => setOpen(false)}
                     className={ITEM}
                   >
-                    Panel admin
+                    {t("userMenu.adminPanel")}
                   </Link>
                 )}
                 {hasAnyRole(account, ["productor"]) && (
@@ -166,7 +164,7 @@ export function UserMenu() {
                     onClick={() => setOpen(false)}
                     className={ITEM}
                   >
-                    Consola
+                    {t("userMenu.console")}
                   </Link>
                 )}
                 {hasAnyRole(account, ["productor", "admin"]) && (
@@ -175,32 +173,32 @@ export function UserMenu() {
                     onClick={() => setOpen(false)}
                     className={ITEM}
                   >
-                    Disponibilidad
+                    {t("userMenu.availability")}
                   </Link>
                 )}
                 <Link href="/cuenta" onClick={() => setOpen(false)} className={ITEM}>
-                  Configuración
+                  {t("userMenu.settings")}
                 </Link>
                 <button
                   type="button"
                   onClick={onLogout}
                   className="block w-full rounded-lg px-3 py-2 text-left text-sm text-red-300 transition hover:bg-red-500/10 hover:text-red-200"
                 >
-                  Cerrar sesión
+                  {t("userMenu.logout")}
                 </button>
               </div>
             </>
           ) : (
             <div className="p-2">
               <Link href="/login" onClick={() => setOpen(false)} className={ITEM}>
-                Iniciar sesión
+                {t("auth.login")}
               </Link>
               <Link
                 href="/login?mode=register"
                 onClick={() => setOpen(false)}
                 className="mt-1 block rounded-lg bg-gradient-to-r from-silver-100 to-amethyst-300 px-3 py-2 text-center text-sm font-semibold text-ink transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
               >
-                Crear cuenta
+                {t("auth.createAccount")}
               </Link>
             </div>
           )}

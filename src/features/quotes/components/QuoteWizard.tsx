@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { services } from "@/features/services/data/services";
 import {
@@ -32,8 +33,7 @@ import type { SedeId } from "@/domain/sede";
 import { sedes } from "@/features/sedes/data/sedes";
 import { artists } from "@/features/artists/data/artists";
 
-const STEPS = ["Tu pedido", "Tu proyecto", "Contacto"];
-const TOTAL = STEPS.length;
+const TOTAL = 3;
 
 const INPUT =
   "w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";
@@ -53,8 +53,16 @@ const keyOf = (slug: string, variantId?: string) =>
   variantId ? `${slug}::${variantId}` : slug;
 
 export function QuoteWizard() {
+  const t = useTranslations();
+  const locale = useLocale();
   const params = useSearchParams();
   const { user, account } = useAuth();
+
+  const STEPS = [
+    t("quoteWizard.stepOrder"),
+    t("quoteWizard.stepProject"),
+    t("quoteWizard.stepContact"),
+  ];
 
   const initialService = (() => {
     const slug = params.get("servicio");
@@ -137,11 +145,11 @@ export function QuoteWizard() {
   function next() {
     setError(null);
     if (step === 1 && lines.length === 0) {
-      setError("Agrega al menos un servicio a tu pedido.");
+      setError(t("quoteWizard.errorEmptyCart"));
       return;
     }
     if (step === 2 && !details.trim()) {
-      setError("Cuéntanos un poco sobre tu proyecto.");
+      setError(t("quoteWizard.errorEmptyDetails"));
       return;
     }
     setStep((s) => Math.min(TOTAL, s + 1));
@@ -155,11 +163,11 @@ export function QuoteWizard() {
   async function submit() {
     setError(null);
     if (!contactName.trim() || !contactEmail.trim()) {
-      setError("Necesitamos tu nombre y tu correo para responderte.");
+      setError(t("quoteWizard.errorMissingContact"));
       return;
     }
     if (!user) {
-      setError("Tu sesión expiró. Inicia sesión de nuevo.");
+      setError(t("quoteWizard.errorSessionExpired"));
       return;
     }
     setBusy(true);
@@ -198,9 +206,7 @@ export function QuoteWizard() {
       setDoneId(id);
     } catch (e) {
       console.error("[cotizar] error:", e);
-      setError(
-        "No se pudo enviar la solicitud. Revisa tu conexión e inténtalo de nuevo.",
-      );
+      setError(t("quoteWizard.errorSubmit"));
     } finally {
       setBusy(false);
     }
@@ -213,25 +219,23 @@ export function QuoteWizard() {
           <CheckIcon className="size-8" />
         </div>
         <h1 className="mt-6 font-narrow text-4xl font-bold uppercase sm:text-5xl">
-          ¡Solicitud enviada!
+          {t("quoteWizard.successHeading")}
         </h1>
         <p className="mt-3 text-silver-300">
-          Recibimos tu pedido ({itemCount} ítem{itemCount !== 1 ? "s" : ""}). El
-          equipo de Only G lo revisará y te enviará una propuesta con precio y
-          alcance.
+          {t("quoteWizard.successBody", { itemCount })}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/cuenta"
             className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
           >
-            Ir a mi cuenta
+            {t("quoteWizard.goToAccount")}
           </Link>
           <Link
             href="/"
             className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
           >
-            Volver al inicio
+            {t("quoteWizard.goHome")}
           </Link>
         </div>
       </main>
@@ -243,10 +247,10 @@ export function QuoteWizard() {
       <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-32 pt-28 sm:px-12">
         <header className="mb-8">
           <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
-            Cotización
+            {t("quoteWizard.eyebrow")}
           </p>
           <h1 className="mt-3 font-narrow text-4xl font-bold uppercase sm:text-6xl">
-            Arma tu cotización
+            {t("quoteWizard.heading")}
           </h1>
 
           <div className="mt-6 flex items-center gap-2">
@@ -260,7 +264,7 @@ export function QuoteWizard() {
             ))}
           </div>
           <p className="mt-2 text-xs uppercase tracking-[2px] text-silver-400">
-            Paso {step} de {TOTAL} · {STEPS[step - 1]}
+            {t("quoteWizard.stepIndicator", { step, total: TOTAL, stepName: STEPS[step - 1] })}
           </p>
         </header>
 
@@ -272,12 +276,11 @@ export function QuoteWizard() {
           }}
           className="flex flex-col gap-5"
         >
-          {/* ── Paso 1: armar el pedido ───────────────────────────── */}
+          {/* -- Paso 1: armar el pedido */}
           {step === 1 && (
             <div className="flex flex-col gap-4">
               <p className="text-silver-300">
-                Elige uno o varios servicios y ajusta las cantidades. Algunos
-                tienen opciones (por horas, por día, agrupación…).
+                {t("quoteWizard.step1Intro")}
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {services.map((s) => {
@@ -325,8 +328,8 @@ export function QuoteWizard() {
                             <span className="mt-2 block text-sm font-semibold text-amethyst-200">
                               {variantsCard
                                 ? active
-                                  ? `${serviceLines.length} opción${serviceLines.length !== 1 ? "es" : ""}`
-                                  : "Varias opciones →"
+                                  ? t("quoteWizard.variantCount", { count: serviceLines.length })
+                                  : t("quoteWizard.variantsCta")
                                 : priceLabel(s)}
                             </span>
                           </span>
@@ -360,7 +363,7 @@ export function QuoteWizard() {
                                   type="button"
                                   onClick={() => setQty(l.key, l.qty - 1)}
                                   className={STEPPER}
-                                  aria-label="Quitar uno"
+                                  aria-label={t("quoteWizard.ariaRemoveOne")}
                                 >
                                   <MinusIcon className="size-4" />
                                 </button>
@@ -371,7 +374,7 @@ export function QuoteWizard() {
                                   type="button"
                                   onClick={() => setQty(l.key, l.qty + 1)}
                                   className={STEPPER}
-                                  aria-label="Agregar uno"
+                                  aria-label={t("quoteWizard.ariaAddOne")}
                                 >
                                   <PlusIcon className="size-4" />
                                 </button>
@@ -383,7 +386,7 @@ export function QuoteWizard() {
                             onClick={() => setModalSlug(s.slug)}
                             className="self-start py-2 text-sm font-semibold text-amethyst-300 transition hover:text-amethyst-200"
                           >
-                            Agregar / cambiar opciones
+                            {t("quoteWizard.changeOptions")}
                           </button>
                         </div>
                       )}
@@ -395,7 +398,7 @@ export function QuoteWizard() {
                               type="button"
                               onClick={() => setQty(s.slug, qty - 1)}
                               className={STEPPER}
-                              aria-label="Quitar uno"
+                              aria-label={t("quoteWizard.ariaRemoveOne")}
                             >
                               <MinusIcon className="size-4" />
                             </button>
@@ -406,7 +409,7 @@ export function QuoteWizard() {
                               type="button"
                               onClick={() => setQty(s.slug, qty + 1)}
                               className={STEPPER}
-                              aria-label="Agregar uno"
+                              aria-label={t("quoteWizard.ariaAddOne")}
                             >
                               <PlusIcon className="size-4" />
                             </button>
@@ -416,7 +419,7 @@ export function QuoteWizard() {
                           </div>
                           <span className="text-sm font-semibold text-white">
                             {isQuoteOnly(s)
-                              ? "A cotizar"
+                              ? t("solicitudDetail.toQuote")
                               : formatCOP((s.basePrice ?? 0) * qty)}
                           </span>
                         </div>
@@ -429,28 +432,27 @@ export function QuoteWizard() {
               {lines.length > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
                   <span className="text-silver-300">
-                    {itemCount} ítem{itemCount !== 1 ? "s" : ""} ·{" "}
-                    {lines.length} línea{lines.length !== 1 ? "s" : ""}
+                    {t("quoteWizard.cartSummary", { items: itemCount, lines: lines.length })}
                   </span>
                   <span className="font-semibold text-white">
-                    Estimado: {formatCOP(fixedTotal)}
-                    {hasQuoteOnly && " + a cotizar"}
+                    {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
+                    {hasQuoteOnly && ` ${t("quoteWizard.plusToQuote")}`}
                   </span>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── Paso 2: proyecto + colaboradores ──────────────────── */}
+          {/* -- Paso 2: proyecto + colaboradores */}
           {step === 2 && (
             <>
               <label className={LABEL}>
-                <span className={LABEL_TEXT}>Cuéntanos sobre tu proyecto</span>
+                <span className={LABEL_TEXT}>{t("quoteWizard.labelProjectDetails")}</span>
                 <textarea
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   rows={4}
-                  placeholder="Género, objetivo, fecha tentativa, lo que necesitas…"
+                  placeholder={t("quoteWizard.placeholderProjectDetails")}
                   className={INPUT}
                   required
                 />
@@ -458,14 +460,14 @@ export function QuoteWizard() {
 
               <div className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  Referencias / instrumentales (links o archivos)
+                  {t("quoteWizard.labelReferences")}
                 </span>
                 <FileUpload value={attachments} onChange={setAttachments}>
                   <input
                     type="text"
                     value={references}
                     onChange={(e) => setReferences(e.target.value)}
-                    placeholder="URLs de ejemplos, instrumentales…"
+                    placeholder={t("quoteWizard.placeholderReferences")}
                     className="flex-1 bg-transparent px-4 py-2.5 text-silver-50 outline-none"
                   />
                 </FileUpload>
@@ -473,13 +475,13 @@ export function QuoteWizard() {
 
               <div className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  Invitar artistas — solo artistas registrados
+                  {t("quoteWizard.labelArtists")}
                 </span>
                 <ArtistPicker value={collabs} onChange={setCollabs} />
               </div>
 
               <fieldset className={LABEL}>
-                <span className={LABEL_TEXT}>Sede</span>
+                <span className={LABEL_TEXT}>{t("quoteWizard.labelVenue")}</span>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {sedes.map((s) => (
                     <button
@@ -505,12 +507,12 @@ export function QuoteWizard() {
             </>
           )}
 
-          {/* ── Paso 3: resumen + contacto ────────────────────────── */}
+          {/* -- Paso 3: resumen + contacto */}
           {step === 3 && (
             <>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <h2 className="text-xs uppercase tracking-[2px] text-silver-400">
-                  Resumen del pedido
+                  {t("quoteWizard.orderSummaryHeading")}
                 </h2>
                 <ul className="mt-3 flex flex-col gap-2">
                   {lines.map((l) => {
@@ -527,7 +529,7 @@ export function QuoteWizard() {
                         </span>
                         <span className="font-semibold text-white">
                           {isQuoteOnly(p)
-                            ? "A cotizar"
+                            ? t("solicitudDetail.toQuote")
                             : formatCOP((p.basePrice ?? 0) * l.qty)}
                         </span>
                       </li>
@@ -535,29 +537,27 @@ export function QuoteWizard() {
                   })}
                 </ul>
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-sm">
-                  <span className="text-silver-300">Total estimado</span>
+                  <span className="text-silver-300">{t("quoteWizard.totalEstimated")}</span>
                   <span className="font-semibold text-white">
-                    {formatCOP(fixedTotal)}
-                    {hasQuoteOnly && " + a cotizar"}
+                    {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
+                    {hasQuoteOnly && ` ${t("quoteWizard.plusToQuote")}`}
                   </span>
                 </div>
                 {collabs.length > 0 && (
                   <p className="mt-3 text-xs text-silver-400">
-                    Artistas: {collabs.map((c) => c.name).join(", ")}
+                    {t("quoteWizard.artistsPrefix", { names: collabs.map((c) => c.name).join(", ") })}
                   </p>
                 )}
                 {attachments.length > 0 && (
                   <p className="mt-1 text-xs text-silver-400">
-                    {attachments.length} archivo
-                    {attachments.length !== 1 ? "s" : ""} adjunto
-                    {attachments.length !== 1 ? "s" : ""}
+                    {t("quoteWizard.attachmentsCount", { count: attachments.length })}
                   </p>
                 )}
               </div>
 
               <label className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  Presupuesto aproximado (opcional)
+                  {t("quoteWizard.labelBudget")}
                 </span>
                 <div className="relative">
                   <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-silver-400">
@@ -568,7 +568,7 @@ export function QuoteWizard() {
                     inputMode="numeric"
                     value={
                       budget
-                        ? new Intl.NumberFormat("es-CO").format(Number(budget))
+                        ? new Intl.NumberFormat(locale).format(Number(budget))
                         : ""
                     }
                     onChange={(e) =>
@@ -581,7 +581,7 @@ export function QuoteWizard() {
               </label>
 
               <label className={LABEL}>
-                <span className={LABEL_TEXT}>Nombre</span>
+                <span className={LABEL_TEXT}>{t("quoteWizard.labelName")}</span>
                 <input
                   type="text"
                   value={contactName}
@@ -592,7 +592,7 @@ export function QuoteWizard() {
                 />
               </label>
               <label className={LABEL}>
-                <span className={LABEL_TEXT}>Correo</span>
+                <span className={LABEL_TEXT}>{t("quoteWizard.labelEmail")}</span>
                 <input
                   type="email"
                   value={contactEmail}
@@ -604,7 +604,7 @@ export function QuoteWizard() {
               </label>
               <label className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  Teléfono / WhatsApp (opcional)
+                  {t("quoteWizard.labelPhone")}
                 </span>
                 <input
                   type="tel"
@@ -633,7 +633,7 @@ export function QuoteWizard() {
                 onClick={back}
                 className="rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
               >
-                Atrás
+                {t("quoteWizard.back")}
               </button>
             ) : (
               <span />
@@ -645,16 +645,16 @@ export function QuoteWizard() {
               className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy
-                ? "Enviando…"
+                ? t("quoteWizard.sending")
                 : step < TOTAL
-                  ? "Siguiente"
-                  : "Enviar solicitud"}
+                  ? t("quoteWizard.next")
+                  : t("quoteWizard.submit")}
             </button>
           </div>
         </form>
       </main>
 
-      {/* ── Panel de opciones (variantes) ─────────────────────────── */}
+      {/* -- Panel de opciones (variantes) */}
       {modalService && modalService.variants && (
         <div
           className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 sm:items-center sm:p-6"
@@ -676,13 +676,13 @@ export function QuoteWizard() {
                   {modalService.name}
                 </h2>
                 <p className="mt-1 text-sm text-silver-300">
-                  Elige una o varias opciones.
+                  {t("quoteWizard.modalVariantSubtitle")}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setModalSlug(null)}
-                aria-label="Cerrar"
+                aria-label={t("quoteWizard.ariaCloseModal")}
                 className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-silver-200 transition hover:border-white hover:text-white"
               >
                 <CloseIcon className="size-5" />
@@ -720,7 +720,7 @@ export function QuoteWizard() {
                           onClick={() => setQty(key, 1)}
                           className="shrink-0 rounded-full border border-amethyst-400/60 px-4 py-2 text-sm font-semibold text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
                         >
-                          Agregar
+                          {t("quoteWizard.variantAdd")}
                         </button>
                       ) : (
                         <div className="flex items-center gap-2">
@@ -728,7 +728,7 @@ export function QuoteWizard() {
                             type="button"
                             onClick={() => setQty(key, qty - 1)}
                             className={STEPPER}
-                            aria-label="Quitar uno"
+                            aria-label={t("quoteWizard.ariaRemoveOne")}
                           >
                             <MinusIcon className="size-4" />
                           </button>
@@ -739,7 +739,7 @@ export function QuoteWizard() {
                             type="button"
                             onClick={() => setQty(key, qty + 1)}
                             className={STEPPER}
-                            aria-label="Agregar uno"
+                            aria-label={t("quoteWizard.ariaAddOne")}
                           >
                             <PlusIcon className="size-4" />
                           </button>
@@ -756,7 +756,7 @@ export function QuoteWizard() {
               onClick={() => setModalSlug(null)}
               className="mt-6 w-full rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-6 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
-              Listo
+              {t("quoteWizard.modalDone")}
             </button>
           </div>
         </div>

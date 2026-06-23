@@ -6,7 +6,12 @@
  * (`PRECIO_PERFIL`, la proyección `Sesion`) porque viven en su propio paquete.
  * Cuando se extraiga `packages/domain` (roadmap), importarlas de ahí.
  */
-import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
+import {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentUpdated,
+} from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -14,8 +19,17 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 initializeApp();
 const db = getFirestore();
 
+/** Región: junto a la base de datos (los triggers de Firestore la exigen). */
+const REGION = "southamerica-east1";
 /** Mantener en sync con `src/domain/profile-order.ts`. */
 const PRECIO_PERFIL = 80000;
+/** Horas sin pagar antes de expirar una reserva y liberar su slot. */
+const EXPIRY_HORAS = 48;
+/** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
+const GRACIA_MIN = 30;
+/** Puntos de gamificación — sync con `PUNTOS` en src/domain/artist-profile.ts. */
+const PUNTOS_LIKE = 5;
+const PUNTOS_PAGO_PERFIL = 150;
 
 /**
  * Al confirmar una reserva de ESTUDIO con productor asignado, crea la proyección
@@ -27,10 +41,18 @@ export const onBookingConfirmed = onDocumentUpdated(
   "bookings/{id}",
   async (event) => {
     const after = event.data?.after.data();
-    if (!after) return;
+    const afterRef = event.data?.after.ref;
+    if (!after || !afterRef) return;
 
     if (after.estado !== "confirmada") return;
-    if (after.tipo === "perfil_artista") return;
+
+    // Perfil pagado → otorga puntos de gamificación UNA sola vez (flag idempotente).
+    if (after.tipo === "perfil_artista") {
+      if (after.puntosOtorgados) return;
+      await otorgarPuntosPerfil(after.uid, event.params.id, afterRef);
+      return;
+    }
+
     if (!after.productorId) return;
 
     const reservaId = event.params.id;
@@ -56,6 +78,61 @@ export const onBookingConfirmed = onDocumentUpdated(
 );
 
 /**
+ * Otorga los puntos por pagar el perfil al artista dueño del booking. Resuelve el
+ * perfil vía users/{uid}.artistSlug. Idempotente: marca `puntosOtorgados` en el
+ * booking dentro de la transacción para no doble-contar en re-disparos.
+ */
+async function otorgarPuntosPerfil(
+  uid: string,
+  bookingId: string,
+  bookingRef: FirebaseFirestore.DocumentReference,
+): Promise<void> {
+  if (!uid) return;
+  const userSnap = await db.doc(`users/${uid}`).get();
+  const slug = userSnap.data()?.artistSlug as string | undefined;
+  if (!slug) return;
+  const profileRef = db.doc(`artistProfiles/${slug}`);
+
+  await db.runTransaction(async (tx) => {
+    const bk = await tx.get(bookingRef);
+    if (bk.data()?.puntosOtorgados) return; // ya otorgados (carrera/re-disparo)
+    const prof = await tx.get(profileRef);
+    if (!prof.exists) return;
+    tx.update(profileRef, {
+      puntos: FieldValue.increment(PUNTOS_PAGO_PERFIL),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(bookingRef, { puntosOtorgados: true });
+  });
+  logger.info(`Puntos de pago de perfil → ${slug} (booking ${bookingId})`);
+}
+
+/**
+ * Puntos por LIKE (server-authoritative): el cliente nunca escribe `puntos`. Al
+ * crear/borrar un doc de like, ajusta los puntos del perfil. Un doc por usuario
+ * (las reglas lo garantizan) → no se puede inflar.
+ */
+export const onLikeAdded = onDocumentCreated(
+  "artistProfiles/{slug}/likes/{uid}",
+  async (event) => {
+    await db.doc(`artistProfiles/${event.params.slug}`).update({
+      puntos: FieldValue.increment(PUNTOS_LIKE),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+export const onLikeRemoved = onDocumentDeleted(
+  "artistProfiles/{slug}/likes/{uid}",
+  async (event) => {
+    await db.doc(`artistProfiles/${event.params.slug}`).update({
+      puntos: FieldValue.increment(-PUNTOS_LIKE),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+/**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
  * cliente lo creó con otro valor, lo corrige server-side. Para reservas de
  * estudio el precio aún no es validable aquí (los servicios no viven en
@@ -72,6 +149,86 @@ export const onBookingCreatedAmountGuard = onDocumentCreated(
         `Monto de perfil corregido en ${event.params.id}: ${data.amount} → ${PRECIO_PERFIL}`,
       );
       await event.data!.ref.update({ amount: PRECIO_PERFIL });
+    }
+  },
+);
+
+/**
+ * Libera los slots ocupados por una reserva en el agregado daySlots. Escanea
+ * todas las fechas del doc del mes (robusto ante zona horaria) y borra las horas
+ * cuyo valor sea este bookingId. Las reservas de perfil no tienen slots → no-op.
+ */
+async function liberarSlots(
+  bookingId: string,
+  sede: string,
+  startMs: number,
+): Promise<void> {
+  if (!sede || !startMs) return;
+  const d = new Date(startMs);
+  const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  const ref = db.doc(`daySlots/${sede}_${mes}`);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) return;
+    const all = (snap.data()?.slots ?? {}) as Record<
+      string,
+      Record<string, string>
+    >;
+    let changed = false;
+    for (const fecha of Object.keys(all)) {
+      const dia = all[fecha];
+      for (const hora of Object.keys(dia)) {
+        if (dia[hora] === bookingId) {
+          delete dia[hora];
+          changed = true;
+        }
+      }
+    }
+    if (changed) tx.set(ref, { slots: all }, { merge: true });
+  });
+}
+
+/**
+ * Expira las reservas en `pendiente_pago` con más de EXPIRY_HORAS sin avanzar y
+ * libera sus slots. Server-authoritative: corre aunque nadie tenga la app abierta.
+ */
+export const expireUnpaidBookings = onSchedule(
+  { schedule: "every 60 minutes", region: REGION },
+  async () => {
+    const cutoff = Date.now() - EXPIRY_HORAS * 3_600_000;
+    const snap = await db
+      .collection("bookings")
+      .where("estado", "==", "pendiente_pago")
+      .get();
+    for (const doc of snap.docs) {
+      const b = doc.data();
+      const created = b.createdAt?.toMillis?.() ?? 0;
+      if (created >= cutoff) continue;
+      await doc.ref.update({ estado: "expirada" });
+      await liberarSlots(doc.id, b.sede, b.start);
+      logger.info(`Reserva ${doc.id} expirada por falta de pago`);
+    }
+  },
+);
+
+/**
+ * Auto-inicia las sesiones `programada` cuyo inicio agendado ya pasó la gracia.
+ * Versión server-authoritative del auto-inicio de la consola (funciona con la
+ * app cerrada). Idempotente: solo toca las que siguen en `programada`.
+ */
+export const autoStartSessions = onSchedule(
+  { schedule: "every 10 minutes", region: REGION },
+  async () => {
+    const cutoff = Date.now() - GRACIA_MIN * 60_000;
+    const snap = await db
+      .collection("sessions")
+      .where("estado", "==", "programada")
+      .get();
+    for (const doc of snap.docs) {
+      const s = doc.data();
+      if ((s.scheduledStart ?? Infinity) > cutoff) continue;
+      await doc.ref.update({ estado: "en_curso", startedAt: Date.now() });
+      logger.info(`Sesión ${doc.id} auto-iniciada (gracia)`);
     }
   },
 );

@@ -12,12 +12,6 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
     }
 
-    // ¿El usuario actual tiene rol artista? (lee su doc de usuario).
-    function esArtista() {
-      return request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['artista']);
-    }
-
     // ── Cuentas de usuario ───────────────────────────────────────────
     // Cada quien lee/escribe SU propio documento. Los `roles` NO se pueden
     // auto-asignar ni escalar desde el cliente: al crear, deben ser
@@ -112,26 +106,32 @@ service cloud.firestore {
     // ── Perfiles de artista (vitrina pública) ────────────────────────
     // Lectura PÚBLICA (sin sesión): hace falta para QR, compartir enlace y SEO.
     // El nombre real / fecha de nacimiento NO viven aquí (son privados en
-    // users/{uid}). Crea/edita el dueño con rol 'artista' o el admin; el cliente
-    // NUNCA toca uid/slug/puntos/premium (eso lo maneja admin/Functions).
+    // users/{uid}). El DUEÑO (su users/{uid}.artistSlug == slug) puede construir
+    // su perfil como BORRADOR sin necesitar todavía el rol 'artista' — así arma
+    // su página antes de que el estudio active el rol/premium. NUNCA toca
+    // uid/slug/puntos/premium (eso lo maneja admin/Functions). `published` es la
+    // intención del artista; la visibilidad real exige published + premium.
     match /artistProfiles/{slug} {
       allow read: if true;
 
-      // El artista solo puede crear EL slug que le pertenece (su users/{uid}.artistSlug),
-      // no secuestrar el de otro. Admin puede crear cualquiera.
+      // Solo crea EL slug que le pertenece (su users/{uid}.artistSlug), no el de
+      // otro. premium arranca null y puntos en 0; orden/featured (curaduría) son
+      // solo de admin. Admin puede crear cualquiera.
       allow create: if isAdmin()
-        || (esArtista()
+        || (request.auth != null
           && request.resource.data.uid == request.auth.uid
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug == slug
           && request.resource.data.puntos == 0
-          && request.resource.data.premium == null);
+          && request.resource.data.premium == null
+          && !request.resource.data.keys().hasAny(['orden', 'featured']));
 
-      // El dueño edita su contenido, sin tocar campos sensibles.
+      // El dueño edita su contenido, sin tocar campos sensibles ni la curaduría
+      // de la vitrina (orden/featured = solo admin).
       allow update: if isAdmin()
-        || (esArtista()
+        || (request.auth != null
           && resource.data.uid == request.auth.uid
           && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt']));
+              .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt', 'orden', 'featured']));
 
       allow delete: if isAdmin();
 

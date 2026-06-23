@@ -1,0 +1,639 @@
+{
+  "nav": {
+    "featured": "Destacados",
+    "artists": "Artistas",
+    "services": "Servicios",
+    "productions": "Producciones",
+    "events": "Eventos",
+    "home": "Inicio",
+    "openMenu": "Abrir menú",
+    "closeMenu": "Cerrar menú",
+    "empty": "Aún no hay destacados."
+  },
+  "language": {
+    "label": "Idioma",
+    "es": "Español",
+    "en": "English"
+  },
+  "common": {
+    "comingSoon": "Próximamente",
+    "loading": "Cargando…"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "createAccount": "Crear cuenta",
+    "loginRequired": "Necesitas iniciar sesión",
+    "loginRequiredDesc": "Inicia sesión o crea una cuenta para continuar.",
+    "goBack": "Regresar atrás",
+    "noAccount": "¿No tienes cuenta?",
+    "noAccess": "No tienes acceso",
+    "noAccessDesc": "Esta sección es solo para roles autorizados.",
+    "backHome": "Volver al inicio"
+  },
+  "roles": {
+    "cliente": "Cliente",
+    "productor": "Productor",
+    "admin": "Admin",
+    "artista": "Artista"
+  },
+  "userMenu": {
+    "account": "Menú de cuenta",
+    "access": "Acceder",
+    "user": "Usuario",
+    "myRequests": "Mis solicitudes",
+    "myArtistProfile": "Mi perfil de artista",
+    "becomeArtist": "Conviértete en artista",
+    "adminPanel": "Panel admin",
+    "console": "Consola",
+    "availability": "Disponibilidad",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión"
+  },
+  "login": {
+    "resetTitle": "Recuperar contraseña",
+    "subtitleReset": "Te enviaremos un enlace para restablecerla.",
+    "subtitleRegister": "Únete a la comunidad de Only G.",
+    "subtitleLogin": "Bienvenido de vuelta.",
+    "resetSent": "Si existe una cuenta con <strong>{email}</strong>, te enviamos un enlace para restablecer tu contraseña. Revisa tu correo (y el spam).",
+    "backToLogin": "Volver a iniciar sesión",
+    "name": "Nombre",
+    "email": "Correo",
+    "password": "Contraseña",
+    "howJoin": "¿Cómo te unes?",
+    "justExplore": "Solo explorar",
+    "iAmArtist": "Soy artista",
+    "artistHint": "Tras crear tu cuenta te llevamos a montar tu perfil de artista (incluye un pago).",
+    "forgot": "¿Olvidaste tu contraseña?",
+    "submitting": "Un momento…",
+    "sendLink": "Enviar enlace",
+    "enter": "Entrar",
+    "or": "o",
+    "google": "Continuar con Google",
+    "facebook": "Continuar con Facebook",
+    "haveAccount": "¿Ya tienes cuenta?",
+    "signinShort": "Inicia sesión",
+    "register": "Regístrate"
+  },
+  "authErrors": {
+    "invalidEmail": "El correo no es válido.",
+    "emailInUse": "Ya existe una cuenta con ese correo.",
+    "weakPassword": "La contraseña debe tener al menos 6 caracteres.",
+    "wrongCredentials": "Correo o contraseña incorrectos.",
+    "popupClosed": "Cerraste la ventana de acceso antes de terminar.",
+    "accountExists": "Ya existe una cuenta con ese correo usando otro método de acceso.",
+    "popupBlocked": "El navegador bloqueó la ventana emergente. Habilítala e inténtalo de nuevo.",
+    "notAllowed": "Este método de acceso no está habilitado en Firebase.",
+    "tooManyRequests": "Demasiados intentos. Inténtalo de nuevo en un momento.",
+    "missingEmail": "Escribe tu correo.",
+    "unknown": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "account": {
+    "title": "Mi cuenta",
+    "memberSince": "Miembro desde {since}.",
+    "emailUnverified": "Tu correo aún no está verificado.",
+    "resendVerification": "Reenviar verificación",
+    "verifySent": "Te reenviamos el correo de verificación. Revisa tu bandeja (y el spam).",
+    "settingsSoon": "Pronto podrás editar tu perfil, foto y preferencias aquí."
+  },
+  "status": {
+    "pendiente": "Pendiente",
+    "cotizada": "Cotizada",
+    "aceptada": "Aceptada",
+    "rechazada": "Rechazada",
+    "pendiente_pago": "Pendiente de pago",
+    "pago_en_revision": "Pago en revisión",
+    "confirmada": "Confirmada",
+    "en_curso": "En curso",
+    "completada": "Completada",
+    "cancelada": "Cancelada",
+    "expirada": "Expirada",
+    "programada": "Programada",
+    "finalizada": "Finalizada"
+  },
+  "solicitudes": {
+    "intro": "Tus reservas y cotizaciones, con su estado y su chat con el estudio.",
+    "loadError": "No se pudieron cargar tus solicitudes. Si es la primera vez, Firestore puede pedir crear un índice (revisa la consola del navegador para el enlace).",
+    "bookings": "Reservas",
+    "quotes": "Cotizaciones",
+    "noBookings": "Aún no tienes reservas.",
+    "seeServices": "Ver servicios",
+    "noQuotes": "Aún no tienes cotizaciones.",
+    "requestOne": "Solicitar una",
+    "quoteFallback": "Cotización"
+  },
+  "solicitudDetail": {
+    "notFound": "Solicitud no encontrada",
+    "backToRequests": "Volver a mis solicitudes",
+    "booking": "Reserva",
+    "quote": "Cotización",
+    "venue": "Sede: {name}",
+    "toQuote": "A cotizar",
+    "estimated": "Estimado: {amount}",
+    "plusToQuote": "+ a cotizar",
+    "payment": "Pago",
+    "qrAlt": "QR de pago",
+    "paymentInfo": "Te compartiremos los datos/QR de pago por el chat. Cuando pagues, sube aquí tu comprobante.",
+    "sendReceipt": "Enviar comprobante",
+    "receiptMessage": "Envié el comprobante de pago.",
+    "receiptUnderReview": "Recibimos tu comprobante. La administración lo está revisando; te confirmamos por el chat.",
+    "conversation": "Conversación"
+  },
+  "thread": {
+    "empty": "Aún no hay mensajes. Escribe para hablar con el estudio.",
+    "proposal": "Propuesta",
+    "receipt": "Comprobante",
+    "statusChanged": "Estado: {status}",
+    "viewFile": "Ver archivo",
+    "placeholder": "Escribe un mensaje…",
+    "send": "Enviar"
+  },
+  "adminSolicitud": {
+    "notFound": "No encontrada",
+    "backToPanel": "Volver al panel",
+    "clientBudget": "Presupuesto cliente: {budget}",
+    "artists": "Artistas: {names}",
+    "viewReceipt": "Ver comprobante de pago",
+    "artistProfileNote": "Pedido de <strong>perfil de artista</strong>. Al confirmar el pago, asigna el rol <code>artista</code> en la consola de Firebase y activa el premium en <link>/admin/perfiles</link>.",
+    "actions": "Acciones",
+    "sendProposal": "Enviar propuesta",
+    "proposedPrice": "Precio propuesto",
+    "proposalDetail": "Detalle de la propuesta (alcance, condiciones)…",
+    "markAs": "Marcar {status}",
+    "noActions": "Sin acciones disponibles.",
+    "finalState": "Estado final.",
+    "producerSession": "Sesión del productor",
+    "sessionCreated": "Sesión creada · productor",
+    "producerAssigned": "Productor asignado:",
+    "sessionAutoCreated": "La sesión se crea sola al confirmar el pago (la genera el servidor).",
+    "assignProducerHint": "Asigna el UID del productor. Al confirmar el pago, el servidor crea la sesión en su consola (sin el monto).",
+    "producerUidPlaceholder": "UID del productor",
+    "assignProducer": "Asignar productor",
+    "conversationWithClient": "Conversación con el cliente"
+  },
+  "home": {
+    "tagline": "Productora musical · Barranquilla & Bogotá",
+    "explore": "Explorar",
+    "artists": "Artistas",
+    "quote": "Cotizar producción",
+    "book": "Agendar cita",
+    "meetProducers": "Conoce a los productores",
+    "ourArtists": "Nuestros artistas",
+    "seeAll": "Ver todos →",
+    "whatWeDo": "Lo que hacemos",
+    "services": {
+      "production": {
+        "title": "Producción musical",
+        "desc": "Del demo al máster. Estudio, mezcla y un sonido con sello propio."
+      },
+      "videos": {
+        "title": "Vídeos musicales",
+        "desc": "Dirección, rodaje y postproducción con mirada cinematográfica."
+      },
+      "events": {
+        "title": "Eventos en vivo",
+        "desc": "Giras, shows y experiencias que conectan con la gente."
+      }
+    }
+  },
+  "footer": {
+    "rights": "© {year} Only G Music. Todos los derechos reservados."
+  },
+  "artistsPage": {
+    "metaTitle": "Artistas — Only G Music",
+    "metaDesc": "El roster de Only G: los artistas que hacen el sonido.",
+    "title": "Artistas",
+    "intro": "El roster de Only G. Conoce a quienes hacen el sonido.",
+    "createProfile": "¿Eres artista? Crea tu perfil →"
+  },
+  "servicesPage": {
+    "metaTitle": "Servicios — Only G Music",
+    "metaDesc": "Grabación, mezcla, masterización, producción y renta de estudio en Barranquilla y Bogotá.",
+    "eyebrow": "Contratación",
+    "title": "Servicios",
+    "intro": "Tarifas para Barranquilla (Atlántico) y Bogotá. Los servicios con precio fijo se agendan directo; los proyectos a medida se cotizan.",
+    "manyOptions": "Varias opciones",
+    "chooseOptions": "Elegir opciones",
+    "requestQuote": "Solicitar cotización",
+    "book": "Agendar",
+    "disclaimer": "* Tarifas de referencia (placeholder). Se ajustarán con los precios reales de Only G."
+  },
+  "productionsPage": {
+    "metaTitle": "Producciones — Only G Music",
+    "metaDesc": "Producción musical y audiovisual de Only G.",
+    "title": "Producciones",
+    "intro": "Producción musical y audiovisual: del estudio a la pantalla."
+  },
+  "eventsPage": {
+    "metaTitle": "Eventos — Only G Music",
+    "metaDesc": "Giras, fechas y experiencias en vivo de Only G.",
+    "title": "Eventos",
+    "intro": "Aquí vivirán las giras, fechas y experiencias en vivo de Only G."
+  },
+  "adminDashboard": {
+    "eyebrow": "Admin",
+    "title": "Panel",
+    "summary": "{quotesCount, plural, one {# cotización} other {# cotizaciones}} por responder · {paymentsCount, plural, one {# pago} other {# pagos}} por revisar.",
+    "viewFinances": "Ver finanzas →",
+    "viewProfiles": "Perfiles →",
+    "loadError": "No se pudieron cargar las solicitudes (¿tienes rol admin y reglas desplegadas?).",
+    "bookings": "Reservas",
+    "noBookings": "Sin reservas todavía.",
+    "quotes": "Cotizaciones",
+    "noQuotes": "Sin cotizaciones todavía."
+  },
+  "adminFinanzas": {
+    "backToAdmin": "← Panel admin",
+    "title": "Finanzas",
+    "intro": "Ingresos de reservas confirmadas. Derivados de las reservas (una sola fuente de verdad).",
+    "loadError": "No se pudieron cargar los datos (¿rol admin y reglas desplegadas?).",
+    "totalLabel": "Ingreso total confirmado",
+    "transactionCount": "{count, plural, one {# transacción} other {# transacciones}}",
+    "revenueByMonth": "Ingresos por mes",
+    "noRevenue": "Aún no hay ingresos.",
+    "topClients": "Mejores clientes",
+    "noClients": "Aún no hay clientes.",
+    "bookingCount": "({count, plural, one {# reserva} other {# reservas}})",
+    "transactions": "Transacciones",
+    "noTransactions": "Sin transacciones confirmadas.",
+    "colClient": "Cliente",
+    "colService": "Servicio",
+    "colDate": "Fecha",
+    "colAmount": "Monto",
+    "colStatus": "Estado",
+    "clientFallback": "Cliente"
+  },
+  "adminPerfiles": {
+    "backToAdmin": "← Panel admin",
+    "title": "Perfiles",
+    "descripcion": "Activa/renueva el premium (2 meses) tras confirmar el pago — con premium el perfil aparece en la vitrina. Ordena la lista con ↑/↓ y marca con ★ los <strong>destacados del menú</strong> (máx. {max}). El rol <code>artista</code> se asigna en la consola de Firebase.",
+    "sinPerfiles": "Aún no hay perfiles creados.",
+    "destacadosContador": "Destacados: {count}/{max}",
+    "premiumEstado": {
+      "activo": "Premium activo",
+      "expirado": "Expirado",
+      "ninguno": "Sin activar"
+    },
+    "vence": "(vence {fecha})",
+    "ariaSubir": "Subir",
+    "ariaBajar": "Bajar",
+    "ariaQuitarDestacado": "Quitar de destacados",
+    "ariaMarcarDestacado": "Marcar destacado",
+    "titleDestacado": "Destacado",
+    "btnActivar": "Activar",
+    "btnRenovar": "Renovar",
+    "errorCarga": "No se pudieron cargar los perfiles (¿rol admin y reglas?).",
+    "errorActivar": "No se pudo activar el premium.",
+    "errorOrden": "No se pudo guardar el orden.",
+    "errorMaxDestacados": "Máximo {max} destacados. Quita uno antes de añadir otro.",
+    "errorDestacado": "No se pudo cambiar el destacado."
+  },
+  "producerConsole": {
+    "description": "Tus sesiones en vivo. Sin datos de cobro: solo a quién atiendes y cuándo. Si no inicias una sesión, arranca sola {graceMins} min después de la hora agendada.",
+    "empty": "No tienes sesiones asignadas todavía.",
+    "activeSection": "Activas",
+    "nothingInQueue": "Nada en cola.",
+    "historySection": "Historial",
+    "avisoEnCurso": "En curso · {dur}",
+    "avisoProgramada": "Programada · {fecha}",
+    "avisoAutoInicia": "Auto-inicia en {dur}",
+    "avisoIniciando": "Iniciando…",
+    "startButton": "Iniciar",
+    "endButton": "Finalizar"
+  },
+  "availability": {
+    "title": "Tu disponibilidad",
+    "intro": "Define tu horario por mes. Puedes aplicar la plantilla por defecto, ajustar cada día de la semana y marcar días libres puntuales.",
+    "notDefined": "<strong>Aún no has definido</strong> tu disponibilidad de {month} {year}. Defínela para que los clientes puedan reservar.",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "weeklySchedule": "Horario semanal",
+    "applyDefault": "Aplicar plantilla por defecto",
+    "applyToAllDays": "Aplicar este horario a todos los días",
+    "free": "Libre",
+    "monthDays": "Días del mes",
+    "monthDaysHint": "Toca un día para marcarlo libre o disponible (excepción puntual sobre el horario semanal).",
+    "save": "Guardar {month}",
+    "advance": "Adelantar:",
+    "nextMonths": "Próximos {count} meses",
+    "scheduleAppliedAll": "Horario aplicado a todos los días de la semana.",
+    "saved": "Disponibilidad guardada.",
+    "saveError": "No se pudo guardar. Verifica que tengas rol de productor y que las reglas estén desplegadas.",
+    "copiedToFuture": "Plantilla aplicada a los próximos {count} meses.",
+    "copyError": "No se pudo copiar a los próximos meses."
+  },
+  "quoteWizard": {
+    "stepOrder": "Tu pedido",
+    "stepProject": "Tu proyecto",
+    "stepContact": "Contacto",
+    "eyebrow": "Cotización",
+    "heading": "Arma tu cotización",
+    "stepIndicator": "Paso {step} de {total} · {stepName}",
+    "step1Intro": "Elige uno o varios servicios y ajusta las cantidades. Algunos tienen opciones (por horas, por día, agrupación…).",
+    "variantCount": "{count, plural, one {# opción} other {# opciones}}",
+    "variantsCta": "Varias opciones →",
+    "ariaRemoveOne": "Quitar uno",
+    "ariaAddOne": "Agregar uno",
+    "changeOptions": "Agregar / cambiar opciones",
+    "cartSummary": "{items, plural, one {# ítem} other {# ítems}} · {lines, plural, one {# línea} other {# líneas}}",
+    "estimated": "Estimado:",
+    "plusToQuote": "+ a cotizar",
+    "labelProjectDetails": "Cuéntanos sobre tu proyecto",
+    "placeholderProjectDetails": "Género, objetivo, fecha tentativa, lo que necesitas…",
+    "labelReferences": "Referencias / instrumentales (links o archivos)",
+    "placeholderReferences": "URLs de ejemplos, instrumentales…",
+    "labelArtists": "Invitar artistas — solo artistas registrados",
+    "labelVenue": "Sede",
+    "orderSummaryHeading": "Resumen del pedido",
+    "totalEstimated": "Total estimado",
+    "artistsPrefix": "Artistas: {names}",
+    "attachmentsCount": "{count, plural, one {# archivo adjunto} other {# archivos adjuntos}}",
+    "labelBudget": "Presupuesto aproximado (opcional)",
+    "labelName": "Nombre",
+    "labelEmail": "Correo",
+    "labelPhone": "Teléfono / WhatsApp (opcional)",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar solicitud",
+    "sending": "Enviando…",
+    "errorEmptyCart": "Agrega al menos un servicio a tu pedido.",
+    "errorEmptyDetails": "Cuéntanos un poco sobre tu proyecto.",
+    "errorMissingContact": "Necesitamos tu nombre y tu correo para responderte.",
+    "errorSessionExpired": "Tu sesión expiró. Inicia sesión de nuevo.",
+    "errorSubmit": "No se pudo enviar la solicitud. Revisa tu conexión e inténtalo de nuevo.",
+    "successHeading": "¡Solicitud enviada!",
+    "successBody": "Recibimos tu pedido ({itemCount, plural, one {# ítem} other {# ítems}}). El equipo de Only G lo revisará y te enviará una propuesta con precio y alcance.",
+    "goToAccount": "Ir a mi cuenta",
+    "goHome": "Volver al inicio",
+    "modalVariantSubtitle": "Elige una o varias opciones.",
+    "ariaCloseModal": "Cerrar",
+    "variantAdd": "Agregar",
+    "modalDone": "Listo"
+  },
+  "bookingCalendar": {
+    "serviceLabel": "Servicio",
+    "prevMonth": "Mes anterior",
+    "nextMonth": "Mes siguiente",
+    "noAvailability": "El productor de esta sede aún no publicó su disponibilidad para {month}. Prueba otro mes u otra sede.",
+    "dayTitle": {
+      "full": "Sin cupos",
+      "closed": "No disponible",
+      "partial": "Quedan cupos",
+      "free": "Disponible"
+    },
+    "legend": {
+      "free": "Disponible",
+      "partial": "Quedan cupos",
+      "full": "Lleno"
+    },
+    "slotsHeading": "Horarios · {day} {month}",
+    "durationLabel": "Duración",
+    "durationOption": "{hours} h",
+    "error": {
+      "slotUnavailable": "Ese horario ya no está disponible. Elige otro.",
+      "slotTaken": "Alguien acaba de tomar ese horario. Elige otro.",
+      "bookingFailed": "No se pudo reservar. Inténtalo de nuevo."
+    },
+    "success": {
+      "title": "¡Reserva registrada!",
+      "description": "Tu reserva quedó <strong>pendiente de pago</strong>. Te contactaremos para confirmar el pago y dejarla agendada.",
+      "goToAccount": "Ir a mi cuenta",
+      "viewServices": "Ver servicios"
+    },
+    "cta": {
+      "reserve": "Reservar · {price}",
+      "placeholder": "Elige servicio, día y hora"
+    }
+  },
+  "artistProfile": {
+    "back": "Atrás",
+    "settings": "Ajustes",
+    "verified": "Verificado",
+    "yearsCareer": "{count, plural, one {# año de trayectoria} other {# años de trayectoria}}",
+    "quoteWith": "Cotizar con {name}",
+    "about": "Sobre {name}",
+    "gallery": "Galería",
+    "editProfile": "Editar perfil",
+    "viewPhoto": "Ver foto {n}",
+    "portraitAlt": "Retrato de {name}",
+    "galleryPhotoAlt": "{name} — foto {n}",
+    "topTracks": "Más sonadas",
+    "seedNotice": "Perfil de muestra. Los perfiles reales de artista (con galería y reproductores) llegan con la Fase 15."
+  },
+  "artistOnboarding": {
+    "alreadyRegistered": {
+      "title": "Ya tienes tu alta",
+      "activeBody": "Tu perfil de artista está activo. Edítalo cuando quieras.",
+      "pendingBody": "Tu perfil se activará cuando el estudio confirme tu pago. Mientras tanto, sigue el estado en tus solicitudes.",
+      "goToProfile": "Ir a mi perfil",
+      "viewPayment": "Ver mi pago"
+    },
+    "eyebrow": "Perfil de artista",
+    "heroTitle": "Sé parte del roster",
+    "heroParagraph": "Crea tu perfil público: tu CV musical con foto, frase, redes y tus mejores temas en YouTube/Spotify, con URL y código QR para compartir. Vigencia de 2 meses, renovable. Tu nombre real y fecha de nacimiento quedan <strong>privados</strong>.",
+    "pricingLabel": "Costo del perfil (2 meses)",
+    "pricingNote": "Tras enviar, subes el comprobante en el chat y el estudio confirma el pago para activar tu perfil.",
+    "fields": {
+      "artisticName": {
+        "label": "Nombre artístico",
+        "hint": "Será tu nombre público y tu URL.",
+        "placeholder": "p. ej. Lia Mar"
+      },
+      "realName": {
+        "label": "Nombre y apellido (privado)"
+      },
+      "birthDate": {
+        "label": "Fecha de nacimiento (privado)"
+      },
+      "startYear": {
+        "label": "Inicio de trayectoria",
+        "hint": "Año en que empezaste."
+      },
+      "photo": {
+        "label": "Foto de perfil (obligatoria)"
+      }
+    },
+    "submit": "Continuar al pago →",
+    "errors": {
+      "missingRequired": "Completa nombre artístico, nombre real y fecha de nacimiento.",
+      "invalidYear": "El año de inicio debe estar entre 1950 y {year}.",
+      "photoRequired": "La foto de perfil es obligatoria.",
+      "invalidSlug": "El nombre artístico no genera una URL válida.",
+      "submitFailed": "No se pudo crear tu solicitud. Inténtalo de nuevo."
+    }
+  },
+  "producers": {
+    "expandPhoto": "Ampliar foto de {name}",
+    "facebookOf": "Facebook de {name}",
+    "instagramOf": "Instagram de {name}",
+    "close": "Cerrar",
+    "items": {
+      "na": {
+        "role": "Fundador y dueño de Only G Music",
+        "quote": "Del rap callejero a fundar un sello.",
+        "bio": "N.A empezó en el rap callejero de Barranquilla, y de esa raíz nació todo: fundó y dirige Only G Music, el sello que hoy impulsa a una nueva generación de artistas. Productor, beatmaker y empresario, es el pulso y la visión detrás del sonido de la casa."
+      },
+      "dr-dre": {
+        "role": "Productor invitado",
+        "quote": "Una leyenda viva del hip-hop.",
+        "bio": "Andre Romelle Young, conocido como Dr. Dre, es uno de los productores más influyentes de la historia. Cofundador de N.W.A y de los sellos Death Row y Aftermath, descubrió y produjo a Snoop Dogg, Eminem, 50 Cent y Kendrick Lamar. Sus álbumes The Chronic y 2001 son pilares del hip-hop, y con Beats by Dre revolucionó el audio de consumo."
+      }
+    }
+  },
+  "profileBuilder": {
+    "noSlug": {
+      "title": "Falta tu alta",
+      "description": "Crea tu alta de artista primero.",
+      "cta": "Crear mi perfil"
+    },
+    "statusBar": {
+      "titleActive": "Tu suscripción está activa: tu perfil aparece en la vitrina.",
+      "titleInactive": "Aparecerá en la vitrina cuando se active tu suscripción.",
+      "viewProfile": "Ver perfil",
+      "activar": "Activar",
+      "renovar": "Renovar"
+    },
+    "premium": {
+      "published": "Publicado",
+      "expiresIn": "Vence en {days}d",
+      "expired": "Suscripción vencida",
+      "draft": "Borrador"
+    },
+    "save": {
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "error": "Error al guardar"
+    },
+    "errors": {
+      "autoSave": "No se pudo autoguardar. Revisa tu conexión e inténtalo de nuevo.",
+      "payment": "No se pudo iniciar el pago. Inténtalo de nuevo.",
+      "fileTooLarge": "\"{name}\" supera {maxMb} MB."
+    },
+    "photo": {
+      "alt": "Foto principal",
+      "upload": "Sube tu foto principal",
+      "change": "Cambiar foto",
+      "adjust": "Encuadrar"
+    },
+    "photoAdjust": {
+      "hint": "Arrastra para mover · ajusta zoom y rotación",
+      "zoom": "Zoom",
+      "rotate": "Rotar",
+      "rotate90": "Girar 90°",
+      "reset": "Restablecer",
+      "done": "Listo"
+    },
+    "identity": {
+      "accentColorTitle": "Color de acento",
+      "genrePlaceholder": "Género",
+      "cityPlaceholder": "Ciudad",
+      "startYearTitle": "Año de inicio",
+      "artisticNameLabel": "Nombre artístico",
+      "artisticNamePlaceholder": "Toca para escribir tu nombre",
+      "taglinePlaceholder": "+ Añade tu frase célebre"
+    },
+    "player": {
+      "dragHandleAriaLabel": "Arrastra para mover el reproductor",
+      "hideAriaLabel": "Ocultar de la foto (enviar abajo)",
+      "showOnPhoto": "Mostrar sobre la foto",
+      "recenter": "Recentrar reproductor"
+    },
+    "song": {
+      "add": "Añade una canción de fondo",
+      "change": "Cambiar canción",
+      "changing": "Subiendo…",
+      "remove": "Quitar"
+    },
+    "bio": {
+      "sectionTitle": "Sobre ti",
+      "placeholder": "Cuenta tu historia, estilo e hitos…"
+    },
+    "socials": {
+      "sectionTitle": "Redes"
+    },
+    "gallery": {
+      "sectionTitle": "Galería ({count}/{limit})",
+      "hint": "Arrastra una foto para reordenar (en móvil, mantén pulsado) · pulsa ⤢ para cambiar su tamaño."
+    },
+    "tracks": {
+      "sectionTitle": "Más sonadas",
+      "titlePlaceholder": "Título del tema {n}",
+      "removeAriaLabel": "Quitar tema",
+      "youtubePlaceholder": "Link YouTube",
+      "spotifyPlaceholder": "Link Spotify",
+      "addButton": "Añadir tema"
+    }
+  },
+  "shareProfile": {
+    "share": "Compartir",
+    "close": "Cerrar",
+    "title": "Compartir perfil",
+    "qrAlt": "Código QR del perfil",
+    "generating": "Generando…",
+    "copied": "Copiado",
+    "copy": "Copiar",
+    "shareNative": "Compartir…"
+  },
+  "likeButton": {
+    "like": "Me gusta",
+    "unlike": "Quitar me gusta",
+    "signInToReact": "Inicia sesión para reaccionar"
+  },
+  "trackPlayers": {
+    "play": "Reproducir {title}",
+    "unavailable": "no disponible"
+  },
+  "artistPicker": {
+    "placeholder": "Escribe el nombre del artista…",
+    "seeAll": "Ver todos",
+    "searching": "Buscando…",
+    "noMatches": "No hay artistas que coincidan.",
+    "noneRegistered": "No hay artistas registrados.",
+    "remove": "Quitar {name}"
+  },
+  "fileUpload": {
+    "signIn": "Inicia sesión para adjuntar archivos.",
+    "tooLarge": "\"{name}\" supera {maxMb} MB.",
+    "uploadError": "No se pudo subir el archivo. Inténtalo de nuevo.",
+    "attachFiles": "Adjuntar archivos",
+    "uploading": "Subiendo…",
+    "attach": "Adjuntar",
+    "remove": "Quitar {name}"
+  },
+  "insignia": {
+    "plata": "Plata",
+    "oro": "Oro",
+    "diamante": "Diamante"
+  },
+  "guards": {
+    "adminTitle": "Panel de administración",
+    "adminMessage": "Esta sección es solo para administradores.",
+    "financesTitle": "Finanzas",
+    "profilesTitle": "Perfiles",
+    "consoleTitle": "Consola del productor",
+    "consoleMessage": "Esta sección es solo para productores.",
+    "availabilityTitle": "Solo para productores",
+    "availabilityMessage": "Esta sección es para que los productores definan su disponibilidad.",
+    "quoteTitle": "Inicia sesión para cotizar",
+    "quoteMessage": "Necesitas una cuenta para solicitar una cotización de producción.",
+    "bookTitle": "Inicia sesión para agendar",
+    "bookMessage": "Necesitas una cuenta para reservar tu sesión en el estudio.",
+    "artistTitle": "Perfil de artista",
+    "artistNewMessage": "Inicia sesión para crear tu perfil de artista.",
+    "artistEditMessage": "Inicia sesión para crear o editar tu perfil de artista.",
+    "requestsTitle": "Tus solicitudes",
+    "requestsMessage": "Inicia sesión para ver tus cotizaciones y reservas.",
+    "requestTitle": "Tu solicitud",
+    "requestMessage": "Inicia sesión para ver esta solicitud."
+  },
+  "agendaPage": {
+    "metaTitle": "Agenda — Only G Music",
+    "metaDesc": "Reserva tu sesión en nuestras sedes de Barranquilla (Atlántico) y Bogotá.",
+    "eyebrow": "Reserva",
+    "title": "Agenda tu cita",
+    "intro": "Elige servicio, sede, fecha y hora. Sesiones en Barranquilla (Atlántico) y Bogotá."
+  },
+  "meta": {
+    "rootTitle": "Only G Music",
+    "rootDesc": "Productora musical — artistas, eventos y producciones."
+  }
+}

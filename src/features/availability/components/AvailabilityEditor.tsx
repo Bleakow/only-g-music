@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { sedes } from "@/features/sedes/data/sedes";
 import type { SedeId } from "@/domain/sede";
@@ -20,20 +21,12 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { TimePicker } from "@/components/ui/TimePicker";
 
 // Orden de visualización Lun→Dom; el índice es el de Date.getDay() (0=Dom).
-const WEEKDAYS = [
-  { idx: 1, label: "Lunes" },
-  { idx: 2, label: "Martes" },
-  { idx: 3, label: "Miércoles" },
-  { idx: 4, label: "Jueves" },
-  { idx: 5, label: "Viernes" },
-  { idx: 6, label: "Sábado" },
-  { idx: 0, label: "Domingo" },
-];
-const WD_SHORT = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-const MONTHS = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
+// Las fechas de referencia (semana del 05-01-2026) se usan sólo para obtener
+// los nombres de día vía Intl; el año/mes no importa.
+const WEEKDAY_INDICES = [1, 2, 3, 4, 5, 6, 0];
+// Lunes de referencia: 2026-01-05
+const REF_MONDAY = new Date(2026, 0, 5);
+
 const DEFAULT_VENTANA: VentanaHoraria = { desde: "10:00", hasta: "16:00" };
 
 const emptyPlantilla = (): PlantillaSemanal => ({
@@ -46,6 +39,8 @@ const fechaStr = (year: number, month: number, day: number) =>
   `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
 export function AvailabilityEditor() {
+  const t = useTranslations();
+  const locale = useLocale();
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [year, setYear] = useState(2026);
@@ -134,7 +129,7 @@ export function AvailabilityEditor() {
     const next: PlantillaSemanal = {};
     for (let i = 0; i <= 6; i++) next[i] = { ...window };
     setPlantilla(next);
-    setMsg("Horario aplicado a todos los días de la semana.");
+    setMsg(t("availability.scheduleAppliedAll"));
   }
 
   async function guardar() {
@@ -150,12 +145,10 @@ export function AvailabilityEditor() {
         excepciones,
       });
       setDefined(true);
-      setMsg("Disponibilidad guardada.");
+      setMsg(t("availability.saved"));
     } catch (e) {
       console.error("[disponibilidad] error:", e);
-      setMsg(
-        "No se pudo guardar. Verifica que tengas rol de productor y que las reglas estén desplegadas.",
-      );
+      setMsg(t("availability.saveError"));
     } finally {
       setBusy(false);
     }
@@ -176,10 +169,10 @@ export function AvailabilityEditor() {
           excepciones: {},
         });
       }
-      setMsg(`Plantilla aplicada a los próximos ${meses} meses.`);
+      setMsg(t("availability.copiedToFuture", { count: meses }));
     } catch (e) {
       console.error("[disponibilidad] error:", e);
-      setMsg("No se pudo copiar a los próximos meses.");
+      setMsg(t("availability.copyError"));
     } finally {
       setBusy(false);
     }
@@ -193,25 +186,51 @@ export function AvailabilityEditor() {
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
 
+  // Helpers de formato Intl — no dependen de estado, se recalculan por render.
+  const fmtMonthLong = new Intl.DateTimeFormat(locale, { month: "long" });
+  const fmtWeekdayLong = new Intl.DateTimeFormat(locale, { weekday: "long" });
+  const fmtWeekdayShort = new Intl.DateTimeFormat(locale, { weekday: "short" });
+
+  /** Nombre largo del día (ej. "lunes") para un idx Date.getDay(). */
+  function weekdayLong(idx: number): string {
+    // REF_MONDAY es lunes (idx=1). Offset: idx===0 → domingo → +6 días desde lunes.
+    const offset = idx === 0 ? 6 : idx - 1;
+    const d = new Date(REF_MONDAY);
+    d.setDate(REF_MONDAY.getDate() + offset);
+    return fmtWeekdayLong.format(d);
+  }
+
+  /** Nombre corto del día (ej. "lun.") para un idx Date.getDay(). */
+  function weekdayShort(idx: number): string {
+    const offset = idx === 0 ? 6 : idx - 1;
+    const d = new Date(REF_MONDAY);
+    d.setDate(REF_MONDAY.getDate() + offset);
+    return fmtWeekdayShort.format(d);
+  }
+
+  const monthName = fmtMonthLong.format(new Date(year, month, 1));
+
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
       <header className="mb-8">
         <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
-          Productor
+          {t("roles.productor")}
         </p>
         <h1 className="mt-3 font-narrow text-4xl font-bold uppercase sm:text-6xl">
-          Tu disponibilidad
+          {t("availability.title")}
         </h1>
         <p className="mt-3 text-silver-300">
-          Define tu horario por mes. Puedes aplicar la plantilla por defecto,
-          ajustar cada día de la semana y marcar días libres puntuales.
+          {t("availability.intro")}
         </p>
       </header>
 
       {loaded && !defined && (
         <div className="mb-6 rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-          <strong>Aún no has definido</strong> tu disponibilidad de{" "}
-          {MONTHS[month]} {year}. Defínela para que los clientes puedan reservar.
+          {t.rich("availability.notDefined", {
+            strong: (chunks) => <strong>{chunks}</strong>,
+            month: monthName,
+            year,
+          })}
         </div>
       )}
 
@@ -238,18 +257,18 @@ export function AvailabilityEditor() {
         <button
           type="button"
           onClick={() => shift(-1)}
-          aria-label="Mes anterior"
+          aria-label={t("availability.prevMonth")}
           className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
         >
           <ArrowLeftIcon className="size-4" />
         </button>
         <span className="font-narrow text-2xl font-bold uppercase">
-          {MONTHS[month]} {year}
+          {monthName} {year}
         </span>
         <button
           type="button"
           onClick={() => shift(1)}
-          aria-label="Mes siguiente"
+          aria-label={t("availability.nextMonth")}
           className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
         >
           <ArrowLeftIcon className="size-4 rotate-180" />
@@ -260,19 +279,19 @@ export function AvailabilityEditor() {
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-narrow text-xl font-bold uppercase text-white">
-            Horario semanal
+            {t("availability.weeklySchedule")}
           </h2>
           <Button
             size="sm"
             variant="outline"
             onClick={() => setPlantilla(plantillaPorDefecto())}
           >
-            Aplicar plantilla por defecto
+            {t("availability.applyDefault")}
           </Button>
         </div>
 
         <div className="flex flex-col divide-y divide-white/5">
-          {WEEKDAYS.map(({ idx, label }) => {
+          {WEEKDAY_INDICES.map((idx) => {
             const v = plantilla[idx];
             const trabaja = v != null;
             return (
@@ -289,27 +308,27 @@ export function AvailabilityEditor() {
                         [idx]: on ? DEFAULT_VENTANA : null,
                       }))
                     }
-                    label={label}
+                    label={weekdayLong(idx)}
                   />
                 </div>
                 {trabaja ? (
                   <div className="flex flex-wrap items-center gap-2">
                     <TimePicker
                       value={v.desde}
-                      onChange={(t) =>
+                      onChange={(tp) =>
                         setPlantilla((p) => ({
                           ...p,
-                          [idx]: { ...(p[idx] as VentanaHoraria), desde: t },
+                          [idx]: { ...(p[idx] as VentanaHoraria), desde: tp },
                         }))
                       }
                     />
                     <span className="text-silver-400">–</span>
                     <TimePicker
                       value={v.hasta}
-                      onChange={(t) =>
+                      onChange={(tp) =>
                         setPlantilla((p) => ({
                           ...p,
-                          [idx]: { ...(p[idx] as VentanaHoraria), hasta: t },
+                          [idx]: { ...(p[idx] as VentanaHoraria), hasta: tp },
                         }))
                       }
                     />
@@ -320,14 +339,14 @@ export function AvailabilityEditor() {
                       size="icon"
                       variant="outline"
                       onClick={() => copiarADias(v)}
-                      title="Aplicar este horario a todos los días"
-                      aria-label="Aplicar este horario a todos los días"
+                      title={t("availability.applyToAllDays")}
+                      aria-label={t("availability.applyToAllDays")}
                     >
                       <CopyIcon className="size-4" />
                     </Button>
                   </div>
                 ) : (
-                  <span className="text-sm text-silver-500">Libre</span>
+                  <span className="text-sm text-silver-500">{t("availability.free")}</span>
                 )}
               </div>
             );
@@ -338,19 +357,18 @@ export function AvailabilityEditor() {
       {/* Excepciones por día */}
       <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
         <h2 className="mb-1 font-narrow text-xl font-bold uppercase text-white">
-          Días del mes
+          {t("availability.monthDays")}
         </h2>
         <p className="mb-4 text-sm text-silver-400">
-          Toca un día para marcarlo libre o disponible (excepción puntual sobre
-          el horario semanal).
+          {t("availability.monthDaysHint")}
         </p>
         <div className="grid grid-cols-7 gap-1 text-center">
-          {WD_SHORT.map((w) => (
+          {WEEKDAY_INDICES.map((idx) => (
             <span
-              key={w}
+              key={idx}
               className="py-2 text-xs uppercase tracking-wide text-silver-500"
             >
-              {w}
+              {weekdayShort(idx)}
             </span>
           ))}
           {cells.map((day, i) => {
@@ -381,17 +399,17 @@ export function AvailabilityEditor() {
 
       <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
         <Button onClick={guardar} loading={busy}>
-          {`Guardar ${MONTHS[month]}`}
+          {t("availability.save", { month: monthName })}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-silver-400">Adelantar:</span>
+          <span className="text-sm text-silver-400">{t("availability.advance")}</span>
           <Button
             variant="secondary"
             size="sm"
             onClick={() => copiarFuturos(2)}
             loading={busy}
           >
-            Próximos 2 meses
+            {t("availability.nextMonths", { count: 2 })}
           </Button>
           <Button
             variant="secondary"
@@ -399,7 +417,7 @@ export function AvailabilityEditor() {
             onClick={() => copiarFuturos(3)}
             loading={busy}
           >
-            Próximos 3 meses
+            {t("availability.nextMonths", { count: 3 })}
           </Button>
         </div>
       </div>

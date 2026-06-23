@@ -28,10 +28,35 @@ import {
   type ArtistProfile,
   type EditableProfile,
   type Premium,
+  type PhotoTransform,
+  type PlayerSize,
+  type GalleryItem,
+  type GallerySpan,
+  GALLERY_SPAN_CYCLE,
+  MAX_DESTACADOS,
   perfilVisible,
+  compararOrden,
 } from "@/domain/artist-profile";
 
 const COLLECTION = "artistProfiles";
+
+/**
+ * Normaliza la galería: acepta el formato nuevo (objetos {url, span}) y el viejo
+ * (array de strings, que se mapea a tamaño cuadrado). Descarta entradas sin url.
+ */
+function toGallery(raw: unknown): GalleryItem[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((it): GalleryItem => {
+      if (typeof it === "string") return { url: it, span: "sq" };
+      const o = (it ?? {}) as Partial<GalleryItem>;
+      const span = GALLERY_SPAN_CYCLE.includes(o.span as GallerySpan)
+        ? (o.span as GallerySpan)
+        : "sq";
+      return { url: String(o.url ?? ""), span };
+    })
+    .filter((it) => it.url);
+}
 
 /** Firestore rechaza `undefined`: lo quitamos antes de escribir. */
 function stripUndefined<T extends object>(obj: T): Partial<T> {
@@ -52,11 +77,18 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     bio: data.bio ?? "",
     accent: data.accent ?? "#8b5cf6",
     photoURL: data.photoURL ?? "",
-    gallery: (data.gallery as string[]) ?? [],
+    photoTransform: (data.photoTransform as PhotoTransform) ?? undefined,
+    gallery: toGallery(data.gallery),
     tracks: (data.tracks as ArtistProfile["tracks"]) ?? [],
     entryTrackUrl: data.entryTrackUrl ?? undefined,
+    playerOverlay: data.playerOverlay ?? undefined,
+    playerX: typeof data.playerX === "number" ? data.playerX : undefined,
+    playerY: typeof data.playerY === "number" ? data.playerY : undefined,
+    playerSize: (data.playerSize as PlayerSize) ?? undefined,
     socials: (data.socials as ArtistProfile["socials"]) ?? {},
     trajectoryStartYear: data.trajectoryStartYear ?? new Date().getFullYear(),
+    orden: typeof data.orden === "number" ? data.orden : undefined,
+    featured: data.featured ?? false,
     puntos: data.puntos ?? 0,
     premium: (data.premium as Premium | null) ?? null,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
@@ -79,14 +111,23 @@ export async function getAllProfiles(): Promise<ArtistProfile[]> {
 }
 
 /**
- * Perfiles visibles en la vitrina = premium VIGENTE. Filtra la expiración en
- * memoria (puro) para no necesitar índice compuesto; a escala se mueve a una
- * query indexada / Cloud Function que oculte los vencidos.
+ * Perfiles visibles en la vitrina = premium VIGENTE (pagar = publicar). Ordenados
+ * por la curaduría del admin (`orden`). Filtra la expiración en memoria (puro)
+ * para no necesitar índice compuesto; a escala se mueve a query indexada.
  */
 export async function getVisibleProfiles(): Promise<ArtistProfile[]> {
   const now = Date.now();
   const all = await getAllProfiles();
-  return all.filter((p) => perfilVisible(p, now));
+  return all.filter((p) => perfilVisible(p, now)).sort(compararOrden);
+}
+
+/**
+ * Artistas del menú "Destacados": visibles (premium) + `featured`, ordenados por
+ * `orden` y recortados a MAX_DESTACADOS (red de seguridad si el admin marcó de más).
+ */
+export async function getFeaturedProfiles(): Promise<ArtistProfile[]> {
+  const visible = await getVisibleProfiles();
+  return visible.filter((p) => p.featured).slice(0, MAX_DESTACADOS);
 }
 
 /**
@@ -131,6 +172,21 @@ export async function setPremium(
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTION, slug), {
     premium,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * Curaduría de la vitrina (orden y/o destacado). SOLO admin — las reglas bloquean
+ * estos campos al artista. `orden` menor aparece primero; `featured` lo pone en
+ * el menú de destacados.
+ */
+export async function setCuracion(
+  slug: string,
+  patch: { orden?: number; featured?: boolean },
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, slug), {
+    ...stripUndefined(patch),
     updatedAt: serverTimestamp(),
   });
 }

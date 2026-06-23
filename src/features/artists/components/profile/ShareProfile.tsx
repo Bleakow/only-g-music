@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import QRCode from "qrcode";
 import {
   CheckIcon,
@@ -8,6 +9,7 @@ import {
   CopyIcon,
   ShareIcon,
 } from "@/components/icons";
+import { GlassButton } from "@/components/ui/GlassButton";
 
 /**
  * Compartir el perfil: enlace directo + copiar + Web Share (móvil) + código QR
@@ -21,6 +23,7 @@ export function ShareProfile({
   slug: string;
   name: string;
 }) {
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const [qr, setQr] = useState<string | null>(null);
@@ -72,14 +75,10 @@ export function ShareProfile({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 px-4 py-2.5 text-sm font-semibold text-white/80 transition hover:border-white/40 hover:text-white"
-      >
+      <GlassButton onClick={() => setOpen(true)}>
         <ShareIcon className="size-5" />
-        Compartir
-      </button>
+        {t("shareProfile.share")}
+      </GlassButton>
 
       {open && (
         <div
@@ -95,14 +94,14 @@ export function ShareProfile({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="Cerrar"
+              aria-label={t("shareProfile.close")}
               className="absolute right-4 top-4 text-white/60 transition hover:text-white"
             >
               <CloseIcon className="size-5" />
             </button>
 
             <h3 className="font-narrow text-2xl font-bold uppercase text-white">
-              Compartir perfil
+              {t("shareProfile.title")}
             </h3>
             <p className="mt-1 text-sm text-silver-400">{name}</p>
 
@@ -111,12 +110,12 @@ export function ShareProfile({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={qr}
-                  alt="Código QR del perfil"
+                  alt={t("shareProfile.qrAlt")}
                   className="size-48 rounded-xl"
                 />
               ) : (
                 <div className="grid size-48 place-items-center rounded-xl border border-white/10 text-sm text-silver-500">
-                  Generando…
+                  {t("shareProfile.generating")}
                 </div>
               )}
             </div>
@@ -135,7 +134,7 @@ export function ShareProfile({
                 ) : (
                   <CopyIcon className="size-4" />
                 )}
-                {copied ? "Copiado" : "Copiar"}
+                {copied ? t("shareProfile.copied") : t("shareProfile.copy")}
               </button>
             </div>
 
@@ -146,7 +145,7 @@ export function ShareProfile({
                 className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-5 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink"
               >
                 <ShareIcon className="size-4" />
-                Compartir…
+                {t("shareProfile.shareNative")}
               </button>
             )}
           </div>

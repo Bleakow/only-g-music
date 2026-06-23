@@ -1,0 +1,1032 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
+import { useAuth } from "@/features/auth/components/AuthProvider";
+import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
+import type { SocialPlatform } from "@/domain/artist";
+import {
+  type EditableProfile,
+  type ProfileTrack,
+  type PhotoTransform,
+  type PlayerSize,
+  type GalleryItem,
+  type Premium,
+  DEFAULT_PHOTO_TRANSFORM,
+  DEFAULT_PLAYER_X,
+  DEFAULT_PLAYER_Y,
+  DEFAULT_PLAYER_SIZE,
+  GALLERY_LIMIT,
+  nextGallerySpan,
+  INSIGNIA_META,
+  insigniaDePuntos,
+  photoTransformCss,
+  premiumEstado,
+} from "@/domain/artist-profile";
+import { nuevoPedidoPerfil } from "@/domain/profile-order";
+import { createReserva } from "@/features/booking/lib/booking-repo";
+import {
+  createProfile,
+  getProfileBySlug,
+  updateProfile,
+} from "../../lib/artist-profile-repo";
+import { SocialPalette } from "./SocialPalette";
+import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
+import { GalleryBento } from "./GalleryBento";
+import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import { GlassButton } from "@/components/ui/GlassButton";
+import {
+  PlusIcon,
+  CloseIcon,
+  CheckIcon,
+  SpinnerIcon,
+  MoveIcon,
+  EyeIcon,
+  EyeOffIcon,
+  EditIcon,
+  ImageIcon,
+  CropIcon,
+  RepeatIcon,
+} from "@/components/icons";
+
+const CURRENT_YEAR = new Date().getFullYear();
+const MAX_MB = 25;
+
+let trackSeq = 0;
+interface EditorTrack extends ProfileTrack {
+  _id: string;
+}
+const newTrack = (): EditorTrack => ({
+  _id: `t${trackSeq++}`,
+  title: "",
+  youtubeUrl: "",
+  spotifyUrl: "",
+});
+
+type SaveState = "idle" | "saving" | "saved" | "error";
+
+/** Botón que abre un selector de archivos oculto y entrega los File elegidos.
+ *  `glass` lo renderiza como GlassButton (mismo estilo que Atrás/Ajustes). */
+function UploadButton({
+  accept,
+  multiple,
+  disabled,
+  onFiles,
+  className,
+  children,
+  glass,
+}: {
+  accept: string;
+  multiple?: boolean;
+  disabled?: boolean;
+  onFiles: (files: File[]) => void;
+  className?: string;
+  children: React.ReactNode;
+  glass?: boolean;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      {glass ? (
+        <GlassButton onClick={() => ref.current?.click()} disabled={disabled}>
+          {children}
+        </GlassButton>
+      ) : (
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => ref.current?.click()}
+          className={className}
+        >
+          {children}
+        </button>
+      )}
+      <input
+        ref={ref}
+        type="file"
+        accept={accept}
+        multiple={multiple}
+        hidden
+        onChange={(e) => {
+          const files = Array.from(e.target.files ?? []);
+          e.target.value = "";
+          if (files.length) onFiles(files);
+        }}
+      />
+    </>
+  );
+}
+
+/**
+ * Editor in-place del perfil de artista (WYSIWYG). En vez de un formulario, se
+ * rellenan slots sobre una plantilla fija. Auto-guardado (debounced) con
+ * indicador. El perfil vive como borrador hasta publicarse (15d-5).
+ */
+export function ProfileBuilder() {
+  const t = useTranslations();
+  const { user, account, refreshAccount } = useAuth();
+  const router = useRouter();
+  const slug = account?.artistSlug ?? "";
+
+  const [synced, setSynced] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const existsRef = useRef(false);
+  const hydratedRef = useRef(false);
+  const lastSavedRef = useRef("");
+
+  const [artisticName, setArtisticName] = useState("");
+  const [tagline, setTagline] = useState("");
+  const [genre, setGenre] = useState("");
+  const [city, setCity] = useState("");
+  const [bio, setBio] = useState("");
+  const [accent, setAccent] = useState("#8b5cf6");
+  const [startYear, setStartYear] = useState(CURRENT_YEAR);
+  const [photoURL, setPhotoURL] = useState("");
+  const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  const [songURL, setSongURL] = useState("");
+  const [playerOverlay, setPlayerOverlay] = useState(true);
+  const [playerX, setPlayerX] = useState(DEFAULT_PLAYER_X);
+  const [playerY, setPlayerY] = useState(DEFAULT_PLAYER_Y);
+  const [playerSize, setPlayerSize] = useState<PlayerSize>(DEFAULT_PLAYER_SIZE);
+  const [tracks, setTracks] = useState<EditorTrack[]>([]);
+  const [socials, setSocials] = useState<Partial<Record<SocialPlatform, string>>>(
+    {},
+  );
+
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [premiumData, setPremiumData] = useState<Premium | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pt, setPt] = useState<PhotoTransform>(DEFAULT_PHOTO_TRANSFORM);
+  const [adjusting, setAdjusting] = useState(false);
+  const dragRef = useRef({ active: false, sx: 0, sy: 0, bx: 0, by: 0, w: 1, h: 1 });
+  const heroRef = useRef<HTMLElement | null>(null);
+  const playerBoxRef = useRef<HTMLDivElement | null>(null);
+  const playerDragRef = useRef({ active: false, dx: 0, dy: 0 });
+
+  useEffect(() => {
+    let active = true;
+    refreshAccount().finally(() => active && setSynced(true));
+    return () => {
+      active = false;
+    };
+  }, [refreshAccount]);
+
+  useEffect(() => {
+    if (!slug) {
+      setLoaded(true);
+      return;
+    }
+    let active = true;
+    getProfileBySlug(slug)
+      .then((p) => {
+        if (!active) return;
+        if (p) {
+          existsRef.current = true;
+          setArtisticName(p.artisticName);
+          setTagline(p.tagline);
+          setGenre(p.genre);
+          setCity(p.city ?? "");
+          setBio(p.bio);
+          setAccent(p.accent);
+          setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
+          setPhotoURL(p.photoURL);
+          setPt(p.photoTransform ?? DEFAULT_PHOTO_TRANSFORM);
+          setGallery(p.gallery);
+          setSongURL(p.entryTrackUrl ?? "");
+          setPlayerOverlay(p.playerOverlay ?? true);
+          setPlayerX(p.playerX ?? DEFAULT_PLAYER_X);
+          setPlayerY(p.playerY ?? DEFAULT_PLAYER_Y);
+          setPlayerSize(p.playerSize ?? DEFAULT_PLAYER_SIZE);
+          setTracks(
+            p.tracks.map((t) => ({ ...t, _id: `t${trackSeq++}` })),
+          );
+          setSocials(p.socials);
+          setPremiumData(p.premium);
+        } else if (account?.artistDraft) {
+          const d = account.artistDraft;
+          setArtisticName(d.artisticName);
+          setStartYear(d.trajectoryStartYear || CURRENT_YEAR);
+          if (d.photoURL) setPhotoURL(d.photoURL);
+        }
+        setLoaded(true);
+      })
+      .catch(() => active && setLoaded(true));
+    return () => {
+      active = false;
+    };
+    // Carga una vez por slug; no dependemos de `account` para no pisar la edición.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  const ready = synced && loaded;
+
+  function buildEditable(): EditableProfile {
+    const cleanSocials: Partial<Record<SocialPlatform, string>> = {};
+    for (const [k, v] of Object.entries(socials)) {
+      const trimmed = v?.trim();
+      if (trimmed) cleanSocials[k as SocialPlatform] = trimmed;
+    }
+    return {
+      artisticName: artisticName.trim(),
+      tagline: tagline.trim(),
+      genre: genre.trim(),
+      city: city.trim() || undefined,
+      bio: bio.trim(),
+      accent,
+      photoURL,
+      photoTransform: pt,
+      gallery,
+      tracks: tracks
+        .filter((t) => t.title.trim())
+        .map((t) => ({
+          title: t.title.trim(),
+          youtubeUrl: t.youtubeUrl?.trim() || undefined,
+          spotifyUrl: t.spotifyUrl?.trim() || undefined,
+        })),
+      entryTrackUrl: songURL || undefined,
+      playerOverlay,
+      playerX: Math.round(playerX),
+      playerY: Math.round(playerY),
+      playerSize,
+      socials: cleanSocials,
+      trajectoryStartYear: Number(startYear) || CURRENT_YEAR,
+    };
+  }
+
+  // Auto-guardado: al cambiar algo, debounce y guarda. Adopta el estado cargado
+  // como línea base (primer run) para no guardar de más justo tras cargar.
+  useEffect(() => {
+    if (!ready || !slug || !user) return;
+    const snapshot = JSON.stringify(buildEditable());
+    if (!hydratedRef.current) {
+      hydratedRef.current = true;
+      lastSavedRef.current = snapshot;
+      return;
+    }
+    if (snapshot === lastSavedRef.current) return;
+    const timer = setTimeout(async () => {
+      setSaveState("saving");
+      setError(null);
+      try {
+        const editable: EditableProfile = JSON.parse(snapshot);
+        if (existsRef.current) await updateProfile(slug, editable);
+        else {
+          await createProfile(user.uid, slug, editable, null);
+          existsRef.current = true;
+        }
+        lastSavedRef.current = snapshot;
+        setSaveState("saved");
+      } catch (e) {
+        console.error("[builder] save:", e);
+        setSaveState("error");
+        setError(t("profileBuilder.errors.autoSave"));
+      }
+    }, 900);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    artisticName,
+    tagline,
+    genre,
+    city,
+    bio,
+    accent,
+    startYear,
+    photoURL,
+    pt,
+    gallery,
+    songURL,
+    playerOverlay,
+    playerX,
+    playerY,
+    playerSize,
+    tracks,
+    socials,
+    ready,
+    slug,
+    user,
+  ]);
+
+  async function uploadFiles(files: File[]): Promise<string[]> {
+    if (!user) return [];
+    const out: string[] = [];
+    for (const f of files) {
+      if (f.size > MAX_MB * 1024 * 1024) {
+        setError(t("profileBuilder.errors.fileTooLarge", { name: f.name, maxMb: MAX_MB }));
+        continue;
+      }
+      const u = await uploadUserFile(user.uid, f);
+      out.push(u.url);
+    }
+    return out;
+  }
+
+  async function onPhoto(files: File[]) {
+    setUploading("photo");
+    setError(null);
+    try {
+      const [url] = await uploadFiles(files.slice(0, 1));
+      if (url) setPhotoURL(url);
+    } finally {
+      setUploading(null);
+    }
+  }
+  async function onSong(files: File[]) {
+    setUploading("song");
+    setError(null);
+    try {
+      const [url] = await uploadFiles(files.slice(0, 1));
+      if (url) setSongURL(url);
+    } finally {
+      setUploading(null);
+    }
+  }
+  async function onGallery(files: File[]) {
+    setUploading("gallery");
+    setError(null);
+    try {
+      const room = GALLERY_LIMIT - gallery.length;
+      const urls = await uploadFiles(files.slice(0, Math.max(0, room)));
+      if (urls.length)
+        setGallery((g) =>
+          [...g, ...urls.map((url) => ({ url, span: "sq" as const }))].slice(
+            0,
+            GALLERY_LIMIT,
+          ),
+        );
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  // Redimensiona (cicla el tamaño) una foto del bento.
+  function cycleGallerySpan(i: number) {
+    setGallery((g) =>
+      g.map((it, idx) =>
+        idx === i ? { ...it, span: nextGallerySpan(it.span) } : it,
+      ),
+    );
+  }
+
+  function setTrack(i: number, patch: Partial<ProfileTrack>) {
+    setTracks((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+  }
+
+  // Arrastre para reposicionar la foto (pan) en modo ajuste.
+  function startDrag(e: React.PointerEvent) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    dragRef.current = {
+      active: true,
+      sx: e.clientX,
+      sy: e.clientY,
+      bx: pt.x,
+      by: pt.y,
+      w: rect.width,
+      h: rect.height,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onDrag(e: React.PointerEvent) {
+    const d = dragRef.current;
+    if (!d.active) return;
+    const dx = ((e.clientX - d.sx) / d.w) * 100;
+    const dy = ((e.clientY - d.sy) / d.h) * 100;
+    setPt((p) => ({ ...p, x: d.bx + dx, y: d.by + dy }));
+  }
+  function endDrag() {
+    dragRef.current.active = false;
+  }
+
+  // Arrastre libre del reproductor sobre la foto. Mueve el CENTRO del player
+  // conservando el punto de agarre (offset puntero↔centro) para que no pegue un
+  // brinco al agarrar el asa (que está por encima del player).
+  function startPlayerDrag(e: React.PointerEvent) {
+    const box = playerBoxRef.current?.getBoundingClientRect();
+    const cx = box ? box.left + box.width / 2 : e.clientX;
+    const cy = box ? box.top + box.height / 2 : e.clientY;
+    playerDragRef.current = {
+      active: true,
+      dx: cx - e.clientX,
+      dy: cy - e.clientY,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }
+  function onPlayerDrag(e: React.PointerEvent) {
+    if (!playerDragRef.current.active) return;
+    const hero = heroRef.current?.getBoundingClientRect();
+    if (!hero) return;
+    // Clamp con el TAMAÑO REAL del reproductor (medido) para que nunca se salga
+    // del marco. Si la caja es más grande que el hero, se centra en ese eje.
+    const box = playerBoxRef.current?.getBoundingClientRect();
+    const halfW = box ? (box.width / 2 / hero.width) * 100 : 12;
+    const halfH = box ? (box.height / 2 / hero.height) * 100 : 14;
+    const minX = Math.min(50, halfW);
+    const maxX = Math.max(50, 100 - halfW);
+    const minY = Math.min(50, halfH);
+    const maxY = Math.max(50, 100 - halfH);
+    const px = e.clientX + playerDragRef.current.dx;
+    const py = e.clientY + playerDragRef.current.dy;
+    const x = ((px - hero.left) / hero.width) * 100;
+    const y = ((py - hero.top) / hero.height) * 100;
+    setPlayerX(Math.min(maxX, Math.max(minX, x)));
+    setPlayerY(Math.min(maxY, Math.max(minY, y)));
+  }
+  function endPlayerDrag() {
+    playerDragRef.current.active = false;
+  }
+  /** Recupera el reproductor si quedó atascado en una esquina. */
+  function recenterPlayer() {
+    setPlayerX(DEFAULT_PLAYER_X);
+    setPlayerY(DEFAULT_PLAYER_Y);
+  }
+
+  // Activa/renueva la suscripción: crea un pedido de perfil (reusa el pago manual)
+  // y lleva al hilo donde se sube el comprobante. El admin confirma → premium.
+  async function renovar() {
+    if (!user || !slug) return;
+    try {
+      const id = await createReserva(
+        nuevoPedidoPerfil({
+          uid: user.uid,
+          now: Date.now(),
+          artistSlug: slug,
+          clientName: user.displayName ?? undefined,
+          clientEmail: user.email ?? undefined,
+        }),
+      );
+      router.push(`/solicitudes/reserva/${id}`);
+    } catch (e) {
+      console.error("[builder] renovar:", e);
+      setError(t("profileBuilder.errors.payment"));
+    }
+  }
+
+  if (!slug) {
+    return (
+      <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 text-center">
+        <h1 className="font-narrow text-4xl font-bold uppercase">{t("profileBuilder.noSlug.title")}</h1>
+        <p className="mt-3 text-silver-300">{t("profileBuilder.noSlug.description")}</p>
+        <Link
+          href="/artista/nuevo"
+          className="mt-8 inline-flex rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-7 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink"
+        >
+          {t("profileBuilder.noSlug.cta")}
+        </Link>
+      </main>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <main className="grid min-h-dvh place-items-center text-silver-300">
+        {t("common.loading")}
+      </main>
+    );
+  }
+
+  const insignia = INSIGNIA_META[insigniaDePuntos(0)];
+  const titleInput =
+    "w-full bg-transparent font-narrow text-5xl font-bold uppercase leading-[0.9] text-white outline-none placeholder:text-white/30 sm:text-7xl";
+  const ghostInput =
+    "rounded-lg bg-white/[0.02] px-3 py-2 text-silver-50 outline-none ring-1 ring-inset ring-white/15 backdrop-blur-md transition focus:bg-white/[0.06] focus:ring-white/40 placeholder:text-white/30";
+  // Campo de cristal MÁS visible para los chips sobre la foto (género/ciudad/año):
+  // ahí sí hay imagen detrás, así que el blur frostea la foto = cristal real.
+  const glassField =
+    "rounded-full bg-white/[0.08] px-4 py-2 text-center outline-none ring-1 ring-inset ring-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md transition placeholder:text-white/50 focus:bg-white/[0.14] focus:ring-white/60";
+
+  // Visibilidad en la vitrina = suscripción (premium) vigente: pagar = publicar.
+  // El chip refleja el estado real y avisa cuando vence / está por vencer.
+  const now = Date.now();
+  const estadoPremium = premiumEstado(premiumData, now);
+  const diasRestantes = premiumData
+    ? Math.ceil((premiumData.expiresAt - now) / 86_400_000)
+    : 0;
+  const porVencer = estadoPremium === "activo" && diasRestantes <= 7;
+  const pubChip =
+    estadoPremium === "activo"
+      ? porVencer
+        ? { label: t("profileBuilder.premium.expiresIn", { days: diasRestantes }), cls: "bg-amber-500/15 text-amber-300" }
+        : { label: t("profileBuilder.premium.published"), cls: "bg-emerald-500/15 text-emerald-300" }
+      : estadoPremium === "expirado"
+        ? { label: t("profileBuilder.premium.expired"), cls: "bg-red-500/15 text-red-300" }
+        : { label: t("profileBuilder.premium.draft"), cls: "bg-white/10 text-silver-300" };
+  // ¿Mostrar acción de pago? Sin suscripción, vencida, o por vencer.
+  const mostrarRenovar = estadoPremium !== "activo" || porVencer;
+  const renovarLabel = estadoPremium === "ninguno" ? t("profileBuilder.statusBar.activar") : t("profileBuilder.statusBar.renovar");
+
+  return (
+    <article className="relative min-h-dvh pb-24">
+      {/* Barra de estado (publicación + guardado + acción). Abajo para no quedar
+          bajo el botón de menú/perfil; oculta mientras se ajusta la foto. */}
+      {!adjusting && (
+        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-ink/90 px-4 py-3 backdrop-blur sm:px-8">
+          <div className="flex items-center gap-3">
+            <span
+              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[2px] ${pubChip.cls}`}
+              title={
+                estadoPremium === "activo"
+                  ? t("profileBuilder.statusBar.titleActive")
+                  : t("profileBuilder.statusBar.titleInactive")
+              }
+            >
+              {pubChip.label}
+            </span>
+            <SaveIndicator state={saveState} />
+          </div>
+          <div className="flex items-center gap-2">
+            {mostrarRenovar && (
+              <button
+                type="button"
+                onClick={renovar}
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-4 py-1.5 text-sm font-semibold uppercase tracking-[1px] text-ink transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
+              >
+                <RepeatIcon className="size-4" />
+                {renovarLabel}
+              </button>
+            )}
+            <GlassButton href={`/artistas/${slug}`}>
+              <EyeIcon className="size-4" />
+              {t("profileBuilder.statusBar.viewProfile")}
+            </GlassButton>
+          </div>
+        </div>
+      )}
+
+      {/* Hero: foto + identidad editables. Misma altura que el perfil público
+          (h-dvh) para que el encuadre de la foto y la posición del reproductor
+          coincidan exactamente (WYSIWYG). */}
+      <section
+        ref={heroRef}
+        className="relative flex h-dvh w-full items-end overflow-hidden bg-neutral-950"
+      >
+        {photoURL ? (
+          <Image
+            src={photoURL}
+            alt={t("profileBuilder.photo.alt")}
+            fill
+            sizes="100vw"
+            className="object-cover"
+            style={{ transform: photoTransformCss(pt), transformOrigin: "center" }}
+            priority
+          />
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/10" />
+
+        {/* Slot de foto vacío */}
+        {!photoURL && (
+          <div className="absolute inset-0 z-10 grid place-items-center">
+            <UploadButton
+              accept="image/*"
+              onFiles={onPhoto}
+              disabled={uploading === "photo"}
+              className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/30 px-10 py-8 text-white/70 transition hover:border-amethyst-300 hover:text-white"
+            >
+              {uploading === "photo" ? (
+                <SpinnerIcon className="size-7 animate-spin" />
+              ) : (
+                <PlusIcon className="size-7" />
+              )}
+              <span className="text-sm">{t("profileBuilder.photo.upload")}</span>
+            </UploadButton>
+          </div>
+        )}
+
+        {/* Foto puesta: cambiar / ajustar (mismos GlassButton que Atrás/Ajustes) */}
+        {photoURL && !adjusting && (
+          <div className="absolute right-4 top-20 z-20 flex gap-2">
+            <UploadButton
+              glass
+              accept="image/*"
+              onFiles={onPhoto}
+              disabled={uploading === "photo"}
+            >
+              {uploading === "photo" ? (
+                <SpinnerIcon className="size-4 animate-spin" />
+              ) : (
+                <ImageIcon className="size-4" />
+              )}
+              {t("profileBuilder.photo.change")}
+            </UploadButton>
+            <GlassButton onClick={() => setAdjusting(true)}>
+              <CropIcon className="size-4" />
+              {t("profileBuilder.photo.adjust")}
+            </GlassButton>
+          </div>
+        )}
+
+        {/* Modo ajuste: arrastrar para mover + zoom/rotación */}
+        {photoURL && adjusting && (
+          <>
+            <div
+              className="absolute inset-0 z-20 cursor-move touch-none"
+              onPointerDown={startDrag}
+              onPointerMove={onDrag}
+              onPointerUp={endDrag}
+              onPointerCancel={endDrag}
+            />
+            <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 border-t border-white/10 bg-black/75 p-4 backdrop-blur">
+              <p className="text-center text-xs uppercase tracking-[2px] text-white/70">
+                {t("profileBuilder.photoAdjust.hint")}
+              </p>
+              <label className="flex items-center gap-3 text-xs text-white/80">
+                <span className="w-12">{t("profileBuilder.photoAdjust.zoom")}</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.01}
+                  value={pt.scale}
+                  onChange={(e) =>
+                    setPt((p) => ({ ...p, scale: Number(e.target.value) }))
+                  }
+                  className="flex-1 accent-amethyst-300"
+                />
+              </label>
+              <label className="flex items-center gap-3 text-xs text-white/80">
+                <span className="w-12">{t("profileBuilder.photoAdjust.rotate")}</span>
+                <input
+                  type="range"
+                  min={-180}
+                  max={180}
+                  step={1}
+                  value={pt.rotation}
+                  onChange={(e) =>
+                    setPt((p) => ({ ...p, rotation: Number(e.target.value) }))
+                  }
+                  className="flex-1 accent-amethyst-300"
+                />
+              </label>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <GlassButton
+                  onClick={() =>
+                    setPt((p) => ({ ...p, rotation: (p.rotation + 90) % 360 }))
+                  }
+                >
+                  {t("profileBuilder.photoAdjust.rotate90")}
+                </GlassButton>
+                <GlassButton onClick={() => setPt(DEFAULT_PHOTO_TRANSFORM)}>
+                  {t("profileBuilder.photoAdjust.reset")}
+                </GlassButton>
+                <GlassButton onClick={() => setAdjusting(false)}>{t("profileBuilder.photoAdjust.done")}</GlassButton>
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="relative z-10 w-full p-6 sm:p-12">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[2px]"
+              style={{
+                color: insignia.color,
+                borderColor: `${insignia.color}66`,
+                backgroundColor: `${insignia.color}1a`,
+              }}
+            >
+              {insignia.label}
+            </span>
+            <input
+              type="color"
+              value={accent}
+              onChange={(e) => setAccent(e.target.value)}
+              title={t("profileBuilder.identity.accentColorTitle")}
+              className="size-7 cursor-pointer rounded-full border border-white/20 bg-transparent"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-[3px]">
+            <input
+              value={genre}
+              onChange={(e) => setGenre(e.target.value)}
+              placeholder={t("profileBuilder.identity.genrePlaceholder")}
+              className={`${glassField} w-40`}
+              style={{ color: accent }}
+            />
+            <input
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder={t("profileBuilder.identity.cityPlaceholder")}
+              className={`${glassField} w-40`}
+              style={{ color: accent }}
+            />
+            <input
+              type="number"
+              value={startYear}
+              min={1950}
+              max={CURRENT_YEAR}
+              onChange={(e) => setStartYear(Number(e.target.value))}
+              title={t("profileBuilder.identity.startYearTitle")}
+              className={`${glassField} w-28`}
+              style={{ color: accent }}
+            />
+          </div>
+
+          {/* Nombre: con etiqueta + lápiz + subrayado punteado para que se note
+              que es editable (antes, si no tocabas las letras, no se veía). */}
+          <div className="mt-3">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+              <EditIcon className="size-3" />
+              {t("profileBuilder.identity.artisticNameLabel")}
+            </span>
+            <input
+              value={artisticName}
+              onChange={(e) => setArtisticName(e.target.value)}
+              placeholder={t("profileBuilder.identity.artisticNamePlaceholder")}
+              className={`${titleInput} border-b-2 border-dashed border-white/25 pb-1 focus:border-amethyst-300`}
+            />
+          </div>
+          <input
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            placeholder={t("profileBuilder.identity.taglinePlaceholder")}
+            className="mt-3 w-full max-w-xl border-b border-dashed border-white/20 bg-transparent pb-1 text-lg text-white/80 outline-none transition focus:border-amethyst-300/70 placeholder:text-white/40"
+          />
+        </div>
+
+        {/* Reproductor sobre la foto. La CAJA posicionada es solo el reproductor
+            pelado (idéntico al que se ve publicado), por eso la posición cuadra
+            exacta. Los controles FLOTAN (absolute) y no desplazan esa caja.
+            Oculto solo mientras se ajusta la foto. */}
+        {songURL && playerOverlay && !adjusting && (
+          <div
+            ref={playerBoxRef}
+            className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-2xl ring-1 ring-white/20 ${PLAYER_SIZE_W[playerSize]}`}
+            style={{ left: `${playerX}%`, top: `${playerY}%` }}
+          >
+            {/* Asa flotante: arrastra para mover (no afecta la caja). */}
+            <div
+              onPointerDown={startPlayerDrag}
+              onPointerMove={onPlayerDrag}
+              onPointerUp={endPlayerDrag}
+              onPointerCancel={endPlayerDrag}
+              aria-label={t("profileBuilder.player.dragHandleAriaLabel")}
+              className="absolute -top-9 left-1/2 flex -translate-x-1/2 cursor-move touch-none items-center justify-center rounded-full bg-black/55 px-4 py-1.5 text-white/80 backdrop-blur transition active:cursor-grabbing"
+            >
+              <MoveIcon className="size-4" />
+            </div>
+
+            {/* Reproductor pelado = caja posicionada (igual que en público). */}
+            <ProfileAudioPlayer
+              variant="overlay"
+              src={songURL}
+              accent={accent}
+              title={artisticName}
+              dockBottomClass="bottom-20"
+            />
+
+            {/* Toolbar flotante: ocultar (enviar abajo) + tamaño. */}
+            <div className="absolute -bottom-11 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/55 px-2 py-1 backdrop-blur">
+              <button
+                type="button"
+                onClick={() => setPlayerOverlay(false)}
+                aria-label={t("profileBuilder.player.hideAriaLabel")}
+                className="flex size-7 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+              >
+                <EyeOffIcon className="size-4" />
+              </button>
+              <span className="mx-0.5 h-4 w-px bg-white/20" />
+              {(["sm", "md", "lg"] as PlayerSize[]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setPlayerSize(s)}
+                  aria-pressed={playerSize === s}
+                  className={`size-7 rounded-md text-xs font-semibold transition ${
+                    playerSize === s
+                      ? "bg-white/25 text-white"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  {SIZE_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {error && (
+        <p className="mx-auto mt-4 max-w-3xl rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
+          {error}
+        </p>
+      )}
+
+      {/* Canción de fondo */}
+      <section className="mx-auto max-w-3xl px-6 pt-8">
+        {songURL ? (
+          <div>
+            {/* En modo "sobre la foto" el reproductor se ve arriba (preview en el
+                hero); aquí solo mostramos la tarjeta cuando va debajo. */}
+            {/* Debajo: tarjeta + botón (ojo) para volver a ponerlo sobre la foto.
+                Sobre la foto: todos los controles flotan en el modal del hero. */}
+            {!playerOverlay && (
+              <>
+                <ProfileAudioPlayer
+                  src={songURL}
+                  accent={accent}
+                  dockBottomClass="bottom-20"
+                />
+                <div className="mt-4 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setPlayerOverlay(true)}
+                    className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-sm text-silver-300 transition hover:border-amethyst-300/60 hover:text-white"
+                  >
+                    <EyeIcon className="size-4" />
+                    {t("profileBuilder.player.showOnPhoto")}
+                  </button>
+                </div>
+              </>
+            )}
+
+            <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
+              <UploadButton
+                accept="audio/*"
+                onFiles={onSong}
+                disabled={uploading === "song"}
+                className="text-silver-300 hover:text-white"
+              >
+                {uploading === "song" ? t("profileBuilder.song.changing") : t("profileBuilder.song.change")}
+              </UploadButton>
+              {playerOverlay && (
+                <button
+                  type="button"
+                  onClick={recenterPlayer}
+                  className="text-silver-300 hover:text-white"
+                >
+                  {t("profileBuilder.player.recenter")}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSongURL("")}
+                className="text-silver-400 hover:text-red-200"
+              >
+                {t("profileBuilder.song.remove")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <UploadButton
+            accept="audio/*"
+            onFiles={onSong}
+            disabled={uploading === "song"}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 py-6 text-white/70 transition hover:border-amethyst-300 hover:text-white"
+          >
+            {uploading === "song" ? (
+              <SpinnerIcon className="size-5 animate-spin" />
+            ) : (
+              <PlusIcon className="size-5" />
+            )}
+            {t("profileBuilder.song.add")}
+          </UploadButton>
+        )}
+      </section>
+
+      {/* Bio */}
+      <Block title={t("profileBuilder.bio.sectionTitle")}>
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder={t("profileBuilder.bio.placeholder")}
+          className="min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed text-silver-100 outline-none transition focus:bg-white/10 placeholder:text-white/30"
+        />
+      </Block>
+
+      {/* Redes */}
+      <Block title={t("profileBuilder.socials.sectionTitle")}>
+        <SocialPalette value={socials} onChange={setSocials} />
+      </Block>
+
+      {/* Galería bento ordenable (dnd-kit): arrastra una foto y las demás se
+          acomodan solas; pulsa ⤢ para cambiar su tamaño. */}
+      <Block title={t("profileBuilder.gallery.sectionTitle", { count: gallery.length, limit: GALLERY_LIMIT })}>
+        {gallery.length > 1 && (
+          <p className="mb-3 text-xs text-silver-400">
+            {t("profileBuilder.gallery.hint")}
+          </p>
+        )}
+        <GalleryBento
+          items={gallery}
+          onReorder={setGallery}
+          onResize={cycleGallerySpan}
+          onRemove={(url) => setGallery((g) => g.filter((it) => it.url !== url))}
+          addSlot={
+            gallery.length < GALLERY_LIMIT ? (
+              <UploadButton
+                accept="image/*"
+                multiple
+                onFiles={onGallery}
+                disabled={uploading === "gallery"}
+                className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:border-amethyst-300 hover:text-white"
+              >
+                {uploading === "gallery" ? (
+                  <SpinnerIcon className="size-6 animate-spin" />
+                ) : (
+                  <PlusIcon className="size-6" />
+                )}
+              </UploadButton>
+            ) : null
+          }
+        />
+      </Block>
+
+      {/* Temas */}
+      <Block title={t("profileBuilder.tracks.sectionTitle")}>
+        <div className="flex flex-col gap-3">
+          {tracks.map((track, i) => (
+            <div key={track._id} className={`${glassSurfaceSoft} rounded-xl p-3`}>
+              <GlassSheen />
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={track.title}
+                    onChange={(e) => setTrack(i, { title: e.target.value })}
+                    placeholder={t("profileBuilder.tracks.titlePlaceholder", { n: i + 1 })}
+                    className={`${ghostInput} flex-1`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTracks((prev) => prev.filter((_, idx) => idx !== i))
+                    }
+                    aria-label={t("profileBuilder.tracks.removeAriaLabel")}
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full text-silver-400 transition hover:bg-white/10 hover:text-white"
+                  >
+                    <CloseIcon className="size-4" />
+                  </button>
+                </div>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  <input
+                    value={track.youtubeUrl ?? ""}
+                    onChange={(e) => setTrack(i, { youtubeUrl: e.target.value })}
+                    placeholder={t("profileBuilder.tracks.youtubePlaceholder")}
+                    className={ghostInput}
+                  />
+                  <input
+                    value={track.spotifyUrl ?? ""}
+                    onChange={(e) => setTrack(i, { spotifyUrl: e.target.value })}
+                    placeholder={t("profileBuilder.tracks.spotifyPlaceholder")}
+                    className={ghostInput}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+          <GlassButton onClick={() => setTracks((prev) => [...prev, newTrack()])}>
+            <PlusIcon className="size-4" /> {t("profileBuilder.tracks.addButton")}
+          </GlassButton>
+        </div>
+      </Block>
+    </article>
+  );
+}
+
+/** Etiquetas cortas de los tamaños del reproductor (S/M/L). */
+const SIZE_LABEL: Record<PlayerSize, string> = {
+  sm: "S",
+  md: "M",
+  lg: "L",
+};
+
+function SaveIndicator({ state }: { state: SaveState }) {
+  const t = useTranslations();
+  if (state === "saving")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-silver-300">
+        <SpinnerIcon className="size-4 animate-spin" /> {t("profileBuilder.save.saving")}
+      </span>
+    );
+  if (state === "saved")
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs text-emerald-300">
+        <CheckIcon className="size-4" /> {t("profileBuilder.save.saved")}
+      </span>
+    );
+  if (state === "error")
+    return <span className="text-xs text-red-300">{t("profileBuilder.save.error")}</span>;
+  return null;
+}
+
+function Block({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="mx-auto mt-8 max-w-3xl px-6">
+      <h2 className="mb-3 font-narrow text-2xl font-bold uppercase text-white">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}

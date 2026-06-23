@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +11,8 @@ import { formatCOP } from "@/domain/service";
 import { PRECIO_PERFIL, nuevoPedidoPerfil } from "@/domain/profile-order";
 import { createReserva } from "@/features/booking/lib/booking-repo";
 import { updateArtistPrivateData } from "@/features/auth/lib/user-repo";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -39,8 +40,9 @@ const INPUT =
   "rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";
 
 export function ArtistOnboarding() {
-  const { user, account } = useAuth();
+  const { user, account, refreshAccount } = useAuth();
   const router = useRouter();
+  const t = useTranslations();
 
   const [artisticName, setArtisticName] = useState("");
   const [realName, setRealName] = useState("");
@@ -50,19 +52,35 @@ export function ArtistOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Si ya es artista, no tiene sentido volver a pagar el alta.
-  if (hasAnyRole(account, ["artista"])) {
+  // Re-sincroniza la cuenta al entrar: si el alta se guardo en esta sesion, el
+  // contexto pudo quedar viejo (sin artistSlug) y provocar el bucle alta o perfil.
+  useEffect(() => {
+    refreshAccount();
+  }, [refreshAccount]);
+
+  // El alta se considera hecha cuando YA tienes `artistSlug` (datos guardados +
+  // pedido de pago creado). Tener el ROL `artista` NO basta -- si miraamos el rol
+  // se produce el bucle "ya eres artista" o "falta tu alta". El premium lo activa
+  // el pago confirmado, no el rol.
+  if (account?.artistSlug) {
+    const activo = hasAnyRole(account, ["artista"]);
     return (
       <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 text-center">
-        <h1 className="font-narrow text-4xl font-bold uppercase">Ya eres artista</h1>
+        <h1 className="font-narrow text-4xl font-bold uppercase">
+          {t("artistOnboarding.alreadyRegistered.title")}
+        </h1>
         <p className="mt-3 text-silver-300">
-          Edita tu perfil cuando quieras.
+          {activo
+            ? t("artistOnboarding.alreadyRegistered.activeBody")
+            : t("artistOnboarding.alreadyRegistered.pendingBody")}
         </p>
         <Link
-          href="/artista/perfil"
+          href={activo ? "/artista/perfil" : "/solicitudes"}
           className="mt-8 inline-flex rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-7 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink"
         >
-          Ir a mi perfil
+          {activo
+            ? t("artistOnboarding.alreadyRegistered.goToProfile")
+            : t("artistOnboarding.alreadyRegistered.viewPayment")}
         </Link>
       </main>
     );
@@ -75,15 +93,15 @@ export function ArtistOnboarding() {
 
     const year = Number(startYear);
     if (!artisticName.trim() || !realName.trim() || !birthDate) {
-      setError("Completa nombre artístico, nombre real y fecha de nacimiento.");
+      setError(t("artistOnboarding.errors.missingRequired"));
       return;
     }
     if (!year || year < 1950 || year > CURRENT_YEAR) {
-      setError(`El año de inicio debe estar entre 1950 y ${CURRENT_YEAR}.`);
+      setError(t("artistOnboarding.errors.invalidYear", { year: CURRENT_YEAR }));
       return;
     }
     if (photo.length === 0) {
-      setError("La foto de perfil es obligatoria.");
+      setError(t("artistOnboarding.errors.photoRequired"));
       return;
     }
 
@@ -91,7 +109,7 @@ export function ArtistOnboarding() {
     try {
       const slug = toSlug(artisticName);
       if (!slug) {
-        setError("El nombre artístico no genera una URL válida.");
+        setError(t("artistOnboarding.errors.invalidSlug"));
         setBusy(false);
         return;
       }
@@ -105,6 +123,7 @@ export function ArtistOnboarding() {
           photoURL: photo[0].url,
         },
       });
+      await refreshAccount();
       const id = await createReserva(
         nuevoPedidoPerfil({
           uid: user.uid,
@@ -117,7 +136,7 @@ export function ArtistOnboarding() {
       router.push(`/solicitudes/reserva/${id}`);
     } catch (err) {
       console.error("[artist-onboarding] error:", err);
-      setError("No se pudo crear tu solicitud. Inténtalo de nuevo.");
+      setError(t("artistOnboarding.errors.submitFailed"));
       setBusy(false);
     }
   }
@@ -125,43 +144,44 @@ export function ArtistOnboarding() {
   return (
     <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 sm:px-8">
       <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
-        Perfil de artista
+        {t("artistOnboarding.eyebrow")}
       </p>
       <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
-        Sé parte del roster
+        {t("artistOnboarding.heroTitle")}
       </h1>
       <p className="mt-3 text-silver-300">
-        Crea tu perfil público: tu CV musical con foto, frase, redes y tus mejores
-        temas en YouTube/Spotify, con URL y código QR para compartir. Vigencia de
-        2 meses, renovable. Tu nombre real y fecha de nacimiento quedan{" "}
-        <strong className="text-silver-100">privados</strong>.
+        {t.rich("artistOnboarding.heroParagraph", {
+          strong: (c) => <strong className="text-silver-100">{c}</strong>,
+        })}
       </p>
 
       <div className="mt-6 rounded-2xl border border-amethyst-300/30 bg-amethyst-500/10 p-5">
         <p className="text-xs uppercase tracking-[2px] text-amethyst-200">
-          Costo del perfil (2 meses)
+          {t("artistOnboarding.pricingLabel")}
         </p>
         <p className="mt-1 font-narrow text-3xl font-bold text-white">
           {formatCOP(PRECIO_PERFIL)}
         </p>
         <p className="mt-1 text-sm text-silver-400">
-          Tras enviar, subes el comprobante en el chat y el estudio confirma el
-          pago para activar tu perfil.
+          {t("artistOnboarding.pricingNote")}
         </p>
       </div>
 
       <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-5">
-        <FieldShell label="Nombre artístico" hint="Será tu nombre público y tu URL.">
+        <FieldShell
+          label={t("artistOnboarding.fields.artisticName.label")}
+          hint={t("artistOnboarding.fields.artisticName.hint")}
+        >
           <input
             className={INPUT}
             value={artisticName}
             onChange={(e) => setArtisticName(e.target.value)}
-            placeholder="p. ej. Lia Mar"
+            placeholder={t("artistOnboarding.fields.artisticName.placeholder")}
             required
           />
         </FieldShell>
 
-        <FieldShell label="Nombre y apellido (privado)">
+        <FieldShell label={t("artistOnboarding.fields.realName.label")}>
           <input
             className={INPUT}
             value={realName}
@@ -172,7 +192,7 @@ export function ArtistOnboarding() {
         </FieldShell>
 
         <div className="grid grid-cols-2 gap-4">
-          <FieldShell label="Fecha de nacimiento (privado)">
+          <FieldShell label={t("artistOnboarding.fields.birthDate.label")}>
             <input
               type="date"
               className={INPUT}
@@ -181,7 +201,10 @@ export function ArtistOnboarding() {
               required
             />
           </FieldShell>
-          <FieldShell label="Inicio de trayectoria" hint="Año en que empezaste.">
+          <FieldShell
+            label={t("artistOnboarding.fields.startYear.label")}
+            hint={t("artistOnboarding.fields.startYear.hint")}
+          >
             <input
               type="number"
               inputMode="numeric"
@@ -198,7 +221,7 @@ export function ArtistOnboarding() {
 
         <div className="flex flex-col gap-2">
           <span className="text-xs uppercase tracking-[2px] text-silver-300">
-            Foto de perfil (obligatoria)
+            {t("artistOnboarding.fields.photo.label")}
           </span>
           <FileUpload
             value={photo}
@@ -217,7 +240,7 @@ export function ArtistOnboarding() {
         )}
 
         <Button type="submit" loading={busy} className="mt-1 w-full">
-          Continuar al pago →
+          {t("artistOnboarding.submit")}
         </Button>
       </form>
     </main>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { ArtistProfile } from "@/domain/artist-profile";
 import { getProfileBySlug } from "../../lib/artist-profile-repo";
 import type { ProfileSource } from "../../lib/profile-display";
@@ -19,6 +20,7 @@ export function ArtistProfileLoader({
   slug: string;
   fallback: ArtistProfile | null;
 }) {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<ArtistProfile | null>(fallback);
   const [source, setSource] = useState<ProfileSource>("seed");
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,14 @@ export function ArtistProfileLoader({
     };
   }, [slug]);
 
-  if (profile) return <ArtistProfileView profile={profile} source={source} />;
+  if (profile)
+    return (
+      <ArtistProfileView
+        profile={profile}
+        source={source}
+        isOwner={!!user && !!profile.uid && user.uid === profile.uid}
+      />
+    );
   if (loading)
     return (
       <main className="grid min-h-dvh place-items-center text-silver-300">

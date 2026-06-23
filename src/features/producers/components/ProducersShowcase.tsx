@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { producers } from "../data/producers";
@@ -21,18 +22,20 @@ function PhotoButton({
   onOpen,
   className = "",
   iconSize = "size-4",
+  ariaLabel,
 }: {
   src: string;
   alt: string;
   onOpen: (src: string) => void;
   className?: string;
   iconSize?: string;
+  ariaLabel: string;
 }) {
   return (
     <button
       type="button"
       onClick={() => onOpen(src)}
-      aria-label={`Ampliar foto de ${alt}`}
+      aria-label={ariaLabel}
       className={`reveal group relative block overflow-hidden rounded-xl ring-1 ring-white/10 ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -50,6 +53,7 @@ function PhotoButton({
 }
 
 export function ProducersShowcase() {
+  const t = useTranslations();
   const ref = useRef<HTMLDivElement>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -152,7 +156,7 @@ export function ProducersShowcase() {
 
             <div className="absolute inset-0 flex flex-col justify-end px-6 pb-16 sm:px-12 sm:pb-24">
               <p className="text-sm font-bold uppercase tracking-[4px] text-amethyst-300 drop-shadow-[0_2px_8px_#000]">
-                {p.role}
+                {t(`producers.items.${p.slug}.role`)}
               </p>
               <h2 className="mt-1 font-narrow text-7xl font-bold uppercase leading-[0.88] text-white drop-shadow-[0_3px_16px_#000] sm:text-9xl">
                 {p.name}
@@ -161,7 +165,7 @@ export function ProducersShowcase() {
                 {p.origin}
               </p>
               <p className="mt-4 max-w-xl text-2xl text-white/95 drop-shadow-[0_2px_10px_#000] sm:text-3xl">
-                {p.quote}
+                {t(`producers.items.${p.slug}.quote`)}
               </p>
             </div>
           </div>
@@ -178,11 +182,12 @@ export function ProducersShowcase() {
                   alt={p.name}
                   onOpen={setLightbox}
                   className="aspect-[3/4]"
+                  ariaLabel={t("producers.expandPhoto", { name: p.name })}
                 />
 
                 <div className="reveal sm:pb-8">
                   <p className="text-xl leading-relaxed text-silver-100 sm:text-[1.6rem] sm:leading-[1.6] [&::first-letter]:float-left [&::first-letter]:mr-3 [&::first-letter]:font-narrow [&::first-letter]:text-7xl [&::first-letter]:font-bold [&::first-letter]:leading-[0.7] [&::first-letter]:text-amethyst-300">
-                    {p.bio}
+                    {t(`producers.items.${p.slug}.bio`)}
                   </p>
 
                   <div className="mt-8 flex gap-3">
@@ -191,7 +196,7 @@ export function ProducersShowcase() {
                         href={p.socials.facebook}
                         target="_blank"
                         rel="noreferrer"
-                        aria-label={`Facebook de ${p.name}`}
+                        aria-label={t("producers.facebookOf", { name: p.name })}
                         className="flex size-11 items-center justify-center rounded-full border border-white/25 bg-black/30 text-silver-100 backdrop-blur-sm transition hover:border-white hover:text-white"
                       >
                         <FacebookIcon className="size-5" />
@@ -202,7 +207,7 @@ export function ProducersShowcase() {
                         href={p.socials.instagram}
                         target="_blank"
                         rel="noreferrer"
-                        aria-label={`Instagram de ${p.name}`}
+                        aria-label={t("producers.instagramOf", { name: p.name })}
                         className="flex size-11 items-center justify-center rounded-full border border-white/25 bg-black/30 text-silver-100 backdrop-blur-sm transition hover:border-white hover:text-white"
                       >
                         <InstagramIcon className="size-5" />
@@ -222,6 +227,7 @@ export function ProducersShowcase() {
                       onOpen={setLightbox}
                       iconSize="size-3.5"
                       className={`aspect-[3/4] ${GALLERY_LAYOUT[i] ?? "sm:col-span-4"}`}
+                      ariaLabel={t("producers.expandPhoto", { name: p.name })}
                     />
                   ))}
                 </div>
@@ -249,7 +255,7 @@ export function ProducersShowcase() {
           <button
             type="button"
             onClick={() => setLightbox(null)}
-            aria-label="Cerrar"
+            aria-label={t("producers.close")}
             className="absolute right-5 top-5 flex size-11 items-center justify-center rounded-full border border-white/25 text-white transition hover:border-white hover:bg-white/10"
           >
             ✕

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   subscribeMessages,
   sendMessage,
@@ -20,6 +21,7 @@ export function Thread({
   /** Quién escribe desde esta vista (cliente o el estudio/admin). */
   perspective?: "cliente" | "estudio";
 }) {
+  const t = useTranslations();
   const [msgs, setMsgs] = useState<ThreadMessage[]>([]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -32,14 +34,14 @@ export function Thread({
 
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
-    const t = text.trim();
-    if (!t) return;
+    const trimmed = text.trim();
+    if (!trimmed) return;
     setBusy(true);
     try {
       await sendMessage(parent, id, {
         from: perspective,
         tipo: "mensaje",
-        texto: t,
+        texto: trimmed,
       });
       setText("");
     } catch (err) {
@@ -53,9 +55,7 @@ export function Thread({
     <div className="flex flex-col gap-3">
       <div className="flex max-h-96 min-h-[8rem] flex-col gap-2 overflow-y-auto rounded-xl border border-white/10 bg-black/20 p-4">
         {msgs.length === 0 ? (
-          <p className="m-auto text-sm text-silver-400">
-            Aún no hay mensajes. Escribe para hablar con el estudio.
-          </p>
+          <p className="m-auto text-sm text-silver-400">{t("thread.empty")}</p>
         ) : (
           msgs.map((m) => {
             const mine = m.from === perspective;
@@ -73,13 +73,20 @@ export function Thread({
               >
                 {m.tipo === "propuesta" && (
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amethyst-200">
-                    Propuesta
+                    {t("thread.proposal")}
                     {m.price != null ? ` · ${formatCOP(m.price)}` : ""}
                   </p>
                 )}
                 {m.tipo === "comprobante" && (
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-silver-300">
-                    Comprobante
+                    {t("thread.receipt")}
+                  </p>
+                )}
+                {m.tipo === "estado" && m.estado && (
+                  <p className="whitespace-pre-wrap">
+                    {t("thread.statusChanged", {
+                      status: t(`status.${m.estado}`),
+                    })}
                   </p>
                 )}
                 {m.texto && <p className="whitespace-pre-wrap">{m.texto}</p>}
@@ -90,7 +97,7 @@ export function Thread({
                     rel="noreferrer"
                     className="mt-1 inline-block text-amethyst-200 underline underline-offset-2 hover:text-white"
                   >
-                    {m.attachmentName ?? "Ver archivo"}
+                    {m.attachmentName ?? t("thread.viewFile")}
                   </a>
                 )}
               </div>
@@ -104,11 +111,11 @@ export function Thread({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Escribe un mensaje…"
+          placeholder={t("thread.placeholder")}
           className="flex-1 rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80"
         />
         <Button type="submit" loading={busy}>
-          Enviar
+          {t("thread.send")}
         </Button>
       </form>
     </div>

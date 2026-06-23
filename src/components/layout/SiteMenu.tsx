@@ -1,27 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
+import { Link, usePathname } from "@/i18n/navigation";
 import Image from "next/image";
 import { artists } from "@/features/artists/data/artists";
 import type { Artist } from "@/domain/artist";
+import { getFeaturedProfiles } from "@/features/artists/lib/artist-profile-repo";
+import { profileToArtist } from "@/features/artists/lib/profile-display";
 import { UserMenu } from "@/features/auth/components/UserMenu";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import styles from "./SiteMenu.module.css";
 
-const featured = artists.filter((a) => a.featured);
+// Destacados de muestra (semilla) hasta cargar los reales que cura el admin.
+const SEED_FEATURED = artists.filter((a) => a.featured);
 
+// `key` = clave del catálogo i18n (nav.*); el texto se resuelve con t().
 const NAV = [
-  { href: "/artistas", label: "Artistas" },
-  { href: "/servicios", label: "Servicios" },
-  { href: "/producciones", label: "Producciones" },
-  { href: "/eventos", label: "Eventos" },
-];
+  { href: "/artistas", key: "artists" },
+  { href: "/servicios", key: "services" },
+  { href: "/producciones", key: "productions" },
+  { href: "/eventos", key: "events" },
+] as const;
 
 export function SiteMenu() {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<Artist | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [featured, setFeatured] = useState<Artist[]>(SEED_FEATURED);
+  const featuredLoaded = useRef(false);
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   const close = () => setOpen(false);
 
@@ -33,6 +42,20 @@ export function SiteMenu() {
   // Vuelve al logo al cerrar.
   useEffect(() => {
     if (!open) setHovered(null);
+  }, [open]);
+
+  // Carga los destacados REALES (curados por el admin) la primera vez que se
+  // abre el menú — lazy, para no leer Firestore en cada página. Fallback: semilla.
+  useEffect(() => {
+    if (!open || featuredLoaded.current) return;
+    featuredLoaded.current = true;
+    getFeaturedProfiles()
+      .then((p) => {
+        if (p.length) setFeatured(p.map(profileToArtist));
+      })
+      .catch(() => {
+        /* sin destacados reales o sin red: se queda la semilla */
+      });
   }, [open]);
 
   // Red de seguridad: al cambiar de ruta, desbloquea el scroll del fondo.
@@ -48,6 +71,16 @@ export function SiteMenu() {
     };
   }, [open]);
 
+  // El visor de fotos (lightbox) pide ocultar el menú y el perfil mientras está
+  // abierto, para no estorbar sobre la foto a pantalla completa.
+  useEffect(() => {
+    const onViewer = (e: Event) =>
+      setViewerOpen((e as CustomEvent<boolean>).detail);
+    window.addEventListener("ogm:viewer", onViewer as EventListener);
+    return () =>
+      window.removeEventListener("ogm:viewer", onViewer as EventListener);
+  }, []);
+
   // Escape para cerrar.
   useEffect(() => {
     if (!open) return;
@@ -60,21 +93,25 @@ export function SiteMenu() {
 
   return (
     <>
-      {/* Botón único: muta hamburguesa <-> X. Vive por encima del overlay. */}
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={open ? "Cerrar menú" : "Abrir menú"}
-        aria-expanded={open}
-        className={`${styles.toggle} ${open ? styles.toggleOpen : ""}`}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+      {/* Botón único: muta hamburguesa <-> X. Vive por encima del overlay.
+          Se oculta mientras el visor de fotos está abierto. */}
+      {!viewerOpen && (
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label={open ? t("closeMenu") : t("openMenu")}
+          aria-expanded={open}
+          className={`${styles.toggle} ${open ? styles.toggleOpen : ""}`}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      )}
 
-      {/* Menú de cuenta (avatar/login). Oculto cuando el menú grande está abierto. */}
-      {!open && <UserMenu />}
+      {/* Menú de cuenta (avatar/login). Oculto cuando el menú grande o el visor
+          de fotos están abiertos. */}
+      {!open && !viewerOpen && <UserMenu />}
 
       <div className={`${styles.overlay} ${open ? styles.open : ""}`}>
         {/* Izquierda: preview — imagen del menú por defecto, foto del destacado al hover */}
@@ -112,7 +149,7 @@ export function SiteMenu() {
                 className={featuredActive ? styles.tabActive : styles.tab}
                 aria-current={featuredActive ? "page" : undefined}
               >
-                Destacados
+                {t("featured")}
               </Link>
               {NAV.map((n) => {
                 const active = isActive(n.href);
@@ -124,7 +161,7 @@ export function SiteMenu() {
                     className={active ? styles.tabActive : styles.tab}
                     aria-current={active ? "page" : undefined}
                   >
-                    {n.label}
+                    {t(n.key)}
                   </Link>
                 );
               })}
@@ -147,15 +184,16 @@ export function SiteMenu() {
                 </li>
               ))}
               {featured.length === 0 && (
-                <li className={styles.empty}>Aún no hay destacados.</li>
+                <li className={styles.empty}>{t("empty")}</li>
               )}
             </ul>
           </div>
 
           <div className={styles.panelFoot}>
             <Link href="/" onClick={close} className={styles.homeLink}>
-              Inicio
+              {t("home")}
             </Link>
+            <LanguageSwitcher />
           </div>
         </aside>
       </div>

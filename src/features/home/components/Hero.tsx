@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Image from "next/image";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
 import { KeepScrolling } from "@/components/icons";
 import styles from "./Hero.module.css";
 import { SiteMenu } from "@/components/layout/SiteMenu";
@@ -13,6 +14,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function Hero() {
   const rootRef = useRef<HTMLDivElement>(null);
+  const t = useTranslations("home");
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -121,7 +123,7 @@ export function Hero() {
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
           <p className="reveal-item invisible text-xs uppercase tracking-[4px] text-silver-400 sm:text-sm">
-            Productora musical · Barranquilla &amp; Bogotá
+            {t("tagline")}
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
             <button
@@ -134,32 +136,32 @@ export function Hero() {
               }
               className="reveal-item invisible pointer-events-auto rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
-              Explorar
+              {t("explore")}
             </button>
             <Link
               href="/artistas"
               className="reveal-item invisible pointer-events-auto rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
             >
-              Artistas
+              {t("artists")}
             </Link>
             <Link
               href="/cotizar"
               className="reveal-item invisible pointer-events-auto rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
             >
-              Cotizar producción
+              {t("quote")}
             </Link>
             <Link
               href="/agenda"
               className="reveal-item invisible pointer-events-auto rounded-full border border-amethyst-400/60 px-8 py-3 text-sm uppercase tracking-[2px] text-amethyst-300 transition hover:border-amethyst-300 hover:bg-amethyst-500/10"
             >
-              Agendar cita
+              {t("book")}
             </Link>
           </div>
         </div>
 
         <div className="reveal-item invisible flex flex-col items-center gap-2">
           <span className="text-xs uppercase tracking-[3px] text-silver-300 sm:text-sm">
-            Conoce a los productores
+            {t("meetProducers")}
           </span>
           <KeepScrolling className="w-5 animate-bounce-pulse text-amethyst-300" />
         </div>

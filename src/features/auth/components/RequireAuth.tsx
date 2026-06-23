@@ -1,8 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
 
 function LockIcon({ className = "" }: { className?: string }) {
@@ -31,8 +31,8 @@ function LockIcon({ className = "" }: { className?: string }) {
  */
 export function RequireAuth({
   children,
-  title = "Necesitas iniciar sesión",
-  message = "Inicia sesión o crea una cuenta para continuar.",
+  title,
+  message,
 }: {
   children: ReactNode;
   title?: string;
@@ -41,11 +41,14 @@ export function RequireAuth({
   const { user, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations();
+  const heading = title ?? t("auth.loginRequired");
+  const desc = message ?? t("auth.loginRequiredDesc");
 
   if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">Cargando…</p>
+        <p className="text-silver-300">{t("common.loading")}</p>
       </main>
     );
   }
@@ -76,33 +79,33 @@ export function RequireAuth({
           </div>
 
           <h1 className="mt-6 font-narrow text-4xl font-bold uppercase sm:text-5xl">
-            {title}
+            {heading}
           </h1>
-          <p className="mt-3 text-silver-300">{message}</p>
+          <p className="mt-3 text-silver-300">{desc}</p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               href={`/login?next=${encodeURIComponent(pathname)}`}
               className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
-              Iniciar sesión
+              {t("auth.login")}
             </Link>
             <button
               type="button"
               onClick={goBack}
               className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
             >
-              Regresar atrás
+              {t("auth.goBack")}
             </button>
           </div>
 
           <p className="mt-6 text-sm text-silver-400">
-            ¿No tienes cuenta?{" "}
+            {t("auth.noAccount")}{" "}
             <Link
               href={`/login?mode=register&next=${encodeURIComponent(pathname)}`}
               className="font-semibold text-amethyst-300 underline-offset-4 hover:text-amethyst-200 hover:underline"
             >
-              Crear cuenta
+              {t("auth.createAccount")}
             </Link>
           </p>
         </div>

@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -9,7 +10,7 @@ import {
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { ensureUserAccount } from "../lib/user-repo";
+import { ensureUserAccount, getUserAccount } from "../lib/user-repo";
 import { logout as doLogout } from "../lib/auth-actions";
 import type { UserAccount } from "@/domain/user";
 
@@ -21,6 +22,9 @@ interface AuthState {
   /** true mientras se resuelve el estado inicial de sesión. */
   loading: boolean;
   logout: () => Promise<void>;
+  /** Re-lee la cuenta desde Firestore (p. ej. tras el alta de artista o un
+   * cambio de rol), para que el contexto no quede desactualizado. */
+  refreshAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -55,8 +59,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const refreshAccount = useCallback(async () => {
+    const u = auth.currentUser;
+    if (!u) return;
+    try {
+      const acc = await getUserAccount(u.uid);
+      if (acc) setAccount(acc);
+    } catch {
+      /* sin red / reglas: conservamos la cuenta actual */
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, account, loading, logout: doLogout }}>
+    <AuthContext.Provider
+      value={{ user, account, loading, logout: doLogout, refreshAccount }}
+    >
       {children}
     </AuthContext.Provider>
   );

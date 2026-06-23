@@ -1,18 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useTranslations, useLocale } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { listAllQuotes } from "@/features/quotes/lib/quotes-repo";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
 import { formatCOP } from "@/domain/service";
-import {
-  QUOTE_LABEL,
-  RESERVA_LABEL,
-  badgeClass,
-  fechaCorta,
-} from "@/features/solicitudes/lib/estados";
+import { badgeClass, fechaCorta } from "@/features/solicitudes/lib/estados";
 
 function Badge({ estado, label }: { estado: string; label: string }) {
   return (
@@ -25,6 +21,9 @@ function Badge({ estado, label }: { estado: string; label: string }) {
 }
 
 export function AdminDashboard() {
+  const t = useTranslations();
+  const locale = useLocale();
+
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +41,13 @@ export function AdminDashboard() {
       .catch((e) => {
         if (!active) return;
         console.error("[admin] error:", e);
-        setError("No se pudieron cargar las solicitudes (¿tienes rol admin y reglas desplegadas?).");
+        setError(t("adminDashboard.loadError"));
         setLoading(false);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const pendientesQuotes = quotes.filter((q) => q.status === "pendiente").length;
   const pendientesPagos = reservas.filter(
@@ -57,14 +56,17 @@ export function AdminDashboard() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-4xl px-6 pb-24 pt-28 sm:px-12">
-      <p className="text-sm uppercase tracking-[4px] text-amethyst-300">Admin</p>
+      <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+        {t("adminDashboard.eyebrow")}
+      </p>
       <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
-        Panel
+        {t("adminDashboard.title")}
       </h1>
       <p className="mt-3 text-silver-300">
-        {pendientesQuotes} cotización{pendientesQuotes !== 1 ? "es" : ""} por
-        responder · {pendientesPagos} pago{pendientesPagos !== 1 ? "s" : ""} por
-        revisar.
+        {t("adminDashboard.summary", {
+          quotesCount: pendientesQuotes,
+          paymentsCount: pendientesPagos,
+        })}
       </p>
 
       <div className="mt-5 flex flex-wrap gap-3">
@@ -72,13 +74,13 @@ export function AdminDashboard() {
           href="/admin/finanzas"
           className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
         >
-          Ver finanzas →
+          {t("adminDashboard.viewFinances")}
         </Link>
         <Link
           href="/admin/perfiles"
           className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
         >
-          Perfiles →
+          {t("adminDashboard.viewProfiles")}
         </Link>
       </div>
 
@@ -89,15 +91,17 @@ export function AdminDashboard() {
       )}
 
       {loading ? (
-        <p className="mt-10 text-silver-300">Cargando…</p>
+        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
       ) : (
         <>
           <section className="mt-10">
             <h2 className="font-narrow text-2xl font-bold uppercase text-white">
-              Reservas
+              {t("adminDashboard.bookings")}
             </h2>
             {reservas.length === 0 ? (
-              <p className="mt-2 text-silver-400">Sin reservas todavía.</p>
+              <p className="mt-2 text-silver-400">
+                {t("adminDashboard.noBookings")}
+              </p>
             ) : (
               <ul className="mt-4 flex flex-col gap-3">
                 {reservas.map((r) => (
@@ -111,10 +115,13 @@ export function AdminDashboard() {
                           {r.serviceName}
                         </p>
                         <p className="text-sm text-silver-400">
-                          {fechaCorta(r.start)} · {formatCOP(r.amount ?? 0)}
+                          {fechaCorta(r.start, locale)} · {formatCOP(r.amount ?? 0)}
                         </p>
                       </div>
-                      <Badge estado={r.estado} label={RESERVA_LABEL[r.estado]} />
+                      <Badge
+                        estado={r.estado}
+                        label={t(`status.${r.estado}`)}
+                      />
                     </Link>
                   </li>
                 ))}
@@ -124,10 +131,12 @@ export function AdminDashboard() {
 
           <section className="mt-10">
             <h2 className="font-narrow text-2xl font-bold uppercase text-white">
-              Cotizaciones
+              {t("adminDashboard.quotes")}
             </h2>
             {quotes.length === 0 ? (
-              <p className="mt-2 text-silver-400">Sin cotizaciones todavía.</p>
+              <p className="mt-2 text-silver-400">
+                {t("adminDashboard.noQuotes")}
+              </p>
             ) : (
               <ul className="mt-4 flex flex-col gap-3">
                 {quotes.map((q) => (
@@ -142,12 +151,17 @@ export function AdminDashboard() {
                           {q.items.map((i) => i.serviceName).join(", ")}
                         </p>
                         <p className="text-sm text-silver-400">
-                          {fechaCorta(q.createdAt)} ·{" "}
+                          {fechaCorta(q.createdAt, locale)} ·{" "}
                           {formatCOP(q.estimatedTotal ?? 0)}
-                          {q.hasQuoteOnlyItems ? " + a cotizar" : ""}
+                          {q.hasQuoteOnlyItems
+                            ? ` + ${t("solicitudDetail.toQuote")}`
+                            : ""}
                         </p>
                       </div>
-                      <Badge estado={q.status} label={QUOTE_LABEL[q.status]} />
+                      <Badge
+                        estado={q.status}
+                        label={t(`status.${q.status}`)}
+                      />
                     </Link>
                   </li>
                 ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
   subscribeSessionsByProductor,
@@ -12,7 +13,7 @@ import {
   GRACIA_AUTO_INICIO_MIN,
   debeAutoIniciar,
 } from "@/domain/booking";
-import { SESION_LABEL, badgeClass } from "@/features/solicitudes/lib/estados";
+import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { Button } from "@/components/ui/Button";
 
 /** Formatea una duración en ms a `H:MM:SS` (o `M:SS` si < 1h). */
@@ -25,8 +26,8 @@ function fmtDur(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-function fmtFecha(ms: number): string {
-  return new Date(ms).toLocaleString("es-CO", {
+function fmtFecha(ms: number, locale: string): string {
+  return new Date(ms).toLocaleString(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   });
@@ -34,6 +35,7 @@ function fmtFecha(ms: number): string {
 
 export function ProducerConsole() {
   const { user } = useAuth();
+  const t = useTranslations();
   const [sesiones, setSesiones] = useState<Sesion[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState<number>(0);
@@ -42,8 +44,8 @@ export function ProducerConsole() {
   // Reloj que late cada segundo (temporizadores en vivo + chequeo de gracia).
   useEffect(() => {
     setNow(Date.now());
-    const t = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(t);
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
   }, []);
 
   // Suscripción en vivo a las sesiones del productor.
@@ -79,31 +81,33 @@ export function ProducerConsole() {
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
       <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
-        Productor
+        {t("roles.productor")}
       </p>
       <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
-        Consola
+        {t("userMenu.console")}
       </h1>
       <p className="mt-3 text-silver-300">
-        Tus sesiones en vivo. Sin datos de cobro: solo a quién atiendes y cuándo.
-        Si no inicias una sesión, arranca sola {GRACIA_AUTO_INICIO_MIN} min después
-        de la hora agendada.
+        {t("producerConsole.description", {
+          graceMins: GRACIA_AUTO_INICIO_MIN,
+        })}
       </p>
 
       {loading ? (
-        <p className="mt-10 text-silver-300">Cargando…</p>
+        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
       ) : sesiones.length === 0 ? (
         <p className="mt-10 text-silver-400">
-          No tienes sesiones asignadas todavía.
+          {t("producerConsole.empty")}
         </p>
       ) : (
         <>
           <section className="mt-8">
             <h2 className="font-narrow text-2xl font-bold uppercase text-white">
-              Activas
+              {t("producerConsole.activeSection")}
             </h2>
             {activas.length === 0 ? (
-              <p className="mt-2 text-silver-400">Nada en cola.</p>
+              <p className="mt-2 text-silver-400">
+                {t("producerConsole.nothingInQueue")}
+              </p>
             ) : (
               <ul className="mt-4 flex flex-col gap-3">
                 {activas.map((s) => (
@@ -116,7 +120,7 @@ export function ProducerConsole() {
           {historial.length > 0 && (
             <section className="mt-10">
               <h2 className="font-narrow text-2xl font-bold uppercase text-white">
-                Historial
+                {t("producerConsole.historySection")}
               </h2>
               <ul className="mt-4 flex flex-col gap-2">
                 {historial.map((s) => (
@@ -131,7 +135,7 @@ export function ProducerConsole() {
                     <span className="shrink-0 text-silver-400">
                       {s.estado === "finalizada" && s.startedAt && s.endedAt
                         ? fmtDur(s.endedAt - s.startedAt)
-                        : SESION_LABEL[s.estado]}
+                        : t(`status.${s.estado}`)}
                     </span>
                   </li>
                 ))}
@@ -145,6 +149,8 @@ export function ProducerConsole() {
 }
 
 function SesionCard({ sesion, now }: { sesion: Sesion; now: number }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [busy, setBusy] = useState(false);
 
   async function onStart() {
@@ -169,13 +175,19 @@ function SesionCard({ sesion, now }: { sesion: Sesion; now: number }) {
 
   let aviso: string;
   if (enCurso) {
-    aviso = `En curso · ${fmtDur(now - (sesion.startedAt ?? now))}`;
+    aviso = t("producerConsole.avisoEnCurso", {
+      dur: fmtDur(now - (sesion.startedAt ?? now)),
+    });
   } else if (now < sesion.scheduledStart) {
-    aviso = `Programada · ${fmtFecha(sesion.scheduledStart)}`;
+    aviso = t("producerConsole.avisoProgramada", {
+      fecha: fmtFecha(sesion.scheduledStart, locale),
+    });
   } else if (now < graceAt) {
-    aviso = `Auto-inicia en ${fmtDur(graceAt - now)}`;
+    aviso = t("producerConsole.avisoAutoInicia", {
+      dur: fmtDur(graceAt - now),
+    });
   } else {
-    aviso = "Iniciando…";
+    aviso = t("producerConsole.avisoIniciando");
   }
 
   return (
@@ -197,15 +209,15 @@ function SesionCard({ sesion, now }: { sesion: Sesion; now: number }) {
         <span
           className={`rounded-full border px-2.5 py-0.5 text-xs ${badgeClass(sesion.estado)}`}
         >
-          {SESION_LABEL[sesion.estado]}
+          {t(`status.${sesion.estado}`)}
         </span>
         {enCurso ? (
           <Button size="sm" variant="danger" onClick={onEnd} loading={busy}>
-            Finalizar
+            {t("producerConsole.endButton")}
           </Button>
         ) : (
           <Button size="sm" onClick={onStart} loading={busy}>
-            Iniciar
+            {t("producerConsole.startButton")}
           </Button>
         )}
       </div>

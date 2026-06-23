@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import {
   getQuoteById,
   updateQuoteStatus,
@@ -28,16 +29,13 @@ import {
   type ReservaEstado,
   type Sesion,
 } from "@/domain/booking";
-import {
-  QUOTE_LABEL,
-  RESERVA_LABEL,
-  SESION_LABEL,
-  badgeClass,
-} from "@/features/solicitudes/lib/estados";
+import { badgeClass } from "@/features/solicitudes/lib/estados";
 
 type Tipo = "cotizacion" | "reserva";
 
 export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [quote, setQuote] = useState<QuoteRequest | null>(null);
   const [reserva, setReserva] = useState<Reserva | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +92,9 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         from: "estudio",
         tipo: "propuesta",
         price: price ? Number(price) : undefined,
-        texto: propText.trim() || "Te enviamos una propuesta.",
+        // Sin texto fijo: el chat ya muestra el encabezado "Propuesta · $X"
+        // traducido al idioma del cliente. Si el admin escribe algo, va tal cual.
+        texto: propText.trim() || undefined,
       });
       await updateQuoteStatus(id, "cotizada");
       setPrice("");
@@ -113,8 +113,8 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       await updateQuoteStatus(id, st);
       await sendMessage("quotes", id, {
         from: "sistema",
-        tipo: "mensaje",
-        texto: `Estado: ${QUOTE_LABEL[st]}`,
+        tipo: "estado",
+        estado: st,
       });
       await reload();
     } catch (e) {
@@ -130,8 +130,8 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       await updateBookingEstado(id, st);
       await sendMessage("bookings", id, {
         from: "sistema",
-        tipo: "mensaje",
-        texto: `Estado: ${RESERVA_LABEL[st]}`,
+        tipo: "estado",
+        estado: st,
       });
       await reload();
     } catch (e) {
@@ -144,7 +144,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">Cargando…</p>
+        <p className="text-silver-300">{t("common.loading")}</p>
       </main>
     );
   }
@@ -154,23 +154,20 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <h1 className="font-narrow text-3xl font-bold uppercase">
-          No encontrada
+          {t("adminSolicitud.notFound")}
         </h1>
         <Link
           href="/admin"
           className="mt-6 rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
         >
-          Volver al panel
+          {t("adminSolicitud.backToPanel")}
         </Link>
       </main>
     );
   }
 
   const estado = tipo === "cotizacion" ? quote!.status : reserva!.estado;
-  const label =
-    tipo === "cotizacion"
-      ? QUOTE_LABEL[quote!.status]
-      : RESERVA_LABEL[reserva!.estado];
+  const label = t(`status.${estado}`);
   const sede = reserva ? sedes.find((s) => s.id === reserva.sede) : undefined;
 
   return (
@@ -179,12 +176,14 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         href="/admin"
         className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
       >
-        ← Panel admin
+        ← {t("userMenu.adminPanel")}
       </Link>
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
-          {tipo === "cotizacion" ? "Cotización" : "Reserva"}
+          {tipo === "cotizacion"
+            ? t("solicitudDetail.quote")
+            : t("solicitudDetail.booking")}
         </h1>
         <span
           className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClass(estado)}`}
@@ -211,7 +210,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                   <span>
                     {i.unitPrice != null
                       ? formatCOP(i.unitPrice * i.quantity)
-                      : "A cotizar"}
+                      : t("solicitudDetail.toQuote")}
                   </span>
                 </li>
               ))}
@@ -220,11 +219,15 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               <p className="text-silver-300">“{quote.details}”</p>
             )}
             {quote.budget && (
-              <p className="text-silver-400">Presupuesto cliente: {quote.budget}</p>
+              <p className="text-silver-400">
+                {t("adminSolicitud.clientBudget", { budget: quote.budget })}
+              </p>
             )}
             {quote.collaborators && quote.collaborators.length > 0 && (
               <p className="text-silver-400">
-                Artistas: {quote.collaborators.map((c) => c.name).join(", ")}
+                {t("adminSolicitud.artists", {
+                  names: quote.collaborators.map((c) => c.name).join(", "),
+                })}
               </p>
             )}
           </div>
@@ -235,7 +238,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               {reserva.serviceName}
             </p>
             <p className="text-silver-300">
-              {new Date(reserva.start).toLocaleString("es-CO", {
+              {new Date(reserva.start).toLocaleString(locale, {
                 dateStyle: "long",
                 timeStyle: "short",
               })}{" "}
@@ -251,21 +254,23 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                 rel="noreferrer"
                 className="text-amethyst-200 underline underline-offset-2 hover:text-white"
               >
-                Ver comprobante de pago
+                {t("adminSolicitud.viewReceipt")}
               </a>
             )}
             {reserva.tipo === "perfil_artista" && (
               <p className="mt-1 rounded-lg border border-amethyst-300/30 bg-amethyst-500/10 px-3 py-2 text-xs text-amethyst-100">
-                Pedido de <strong>perfil de artista</strong>. Al confirmar el pago,
-                asigna el rol <code>artista</code> en la consola de Firebase y activa
-                el premium en{" "}
-                <Link
-                  href="/admin/perfiles"
-                  className="underline underline-offset-2"
-                >
-                  /admin/perfiles
-                </Link>
-                .
+                {t.rich("adminSolicitud.artistProfileNote", {
+                  strong: (chunks) => <strong>{chunks}</strong>,
+                  code: (chunks) => <code>{chunks}</code>,
+                  link: (chunks) => (
+                    <Link
+                      href="/admin/perfiles"
+                      className="underline underline-offset-2"
+                    >
+                      {chunks}
+                    </Link>
+                  ),
+                })}
               </p>
             )}
           </div>
@@ -275,13 +280,13 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       {/* Acciones */}
       <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-          Acciones
+          {t("adminSolicitud.actions")}
         </h2>
 
         {quote && (quote.status === "pendiente" || quote.status === "cotizada") && (
           <div className="mb-4 flex flex-col gap-2">
             <span className="text-xs uppercase tracking-[2px] text-silver-300">
-              Enviar propuesta
+              {t("adminSolicitud.sendProposal")}
             </span>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-silver-400">
@@ -292,11 +297,11 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                 inputMode="numeric"
                 value={
                   price
-                    ? new Intl.NumberFormat("es-CO").format(Number(price))
+                    ? new Intl.NumberFormat(locale).format(Number(price))
                     : ""
                 }
                 onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))}
-                placeholder="Precio propuesto"
+                placeholder={t("adminSolicitud.proposedPrice")}
                 className="w-full rounded-lg border border-white/15 bg-black/30 py-2.5 pl-7 pr-4 text-sm tabular-nums text-silver-50 outline-none focus:border-amethyst-300"
               />
             </div>
@@ -304,11 +309,11 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               value={propText}
               onChange={(e) => setPropText(e.target.value)}
               rows={2}
-              placeholder="Detalle de la propuesta (alcance, condiciones)…"
+              placeholder={t("adminSolicitud.proposalDetail")}
               className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
             />
             <Button onClick={enviarPropuesta} loading={busy} className="self-start">
-              Enviar propuesta
+              {t("adminSolicitud.sendProposal")}
             </Button>
           </div>
         )}
@@ -325,7 +330,9 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                   onClick={() => cambiarQuote(s)}
                   loading={busy}
                 >
-                  Marcar {QUOTE_LABEL[s].toLowerCase()}
+                  {t("adminSolicitud.markAs", {
+                    status: t(`status.${s}`).toLowerCase(),
+                  })}
                 </Button>
               ))}
           {reserva &&
@@ -350,7 +357,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                 onClick={() => cambiarReserva(s)}
                 loading={busy}
               >
-                {RESERVA_LABEL[s]}
+                {t(`status.${s}`)}
               </Button>
             ))}
           {quote &&
@@ -370,30 +377,29 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       {reserva && reserva.tipo !== "perfil_artista" && (
         <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
           <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-            Sesión del productor
+            {t("adminSolicitud.producerSession")}
           </h2>
           {sesion ? (
             <p className="text-sm text-silver-300">
-              Sesión creada · productor{" "}
+              {t("adminSolicitud.sessionCreated")}{" "}
               <code className="text-amethyst-200">{sesion.productorId}</code> ·{" "}
-              {SESION_LABEL[sesion.estado]}
+              {t(`status.${sesion.estado}`)}
             </p>
           ) : reserva.productorId ? (
             <p className="text-sm text-silver-300">
-              Productor asignado:{" "}
-              <code className="text-amethyst-200">{reserva.productorId}</code>. La
-              sesión se crea sola al confirmar el pago (la genera el servidor).
+              {t("adminSolicitud.producerAssigned")}{" "}
+              <code className="text-amethyst-200">{reserva.productorId}</code>.{" "}
+              {t("adminSolicitud.sessionAutoCreated")}
             </p>
           ) : (
             <div className="flex flex-col gap-2">
               <p className="text-sm text-silver-400">
-                Asigna el UID del productor. Al confirmar el pago, el servidor crea
-                la sesión en su consola (sin el monto).
+                {t("adminSolicitud.assignProducerHint")}
               </p>
               <input
                 value={productorIdInput}
                 onChange={(e) => setProductorIdInput(e.target.value)}
-                placeholder="UID del productor"
+                placeholder={t("adminSolicitud.producerUidPlaceholder")}
                 className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
               />
               <Button
@@ -402,7 +408,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                 disabled={!productorIdInput.trim()}
                 className="self-start"
               >
-                Asignar productor
+                {t("adminSolicitud.assignProducer")}
               </Button>
             </div>
           )}
@@ -412,7 +418,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       {/* Hilo */}
       <section className="mt-8">
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-          Conversación con el cliente
+          {t("adminSolicitud.conversationWithClient")}
         </h2>
         <Thread parent={parent} id={id} perspective="estudio" />
       </section>

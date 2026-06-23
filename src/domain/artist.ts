@@ -3,7 +3,25 @@
  * futura app nativa). No importar nada de UI ni de Firebase aquí.
  */
 
-export type SocialPlatform = "spotify" | "instagram" | "youtube" | "x";
+export type SocialPlatform =
+  | "spotify"
+  | "instagram"
+  | "youtube"
+  | "x"
+  | "facebook"
+  | "tiktok"
+  | "threads";
+
+/** Orden de presentación de redes (paleta del editor y perfil). */
+export const SOCIAL_PLATFORMS: SocialPlatform[] = [
+  "instagram",
+  "spotify",
+  "youtube",
+  "tiktok",
+  "x",
+  "facebook",
+  "threads",
+];
 
 export interface Track {
   title: string;

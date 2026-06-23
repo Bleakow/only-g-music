@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
   countLikes,
@@ -15,6 +16,7 @@ import { HeartIcon } from "@/components/icons";
  */
 export function LikeButton({ slug }: { slug: string }) {
   const { user, loading: authLoading } = useAuth();
+  const t = useTranslations();
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -67,9 +69,9 @@ export function LikeButton({ slug }: { slug: string }) {
       title={
         user
           ? liked
-            ? "Quitar me gusta"
-            : "Me gusta"
-          : "Inicia sesión para reaccionar"
+            ? t("likeButton.unlike")
+            : t("likeButton.like")
+          : t("likeButton.signInToReact")
       }
       className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition disabled:opacity-60 ${
         liked

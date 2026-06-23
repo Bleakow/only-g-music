@@ -4,7 +4,7 @@
  */
 
 export type MessageFrom = "cliente" | "estudio" | "sistema";
-export type MessageTipo = "mensaje" | "propuesta" | "comprobante";
+export type MessageTipo = "mensaje" | "propuesta" | "comprobante" | "estado";
 
 export interface ThreadMessage {
   id: string;
@@ -16,6 +16,11 @@ export interface ThreadMessage {
   attachmentName?: string;
   /** Monto propuesto en COP (cuando `tipo === "propuesta"`). */
   price?: number;
+  /**
+   * Código de estado (cuando `tipo === "estado"`). Se persiste el código, no el
+   * texto, para que el chat lo traduzca al idioma de quien lo lee.
+   */
+  estado?: string;
   createdAt: number;
 }
 

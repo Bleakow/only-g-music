@@ -89,37 +89,51 @@ export function logout() {
   return firebaseSignOut(auth);
 }
 
-/** Traduce los códigos de error de Firebase Auth a mensajes en español. */
-export function authErrorMessage(error: unknown): string {
+/** Clave semántica de error de auth (se traduce con el catálogo `authErrors`). */
+export type AuthErrorCode =
+  | "invalidEmail"
+  | "emailInUse"
+  | "weakPassword"
+  | "wrongCredentials"
+  | "popupClosed"
+  | "accountExists"
+  | "popupBlocked"
+  | "notAllowed"
+  | "tooManyRequests"
+  | "missingEmail"
+  | "unknown";
+
+/** Mapea el código de Firebase Auth a una clave estable (i18n en la UI). */
+export function authErrorCode(error: unknown): AuthErrorCode {
   const code =
     typeof error === "object" && error && "code" in error
       ? String((error as { code: unknown }).code)
       : "";
   switch (code) {
     case "auth/invalid-email":
-      return "El correo no es válido.";
+      return "invalidEmail";
     case "auth/email-already-in-use":
-      return "Ya existe una cuenta con ese correo.";
+      return "emailInUse";
     case "auth/weak-password":
-      return "La contraseña debe tener al menos 6 caracteres.";
+      return "weakPassword";
     case "auth/invalid-credential":
     case "auth/wrong-password":
     case "auth/user-not-found":
-      return "Correo o contraseña incorrectos.";
+      return "wrongCredentials";
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
-      return "Cerraste la ventana de acceso antes de terminar.";
+      return "popupClosed";
     case "auth/account-exists-with-different-credential":
-      return "Ya existe una cuenta con ese correo usando otro método de acceso.";
+      return "accountExists";
     case "auth/popup-blocked":
-      return "El navegador bloqueó la ventana emergente. Habilítala e inténtalo de nuevo.";
+      return "popupBlocked";
     case "auth/operation-not-allowed":
-      return "Este método de acceso no está habilitado en Firebase.";
+      return "notAllowed";
     case "auth/too-many-requests":
-      return "Demasiados intentos. Inténtalo de nuevo en un momento.";
+      return "tooManyRequests";
     case "auth/missing-email":
-      return "Escribe tu correo.";
+      return "missingEmail";
     default:
-      return "Algo salió mal. Inténtalo de nuevo.";
+      return "unknown";
   }
 }

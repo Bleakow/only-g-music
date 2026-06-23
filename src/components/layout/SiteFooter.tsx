@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { getTranslations } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import Image from "next/image";
 import {
   SpotifyIcon,
@@ -7,10 +8,10 @@ import {
 } from "@/components/icons";
 
 const NAV = [
-  { href: "/artistas", label: "Artistas" },
-  { href: "/eventos", label: "Eventos" },
-  { href: "/producciones", label: "Producciones" },
-];
+  { href: "/artistas", key: "nav.artists" },
+  { href: "/eventos", key: "nav.events" },
+  { href: "/producciones", key: "nav.productions" },
+] as const;
 
 const SOCIALS = [
   { href: "#", label: "Spotify", Icon: SpotifyIcon },
@@ -18,13 +19,14 @@ const SOCIALS = [
   { href: "#", label: "YouTube", Icon: YouTubeIcon },
 ];
 
-export function SiteFooter() {
+export async function SiteFooter() {
+  const t = await getTranslations();
   const year = new Date().getFullYear();
 
   return (
     <footer className="border-t border-white/10 px-6 py-12 sm:px-12">
       <div className="flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/" aria-label="Inicio">
+        <Link href="/" aria-label={t("nav.home")}>
           <Image
             src="/logo/logo.png"
             alt="Only G"
@@ -41,7 +43,7 @@ export function SiteFooter() {
               href={item.href}
               className="text-sm uppercase tracking-[2px] text-white/60 transition-colors hover:text-white"
             >
-              {item.label}
+              {t(item.key)}
             </Link>
           ))}
         </nav>
@@ -63,7 +65,7 @@ export function SiteFooter() {
       </div>
 
       <p className="mt-8 text-xs text-white/40">
-        © {year} Only G Music. Todos los derechos reservados.
+        {t("footer.rights", { year: String(year) })}
       </p>
     </footer>
   );

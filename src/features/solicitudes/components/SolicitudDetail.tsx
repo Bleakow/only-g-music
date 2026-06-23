@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { getQuoteById } from "@/features/quotes/lib/quotes-repo";
 import {
   getReservaById,
@@ -15,11 +16,13 @@ import { sedes } from "@/features/sedes/data/sedes";
 import { formatCOP } from "@/domain/service";
 import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
-import { QUOTE_LABEL, RESERVA_LABEL, badgeClass, fechaCorta } from "../lib/estados";
+import { badgeClass } from "../lib/estados";
 
 type Tipo = "cotizacion" | "reserva";
 
 export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
+  const t = useTranslations();
+  const locale = useLocale();
   const [quote, setQuote] = useState<QuoteRequest | null>(null);
   const [reserva, setReserva] = useState<Reserva | null>(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +59,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       await sendMessage("bookings", reserva.id, {
         from: "cliente",
         tipo: "comprobante",
-        texto: "Envié el comprobante de pago.",
+        texto: t("solicitudDetail.receiptMessage"),
         attachmentUrl: comprobante[0].url,
         attachmentName: comprobante[0].name,
       });
@@ -73,7 +76,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">Cargando…</p>
+        <p className="text-silver-300">{t("common.loading")}</p>
       </main>
     );
   }
@@ -83,23 +86,20 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     return (
       <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
         <h1 className="font-narrow text-3xl font-bold uppercase">
-          Solicitud no encontrada
+          {t("solicitudDetail.notFound")}
         </h1>
         <Link
           href="/solicitudes"
           className="mt-6 rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
         >
-          Volver a mis solicitudes
+          {t("solicitudDetail.backToRequests")}
         </Link>
       </main>
     );
   }
 
   const estado = tipo === "cotizacion" ? quote!.status : reserva!.estado;
-  const label =
-    tipo === "cotizacion"
-      ? QUOTE_LABEL[quote!.status]
-      : RESERVA_LABEL[reserva!.estado];
+  const label = t(`status.${estado}`);
   const sede = reserva ? sedes.find((s) => s.id === reserva.sede) : undefined;
 
   return (
@@ -108,12 +108,14 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         href="/solicitudes"
         className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
       >
-        ← Mis solicitudes
+        ← {t("userMenu.myRequests")}
       </Link>
 
       <div className="mt-4 flex items-center justify-between gap-3">
         <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
-          {tipo === "cotizacion" ? "Cotización" : "Reserva"}
+          {tipo === "cotizacion"
+            ? t("solicitudDetail.quote")
+            : t("solicitudDetail.booking")}
         </h1>
         <span
           className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClass(estado)}`}
@@ -130,12 +132,16 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               {reserva.serviceName}
             </p>
             <p className="text-silver-300">
-              {new Date(reserva.start).toLocaleString("es-CO", {
+              {new Date(reserva.start).toLocaleString(locale, {
                 dateStyle: "long",
                 timeStyle: "short",
               })}
             </p>
-            <p className="text-silver-300">Sede: {sede?.nombre ?? reserva.sede}</p>
+            <p className="text-silver-300">
+              {t("solicitudDetail.venue", {
+                name: sede?.nombre ?? reserva.sede,
+              })}
+            </p>
             <p className="mt-1 font-semibold text-white">
               {formatCOP(reserva.amount ?? 0)}
             </p>
@@ -153,14 +159,18 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                   <span>
                     {i.unitPrice != null
                       ? formatCOP(i.unitPrice * i.quantity)
-                      : "A cotizar"}
+                      : t("solicitudDetail.toQuote")}
                   </span>
                 </li>
               ))}
             </ul>
             <p className="border-t border-white/10 pt-2 text-silver-300">
-              Estimado: {formatCOP(quote.estimatedTotal ?? 0)}
-              {quote.hasQuoteOnlyItems ? " + a cotizar" : ""}
+              {t("solicitudDetail.estimated", {
+                amount: formatCOP(quote.estimatedTotal ?? 0),
+              })}
+              {quote.hasQuoteOnlyItems
+                ? ` ${t("solicitudDetail.plusToQuote")}`
+                : ""}
             </p>
           </div>
         )}
@@ -170,19 +180,18 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       {reserva && reserva.estado === "pendiente_pago" && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
           <h2 className="font-narrow text-xl font-bold uppercase text-white">
-            Pago
+            {t("solicitudDetail.payment")}
           </h2>
           {sede?.qrPagoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={sede.qrPagoUrl}
-              alt="QR de pago"
+              alt={t("solicitudDetail.qrAlt")}
               className="mt-3 size-44 rounded-lg object-contain"
             />
           ) : (
             <p className="mt-2 text-sm text-silver-300">
-              Te compartiremos los datos/QR de pago por el chat. Cuando pagues,
-              sube aquí tu comprobante.
+              {t("solicitudDetail.paymentInfo")}
             </p>
           )}
           <div className="mt-3">
@@ -198,22 +207,21 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
             loading={busy}
             disabled={comprobante.length === 0}
           >
-            Enviar comprobante
+            {t("solicitudDetail.sendReceipt")}
           </Button>
         </section>
       )}
 
       {reserva && reserva.estado === "pago_en_revision" && (
         <p className="mt-6 rounded-lg border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
-          Recibimos tu comprobante. La administración lo está revisando; te
-          confirmamos por el chat.
+          {t("solicitudDetail.receiptUnderReview")}
         </p>
       )}
 
       {/* Hilo */}
       <section className="mt-8">
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-          Conversación
+          {t("solicitudDetail.conversation")}
         </h2>
         <Thread parent={parent} id={id} />
       </section>

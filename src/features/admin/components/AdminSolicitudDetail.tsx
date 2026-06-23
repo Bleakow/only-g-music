@@ -13,8 +13,12 @@ import {
   setBookingProductor,
 } from "@/features/booking/lib/booking-repo";
 import { getSesionByReserva } from "@/features/booking/lib/sessions-repo";
-import { sendMessage } from "@/features/threads/lib/thread-repo";
-import { Thread } from "@/features/threads/components/Thread";
+import {
+  ensureSupportConversation,
+  sendConversationMessage,
+} from "@/features/conversations/lib/conversations-repo";
+import { ConversationView } from "@/features/conversations/components/ConversationView";
+import { useAuth } from "@/features/auth/components/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { formatCOP } from "@/domain/service";
 import { sedes } from "@/features/sedes/data/sedes";
@@ -36,6 +40,7 @@ type Tipo = "cotizacion" | "reserva";
 export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const t = useTranslations();
   const locale = useLocale();
+  const { user } = useAuth();
   const [quote, setQuote] = useState<QuoteRequest | null>(null);
   const [reserva, setReserva] = useState<Reserva | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,8 +49,24 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const [propText, setPropText] = useState("");
   const [sesion, setSesion] = useState<Sesion | null>(null);
   const [productorIdInput, setProductorIdInput] = useState("");
+  const [convId, setConvId] = useState<string | null>(null);
 
   const parent = tipo === "cotizacion" ? "quotes" : "bookings";
+  const ownerUid = quote?.uid ?? reserva?.uid ?? null;
+
+  // Asegura el chat de soporte (el dueño de la solicitud es el participante).
+  useEffect(() => {
+    if (!ownerUid) return;
+    let active = true;
+    ensureSupportConversation(parent, id, ownerUid)
+      .then((cid) => {
+        if (active) setConvId(cid);
+      })
+      .catch((e) => console.error("[support] ensure:", e));
+    return () => {
+      active = false;
+    };
+  }, [parent, id, ownerUid]);
 
   async function reload() {
     if (tipo === "cotizacion") {
@@ -86,10 +107,13 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   }, [tipo, id]);
 
   async function enviarPropuesta() {
+    if (!quote) return;
     setBusy(true);
     try {
-      await sendMessage("quotes", id, {
-        from: "estudio",
+      const cid =
+        convId ?? (await ensureSupportConversation("quotes", id, quote.uid));
+      await sendConversationMessage(cid, {
+        from: user?.uid ?? "estudio",
         tipo: "propuesta",
         price: price ? Number(price) : undefined,
         // Sin texto fijo: el chat ya muestra el encabezado "Propuesta · $X"
@@ -111,11 +135,13 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     setBusy(true);
     try {
       await updateQuoteStatus(id, st);
-      await sendMessage("quotes", id, {
-        from: "sistema",
-        tipo: "estado",
-        estado: st,
-      });
+      if (convId) {
+        await sendConversationMessage(convId, {
+          from: "sistema",
+          tipo: "estado",
+          estado: st,
+        });
+      }
       await reload();
     } catch (e) {
       console.error("[admin] error:", e);
@@ -128,11 +154,13 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     setBusy(true);
     try {
       await updateBookingEstado(id, st);
-      await sendMessage("bookings", id, {
-        from: "sistema",
-        tipo: "estado",
-        estado: st,
-      });
+      if (convId) {
+        await sendConversationMessage(convId, {
+          from: "sistema",
+          tipo: "estado",
+          estado: st,
+        });
+      }
       await reload();
     } catch (e) {
       console.error("[admin] error:", e);
@@ -420,7 +448,13 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
           {t("adminSolicitud.conversationWithClient")}
         </h2>
-        <Thread parent={parent} id={id} perspective="estudio" />
+        {convId ? (
+          <div className="flex h-[28rem] flex-col">
+            <ConversationView conversationId={convId} />
+          </div>
+        ) : (
+          <p className="text-sm text-silver-400">{t("common.loading")}</p>
+        )}
       </section>
     </main>
   );

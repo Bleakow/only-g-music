@@ -12,6 +12,7 @@ import {
   onDocumentUpdated,
 } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
@@ -23,6 +24,8 @@ const db = getFirestore();
 const REGION = "southamerica-east1";
 /** Mantener en sync con `src/domain/profile-order.ts`. */
 const PRECIO_PERFIL = 80000;
+/** Meses de vigencia del premium — sync con PREMIUM_DURACION_MESES (dominio). */
+const PREMIUM_DURACION_MESES = 2;
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -131,6 +134,88 @@ export const onLikeRemoved = onDocumentDeleted(
     });
   },
 );
+
+/**
+ * Mantiene `lastMessage`/`updatedAt` de la conversación al crear un mensaje
+ * (server-authoritative: el cliente solo escribe mensajes en la subcolección,
+ * nunca el documento padre). Alimenta la lista de chats sin leer cada hilo.
+ */
+export const onConversationMessage = onDocumentCreated(
+  "conversations/{cid}/messages/{mid}",
+  async (event) => {
+    const msg = event.data?.data();
+    if (!msg) return;
+    await db.doc(`conversations/${event.params.cid}`).update({
+      lastMessage: {
+        tipo: msg.tipo,
+        texto: msg.texto ?? null,
+        from: msg.from,
+        createdAt: msg.createdAt?.toMillis?.() ?? Date.now(),
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  },
+);
+
+/**
+ * Confirma un pago de premium (SOLO admin). Server-authoritative y atómico: en un
+ * único batch activa el premium del perfil, cierra/bloquea el chat de pago y
+ * postea el mensaje `pago_confirmado`. Idempotente (si ya está confirmado, no
+ * hace nada). El monto se toma del precio fijo del servidor, no del cliente.
+ */
+export const confirmPayment = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
+
+  const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
+  if (!Array.isArray(roles) || !roles.includes("admin")) {
+    throw new HttpsError("permission-denied", "Solo administradores.");
+  }
+
+  const conversationId = request.data?.conversationId;
+  if (typeof conversationId !== "string" || !conversationId) {
+    throw new HttpsError("invalid-argument", "Falta conversationId.");
+  }
+
+  const convRef = db.doc(`conversations/${conversationId}`);
+  const conv = (await convRef.get()).data();
+  if (!conv) throw new HttpsError("not-found", "Conversación inexistente.");
+  if (conv.type !== "pago") {
+    throw new HttpsError("failed-precondition", "No es un chat de pago.");
+  }
+  if (conv.pago?.estado === "confirmado") return { ok: true }; // idempotente
+
+  const slug = conv.ref?.id;
+  if (conv.ref?.kind !== "premium" || typeof slug !== "string") {
+    throw new HttpsError("failed-precondition", "Pago sin perfil asociado.");
+  }
+
+  const now = Date.now();
+  const expira = new Date(now);
+  expira.setMonth(expira.getMonth() + PREMIUM_DURACION_MESES);
+  const premium = { activo: true, since: now, expiresAt: expira.getTime() };
+
+  const batch = db.batch();
+  batch.update(db.doc(`artistProfiles/${slug}`), {
+    premium,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: conv.pago?.monto ?? PRECIO_PERFIL,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(`Pago confirmado: ${conversationId} → premium ${slug}`);
+  return { ok: true };
+});
 
 /**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el

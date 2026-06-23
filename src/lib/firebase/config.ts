@@ -6,6 +6,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
+import { getFunctions, type Functions } from "firebase/functions";
 
 /**
  * Configuración del cliente de Firebase.
@@ -36,5 +37,7 @@ export const db: Firestore = isNewApp
   ? initializeFirestore(app, { ignoreUndefinedProperties: true })
   : getFirestore(app);
 export const storage: FirebaseStorage = getStorage(app);
+// Cloud Functions callables. Misma región que los triggers (junto a la base).
+export const functions: Functions = getFunctions(app, "southamerica-east1");
 
 export default app;

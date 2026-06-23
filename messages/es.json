@@ -239,7 +239,8 @@
     "bookings": "Reservas",
     "noBookings": "Sin reservas todavía.",
     "quotes": "Cotizaciones",
-    "noQuotes": "Sin cotizaciones todavía."
+    "noQuotes": "Sin cotizaciones todavía.",
+    "viewPayments": "Pagos →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",
@@ -635,5 +636,53 @@
   "meta": {
     "rootTitle": "Only G Music",
     "rootDesc": "Productora musical — artistas, eventos y producciones."
+  },
+  "chat": {
+    "title": "Mensajes",
+    "open": "Abrir chat",
+    "empty": "No tienes conversaciones todavía.",
+    "noMessages": "Aún no hay mensajes.",
+    "placeholder": "Escribe un mensaje…",
+    "send": "Enviar",
+    "close": "Cerrar",
+    "back": "Volver",
+    "lockedClosed": "Esta conversación está cerrada.",
+    "lockedWaiting": "Esperando confirmación del estudio…",
+    "receipt": "Comprobante",
+    "method": "Método de pago: {metodo}",
+    "paymentConfirmed": "Pago confirmado",
+    "statusChanged": "Estado: {status}",
+    "viewFile": "Ver archivo",
+    "types": {
+      "soporte": "Soporte",
+      "pago": "Pago",
+      "directo": "Chat"
+    },
+    "metodos": {
+      "nequi": "Nequi",
+      "bancolombia": "Bancolombia",
+      "llave": "Llave",
+      "efectivo": "Efectivo"
+    },
+    "proposal": "Propuesta"
+  },
+  "pago": {
+    "chooseMethod": "Elige cómo pagar",
+    "premiumTitle": "Pago de premium",
+    "payWith": "Paga {monto} con {metodo}",
+    "instructions": "Realiza el pago y sube tu comprobante aquí. Un admin revisará que el pago llegó correctamente; esto puede tomar unos minutos.",
+    "uploadReceipt": "Subir comprobante",
+    "receiptSent": "Envié el comprobante de pago.",
+    "reviewing": "Comprobante enviado. Un admin lo está revisando…",
+    "cashOnlyHigherTier": "El pago en efectivo se desbloquea para miembros de nivel superior.",
+    "confirmButton": "Autorizo haber recibido {monto} · Confirmar pago",
+    "confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo.",
+    "startError": "No se pudo iniciar el pago. Inténtalo de nuevo."
+  },
+  "adminPagos": {
+    "backToAdmin": "← Panel admin",
+    "title": "Pagos pendientes",
+    "empty": "No hay pagos por revisar.",
+    "review": "Revisar"
   }
 }

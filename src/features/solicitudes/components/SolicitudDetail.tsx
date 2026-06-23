@@ -8,8 +8,11 @@ import {
   getReservaById,
   marcarPagoEnRevision,
 } from "@/features/booking/lib/booking-repo";
-import { sendMessage } from "@/features/threads/lib/thread-repo";
-import { Thread } from "@/features/threads/components/Thread";
+import {
+  ensureSupportConversation,
+  sendConversationMessage,
+} from "@/features/conversations/lib/conversations-repo";
+import { ConversationView } from "@/features/conversations/components/ConversationView";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
 import { sedes } from "@/features/sedes/data/sedes";
@@ -28,8 +31,24 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const [loading, setLoading] = useState(true);
   const [comprobante, setComprobante] = useState<UploadedFile[]>([]);
   const [busy, setBusy] = useState(false);
+  const [convId, setConvId] = useState<string | null>(null);
 
   const parent = tipo === "cotizacion" ? "quotes" : "bookings";
+  const ownerUid = quote?.uid ?? reserva?.uid ?? null;
+
+  // Asegura el chat de soporte de esta solicitud (cliente ↔ estudio).
+  useEffect(() => {
+    if (!ownerUid) return;
+    let active = true;
+    ensureSupportConversation(parent, id, ownerUid)
+      .then((cid) => {
+        if (active) setConvId(cid);
+      })
+      .catch((e) => console.error("[support] ensure:", e));
+    return () => {
+      active = false;
+    };
+  }, [parent, id, ownerUid]);
 
   useEffect(() => {
     let active = true;
@@ -56,8 +75,11 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     setBusy(true);
     try {
       await marcarPagoEnRevision(reserva.id, comprobante[0].url);
-      await sendMessage("bookings", reserva.id, {
-        from: "cliente",
+      const cid =
+        convId ??
+        (await ensureSupportConversation("bookings", reserva.id, reserva.uid));
+      await sendConversationMessage(cid, {
+        from: reserva.uid,
         tipo: "comprobante",
         texto: t("solicitudDetail.receiptMessage"),
         attachmentUrl: comprobante[0].url,
@@ -223,7 +245,13 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
           {t("solicitudDetail.conversation")}
         </h2>
-        <Thread parent={parent} id={id} />
+        {convId ? (
+          <div className="flex h-[28rem] flex-col">
+            <ConversationView conversationId={convId} />
+          </div>
+        ) : (
+          <p className="text-sm text-silver-400">{t("common.loading")}</p>
+        )}
       </section>
     </main>
   );

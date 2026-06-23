@@ -239,7 +239,8 @@
     "bookings": "Bookings",
     "noBookings": "No bookings yet.",
     "quotes": "Quotes",
-    "noQuotes": "No quotes yet."
+    "noQuotes": "No quotes yet.",
+    "viewPayments": "Payments →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",
@@ -635,5 +636,53 @@
   "meta": {
     "rootTitle": "Only G Music",
     "rootDesc": "Music production company — artists, events and productions."
+  },
+  "chat": {
+    "title": "Messages",
+    "open": "Open chat",
+    "empty": "No conversations yet.",
+    "noMessages": "No messages yet.",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "close": "Close",
+    "back": "Back",
+    "lockedClosed": "This conversation is closed.",
+    "lockedWaiting": "Waiting for the studio to confirm…",
+    "receipt": "Receipt",
+    "method": "Payment method: {metodo}",
+    "paymentConfirmed": "Payment confirmed",
+    "statusChanged": "Status: {status}",
+    "viewFile": "View file",
+    "types": {
+      "soporte": "Support",
+      "pago": "Payment",
+      "directo": "Chat"
+    },
+    "metodos": {
+      "nequi": "Nequi",
+      "bancolombia": "Bancolombia",
+      "llave": "Llave",
+      "efectivo": "Cash"
+    },
+    "proposal": "Proposal"
+  },
+  "pago": {
+    "chooseMethod": "Choose how to pay",
+    "premiumTitle": "Premium payment",
+    "payWith": "Pay {monto} with {metodo}",
+    "instructions": "Make the payment and upload your receipt here. An admin will verify the payment arrived; this may take a few minutes.",
+    "uploadReceipt": "Upload receipt",
+    "receiptSent": "I sent the payment receipt.",
+    "reviewing": "Receipt sent. An admin is reviewing it…",
+    "cashOnlyHigherTier": "Cash payment is unlocked for higher-tier members.",
+    "confirmButton": "I confirm I received {monto} · Confirm payment",
+    "confirmError": "Could not confirm the payment. Please try again.",
+    "startError": "Could not start the payment. Please try again."
+  },
+  "adminPagos": {
+    "backToAdmin": "← Admin panel",
+    "title": "Pending payments",
+    "empty": "No payments to review.",
+    "review": "Review"
   }
 }

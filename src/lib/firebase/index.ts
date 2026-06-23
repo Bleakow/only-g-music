@@ -1,1 +1,1 @@
-export { auth, db, storage, default as app } from "./config";
+export { auth, db, storage, functions, default as app } from "./config";

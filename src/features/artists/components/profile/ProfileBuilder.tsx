@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
 import type { SocialPlatform } from "@/domain/artist";
@@ -26,8 +25,11 @@ import {
   photoTransformCss,
   premiumEstado,
 } from "@/domain/artist-profile";
-import { nuevoPedidoPerfil } from "@/domain/profile-order";
-import { createReserva } from "@/features/booking/lib/booking-repo";
+import { PRECIO_PERFIL } from "@/domain/profile-order";
+import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
+import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
+import type { PagoMetodo } from "@/domain/conversation";
 import {
   createProfile,
   getProfileBySlug,
@@ -128,9 +130,10 @@ function UploadButton({
 export function ProfileBuilder() {
   const t = useTranslations();
   const { user, account, refreshAccount } = useAuth();
-  const router = useRouter();
   const slug = account?.artistSlug ?? "";
 
+  const [showPagoPicker, setShowPagoPicker] = useState(false);
+  const [puntos, setPuntos] = useState(0);
   const [synced, setSynced] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const existsRef = useRef(false);
@@ -206,6 +209,7 @@ export function ProfileBuilder() {
           );
           setSocials(p.socials);
           setPremiumData(p.premium);
+          setPuntos(p.puntos ?? 0);
         } else if (account?.artistDraft) {
           const d = account.artistDraft;
           setArtisticName(d.artisticName);
@@ -444,24 +448,28 @@ export function ProfileBuilder() {
     setPlayerY(DEFAULT_PLAYER_Y);
   }
 
-  // Activa/renueva la suscripción: crea un pedido de perfil (reusa el pago manual)
-  // y lleva al hilo donde se sube el comprobante. El admin confirma → premium.
-  async function renovar() {
+  // Activa/renueva la suscripción: abre el selector de método; al elegir, crea el
+  // chat de pago de premium y abre la burbuja en él. El admin confirma el pago
+  // (Cloud Function confirmPayment) → premium activado + hilo cerrado.
+  function renovar() {
     if (!user || !slug) return;
+    setShowPagoPicker(true);
+  }
+
+  async function iniciarPago(metodo: PagoMetodo) {
+    if (!user || !slug) return;
+    setShowPagoPicker(false);
     try {
-      const id = await createReserva(
-        nuevoPedidoPerfil({
-          uid: user.uid,
-          now: Date.now(),
-          artistSlug: slug,
-          clientName: user.displayName ?? undefined,
-          clientEmail: user.email ?? undefined,
-        }),
-      );
-      router.push(`/solicitudes/reserva/${id}`);
+      const id = await createPaymentConversation({
+        uid: user.uid,
+        slug,
+        metodo,
+        monto: PRECIO_PERFIL,
+      });
+      openConversation(id);
     } catch (e) {
-      console.error("[builder] renovar:", e);
-      setError(t("profileBuilder.errors.payment"));
+      console.error("[builder] iniciarPago:", e);
+      setError(t("pago.startError"));
     }
   }
 
@@ -984,6 +992,14 @@ export function ProfileBuilder() {
           </GlassButton>
         </div>
       </Block>
+
+      {showPagoPicker && (
+        <PaymentMethodPicker
+          onPick={iniciarPago}
+          onClose={() => setShowPagoPicker(false)}
+          tierAlto={insigniaDePuntos(puntos) === "diamante"}
+        />
+      )}
     </article>
   );
 }

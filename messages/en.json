@@ -888,6 +888,60 @@
     "oro": "Gold",
     "diamante": "Diamond"
   },
+  "notificaciones": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "tabUnread": "Unread",
+    "tabAll": "All",
+    "empty": "You have no notifications.",
+    "emptyUnread": "You have no unread notifications.",
+    "eventos": {
+      "mensaje-nuevo": {
+        "titulo": "New message",
+        "cuerpo": "{actor} messaged you."
+      },
+      "pago-por-revisar": {
+        "titulo": "Payment to review",
+        "cuerpo": "{cliente} uploaded a {monto} receipt."
+      },
+      "pago-confirmado": {
+        "titulo": "Payment confirmed",
+        "cuerpo": "The studio confirmed your {concepto} payment."
+      },
+      "cotizacion-nueva": {
+        "titulo": "New quote",
+        "cuerpo": "{cliente} requested a quote."
+      },
+      "cotizacion-respondida": {
+        "titulo": "Quote answered",
+        "cuerpo": "The studio answered your request."
+      },
+      "sesion-agendada": {
+        "titulo": "Session scheduled",
+        "cuerpo": "You have a session on {fecha}."
+      },
+      "sesion-proxima": {
+        "titulo": "Upcoming session",
+        "cuerpo": "Your session is on {fecha}."
+      },
+      "gasto-recurrente-por-confirmar": {
+        "titulo": "Expense to confirm",
+        "cuerpo": "You have {count} recurring expenses to confirm."
+      },
+      "perfil-artista-creado": {
+        "titulo": "New artist profile",
+        "cuerpo": "{nombre}'s profile was created."
+      },
+      "premium-activado": {
+        "titulo": "Membership active",
+        "cuerpo": "Your premium profile is now active."
+      },
+      "perfil-por-renovar": {
+        "titulo": "Profile expiring",
+        "cuerpo": "Your profile expires in {dias} days."
+      }
+    }
+  },
   "guards": {
     "adminTitle": "Admin panel",
     "adminMessage": "This section is for administrators only.",

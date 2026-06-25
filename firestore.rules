@@ -32,6 +32,18 @@ service cloud.firestore {
         && request.resource.data.roles == resource.data.roles;
 
       allow delete: if false;
+
+      // Notificaciones del usuario (campanita). Las CREA el servidor (Admin SDK /
+      // Cloud Functions, vía el seam `notify`); el dueño solo LEE y marca
+      // leído/archivado. Nunca crea ni borra desde el cliente.
+      match /notifications/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['leido', 'archivado']);
+        allow create, delete: if false;
+      }
     }
 
     // ── Solicitudes de cotización ────────────────────────────────────

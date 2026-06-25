@@ -888,6 +888,60 @@
     "oro": "Oro",
     "diamante": "Diamante"
   },
+  "notificaciones": {
+    "title": "Notificaciones",
+    "markAllRead": "Marcar todo leído",
+    "tabUnread": "No leídas",
+    "tabAll": "Todas",
+    "empty": "No tienes notificaciones.",
+    "emptyUnread": "No tienes notificaciones sin leer.",
+    "eventos": {
+      "mensaje-nuevo": {
+        "titulo": "Nuevo mensaje",
+        "cuerpo": "{actor} te escribió."
+      },
+      "pago-por-revisar": {
+        "titulo": "Pago por revisar",
+        "cuerpo": "{cliente} subió un comprobante de {monto}."
+      },
+      "pago-confirmado": {
+        "titulo": "Pago confirmado",
+        "cuerpo": "El estudio confirmó tu pago de {concepto}."
+      },
+      "cotizacion-nueva": {
+        "titulo": "Nueva cotización",
+        "cuerpo": "{cliente} solicitó una cotización."
+      },
+      "cotizacion-respondida": {
+        "titulo": "Cotización respondida",
+        "cuerpo": "El estudio respondió tu solicitud."
+      },
+      "sesion-agendada": {
+        "titulo": "Sesión agendada",
+        "cuerpo": "Tienes una sesión el {fecha}."
+      },
+      "sesion-proxima": {
+        "titulo": "Sesión próxima",
+        "cuerpo": "Tu sesión es el {fecha}."
+      },
+      "gasto-recurrente-por-confirmar": {
+        "titulo": "Gasto por confirmar",
+        "cuerpo": "Tienes {count} egresos recurrentes por confirmar."
+      },
+      "perfil-artista-creado": {
+        "titulo": "Nuevo perfil de artista",
+        "cuerpo": "Se creó el perfil de {nombre}."
+      },
+      "premium-activado": {
+        "titulo": "Membresía activada",
+        "cuerpo": "Tu perfil premium ya está activo."
+      },
+      "perfil-por-renovar": {
+        "titulo": "Perfil por renovar",
+        "cuerpo": "Tu perfil vence en {dias} días."
+      }
+    }
+  },
   "guards": {
     "adminTitle": "Panel de administración",
     "adminMessage": "Esta sección es solo para administradores.",

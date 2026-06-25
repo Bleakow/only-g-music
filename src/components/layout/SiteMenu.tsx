@@ -8,6 +8,7 @@ import type { Artist } from "@/domain/artist";
 import { getFeaturedProfiles } from "@/features/artists/lib/artist-profile-repo";
 import { profileToArtist } from "@/features/artists/lib/profile-display";
 import { UserMenu } from "@/features/auth/components/UserMenu";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import styles from "./SiteMenu.module.css";
 
@@ -114,9 +115,14 @@ export function SiteMenu() {
         </button>
       )}
 
-      {/* Menú de cuenta (avatar/login). Oculto cuando el menú grande o el visor
-          de fotos están abiertos. */}
-      {!open && !viewerOpen && <UserMenu />}
+      {/* Campanita + menú de cuenta (avatar/login). Ocultos cuando el menú grande
+          o el visor de fotos están abiertos. */}
+      {!open && !viewerOpen && (
+        <>
+          <NotificationBell />
+          <UserMenu />
+        </>
+      )}
 
       <div className={`${styles.overlay} ${open ? styles.open : ""}`}>
         {/* Izquierda: preview — imagen del menú por defecto, foto del destacado al hover */}

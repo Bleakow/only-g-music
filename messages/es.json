@@ -241,7 +241,8 @@
     "noBookings": "Sin reservas todavía.",
     "quotes": "Cotizaciones",
     "noQuotes": "Sin cotizaciones todavía.",
-    "viewPayments": "Pagos →"
+    "viewPayments": "Pagos →",
+    "viewAssets": "Bienes →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",
@@ -263,6 +264,70 @@
     "colAmount": "Monto",
     "colStatus": "Estado",
     "clientFallback": "Cliente"
+  },
+  "adminBienes": {
+    "backToAdmin": "← Panel admin",
+    "title": "Bienes",
+    "intro": "Inventario de activos fijos del estudio. El valor en libros se calcula con depreciación lineal (vida útil + valor residual).",
+    "addButton": "Agregar bien",
+    "loadError": "No se pudieron cargar los bienes (¿rol admin y reglas desplegadas?).",
+    "bookValueTotal": "Valor en libros",
+    "acquisitionTotal": "Valor de adquisición",
+    "depreciationTotal": "Depreciación acumulada",
+    "count": "Bienes",
+    "byCategory": "Por categoría",
+    "inventory": "Inventario",
+    "empty": "Aún no hay bienes registrados.",
+    "colName": "Bien",
+    "colCategory": "Categoría",
+    "colSede": "Sede",
+    "colDate": "Adquirido",
+    "colAcquisition": "Adquisición",
+    "colBookValue": "En libros",
+    "colActions": " ",
+    "statusRetired": "De baja",
+    "retire": "Dar de baja",
+    "noSede": "—",
+    "categoria": {
+      "equipo_produccion": "Equipo de producción",
+      "equipo_grabacion": "Equipo de grabación",
+      "computo": "Cómputo",
+      "instrumentos": "Instrumentos",
+      "mobiliario": "Mobiliario",
+      "inmueble": "Inmueble",
+      "otro": "Otro"
+    },
+    "sedes": {
+      "barranquilla": "Barranquilla",
+      "bogota": "Bogotá"
+    },
+    "add": {
+      "title": "Agregar bien",
+      "name": "Nombre",
+      "namePlaceholder": "Consola SSL, MacBook Pro…",
+      "category": "Categoría",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "acquisitionValue": "Valor de adquisición (COP)",
+      "acquisitionDate": "Fecha de adquisición",
+      "usefulLife": "Vida útil (meses)",
+      "residualValue": "Valor residual (COP)",
+      "note": "Nota",
+      "photo": "Foto",
+      "photoPick": "Subir foto…",
+      "optional": "Opcional",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el bien. Revisa los datos e intenta de nuevo."
+    },
+    "retireModal": {
+      "title": "Dar de baja",
+      "message": "¿Dar de baja \"{name}\"? No se borra: queda en el historial con valor en libros 0.",
+      "reasonPlaceholder": "Motivo (venta, descarte…)",
+      "cancel": "Cancelar",
+      "confirm": "Dar de baja"
+    }
   },
   "adminPerfiles": {
     "backToAdmin": "← Panel admin",
@@ -676,6 +741,7 @@
     "adminTitle": "Panel de administración",
     "adminMessage": "Esta sección es solo para administradores.",
     "financesTitle": "Finanzas",
+    "assetsTitle": "Bienes",
     "profilesTitle": "Perfiles",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

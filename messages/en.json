@@ -241,7 +241,8 @@
     "noBookings": "No bookings yet.",
     "quotes": "Quotes",
     "noQuotes": "No quotes yet.",
-    "viewPayments": "Payments →"
+    "viewPayments": "Payments →",
+    "viewAssets": "Assets →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",
@@ -263,6 +264,70 @@
     "colAmount": "Amount",
     "colStatus": "Status",
     "clientFallback": "Client"
+  },
+  "adminBienes": {
+    "backToAdmin": "← Admin panel",
+    "title": "Assets",
+    "intro": "Inventory of the studio's fixed assets. Book value is computed with straight-line depreciation (useful life + residual value).",
+    "addButton": "Add asset",
+    "loadError": "Couldn't load the assets (admin role and rules deployed?).",
+    "bookValueTotal": "Book value",
+    "acquisitionTotal": "Acquisition value",
+    "depreciationTotal": "Accumulated depreciation",
+    "count": "Assets",
+    "byCategory": "By category",
+    "inventory": "Inventory",
+    "empty": "No assets registered yet.",
+    "colName": "Asset",
+    "colCategory": "Category",
+    "colSede": "Location",
+    "colDate": "Acquired",
+    "colAcquisition": "Acquisition",
+    "colBookValue": "Book value",
+    "colActions": " ",
+    "statusRetired": "Retired",
+    "retire": "Retire",
+    "noSede": "—",
+    "categoria": {
+      "equipo_produccion": "Production gear",
+      "equipo_grabacion": "Recording gear",
+      "computo": "Computing",
+      "instrumentos": "Instruments",
+      "mobiliario": "Furniture",
+      "inmueble": "Property",
+      "otro": "Other"
+    },
+    "sedes": {
+      "barranquilla": "Barranquilla",
+      "bogota": "Bogotá"
+    },
+    "add": {
+      "title": "Add asset",
+      "name": "Name",
+      "namePlaceholder": "SSL console, MacBook Pro…",
+      "category": "Category",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "acquisitionValue": "Acquisition value (COP)",
+      "acquisitionDate": "Acquisition date",
+      "usefulLife": "Useful life (months)",
+      "residualValue": "Residual value (COP)",
+      "note": "Note",
+      "photo": "Photo",
+      "photoPick": "Upload photo…",
+      "optional": "Optional",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the asset. Check the data and try again."
+    },
+    "retireModal": {
+      "title": "Retire asset",
+      "message": "Retire \"{name}\"? It isn't deleted: it stays in history with book value 0.",
+      "reasonPlaceholder": "Reason (sold, discarded…)",
+      "cancel": "Cancel",
+      "confirm": "Retire"
+    }
   },
   "adminPerfiles": {
     "backToAdmin": "← Admin panel",
@@ -676,6 +741,7 @@
     "adminTitle": "Admin panel",
     "adminMessage": "This section is for administrators only.",
     "financesTitle": "Finances",
+    "assetsTitle": "Assets",
     "profilesTitle": "Profiles",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

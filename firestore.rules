@@ -228,6 +228,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Activos / bienes (módulo contable — Fase 16a) ────────────────
+    // Inventario de activos fijos (PP&E). TODO admin-only: respeta el invariante
+    // de que el productor NUNCA ve finanzas/bienes. Append-only: no se borra
+    // (delete = false); dar de baja es un update que marca bajaAt/bajaMotivo.
+    // `createdBy` queda atado al admin que lo crea (auditoría).
+    match /activos/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

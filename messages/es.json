@@ -363,6 +363,16 @@
     "colActions": " ",
     "statusVoid": "Anulado",
     "void": "Anular",
+    "toConfirm": "Por confirmar ({count})",
+    "toConfirmHint": "¿Pagaste estos egresos recurrentes? Confirma para que entren al P&L.",
+    "confirmYes": "Sí, pagué",
+    "confirmNo": "No",
+    "recurringActive": "Recurrentes activas",
+    "recurring": "Gastos recurrentes",
+    "recurringTag": "Recurrente",
+    "since": "desde {date}",
+    "stopSeries": "Anular serie",
+    "expensesInPeriod": "Egresos del periodo",
     "categoria": {
       "nomina": "Nómina",
       "arriendo": "Arriendo",
@@ -386,6 +396,9 @@
       "recurrence": "Recurrencia",
       "amount": "Monto (COP)",
       "date": "Fecha",
+      "firstCharge": "Primer cobro",
+      "recurUntil": "Fin de la recurrencia (opcional)",
+      "recurHint": "Recurre en esta misma fecha cada periodo. Déjalo sin fin para que siga hasta que lo anules.",
       "sede": "Sede",
       "sedeNone": "Sin sede",
       "note": "Nota",
@@ -399,10 +412,13 @@
     },
     "voidModal": {
       "title": "Anular gasto",
+      "titleSerie": "Anular serie recurrente",
       "message": "¿Anular \"{concept}\"? No se borra: queda en el historial y deja de contar en el P&L.",
+      "messageSerie": "¿Anular la serie \"{concept}\"? Deja de generar egresos desde hoy; los meses ya confirmados se conservan.",
       "reasonPlaceholder": "Motivo (duplicado, error…)",
       "cancel": "Cancelar",
-      "confirm": "Anular"
+      "confirm": "Anular",
+      "confirmSerie": "Anular serie"
     }
   },
   "adminBalance": {

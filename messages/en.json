@@ -363,6 +363,16 @@
     "colActions": " ",
     "statusVoid": "Voided",
     "void": "Void",
+    "toConfirm": "To confirm ({count})",
+    "toConfirmHint": "Did you pay these recurring expenses? Confirm so they count in the P&L.",
+    "confirmYes": "Yes, paid",
+    "confirmNo": "No",
+    "recurringActive": "Active recurring",
+    "recurring": "Recurring expenses",
+    "recurringTag": "Recurring",
+    "since": "since {date}",
+    "stopSeries": "Stop series",
+    "expensesInPeriod": "Expenses in period",
     "categoria": {
       "nomina": "Payroll",
       "arriendo": "Rent",
@@ -386,6 +396,9 @@
       "recurrence": "Recurrence",
       "amount": "Amount (COP)",
       "date": "Date",
+      "firstCharge": "First charge",
+      "recurUntil": "Recurrence end (optional)",
+      "recurHint": "Recurs on this same date each period. Leave it open-ended to keep going until you stop it.",
       "sede": "Location",
       "sedeNone": "No location",
       "note": "Note",
@@ -399,10 +412,13 @@
     },
     "voidModal": {
       "title": "Void expense",
+      "titleSerie": "Stop recurring series",
       "message": "Void \"{concept}\"? It isn't deleted: it stays in history and stops counting in the P&L.",
+      "messageSerie": "Stop the \"{concept}\" series? It stops generating expenses from today; months already confirmed are kept.",
       "reasonPlaceholder": "Reason (duplicate, mistake…)",
       "cancel": "Cancel",
-      "confirm": "Void"
+      "confirm": "Void",
+      "confirmSerie": "Stop series"
     }
   },
   "adminBalance": {

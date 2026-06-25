@@ -50,6 +50,7 @@ export function AddMovimientoModal({
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState(() => toDateInput(Date.now()));
   const [recurrencia, setRecurrencia] = useState<Recurrencia>("unico");
+  const [hasta, setHasta] = useState("");
   const [sede, setSede] = useState<SedeId | "">("");
   const [nota, setNota] = useState("");
   const [comprobante, setComprobante] = useState<File | null>(null);
@@ -66,6 +67,7 @@ export function AddMovimientoModal({
     setMonto("");
     setFecha(toDateInput(Date.now()));
     setRecurrencia("unico");
+    setHasta("");
     setSede("");
     setNota("");
     setComprobante(null);
@@ -85,6 +87,10 @@ export function AddMovimientoModal({
         monto: montoNum,
         fecha: new Date(fecha).getTime(),
         recurrencia,
+        recurrenciaHasta:
+          recurrencia !== "unico" && hasta
+            ? new Date(hasta).getTime()
+            : undefined,
         sede: sede || undefined,
         comprobanteUrl,
         nota: nota.trim() || undefined,
@@ -165,7 +171,11 @@ export function AddMovimientoModal({
             />
           </div>
           <div>
-            <label className={labelCls}>{t("adminGastos.add.date")}</label>
+            <label className={labelCls}>
+              {recurrencia === "unico"
+                ? t("adminGastos.add.date")
+                : t("adminGastos.add.firstCharge")}
+            </label>
             <input
               type="date"
               value={fecha}
@@ -174,6 +184,21 @@ export function AddMovimientoModal({
             />
           </div>
         </div>
+
+        {recurrencia !== "unico" && (
+          <div className="rounded-lg border border-amethyst-300/20 bg-amethyst-500/[0.06] p-3">
+            <label className={labelCls}>{t("adminGastos.add.recurUntil")}</label>
+            <input
+              type="date"
+              value={hasta}
+              onChange={(e) => setHasta(e.target.value)}
+              className={inputCls}
+            />
+            <p className="mt-2 text-xs text-silver-400">
+              {t("adminGastos.add.recurHint")}
+            </p>
+          </div>
+        )}
 
         <div>
           <label className={labelCls}>{t("adminGastos.add.sede")}</label>

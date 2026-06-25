@@ -16,6 +16,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { notify } from "./notify";
 
 initializeApp();
 const db = getFirestore();
@@ -34,6 +35,15 @@ const GRACIA_MIN = 30;
 const PUNTOS_LIKE = 5;
 const PUNTOS_PAGO_PERFIL = 150;
 
+/** Fecha legible (es-CO) para el texto de las notificaciones. */
+function fmtFecha(ms: number | undefined): string {
+  if (!ms) return "";
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(ms));
+}
+
 /**
  * Al confirmar una reserva de ESTUDIO con productor asignado, crea la proyección
  * `sessions` (SIN `amount`: el productor no ve cobros — invariante de roles).
@@ -48,6 +58,8 @@ export const onBookingConfirmed = onDocumentUpdated(
     if (!after || !afterRef) return;
 
     if (after.estado !== "confirmada") return;
+    const before = event.data?.before.data();
+    const justConfirmed = before?.estado !== "confirmada";
 
     // Perfil pagado → otorga puntos de gamificación UNA sola vez (flag idempotente).
     if (after.tipo === "perfil_artista") {
@@ -77,6 +89,22 @@ export const onBookingConfirmed = onDocumentUpdated(
     logger.info(
       `Sesión ${reservaId} creada → productor ${after.productorId}`,
     );
+
+    // Notificaciones (la sesión se acaba de crear → disparan una sola vez).
+    await notify(
+      after.productorId,
+      "sesion-agendada",
+      { fecha: fmtFecha(after.start) },
+      "/consola",
+    );
+    if (justConfirmed) {
+      await notify(
+        after.uid,
+        "pago-confirmado",
+        { concepto: after.serviceName ?? "tu sesión" },
+        `/solicitudes/reserva/${reservaId}`,
+      );
+    }
   },
 );
 
@@ -233,6 +261,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   await batch.commit();
 
   logger.info(`Pago confirmado: ${conversationId} → premium ${slug}`);
+  await notify(payerUid, "premium-activado", {}, "/artista/perfil");
   return { ok: true };
 });
 

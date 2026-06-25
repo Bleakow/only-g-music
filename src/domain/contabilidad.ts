@@ -322,3 +322,84 @@ export function estadoResultados(
     gastosPorCategoria: [...map.values()].sort((a, b) => b.monto - a.monto),
   };
 }
+
+// ── Pasivos y Balance General ───────────────────────────────────────────────
+
+/** Categorías de pasivo (deudas/obligaciones). */
+export type PasivoCategoria =
+  | "prestamo"
+  | "cuenta_por_pagar"
+  | "impuesto_por_pagar"
+  | "otro";
+
+export const PASIVO_CATEGORIAS: PasivoCategoria[] = [
+  "prestamo",
+  "cuenta_por_pagar",
+  "impuesto_por_pagar",
+  "otro",
+];
+
+/**
+ * Una obligación / deuda. Append-only: NO se borra, se liquida (`saldadoAt`).
+ * `monto` es el saldo pendiente en COP (positivo).
+ */
+export interface Pasivo {
+  id: string;
+  nombre: string;
+  categoria: PasivoCategoria;
+  /** Saldo pendiente en COP. */
+  monto: number;
+  /** Fecha de origen (epoch ms). */
+  fecha: number;
+  acreedor?: string;
+  /** Vencimiento (epoch ms). */
+  vencimiento?: number;
+  sede?: SedeId;
+  nota?: string;
+  // ── Auditoría (append-only) ──
+  createdBy: string;
+  createdAt: number;
+  /** Liquidación lógica: a partir de aquí el pasivo está saldado (no cuenta). */
+  saldadoAt?: number;
+  saldadoMotivo?: string;
+}
+
+/** Datos para registrar un pasivo (sin id ni auditoría: los pone el repo). */
+export type NuevoPasivo = Omit<
+  Pasivo,
+  "id" | "createdBy" | "createdAt" | "saldadoAt" | "saldadoMotivo"
+>;
+
+/** ¿El pasivo sigue vigente (no saldado) a la fecha `ahora`? */
+export function pasivoVigente(p: Pasivo, ahora: number): boolean {
+  return p.saldadoAt == null || p.saldadoAt > ahora;
+}
+
+/** Suma de saldos de pasivos vigentes. */
+export function totalPasivos(pasivos: Pasivo[], ahora: number): number {
+  return pasivos
+    .filter((p) => pasivoVigente(p, ahora))
+    .reduce((s, p) => s + p.monto, 0);
+}
+
+/**
+ * Balance General simplificado. Ecuación contable: **Activos = Pasivos +
+ * Patrimonio**, que cuadra por construcción (Patrimonio = Activos − Pasivos).
+ * Activos = valor EN LIBROS de los bienes vigentes (ya depreciados).
+ */
+export interface BalanceGeneral {
+  activos: number;
+  pasivos: number;
+  /** Patrimonio = Activos − Pasivos. */
+  patrimonio: number;
+}
+
+export function balanceGeneral(
+  activos: Activo[],
+  pasivos: Pasivo[],
+  ahora: number,
+): BalanceGeneral {
+  const totA = totalesInventario(activos, ahora).valorEnLibrosTotal;
+  const totP = totalPasivos(pasivos, ahora);
+  return { activos: totA, pasivos: totP, patrimonio: totA - totP };
+}

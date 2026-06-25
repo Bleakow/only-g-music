@@ -243,7 +243,8 @@
     "noQuotes": "Sin cotizaciones todavía.",
     "viewPayments": "Pagos →",
     "viewAssets": "Bienes →",
-    "viewExpenses": "Gastos →"
+    "viewExpenses": "Gastos →",
+    "viewBalance": "Balance →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",
@@ -402,6 +403,65 @@
       "reasonPlaceholder": "Motivo (duplicado, error…)",
       "cancel": "Cancelar",
       "confirm": "Anular"
+    }
+  },
+  "adminBalance": {
+    "backToAdmin": "← Panel admin",
+    "title": "Balance",
+    "intro": "Balance General simplificado: Activos (valor en libros) − Pasivos = Patrimonio. Exporta para tu contador o inversores.",
+    "addButton": "Registrar pasivo",
+    "loadError": "No se pudo cargar el balance (¿rol admin y reglas desplegadas?).",
+    "exportCsv": "CSV",
+    "exportPdf": "PDF",
+    "assets": "Activos",
+    "liabilities": "Pasivos",
+    "equity": "Patrimonio",
+    "totalAssets": "Total activos",
+    "totalLiabilities": "Total pasivos",
+    "equation": "Activos = Pasivos + Patrimonio",
+    "empty": "Aún no hay pasivos registrados.",
+    "colConcept": "Concepto",
+    "colCategory": "Categoría",
+    "colCreditor": "Acreedor",
+    "colDueDate": "Vence",
+    "colValue": "Saldo",
+    "colActions": " ",
+    "statusSettled": "Saldado",
+    "settle": "Saldar",
+    "categoria": {
+      "prestamo": "Préstamo",
+      "cuenta_por_pagar": "Cuenta por pagar",
+      "impuesto_por_pagar": "Impuesto por pagar",
+      "otro": "Otro"
+    },
+    "export": {
+      "title": "Balance General — Only G",
+      "generated": "Generado: {date}"
+    },
+    "add": {
+      "title": "Registrar pasivo",
+      "name": "Concepto",
+      "namePlaceholder": "Préstamo banco, factura proveedor…",
+      "category": "Categoría",
+      "amount": "Saldo (COP)",
+      "date": "Fecha de origen",
+      "dueDate": "Vencimiento",
+      "creditor": "Acreedor",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "note": "Nota",
+      "optional": "Opcional",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el pasivo. Revisa los datos e intenta de nuevo."
+    },
+    "settleModal": {
+      "title": "Saldar pasivo",
+      "message": "¿Marcar \"{name}\" como saldado? No se borra: queda en el historial y deja de contar en el balance.",
+      "reasonPlaceholder": "Motivo (pagado, refinanciado…)",
+      "cancel": "Cancelar",
+      "confirm": "Saldar"
     }
   },
   "adminPerfiles": {
@@ -818,6 +878,7 @@
     "financesTitle": "Finanzas",
     "assetsTitle": "Bienes",
     "expensesTitle": "Gastos",
+    "balanceTitle": "Balance",
     "profilesTitle": "Perfiles",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

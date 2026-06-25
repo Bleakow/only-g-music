@@ -253,6 +253,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Pasivos (módulo contable — Fase 16c) ─────────────────────────
+    // Deudas/obligaciones del Balance General. TODO admin-only. Append-only:
+    // no se borra (delete = false); liquidar es un update (saldadoAt). El
+    // Patrimonio se DERIVA (Activos − Pasivos): no es una colección.
+    match /pasivos/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

@@ -243,7 +243,8 @@
     "noQuotes": "No quotes yet.",
     "viewPayments": "Payments →",
     "viewAssets": "Assets →",
-    "viewExpenses": "Expenses →"
+    "viewExpenses": "Expenses →",
+    "viewBalance": "Balance →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",
@@ -402,6 +403,65 @@
       "reasonPlaceholder": "Reason (duplicate, mistake…)",
       "cancel": "Cancel",
       "confirm": "Void"
+    }
+  },
+  "adminBalance": {
+    "backToAdmin": "← Admin panel",
+    "title": "Balance",
+    "intro": "Simplified balance sheet: Assets (book value) − Liabilities = Equity. Export it for your accountant or investors.",
+    "addButton": "Add liability",
+    "loadError": "Couldn't load the balance (admin role and rules deployed?).",
+    "exportCsv": "CSV",
+    "exportPdf": "PDF",
+    "assets": "Assets",
+    "liabilities": "Liabilities",
+    "equity": "Equity",
+    "totalAssets": "Total assets",
+    "totalLiabilities": "Total liabilities",
+    "equation": "Assets = Liabilities + Equity",
+    "empty": "No liabilities registered yet.",
+    "colConcept": "Concept",
+    "colCategory": "Category",
+    "colCreditor": "Creditor",
+    "colDueDate": "Due",
+    "colValue": "Balance",
+    "colActions": " ",
+    "statusSettled": "Settled",
+    "settle": "Settle",
+    "categoria": {
+      "prestamo": "Loan",
+      "cuenta_por_pagar": "Account payable",
+      "impuesto_por_pagar": "Tax payable",
+      "otro": "Other"
+    },
+    "export": {
+      "title": "Balance sheet — Only G",
+      "generated": "Generated: {date}"
+    },
+    "add": {
+      "title": "Add liability",
+      "name": "Concept",
+      "namePlaceholder": "Bank loan, supplier invoice…",
+      "category": "Category",
+      "amount": "Balance (COP)",
+      "date": "Origin date",
+      "dueDate": "Due date",
+      "creditor": "Creditor",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "note": "Note",
+      "optional": "Optional",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the liability. Check the data and try again."
+    },
+    "settleModal": {
+      "title": "Settle liability",
+      "message": "Mark \"{name}\" as settled? It isn't deleted: it stays in history and stops counting in the balance.",
+      "reasonPlaceholder": "Reason (paid, refinanced…)",
+      "cancel": "Cancel",
+      "confirm": "Settle"
     }
   },
   "adminPerfiles": {
@@ -818,6 +878,7 @@
     "financesTitle": "Finances",
     "assetsTitle": "Assets",
     "expensesTitle": "Expenses",
+    "balanceTitle": "Balance",
     "profilesTitle": "Profiles",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

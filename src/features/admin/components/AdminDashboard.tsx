@@ -100,6 +100,12 @@ export function AdminDashboard() {
         >
           {t("adminDashboard.viewExpenses")}
         </Link>
+        <Link
+          href="/admin/balance"
+          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+        >
+          {t("adminDashboard.viewBalance")}
+        </Link>
       </div>
 
       {error && (

@@ -17,7 +17,8 @@
   },
   "common": {
     "comingSoon": "Coming soon",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "close": "Close"
   },
   "auth": {
     "login": "Sign in",
@@ -240,7 +241,10 @@
     "noBookings": "No bookings yet.",
     "quotes": "Quotes",
     "noQuotes": "No quotes yet.",
-    "viewPayments": "Payments →"
+    "viewPayments": "Payments →",
+    "viewAssets": "Assets →",
+    "viewExpenses": "Expenses →",
+    "viewBalance": "Balance →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",
@@ -261,32 +265,263 @@
     "colDate": "Date",
     "colAmount": "Amount",
     "colStatus": "Status",
-    "clientFallback": "Client"
+    "clientFallback": "Client",
+    "pnlTitle": "Income statement",
+    "manageExpenses": "Manage expenses →",
+    "pnlRevenue": "Revenue",
+    "pnlExpenses": "Expenses",
+    "pnlProfit": "Profit",
+    "pnlMargin": "Margin {value}%",
+    "pnlExpensesByCategory": "Expenses by category",
+    "period": {
+      "mes": "This month",
+      "anio": "This year",
+      "todo": "All",
+      "custom": "Custom"
+    }
+  },
+  "adminBienes": {
+    "backToAdmin": "← Admin panel",
+    "title": "Assets",
+    "intro": "Inventory of the studio's fixed assets. Book value is computed with straight-line depreciation (useful life + residual value).",
+    "addButton": "Add asset",
+    "loadError": "Couldn't load the assets (admin role and rules deployed?).",
+    "bookValueTotal": "Book value",
+    "acquisitionTotal": "Acquisition value",
+    "depreciationTotal": "Accumulated depreciation",
+    "count": "Assets",
+    "byCategory": "By category",
+    "inventory": "Inventory",
+    "empty": "No assets registered yet.",
+    "colName": "Asset",
+    "colCategory": "Category",
+    "colSede": "Location",
+    "colDate": "Acquired",
+    "colAcquisition": "Acquisition",
+    "colBookValue": "Book value",
+    "colActions": " ",
+    "statusRetired": "Retired",
+    "retire": "Retire",
+    "noSede": "—",
+    "categoria": {
+      "equipo_produccion": "Production gear",
+      "equipo_grabacion": "Recording gear",
+      "computo": "Computing",
+      "instrumentos": "Instruments",
+      "mobiliario": "Furniture",
+      "inmueble": "Property",
+      "otro": "Other"
+    },
+    "sedes": {
+      "barranquilla": "Barranquilla",
+      "bogota": "Bogotá"
+    },
+    "add": {
+      "title": "Add asset",
+      "name": "Name",
+      "namePlaceholder": "SSL console, MacBook Pro…",
+      "category": "Category",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "acquisitionValue": "Acquisition value (COP)",
+      "acquisitionDate": "Acquisition date",
+      "usefulLife": "Useful life (months)",
+      "residualValue": "Residual value (COP)",
+      "note": "Note",
+      "photo": "Photo",
+      "photoPick": "Upload photo…",
+      "optional": "Optional",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the asset. Check the data and try again."
+    },
+    "retireModal": {
+      "title": "Retire asset",
+      "message": "Retire \"{name}\"? It isn't deleted: it stays in history with book value 0.",
+      "reasonPlaceholder": "Reason (sold, discarded…)",
+      "cancel": "Cancel",
+      "confirm": "Retire"
+    }
+  },
+  "adminGastos": {
+    "backToAdmin": "← Admin panel",
+    "title": "Expenses",
+    "intro": "The studio's operating expenses (manual entry). They feed the income statement in Finances.",
+    "addButton": "Add expense",
+    "loadError": "Couldn't load the expenses (admin role and rules deployed?).",
+    "totalLabel": "Total expenses",
+    "count": "Entries",
+    "byCategory": "By category",
+    "list": "Expenses",
+    "empty": "No expenses registered yet.",
+    "colConcept": "Concept",
+    "colCategory": "Category",
+    "colDate": "Date",
+    "colRecurrence": "Recurrence",
+    "colAmount": "Amount",
+    "colActions": " ",
+    "statusVoid": "Voided",
+    "void": "Void",
+    "categoria": {
+      "nomina": "Payroll",
+      "arriendo": "Rent",
+      "servicios": "Utilities",
+      "equipos": "Equipment",
+      "marketing": "Marketing",
+      "software": "Software",
+      "impuestos": "Taxes",
+      "otro": "Other"
+    },
+    "recurrencia": {
+      "unico": "One-off",
+      "mensual": "Monthly",
+      "anual": "Yearly"
+    },
+    "add": {
+      "title": "Add expense",
+      "concept": "Concept",
+      "conceptPlaceholder": "Studio rent, Pro Tools license…",
+      "category": "Category",
+      "recurrence": "Recurrence",
+      "amount": "Amount (COP)",
+      "date": "Date",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "note": "Note",
+      "optional": "Optional",
+      "receipt": "Receipt",
+      "receiptPick": "Upload receipt…",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the expense. Check the data and try again."
+    },
+    "voidModal": {
+      "title": "Void expense",
+      "message": "Void \"{concept}\"? It isn't deleted: it stays in history and stops counting in the P&L.",
+      "reasonPlaceholder": "Reason (duplicate, mistake…)",
+      "cancel": "Cancel",
+      "confirm": "Void"
+    }
+  },
+  "adminBalance": {
+    "backToAdmin": "← Admin panel",
+    "title": "Balance",
+    "intro": "Simplified balance sheet: Assets (book value) − Liabilities = Equity. Export it for your accountant or investors.",
+    "addButton": "Add liability",
+    "loadError": "Couldn't load the balance (admin role and rules deployed?).",
+    "exportCsv": "CSV",
+    "exportPdf": "PDF",
+    "assets": "Assets",
+    "liabilities": "Liabilities",
+    "equity": "Equity",
+    "totalAssets": "Total assets",
+    "totalLiabilities": "Total liabilities",
+    "equation": "Assets = Liabilities + Equity",
+    "empty": "No liabilities registered yet.",
+    "colConcept": "Concept",
+    "colCategory": "Category",
+    "colCreditor": "Creditor",
+    "colDueDate": "Due",
+    "colValue": "Balance",
+    "colActions": " ",
+    "statusSettled": "Settled",
+    "settle": "Settle",
+    "categoria": {
+      "prestamo": "Loan",
+      "cuenta_por_pagar": "Account payable",
+      "impuesto_por_pagar": "Tax payable",
+      "otro": "Other"
+    },
+    "export": {
+      "title": "Balance sheet — Only G",
+      "generated": "Generated: {date}"
+    },
+    "add": {
+      "title": "Add liability",
+      "name": "Concept",
+      "namePlaceholder": "Bank loan, supplier invoice…",
+      "category": "Category",
+      "amount": "Balance (COP)",
+      "date": "Origin date",
+      "dueDate": "Due date",
+      "creditor": "Creditor",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "note": "Note",
+      "optional": "Optional",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the liability. Check the data and try again."
+    },
+    "settleModal": {
+      "title": "Settle liability",
+      "message": "Mark \"{name}\" as settled? It isn't deleted: it stays in history and stops counting in the balance.",
+      "reasonPlaceholder": "Reason (paid, refinanced…)",
+      "cancel": "Cancel",
+      "confirm": "Settle"
+    }
   },
   "adminPerfiles": {
     "backToAdmin": "← Admin panel",
     "title": "Profiles",
-    "descripcion": "Activate/renew premium (2 months) after confirming payment — with premium the profile appears in the showcase. Sort the list with ↑/↓ and mark with ★ the <strong>menu featured artists</strong> (max. {max}). The <code>artista</code> role is assigned in the Firebase console.",
+    "descripcion": "Your full showcase. Create filler profiles, activate or deactivate membership, edit, reorder with ↑/↓ and mark the <strong>featured</strong> ones (max. {max}). Profiles without active membership show in gray.",
+    "crearMock": "Create mock",
     "sinPerfiles": "No profiles created yet.",
     "destacadosContador": "Featured: {count}/{max}",
+    "inactivo": "Inactive",
     "premiumEstado": {
       "activo": "Premium active",
       "expirado": "Expired",
       "ninguno": "Not activated"
     },
-    "vence": "(expires {fecha})",
+    "vence": "Expires {fecha}",
     "ariaSubir": "Move up",
     "ariaBajar": "Move down",
+    "ariaEditar": "Edit profile",
+    "ariaActivar": "Activate membership",
+    "ariaDesactivar": "Deactivate membership",
+    "ariaBorrar": "Delete profile",
     "ariaQuitarDestacado": "Remove from featured",
     "ariaMarcarDestacado": "Mark as featured",
     "titleDestacado": "Featured",
     "btnActivar": "Activate",
     "btnRenovar": "Renew",
+    "mockTitle": "Create mock profile",
+    "mockDescripcion": "A filler profile for the showcase, with no link to any user. You fill it in by hand in the editor. You can activate its membership like any other.",
+    "mockNamePlaceholder": "Artist name",
+    "mockCrear": "Create and edit",
+    "mockCancelar": "Cancel",
+    "borrarTitle": "Delete this profile?",
+    "borrarMensaje": "“{nombre}” will be permanently deleted. This action cannot be undone.",
+    "borrarConfirm": "Delete",
+    "borrarCancelar": "Cancel",
     "errorCarga": "Could not load profiles (check admin role and rules?).",
     "errorActivar": "Could not activate premium.",
+    "errorDesactivar": "Could not deactivate membership.",
     "errorOrden": "Could not save the order.",
     "errorMaxDestacados": "Maximum {max} featured. Remove one before adding another.",
-    "errorDestacado": "Could not change featured status."
+    "errorDestacado": "Could not change featured status.",
+    "errorBorrar": "Could not delete the profile.",
+    "errorMock": "Could not create the profile.",
+    "link": {
+      "vincularUsuario": "Link user",
+      "title": "Link a profile to a user",
+      "descripcion": "Create a profile for a real app user. On creation they get the artist role (if they didn't have it). You fill it in the editor and activate membership afterwards.",
+      "buscarPlaceholder": "Search by email or name…",
+      "buscando": "Searching…",
+      "sinResultados": "No matching users.",
+      "rolArtista": "Artist",
+      "yaTiene": "Has a profile",
+      "nombrePlaceholder": "Profile artist name",
+      "crear": "Create and edit",
+      "cancelar": "Cancel",
+      "errorBuscar": "Could not search users. Are functions deployed?",
+      "errorYaTiene": "That user already has a linked profile.",
+      "errorCrear": "Could not create the linked profile."
+    }
   },
   "producerConsole": {
     "description": "Your live sessions. No billing data — just who you're serving and when. If you don't start a session, it auto-starts {graceMins} min after the scheduled time.",
@@ -491,7 +726,14 @@
       "titleInactive": "It will appear in the showcase once your subscription is active.",
       "viewProfile": "View profile",
       "activar": "Activate",
-      "renovar": "Renew"
+      "renovar": "Renew",
+      "backToAdmin": "← Admin"
+    },
+    "publishGate": {
+      "title": "Publish your profile",
+      "message": "Your profile is a draft: for now only you can see it. To publish it and have it appear in the artists list for everyone, activate your membership.",
+      "preview": "Preview",
+      "pay": "Activate membership"
     },
     "premium": {
       "published": "Published",
@@ -516,12 +758,16 @@
       "adjust": "Crop / frame"
     },
     "photoAdjust": {
-      "hint": "Drag to move · adjust zoom and rotation",
+      "hint": "Drag the photo to reframe · adjust zoom and rotation in steps",
       "zoom": "Zoom",
       "rotate": "Rotate",
-      "rotate90": "Rotate 90°",
+      "rotate90": "90°",
       "reset": "Reset",
-      "done": "Done"
+      "done": "Done",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "rotateLeft": "Rotate left",
+      "rotateRight": "Rotate right"
     },
     "identity": {
       "accentColorTitle": "Accent color",
@@ -542,7 +788,25 @@
       "add": "Add a background track",
       "change": "Change track",
       "changing": "Uploading…",
-      "remove": "Remove"
+      "remove": "Remove",
+      "removeConfirm": {
+        "title": "Remove the track?",
+        "message": "The intro track will be removed from your profile. If you change your mind, you'll need to upload and trim one again.",
+        "cancel": "Cancel",
+        "confirm": "Remove"
+      }
+    },
+    "trim": {
+      "title": "Trim track",
+      "hint": "Drag the edges to choose the part that plays when visitors open your profile (max {max}s).",
+      "loading": "Loading waveform…",
+      "length": "Length: {value}",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Trim & upload",
+      "processing": "Trimming…",
+      "uploading": "Uploading…",
+      "error": "Couldn't process the audio. Try another file."
     },
     "bio": {
       "sectionTitle": "About you",
@@ -572,7 +836,10 @@
     "generating": "Generating…",
     "copied": "Copied",
     "copy": "Copy",
-    "shareNative": "Share…"
+    "shareNative": "Share…",
+    "lockedTitle": "Publish your profile to share it",
+    "lockedMessage": "You can't share your profile yet because it's a draft. Activate your membership to publish it so anyone can view it with the link.",
+    "payCta": "Activate membership"
   },
   "likeButton": {
     "like": "Like",
@@ -609,6 +876,9 @@
     "adminTitle": "Admin panel",
     "adminMessage": "This section is for administrators only.",
     "financesTitle": "Finances",
+    "assetsTitle": "Assets",
+    "expensesTitle": "Expenses",
+    "balanceTitle": "Balance",
     "profilesTitle": "Profiles",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

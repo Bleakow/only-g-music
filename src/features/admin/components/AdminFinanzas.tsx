@@ -15,6 +15,9 @@ import {
   ordenarTransacciones,
 } from "../lib/finanzas";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
+import { listMovimientos } from "../lib/movimientos-repo";
+import type { Movimiento } from "@/domain/contabilidad";
+import { EstadoResultados } from "./EstadoResultados";
 
 function mesLabel(mes: string, locale: string): string {
   const [y, m] = mes.split("-").map(Number);
@@ -26,13 +29,14 @@ export function AdminFinanzas() {
   const t = useTranslations();
   const locale = useLocale();
   const [txs, setTxs] = useState<Transaccion[]>([]);
+  const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    Promise.all([listAllBookings(), listTransactions()])
-      .then(([bookings, transactions]) => {
+    Promise.all([listAllBookings(), listTransactions(), listMovimientos()])
+      .then(([bookings, transactions, movs]) => {
         if (!active) return;
         setTxs(
           ordenarTransacciones([
@@ -40,6 +44,7 @@ export function AdminFinanzas() {
             ...transactions,
           ]),
         );
+        setMovimientos(movs);
         setLoading(false);
       })
       .catch((e) => {
@@ -95,6 +100,9 @@ export function AdminFinanzas() {
               {t("adminFinanzas.transactionCount", { count: txs.length })}
             </p>
           </div>
+
+          {/* Estado de resultados (P&L) */}
+          <EstadoResultados txs={txs} movimientos={movimientos} />
 
           {/* Ingresos por mes */}
           <section className="mt-10">

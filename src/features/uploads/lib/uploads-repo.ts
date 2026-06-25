@@ -15,14 +15,28 @@ export interface UploadedFile {
   name: string;
 }
 
+/**
+ * Sube un Blob bajo `uploads/{uid}/` con el `name` que se le indique y devuelve
+ * su URL + nombre. Punto único de subida: tanto `File` (que ES un Blob) como un
+ * fragmento recortado (Blob sin nombre, p.ej. el recorte de una canción) pasan
+ * por aquí. El `contentType` se toma del propio Blob cuando lo trae.
+ */
+export async function uploadUserBlob(
+  uid: string,
+  blob: Blob,
+  name: string,
+): Promise<UploadedFile> {
+  const safeName = name.replace(/[^\w.\-]+/g, "_");
+  const path = `uploads/${uid}/${Date.now()}-${safeName}`;
+  const r = storageRef(storage, path);
+  await uploadBytes(r, blob, blob.type ? { contentType: blob.type } : undefined);
+  return { url: await getDownloadURL(r), name };
+}
+
 /** Sube un archivo bajo `uploads/{uid}/` y devuelve su URL + nombre original. */
-export async function uploadUserFile(
+export function uploadUserFile(
   uid: string,
   file: File,
 ): Promise<UploadedFile> {
-  const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-  const path = `uploads/${uid}/${Date.now()}-${safeName}`;
-  const r = storageRef(storage, path);
-  await uploadBytes(r, file);
-  return { url: await getDownloadURL(r), name: file.name };
+  return uploadUserBlob(uid, file, file.name);
 }

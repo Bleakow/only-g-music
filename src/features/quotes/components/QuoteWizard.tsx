@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -15,12 +15,7 @@ import {
   type Service,
   type ServiceVariant,
 } from "@/domain/service";
-import {
-  MinusIcon,
-  PlusIcon,
-  CheckIcon,
-  CloseIcon,
-} from "@/components/icons";
+import { MinusIcon, PlusIcon, CheckIcon, CloseIcon } from "@/components/icons";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { ArtistPicker } from "./ArtistPicker";
 import { createQuoteRequest } from "../lib/quotes-repo";
@@ -31,7 +26,7 @@ import {
 } from "@/domain/quote";
 import type { SedeId } from "@/domain/sede";
 import { sedes } from "@/features/sedes/data/sedes";
-import { artists } from "@/features/artists/data/artists";
+import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 
 const TOTAL = 3;
 
@@ -81,13 +76,30 @@ export function QuoteWizard() {
   const [details, setDetails] = useState("");
   const [references, setReferences] = useState("");
   const [attachments, setAttachments] = useState<UploadedFile[]>([]);
-  const [collabs, setCollabs] = useState<QuoteCollaborator[]>(() => {
+  const [collabs, setCollabs] = useState<QuoteCollaborator[]>([]);
+
+  // Pre-llena el colaborador si se llega con ?colaborador=slug (botón "Cotizar
+  // con" del perfil): busca el perfil REAL por slug en Firestore.
+  useEffect(() => {
     const slug = params.get("colaborador");
-    const a = slug ? artists.find((x) => x.slug === slug) : undefined;
-    return a
-      ? [{ id: a.slug, name: a.name, ...(a.image ? { image: a.image } : {}) }]
-      : [];
-  });
+    if (!slug) return;
+    let active = true;
+    getProfileBySlug(slug)
+      .then((p) => {
+        if (active && p)
+          setCollabs([
+            {
+              id: p.slug,
+              name: p.artisticName,
+              ...(p.photoURL ? { image: p.photoURL } : {}),
+            },
+          ]);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [params]);
   const [sede, setSede] = useState<SedeId>("barranquilla");
   const [budget, setBudget] = useState("");
   const [contactName, setContactName] = useState(
@@ -182,7 +194,8 @@ export function QuoteWizard() {
           quantity: l.qty,
         };
         if (l.variant) item.variantId = l.variant.id;
-        if (!isQuoteOnly(p) && p.basePrice != null) item.unitPrice = p.basePrice;
+        if (!isQuoteOnly(p) && p.basePrice != null)
+          item.unitPrice = p.basePrice;
         return item;
       });
 
@@ -215,25 +228,25 @@ export function QuoteWizard() {
   if (doneId) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center px-6 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full border border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200">
+        <div className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 flex size-16 items-center justify-center rounded-full border">
           <CheckIcon className="size-8" />
         </div>
-        <h1 className="mt-6 font-narrow text-4xl font-bold uppercase sm:text-5xl">
+        <h1 className="font-narrow mt-6 text-4xl font-bold uppercase sm:text-5xl">
           {t("quoteWizard.successHeading")}
         </h1>
-        <p className="mt-3 text-silver-300">
+        <p className="text-silver-300 mt-3">
           {t("quoteWizard.successBody", { itemCount })}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/cuenta"
-            className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+            className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
           >
             {t("quoteWizard.goToAccount")}
           </Link>
           <Link
             href="/"
-            className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+            className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
           >
             {t("quoteWizard.goHome")}
           </Link>
@@ -244,12 +257,12 @@ export function QuoteWizard() {
 
   return (
     <>
-      <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-32 pt-28 sm:px-12">
+      <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-32 sm:px-12">
         <header className="mb-8">
-          <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+          <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
             {t("quoteWizard.eyebrow")}
           </p>
-          <h1 className="mt-3 font-narrow text-4xl font-bold uppercase sm:text-6xl">
+          <h1 className="font-narrow mt-3 text-4xl font-bold uppercase sm:text-6xl">
             {t("quoteWizard.heading")}
           </h1>
 
@@ -263,8 +276,12 @@ export function QuoteWizard() {
               />
             ))}
           </div>
-          <p className="mt-2 text-xs uppercase tracking-[2px] text-silver-400">
-            {t("quoteWizard.stepIndicator", { step, total: TOTAL, stepName: STEPS[step - 1] })}
+          <p className="text-silver-400 mt-2 text-xs tracking-[2px] uppercase">
+            {t("quoteWizard.stepIndicator", {
+              step,
+              total: TOTAL,
+              stepName: STEPS[step - 1],
+            })}
           </p>
         </header>
 
@@ -279,9 +296,7 @@ export function QuoteWizard() {
           {/* -- Paso 1: armar el pedido */}
           {step === 1 && (
             <div className="flex flex-col gap-4">
-              <p className="text-silver-300">
-                {t("quoteWizard.step1Intro")}
-              </p>
+              <p className="text-silver-300">{t("quoteWizard.step1Intro")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {services.map((s) => {
                   const variantsCard = hasVariants(s);
@@ -319,16 +334,18 @@ export function QuoteWizard() {
                         )}
                         <div className="flex items-start gap-3 p-4">
                           <span className="block flex-1">
-                            <span className="block font-narrow text-xl font-bold uppercase leading-tight text-white">
+                            <span className="font-narrow block text-xl leading-tight font-bold text-white uppercase">
                               {s.name}
                             </span>
-                            <span className="mt-1 block text-sm text-silver-300">
+                            <span className="text-silver-300 mt-1 block text-sm">
                               {s.description}
                             </span>
-                            <span className="mt-2 block text-sm font-semibold text-amethyst-200">
+                            <span className="text-amethyst-200 mt-2 block text-sm font-semibold">
                               {variantsCard
                                 ? active
-                                  ? t("quoteWizard.variantCount", { count: serviceLines.length })
+                                  ? t("quoteWizard.variantCount", {
+                                      count: serviceLines.length,
+                                    })
                                   : t("quoteWizard.variantsCta")
                                 : priceLabel(s)}
                             </span>
@@ -355,7 +372,7 @@ export function QuoteWizard() {
                               key={l.key}
                               className="flex items-center justify-between gap-2"
                             >
-                              <span className="truncate text-sm text-silver-100">
+                              <span className="text-silver-100 truncate text-sm">
                                 {l.variant!.name}
                               </span>
                               <div className="flex items-center gap-2">
@@ -384,7 +401,7 @@ export function QuoteWizard() {
                           <button
                             type="button"
                             onClick={() => setModalSlug(s.slug)}
-                            className="self-start py-2 text-sm font-semibold text-amethyst-300 transition hover:text-amethyst-200"
+                            className="text-amethyst-300 hover:text-amethyst-200 self-start py-2 text-sm font-semibold transition"
                           >
                             {t("quoteWizard.changeOptions")}
                           </button>
@@ -413,7 +430,7 @@ export function QuoteWizard() {
                             >
                               <PlusIcon className="size-4" />
                             </button>
-                            <span className="ml-1 text-xs text-silver-400">
+                            <span className="text-silver-400 ml-1 text-xs">
                               {unitLabel(s)}
                             </span>
                           </div>
@@ -432,7 +449,10 @@ export function QuoteWizard() {
               {lines.length > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
                   <span className="text-silver-300">
-                    {t("quoteWizard.cartSummary", { items: itemCount, lines: lines.length })}
+                    {t("quoteWizard.cartSummary", {
+                      items: itemCount,
+                      lines: lines.length,
+                    })}
                   </span>
                   <span className="font-semibold text-white">
                     {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
@@ -447,7 +467,9 @@ export function QuoteWizard() {
           {step === 2 && (
             <>
               <label className={LABEL}>
-                <span className={LABEL_TEXT}>{t("quoteWizard.labelProjectDetails")}</span>
+                <span className={LABEL_TEXT}>
+                  {t("quoteWizard.labelProjectDetails")}
+                </span>
                 <textarea
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
@@ -468,7 +490,7 @@ export function QuoteWizard() {
                     value={references}
                     onChange={(e) => setReferences(e.target.value)}
                     placeholder={t("quoteWizard.placeholderReferences")}
-                    className="flex-1 bg-transparent px-4 py-2.5 text-silver-50 outline-none"
+                    className="text-silver-50 flex-1 bg-transparent px-4 py-2.5 outline-none"
                   />
                 </FileUpload>
               </div>
@@ -481,7 +503,9 @@ export function QuoteWizard() {
               </div>
 
               <fieldset className={LABEL}>
-                <span className={LABEL_TEXT}>{t("quoteWizard.labelVenue")}</span>
+                <span className={LABEL_TEXT}>
+                  {t("quoteWizard.labelVenue")}
+                </span>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {sedes.map((s) => (
                     <button
@@ -491,13 +515,13 @@ export function QuoteWizard() {
                       className={`rounded-lg border px-4 py-3 text-left transition ${
                         sede === s.id
                           ? "border-amethyst-300 bg-amethyst-500/10 text-white"
-                          : "border-white/15 bg-black/30 text-silver-200 hover:border-white/40"
+                          : "text-silver-200 border-white/15 bg-black/30 hover:border-white/40"
                       }`}
                     >
                       <span className="block text-sm font-semibold">
                         {s.nombre}
                       </span>
-                      <span className="block text-xs text-silver-400">
+                      <span className="text-silver-400 block text-xs">
                         {s.ciudad}
                       </span>
                     </button>
@@ -511,7 +535,7 @@ export function QuoteWizard() {
           {step === 3 && (
             <>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <h2 className="text-xs uppercase tracking-[2px] text-silver-400">
+                <h2 className="text-silver-400 text-xs tracking-[2px] uppercase">
                   {t("quoteWizard.orderSummaryHeading")}
                 </h2>
                 <ul className="mt-3 flex flex-col gap-2">
@@ -537,20 +561,26 @@ export function QuoteWizard() {
                   })}
                 </ul>
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-sm">
-                  <span className="text-silver-300">{t("quoteWizard.totalEstimated")}</span>
+                  <span className="text-silver-300">
+                    {t("quoteWizard.totalEstimated")}
+                  </span>
                   <span className="font-semibold text-white">
                     {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
                     {hasQuoteOnly && ` ${t("quoteWizard.plusToQuote")}`}
                   </span>
                 </div>
                 {collabs.length > 0 && (
-                  <p className="mt-3 text-xs text-silver-400">
-                    {t("quoteWizard.artistsPrefix", { names: collabs.map((c) => c.name).join(", ") })}
+                  <p className="text-silver-400 mt-3 text-xs">
+                    {t("quoteWizard.artistsPrefix", {
+                      names: collabs.map((c) => c.name).join(", "),
+                    })}
                   </p>
                 )}
                 {attachments.length > 0 && (
-                  <p className="mt-1 text-xs text-silver-400">
-                    {t("quoteWizard.attachmentsCount", { count: attachments.length })}
+                  <p className="text-silver-400 mt-1 text-xs">
+                    {t("quoteWizard.attachmentsCount", {
+                      count: attachments.length,
+                    })}
                   </p>
                 )}
               </div>
@@ -560,7 +590,7 @@ export function QuoteWizard() {
                   {t("quoteWizard.labelBudget")}
                 </span>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-silver-400">
+                  <span className="text-silver-400 pointer-events-none absolute top-1/2 left-4 -translate-y-1/2">
                     $
                   </span>
                   <input
@@ -592,7 +622,9 @@ export function QuoteWizard() {
                 />
               </label>
               <label className={LABEL}>
-                <span className={LABEL_TEXT}>{t("quoteWizard.labelEmail")}</span>
+                <span className={LABEL_TEXT}>
+                  {t("quoteWizard.labelEmail")}
+                </span>
                 <input
                   type="email"
                   value={contactEmail}
@@ -631,7 +663,7 @@ export function QuoteWizard() {
               <button
                 type="button"
                 onClick={back}
-                className="rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+                className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
               >
                 {t("quoteWizard.back")}
               </button>
@@ -642,7 +674,7 @@ export function QuoteWizard() {
             <button
               type="submit"
               disabled={busy}
-              className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy
                 ? t("quoteWizard.sending")
@@ -664,18 +696,18 @@ export function QuoteWizard() {
           aria-labelledby="variant-modal-title"
         >
           <div
-            className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 bg-ink-soft p-6 sm:rounded-2xl"
+            className="bg-ink-soft max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 p-6 sm:rounded-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2
                   id="variant-modal-title"
-                  className="font-narrow text-2xl font-bold uppercase text-white"
+                  className="font-narrow text-2xl font-bold text-white uppercase"
                 >
                   {modalService.name}
                 </h2>
-                <p className="mt-1 text-sm text-silver-300">
+                <p className="text-silver-300 mt-1 text-sm">
                   {t("quoteWizard.modalVariantSubtitle")}
                 </p>
               </div>
@@ -683,7 +715,7 @@ export function QuoteWizard() {
                 type="button"
                 onClick={() => setModalSlug(null)}
                 aria-label={t("quoteWizard.ariaCloseModal")}
-                className="flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 text-silver-200 transition hover:border-white hover:text-white"
+                className="text-silver-200 flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 transition hover:border-white hover:text-white"
               >
                 <CloseIcon className="size-5" />
               </button>
@@ -706,11 +738,11 @@ export function QuoteWizard() {
                       <div className="min-w-0">
                         <p className="font-semibold text-white">{v.name}</p>
                         {v.description && (
-                          <p className="mt-0.5 text-sm text-silver-300">
+                          <p className="text-silver-300 mt-0.5 text-sm">
                             {v.description}
                           </p>
                         )}
-                        <p className="mt-1 text-sm font-semibold text-amethyst-200">
+                        <p className="text-amethyst-200 mt-1 text-sm font-semibold">
                           {priceLabel(v)}
                         </p>
                       </div>
@@ -718,7 +750,7 @@ export function QuoteWizard() {
                         <button
                           type="button"
                           onClick={() => setQty(key, 1)}
-                          className="shrink-0 rounded-full border border-amethyst-400/60 px-4 py-2 text-sm font-semibold text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+                          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition hover:text-white"
                         >
                           {t("quoteWizard.variantAdd")}
                         </button>
@@ -754,7 +786,7 @@ export function QuoteWizard() {
             <button
               type="button"
               onClick={() => setModalSlug(null)}
-              className="mt-6 w-full rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-6 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+              className="from-silver-100 to-amethyst-300 text-ink mt-6 w-full rounded-full bg-gradient-to-r px-6 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
               {t("quoteWizard.modalDone")}
             </button>

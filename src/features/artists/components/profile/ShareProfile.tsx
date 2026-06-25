@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import QRCode from "qrcode";
 import {
@@ -10,18 +10,27 @@ import {
   ShareIcon,
 } from "@/components/icons";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { GlassModal } from "@/components/ui/GlassModal";
 
 /**
  * Compartir el perfil: enlace directo + copiar + Web Share (móvil) + código QR
  * generado en cliente (sin servicios externos). La URL se arma con el origin
  * real en el navegador (por eso vive en un efecto, no en SSR).
+ *
+ * `locked` = el dueño aún no tiene membresía: compartir un borrador no tiene
+ * sentido (nadie más lo encuentra), así que en su lugar mostramos un aviso con
+ * `payButton` para que active la membresía ahí mismo.
  */
 export function ShareProfile({
   slug,
   name,
+  locked = false,
+  payButton,
 }: {
   slug: string;
   name: string;
+  locked?: boolean;
+  payButton?: ReactNode;
 }) {
   const t = useTranslations();
   const [open, setOpen] = useState(false);
@@ -80,7 +89,21 @@ export function ShareProfile({
         {t("shareProfile.share")}
       </GlassButton>
 
-      {open && (
+      {/* Borrador (sin membresía): en vez de compartir, invitamos a publicar. */}
+      <GlassModal
+        open={open && locked}
+        onClose={() => setOpen(false)}
+        title={t("shareProfile.lockedTitle")}
+      >
+        <p className="text-sm text-silver-300">
+          {t("shareProfile.lockedMessage")}
+        </p>
+        {payButton && (
+          <div className="mt-6 flex justify-end">{payButton}</div>
+        )}
+      </GlassModal>
+
+      {open && !locked && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
           role="dialog"

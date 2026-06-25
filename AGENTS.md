@@ -321,14 +321,23 @@ reemplaza**. Estados financieros **simplificados** (el dueño no maneja contabil
 > auditoría** (`createdBy`/`createdAt`): no se borra, se reversa. COP (`formatCOP`); IVA
 > diferido (campo opcional, lo define el contador).
 
-- **16a — Bienes/activos (foundation)**: dominio `contabilidad.ts` puro + `activos-repo` +
+- ✅ **16a — Bienes/activos (foundation)**: dominio `contabilidad.ts` puro + `activos-repo` +
   reglas; UI **inventario de bienes** (tabla/galería con valor, foto, sede, valor en libros).
-  *Empieza por aquí: es lo que el dueño quiere mostrar y NO depende de nada nuevo.*
-- **16b — Gastos + Estado de Resultados**: `movimientos-repo`; **panel de flujos** extendido
+  *Hecho: entidad `Activo` + depreciación lineal + valor en libros (puros, `ahora` inyectado);
+  `activos-repo` append-only con baja lógica + auditoría; reglas `activos` admin-only;
+  `/admin/bienes` (resumen + desglose por categoría + alta `AddActivoModal` + baja con motivo).*
+- ✅ **16b — Gastos + Estado de Resultados**: `movimientos-repo`; **panel de flujos** extendido
   (ingresos por stream/sede/productor + **rango de fechas** + gráficos, sobre `/admin/finanzas`);
   **P&L** (ingresos − gastos por periodo).
-- **16c — Balance + export**: `pasivos-repo`; **Balance General simplificado** (Activos =
+  *Hecho: dominio `Movimiento` + `estadoResultados` (puro); `movimientos-repo` append-only con
+  anulación lógica; `/admin/gastos` (gestión + desglose por categoría); **P&L en `/admin/finanzas`**
+  con selector de periodo (mes/año/todo/custom) → utilidad + margen + gastos por categoría.*
+- ✅ **16c — Balance + export**: `pasivos-repo`; **Balance General simplificado** (Activos =
   Pasivos + Patrimonio, cuadrando); **exportar PDF/CSV** para contador/inversores.
+  *Hecho: dominio `Pasivo` + `balanceGeneral` (Patrimonio derivado, cuadra por construcción);
+  `pasivos-repo` append-only con liquidación lógica; `/admin/balance` (hoja de balance + gestión
+  de pasivos); **export** `contabilidad-export.ts` puro → CSV (números crudos + BOM) y PDF vía
+  impresión del navegador (`balanceToHTML` → window.print). jsPDF queda como upgrade futuro.*
 
 > **No hace**: libros legales DIAN, factura electrónica, partida doble. Depende solo de
 > `Reserva`/`finanzas` (✅ ya existe); NO de suscripciones/merch (alimentan el seam después).

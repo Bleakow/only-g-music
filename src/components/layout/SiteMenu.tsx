@@ -4,16 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import Image from "next/image";
-import { artists } from "@/features/artists/data/artists";
 import type { Artist } from "@/domain/artist";
 import { getFeaturedProfiles } from "@/features/artists/lib/artist-profile-repo";
 import { profileToArtist } from "@/features/artists/lib/profile-display";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import styles from "./SiteMenu.module.css";
-
-// Destacados de muestra (semilla) hasta cargar los reales que cura el admin.
-const SEED_FEATURED = artists.filter((a) => a.featured);
 
 // `key` = clave del catálogo i18n (nav.*); el texto se resuelve con t().
 const NAV = [
@@ -27,8 +23,13 @@ export function SiteMenu() {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<Artist | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [featured, setFeatured] = useState<Artist[]>(SEED_FEATURED);
+  const [featured, setFeatured] = useState<Artist[]>([]);
   const featuredLoaded = useRef(false);
+  // Ruleta de destacados en móvil: índice del activo (cuya foto se ve abajo) +
+  // dirección del último swipe (para animar la entrada de la foto).
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [slideDir, setSlideDir] = useState<1 | -1>(1);
+  const touchY = useRef<number | null>(null);
   const pathname = usePathname();
   const t = useTranslations("nav");
 
@@ -39,10 +40,14 @@ export function SiteMenu() {
     pathname === href || pathname.startsWith(`${href}/`);
   const featuredActive = pathname === "/";
 
-  // Vuelve al logo al cerrar.
+  // Vuelve al logo al cerrar; al abrir, la ruleta arranca en el primero.
   useEffect(() => {
     if (!open) setHovered(null);
+    else setActiveIndex(0);
   }, [open]);
+
+  // Si cambian los destacados (semilla → reales), la ruleta vuelve al primero.
+  useEffect(() => setActiveIndex(0), [featured]);
 
   // Carga los destacados REALES (curados por el admin) la primera vez que se
   // abre el menú — lazy, para no leer Firestore en cada página. Fallback: semilla.
@@ -141,6 +146,38 @@ export function SiteMenu() {
           aria-label="Menú principal"
           aria-hidden={!open}
         >
+          {/* Foto del destacado ACTIVO (60% inferior) — SOLO móvil. Swipe
+              vertical = ruleta con loop (un paso por swipe, con umbral). El
+              nombre va en la lista de arriba; aquí solo la imagen. */}
+          <div
+            className={styles.mobilePhoto}
+            aria-hidden="true"
+            onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
+            onTouchEnd={(e) => {
+              if (touchY.current === null || featured.length < 2) return;
+              const dy = e.changedTouches[0].clientY - touchY.current;
+              touchY.current = null;
+              if (Math.abs(dy) < 45) return; // umbral: no muy sensible
+              const dir: 1 | -1 = dy < 0 ? 1 : -1; // arriba = siguiente
+              setSlideDir(dir);
+              setActiveIndex(
+                (i) => (i + dir + featured.length) % featured.length,
+              );
+            }}
+          >
+            {featured[activeIndex] && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={`${featured[activeIndex].slug}-${slideDir}`}
+                src={featured[activeIndex].image}
+                alt=""
+                className={`${styles.mobilePhotoImg} ${
+                  slideDir === 1 ? styles.slideUp : styles.slideDown
+                }`}
+              />
+            )}
+          </div>
+
           <div className={styles.panelTop}>
             <nav className={styles.tabs}>
               <Link
@@ -170,14 +207,16 @@ export function SiteMenu() {
 
           <div className={styles.panelBody}>
             <ul className={styles.list}>
-              {featured.map((a) => (
+              {featured.slice(0, 4).map((a, i) => (
                 <li key={a.slug}>
                   <Link
                     href={`/artistas/${a.slug}`}
                     onClick={close}
                     onMouseEnter={() => setHovered(a)}
                     onMouseLeave={() => setHovered(null)}
-                    className={styles.item}
+                    className={`${styles.item} ${
+                      i === activeIndex ? styles.itemActive : ""
+                    }`}
                   >
                     {a.name}
                   </Link>

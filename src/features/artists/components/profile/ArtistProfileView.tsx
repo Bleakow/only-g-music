@@ -25,10 +25,10 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SOCIAL_META } from "../../lib/socials";
 import type { ProfileSource } from "../../lib/profile-display";
-import { InsigniaBadge } from "./InsigniaBadge";
 import { TrackPlayers } from "./TrackPlayers";
 import { LikeButton } from "./LikeButton";
 import { ShareProfile } from "./ShareProfile";
+import { MembershipPayButton } from "./MembershipPayButton";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { PhotoViewer } from "./PhotoViewer";
 
@@ -124,7 +124,6 @@ export function ArtistProfileView({
 
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <InsigniaBadge puntos={profile.puntos} />
             {isPremium && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amethyst-300/50 bg-amethyst-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-[2px] text-amethyst-200">
                 <VerifiedIcon className="size-4" />
@@ -159,7 +158,22 @@ export function ArtistProfileView({
               {t("artistProfile.quoteWith", { name: profile.artisticName })}
             </Link>
             <LikeButton slug={profile.slug} />
-            <ShareProfile slug={profile.slug} name={profile.artisticName} />
+            <ShareProfile
+              slug={profile.slug}
+              name={profile.artisticName}
+              locked={isOwner && !isPremium}
+              payButton={
+                isOwner && !isPremium ? (
+                  <MembershipPayButton
+                    uid={profile.uid}
+                    slug={profile.slug}
+                    puntos={profile.puntos}
+                    label={t("shareProfile.payCta")}
+                    className="!text-amethyst-200"
+                  />
+                ) : undefined
+              }
+            />
           </div>
         </div>
 
@@ -177,6 +191,7 @@ export function ArtistProfileView({
               src={profile.entryTrackUrl}
               accent={profile.accent}
               title={profile.artisticName}
+              autoPlay
             />
           </div>
         )}
@@ -184,7 +199,11 @@ export function ArtistProfileView({
 
       {/* Canción de fondo — variante en tarjeta debajo (si NO va sobre la foto) */}
       {profile.entryTrackUrl && profile.playerOverlay === false && (
-        <ProfileAudioPlayer src={profile.entryTrackUrl} accent={profile.accent} />
+        <ProfileAudioPlayer
+          src={profile.entryTrackUrl}
+          accent={profile.accent}
+          autoPlay
+        />
       )}
 
       {/* Pantalla 2: foto + bio + redes */}

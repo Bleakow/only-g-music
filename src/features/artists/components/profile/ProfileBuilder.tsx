@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
+import { uploadUserFile, uploadUserBlob } from "@/features/uploads/lib/uploads-repo";
 import type { SocialPlatform } from "@/domain/artist";
 import {
   type EditableProfile,
@@ -20,7 +20,6 @@ import {
   DEFAULT_PLAYER_SIZE,
   GALLERY_LIMIT,
   nextGallerySpan,
-  INSIGNIA_META,
   insigniaDePuntos,
   photoTransformCss,
   premiumEstado,
@@ -37,9 +36,11 @@ import {
 } from "../../lib/artist-profile-repo";
 import { SocialPalette } from "./SocialPalette";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
+import { AudioTrimModal } from "./AudioTrimModal";
 import { GalleryBento } from "./GalleryBento";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { GlassModal } from "@/components/ui/GlassModal";
 import {
   PlusIcon,
   CloseIcon,
@@ -52,6 +53,13 @@ import {
   ImageIcon,
   CropIcon,
   RepeatIcon,
+  MusicIcon,
+  TrashIcon,
+  CrosshairIcon,
+  MinusIcon,
+  RotateCwIcon,
+  RotateCcwIcon,
+  ArrowLeftIcon,
 } from "@/components/icons";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -127,10 +135,22 @@ function UploadButton({
  * rellenan slots sobre una plantilla fija. Auto-guardado (debounced) con
  * indicador. El perfil vive como borrador hasta publicarse (15d-5).
  */
-export function ProfileBuilder() {
+/**
+ * Editor del perfil. En modo artista (por defecto) edita el perfil del usuario
+ * logueado (su `artistSlug`). En modo ADMIN (`adminMode` + `slugOverride`) edita
+ * CUALQUIER perfil por slug y oculta el flujo de pago/publicación (el admin
+ * gestiona la membresía desde la grilla, no desde aquí).
+ */
+export function ProfileBuilder({
+  slugOverride,
+  adminMode = false,
+}: {
+  slugOverride?: string;
+  adminMode?: boolean;
+} = {}) {
   const t = useTranslations();
   const { user, account, refreshAccount } = useAuth();
-  const slug = account?.artistSlug ?? "";
+  const slug = adminMode ? (slugOverride ?? "") : (account?.artistSlug ?? "");
 
   const [showPagoPicker, setShowPagoPicker] = useState(false);
   const [puntos, setPuntos] = useState(0);
@@ -150,6 +170,13 @@ export function ProfileBuilder() {
   const [photoURL, setPhotoURL] = useState("");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [songURL, setSongURL] = useState("");
+  // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
+  // sube es el FRAGMENTO, no este archivo.
+  const [trimFile, setTrimFile] = useState<File | null>(null);
+  // Confirmación antes de quitar la canción (acción destructiva).
+  const [confirmRemoveSong, setConfirmRemoveSong] = useState(false);
+  // Aviso de "publica tu perfil" al intentar verlo sin membresía vigente.
+  const [showPublishGate, setShowPublishGate] = useState(false);
   const [playerOverlay, setPlayerOverlay] = useState(true);
   const [playerX, setPlayerX] = useState(DEFAULT_PLAYER_X);
   const [playerY, setPlayerY] = useState(DEFAULT_PLAYER_Y);
@@ -210,7 +237,7 @@ export function ProfileBuilder() {
           setSocials(p.socials);
           setPremiumData(p.premium);
           setPuntos(p.puntos ?? 0);
-        } else if (account?.artistDraft) {
+        } else if (!adminMode && account?.artistDraft) {
           const d = account.artistDraft;
           setArtisticName(d.artisticName);
           setStartYear(d.trajectoryStartYear || CURRENT_YEAR);
@@ -339,12 +366,34 @@ export function ProfileBuilder() {
       setUploading(null);
     }
   }
-  async function onSong(files: File[]) {
+  // Elegir canción = abrir el recortador con el archivo. La subida real ocurre
+  // en onTrimConfirm con SOLO el fragmento recortado.
+  function pickSong(files: File[]) {
+    const f = files[0];
+    if (!f) return;
+    setError(null);
+    if (f.size > MAX_MB * 1024 * 1024) {
+      setError(
+        t("profileBuilder.errors.fileTooLarge", { name: f.name, maxMb: MAX_MB }),
+      );
+      return;
+    }
+    setTrimFile(f);
+  }
+
+  // Sube el Blob recortado (MP3) y cierra el modal. Si falla, relanza para que el
+  // modal muestre el error y siga abierto (no perdemos el recorte hecho).
+  async function onTrimConfirm(blob: Blob) {
+    if (!user) return;
     setUploading("song");
     setError(null);
     try {
-      const [url] = await uploadFiles(files.slice(0, 1));
-      if (url) setSongURL(url);
+      const up = await uploadUserBlob(user.uid, blob, "intro.mp3");
+      setSongURL(up.url);
+      setTrimFile(null);
+    } catch (e) {
+      console.error("[builder] trim upload:", e);
+      throw e;
     } finally {
       setUploading(null);
     }
@@ -496,7 +545,6 @@ export function ProfileBuilder() {
     );
   }
 
-  const insignia = INSIGNIA_META[insigniaDePuntos(0)];
   const titleInput =
     "w-full bg-transparent font-narrow text-5xl font-bold uppercase leading-[0.9] text-white outline-none placeholder:text-white/30 sm:text-7xl";
   const ghostInput =
@@ -533,20 +581,30 @@ export function ProfileBuilder() {
       {!adjusting && (
         <div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-ink/90 px-4 py-3 backdrop-blur sm:px-8">
           <div className="flex items-center gap-3">
-            <span
-              className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[2px] ${pubChip.cls}`}
-              title={
-                estadoPremium === "activo"
-                  ? t("profileBuilder.statusBar.titleActive")
-                  : t("profileBuilder.statusBar.titleInactive")
-              }
-            >
-              {pubChip.label}
-            </span>
+            {adminMode ? (
+              <Link
+                href="/admin/perfiles"
+                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[2px] text-silver-200 transition hover:bg-white/20 hover:text-white"
+              >
+                <ArrowLeftIcon className="size-3.5" />
+                {t("profileBuilder.statusBar.backToAdmin")}
+              </Link>
+            ) : (
+              <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[2px] ${pubChip.cls}`}
+                title={
+                  estadoPremium === "activo"
+                    ? t("profileBuilder.statusBar.titleActive")
+                    : t("profileBuilder.statusBar.titleInactive")
+                }
+              >
+                {pubChip.label}
+              </span>
+            )}
             <SaveIndicator state={saveState} />
           </div>
           <div className="flex items-center gap-2">
-            {mostrarRenovar && (
+            {!adminMode && mostrarRenovar && (
               <button
                 type="button"
                 onClick={renovar}
@@ -556,10 +614,17 @@ export function ProfileBuilder() {
                 {renovarLabel}
               </button>
             )}
-            <GlassButton href={`/artistas/${slug}`}>
-              <EyeIcon className="size-4" />
-              {t("profileBuilder.statusBar.viewProfile")}
-            </GlassButton>
+            {adminMode || estadoPremium === "activo" ? (
+              <GlassButton href={`/artistas/${slug}`}>
+                <EyeIcon className="size-4" />
+                {t("profileBuilder.statusBar.viewProfile")}
+              </GlassButton>
+            ) : (
+              <GlassButton onClick={() => setShowPublishGate(true)}>
+                <EyeIcon className="size-4" />
+                {t("profileBuilder.statusBar.viewProfile")}
+              </GlassButton>
+            )}
           </div>
         </div>
       )}
@@ -638,67 +703,102 @@ export function ProfileBuilder() {
               onPointerUp={endDrag}
               onPointerCancel={endDrag}
             />
-            <div className="absolute inset-x-0 bottom-0 z-30 flex flex-col gap-3 border-t border-white/10 bg-black/75 p-4 backdrop-blur">
-              <p className="text-center text-xs uppercase tracking-[2px] text-white/70">
+            {/* Barra flotante de cristal (no a todo el ancho): zoom y giro por
+                pasos (−/+ con press-and-hold) + acciones rápidas. */}
+            <div className="absolute bottom-6 left-1/2 z-30 w-[min(92vw,560px)] -translate-x-1/2">
+              <div className={`${glassSurfaceSoft} rounded-3xl px-4 py-3`}>
+                <GlassSheen />
+                <div className="relative flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
+                  {/* Zoom */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+                      {t("profileBuilder.photoAdjust.zoom")}
+                    </span>
+                    <StepButton
+                      ariaLabel={t("profileBuilder.photoAdjust.zoomOut")}
+                      onStep={() =>
+                        setPt((p) => ({ ...p, scale: clamp(p.scale - 0.1, 1, 3) }))
+                      }
+                    >
+                      <MinusIcon className="size-4" />
+                    </StepButton>
+                    <span className="w-11 text-center text-sm tabular-nums text-white">
+                      {pt.scale.toFixed(1)}×
+                    </span>
+                    <StepButton
+                      ariaLabel={t("profileBuilder.photoAdjust.zoomIn")}
+                      onStep={() =>
+                        setPt((p) => ({ ...p, scale: clamp(p.scale + 0.1, 1, 3) }))
+                      }
+                    >
+                      <PlusIcon className="size-4" />
+                    </StepButton>
+                  </div>
+
+                  {/* Girar */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+                      {t("profileBuilder.photoAdjust.rotate")}
+                    </span>
+                    <StepButton
+                      ariaLabel={t("profileBuilder.photoAdjust.rotateLeft")}
+                      onStep={() =>
+                        setPt((p) => ({
+                          ...p,
+                          rotation: clamp(p.rotation - 2, -180, 180),
+                        }))
+                      }
+                    >
+                      <RotateCcwIcon className="size-4" />
+                    </StepButton>
+                    <span className="w-11 text-center text-sm tabular-nums text-white">
+                      {Math.round(pt.rotation)}°
+                    </span>
+                    <StepButton
+                      ariaLabel={t("profileBuilder.photoAdjust.rotateRight")}
+                      onStep={() =>
+                        setPt((p) => ({
+                          ...p,
+                          rotation: clamp(p.rotation + 2, -180, 180),
+                        }))
+                      }
+                    >
+                      <RotateCwIcon className="size-4" />
+                    </StepButton>
+                  </div>
+                </div>
+
+                <div className="relative mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-3">
+                  <GlassButton
+                    onClick={() =>
+                      setPt((p) => ({ ...p, rotation: (p.rotation + 90) % 360 }))
+                    }
+                  >
+                    <RotateCwIcon className="size-4" />
+                    {t("profileBuilder.photoAdjust.rotate90")}
+                  </GlassButton>
+                  <GlassButton onClick={() => setPt(DEFAULT_PHOTO_TRANSFORM)}>
+                    <CrosshairIcon className="size-4" />
+                    {t("profileBuilder.photoAdjust.reset")}
+                  </GlassButton>
+                  <GlassButton
+                    onClick={() => setAdjusting(false)}
+                    className="!text-amethyst-200"
+                  >
+                    <CheckIcon className="size-4" />
+                    {t("profileBuilder.photoAdjust.done")}
+                  </GlassButton>
+                </div>
+              </div>
+              <p className="mt-2 text-center text-[10px] uppercase tracking-[2px] text-white/45">
                 {t("profileBuilder.photoAdjust.hint")}
               </p>
-              <label className="flex items-center gap-3 text-xs text-white/80">
-                <span className="w-12">{t("profileBuilder.photoAdjust.zoom")}</span>
-                <input
-                  type="range"
-                  min={1}
-                  max={3}
-                  step={0.01}
-                  value={pt.scale}
-                  onChange={(e) =>
-                    setPt((p) => ({ ...p, scale: Number(e.target.value) }))
-                  }
-                  className="flex-1 accent-amethyst-300"
-                />
-              </label>
-              <label className="flex items-center gap-3 text-xs text-white/80">
-                <span className="w-12">{t("profileBuilder.photoAdjust.rotate")}</span>
-                <input
-                  type="range"
-                  min={-180}
-                  max={180}
-                  step={1}
-                  value={pt.rotation}
-                  onChange={(e) =>
-                    setPt((p) => ({ ...p, rotation: Number(e.target.value) }))
-                  }
-                  className="flex-1 accent-amethyst-300"
-                />
-              </label>
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <GlassButton
-                  onClick={() =>
-                    setPt((p) => ({ ...p, rotation: (p.rotation + 90) % 360 }))
-                  }
-                >
-                  {t("profileBuilder.photoAdjust.rotate90")}
-                </GlassButton>
-                <GlassButton onClick={() => setPt(DEFAULT_PHOTO_TRANSFORM)}>
-                  {t("profileBuilder.photoAdjust.reset")}
-                </GlassButton>
-                <GlassButton onClick={() => setAdjusting(false)}>{t("profileBuilder.photoAdjust.done")}</GlassButton>
-              </div>
             </div>
           </>
         )}
 
         <div className="relative z-10 w-full p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[2px]"
-              style={{
-                color: insignia.color,
-                borderColor: `${insignia.color}66`,
-                backgroundColor: `${insignia.color}1a`,
-              }}
-            >
-              {insignia.label}
-            </span>
             <input
               type="color"
               value={accent}
@@ -853,46 +953,50 @@ export function ProfileBuilder() {
               </>
             )}
 
-            <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
               <UploadButton
+                glass
                 accept="audio/*"
-                onFiles={onSong}
+                onFiles={pickSong}
                 disabled={uploading === "song"}
-                className="text-silver-300 hover:text-white"
               >
-                {uploading === "song" ? t("profileBuilder.song.changing") : t("profileBuilder.song.change")}
+                {uploading === "song" ? (
+                  <SpinnerIcon className="size-4 animate-spin" />
+                ) : (
+                  <MusicIcon className="size-4" />
+                )}
+                {uploading === "song"
+                  ? t("profileBuilder.song.changing")
+                  : t("profileBuilder.song.change")}
               </UploadButton>
               {playerOverlay && (
-                <button
-                  type="button"
-                  onClick={recenterPlayer}
-                  className="text-silver-300 hover:text-white"
-                >
+                <GlassButton onClick={recenterPlayer}>
+                  <CrosshairIcon className="size-4" />
                   {t("profileBuilder.player.recenter")}
-                </button>
+                </GlassButton>
               )}
-              <button
-                type="button"
-                onClick={() => setSongURL("")}
-                className="text-silver-400 hover:text-red-200"
-              >
+              <GlassButton onClick={() => setConfirmRemoveSong(true)}>
+                <TrashIcon className="size-4 text-red-300" />
                 {t("profileBuilder.song.remove")}
-              </button>
+              </GlassButton>
             </div>
           </div>
         ) : (
           <UploadButton
             accept="audio/*"
-            onFiles={onSong}
+            onFiles={pickSong}
             disabled={uploading === "song"}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 py-6 text-white/70 transition hover:border-amethyst-300 hover:text-white"
+            className={`${glassSurfaceSoft} group flex w-full items-center justify-center gap-3 rounded-2xl px-6 py-7 text-white/80 transition hover:text-white`}
           >
-            {uploading === "song" ? (
-              <SpinnerIcon className="size-5 animate-spin" />
-            ) : (
-              <PlusIcon className="size-5" />
-            )}
-            {t("profileBuilder.song.add")}
+            <GlassSheen />
+            <span className="relative inline-flex items-center gap-3">
+              {uploading === "song" ? (
+                <SpinnerIcon className="size-5 animate-spin" />
+              ) : (
+                <MusicIcon className="size-5" />
+              )}
+              <span className="text-sm">{t("profileBuilder.song.add")}</span>
+            </span>
           </UploadButton>
         )}
       </section>
@@ -1000,6 +1104,66 @@ export function ProfileBuilder() {
           tierAlto={insigniaDePuntos(puntos) === "diamante"}
         />
       )}
+
+      {trimFile && (
+        <AudioTrimModal
+          file={trimFile}
+          accent={accent}
+          onCancel={() => setTrimFile(null)}
+          onConfirm={onTrimConfirm}
+        />
+      )}
+
+      <GlassModal
+        open={showPublishGate}
+        onClose={() => setShowPublishGate(false)}
+        title={t("profileBuilder.publishGate.title")}
+      >
+        <p className="text-sm text-silver-300">
+          {t("profileBuilder.publishGate.message")}
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+          <GlassButton href={`/artistas/${slug}`}>
+            <EyeIcon className="size-4" />
+            {t("profileBuilder.publishGate.preview")}
+          </GlassButton>
+          <GlassButton
+            onClick={() => {
+              setShowPublishGate(false);
+              renovar();
+            }}
+            className="!text-amethyst-200"
+          >
+            <RepeatIcon className="size-4" />
+            {t("profileBuilder.publishGate.pay")}
+          </GlassButton>
+        </div>
+      </GlassModal>
+
+      <GlassModal
+        open={confirmRemoveSong}
+        onClose={() => setConfirmRemoveSong(false)}
+        title={t("profileBuilder.song.removeConfirm.title")}
+      >
+        <p className="text-sm text-silver-300">
+          {t("profileBuilder.song.removeConfirm.message")}
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+          <GlassButton onClick={() => setConfirmRemoveSong(false)}>
+            {t("profileBuilder.song.removeConfirm.cancel")}
+          </GlassButton>
+          <GlassButton
+            onClick={() => {
+              setSongURL("");
+              setConfirmRemoveSong(false);
+            }}
+            className="!text-red-200"
+          >
+            <TrashIcon className="size-4" />
+            {t("profileBuilder.song.removeConfirm.confirm")}
+          </GlassButton>
+        </div>
+      </GlassModal>
     </article>
   );
 }
@@ -1010,6 +1174,61 @@ const SIZE_LABEL: Record<PlayerSize, string> = {
   md: "M",
   lg: "L",
 };
+
+const clamp = (n: number, lo: number, hi: number) =>
+  Math.min(hi, Math.max(lo, n));
+
+/**
+ * Botón de paso (−/+) con press-and-hold: un toque = un paso; mantener pulsado
+ * repite (tras un pequeño retraso) para mover rápido sin perder el ajuste fino.
+ * `onStep` usa actualización funcional, así que la repetición siempre parte del
+ * último valor aunque el componente se re-renderice durante el hold.
+ */
+function StepButton({
+  onStep,
+  ariaLabel,
+  children,
+}: {
+  onStep: () => void;
+  ariaLabel: string;
+  children: React.ReactNode;
+}) {
+  const timers = useRef<{
+    delay?: ReturnType<typeof setTimeout>;
+    rep?: ReturnType<typeof setInterval>;
+  }>({});
+
+  const stop = () => {
+    if (timers.current.delay) clearTimeout(timers.current.delay);
+    if (timers.current.rep) clearInterval(timers.current.rep);
+    timers.current = {};
+  };
+  const start = () => {
+    onStep();
+    timers.current.delay = setTimeout(() => {
+      timers.current.rep = setInterval(onStep, 60);
+    }, 300);
+  };
+
+  useEffect(() => stop, []);
+
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onPointerDown={(e) => {
+        e.preventDefault();
+        start();
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+      className="flex size-9 touch-none items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/20 active:scale-90"
+    >
+      {children}
+    </button>
+  );
+}
 
 function SaveIndicator({ state }: { state: SaveState }) {
   const t = useTranslations();

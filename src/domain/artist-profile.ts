@@ -249,7 +249,8 @@ export interface ArtistProfile {
   gallery: GalleryItem[];
   /** Temas destacados (botones de reproducción YouTube/Spotify). */
   tracks: ProfileTrack[];
-  /** Tema que suena al primer tap del visitante (autoplay con sonido está bloqueado por el navegador). */
+  /** Intro recortada (ver AudioTrimModal): intenta sonar al entrar y, si el
+   *  navegador bloquea el autoplay con sonido, arranca al primer gesto del visitante. */
   entryTrackUrl?: string;
   /** Reproductor sobre la foto (true, por defecto) o en una tarjeta debajo (false). */
   playerOverlay?: boolean;

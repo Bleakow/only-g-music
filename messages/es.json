@@ -17,7 +17,8 @@
   },
   "common": {
     "comingSoon": "Próximamente",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "close": "Cerrar"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -240,7 +241,10 @@
     "noBookings": "Sin reservas todavía.",
     "quotes": "Cotizaciones",
     "noQuotes": "Sin cotizaciones todavía.",
-    "viewPayments": "Pagos →"
+    "viewPayments": "Pagos →",
+    "viewAssets": "Bienes →",
+    "viewExpenses": "Gastos →",
+    "viewBalance": "Balance →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",
@@ -261,32 +265,263 @@
     "colDate": "Fecha",
     "colAmount": "Monto",
     "colStatus": "Estado",
-    "clientFallback": "Cliente"
+    "clientFallback": "Cliente",
+    "pnlTitle": "Estado de resultados",
+    "manageExpenses": "Gestionar gastos →",
+    "pnlRevenue": "Ingresos",
+    "pnlExpenses": "Gastos",
+    "pnlProfit": "Utilidad",
+    "pnlMargin": "Margen {value}%",
+    "pnlExpensesByCategory": "Gastos por categoría",
+    "period": {
+      "mes": "Este mes",
+      "anio": "Este año",
+      "todo": "Todo",
+      "custom": "Personalizado"
+    }
+  },
+  "adminBienes": {
+    "backToAdmin": "← Panel admin",
+    "title": "Bienes",
+    "intro": "Inventario de activos fijos del estudio. El valor en libros se calcula con depreciación lineal (vida útil + valor residual).",
+    "addButton": "Agregar bien",
+    "loadError": "No se pudieron cargar los bienes (¿rol admin y reglas desplegadas?).",
+    "bookValueTotal": "Valor en libros",
+    "acquisitionTotal": "Valor de adquisición",
+    "depreciationTotal": "Depreciación acumulada",
+    "count": "Bienes",
+    "byCategory": "Por categoría",
+    "inventory": "Inventario",
+    "empty": "Aún no hay bienes registrados.",
+    "colName": "Bien",
+    "colCategory": "Categoría",
+    "colSede": "Sede",
+    "colDate": "Adquirido",
+    "colAcquisition": "Adquisición",
+    "colBookValue": "En libros",
+    "colActions": " ",
+    "statusRetired": "De baja",
+    "retire": "Dar de baja",
+    "noSede": "—",
+    "categoria": {
+      "equipo_produccion": "Equipo de producción",
+      "equipo_grabacion": "Equipo de grabación",
+      "computo": "Cómputo",
+      "instrumentos": "Instrumentos",
+      "mobiliario": "Mobiliario",
+      "inmueble": "Inmueble",
+      "otro": "Otro"
+    },
+    "sedes": {
+      "barranquilla": "Barranquilla",
+      "bogota": "Bogotá"
+    },
+    "add": {
+      "title": "Agregar bien",
+      "name": "Nombre",
+      "namePlaceholder": "Consola SSL, MacBook Pro…",
+      "category": "Categoría",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "acquisitionValue": "Valor de adquisición (COP)",
+      "acquisitionDate": "Fecha de adquisición",
+      "usefulLife": "Vida útil (meses)",
+      "residualValue": "Valor residual (COP)",
+      "note": "Nota",
+      "photo": "Foto",
+      "photoPick": "Subir foto…",
+      "optional": "Opcional",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el bien. Revisa los datos e intenta de nuevo."
+    },
+    "retireModal": {
+      "title": "Dar de baja",
+      "message": "¿Dar de baja \"{name}\"? No se borra: queda en el historial con valor en libros 0.",
+      "reasonPlaceholder": "Motivo (venta, descarte…)",
+      "cancel": "Cancelar",
+      "confirm": "Dar de baja"
+    }
+  },
+  "adminGastos": {
+    "backToAdmin": "← Panel admin",
+    "title": "Gastos",
+    "intro": "Gastos operativos del estudio (registro manual). Alimentan el Estado de Resultados en Finanzas.",
+    "addButton": "Registrar gasto",
+    "loadError": "No se pudieron cargar los gastos (¿rol admin y reglas desplegadas?).",
+    "totalLabel": "Total de gastos",
+    "count": "Registros",
+    "byCategory": "Por categoría",
+    "list": "Gastos",
+    "empty": "Aún no hay gastos registrados.",
+    "colConcept": "Concepto",
+    "colCategory": "Categoría",
+    "colDate": "Fecha",
+    "colRecurrence": "Recurrencia",
+    "colAmount": "Monto",
+    "colActions": " ",
+    "statusVoid": "Anulado",
+    "void": "Anular",
+    "categoria": {
+      "nomina": "Nómina",
+      "arriendo": "Arriendo",
+      "servicios": "Servicios",
+      "equipos": "Equipos",
+      "marketing": "Marketing",
+      "software": "Software",
+      "impuestos": "Impuestos",
+      "otro": "Otro"
+    },
+    "recurrencia": {
+      "unico": "Único",
+      "mensual": "Mensual",
+      "anual": "Anual"
+    },
+    "add": {
+      "title": "Registrar gasto",
+      "concept": "Concepto",
+      "conceptPlaceholder": "Arriendo estudio, licencia Pro Tools…",
+      "category": "Categoría",
+      "recurrence": "Recurrencia",
+      "amount": "Monto (COP)",
+      "date": "Fecha",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "note": "Nota",
+      "optional": "Opcional",
+      "receipt": "Comprobante",
+      "receiptPick": "Subir comprobante…",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el gasto. Revisa los datos e intenta de nuevo."
+    },
+    "voidModal": {
+      "title": "Anular gasto",
+      "message": "¿Anular \"{concept}\"? No se borra: queda en el historial y deja de contar en el P&L.",
+      "reasonPlaceholder": "Motivo (duplicado, error…)",
+      "cancel": "Cancelar",
+      "confirm": "Anular"
+    }
+  },
+  "adminBalance": {
+    "backToAdmin": "← Panel admin",
+    "title": "Balance",
+    "intro": "Balance General simplificado: Activos (valor en libros) − Pasivos = Patrimonio. Exporta para tu contador o inversores.",
+    "addButton": "Registrar pasivo",
+    "loadError": "No se pudo cargar el balance (¿rol admin y reglas desplegadas?).",
+    "exportCsv": "CSV",
+    "exportPdf": "PDF",
+    "assets": "Activos",
+    "liabilities": "Pasivos",
+    "equity": "Patrimonio",
+    "totalAssets": "Total activos",
+    "totalLiabilities": "Total pasivos",
+    "equation": "Activos = Pasivos + Patrimonio",
+    "empty": "Aún no hay pasivos registrados.",
+    "colConcept": "Concepto",
+    "colCategory": "Categoría",
+    "colCreditor": "Acreedor",
+    "colDueDate": "Vence",
+    "colValue": "Saldo",
+    "colActions": " ",
+    "statusSettled": "Saldado",
+    "settle": "Saldar",
+    "categoria": {
+      "prestamo": "Préstamo",
+      "cuenta_por_pagar": "Cuenta por pagar",
+      "impuesto_por_pagar": "Impuesto por pagar",
+      "otro": "Otro"
+    },
+    "export": {
+      "title": "Balance General — Only G",
+      "generated": "Generado: {date}"
+    },
+    "add": {
+      "title": "Registrar pasivo",
+      "name": "Concepto",
+      "namePlaceholder": "Préstamo banco, factura proveedor…",
+      "category": "Categoría",
+      "amount": "Saldo (COP)",
+      "date": "Fecha de origen",
+      "dueDate": "Vencimiento",
+      "creditor": "Acreedor",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "note": "Nota",
+      "optional": "Opcional",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el pasivo. Revisa los datos e intenta de nuevo."
+    },
+    "settleModal": {
+      "title": "Saldar pasivo",
+      "message": "¿Marcar \"{name}\" como saldado? No se borra: queda en el historial y deja de contar en el balance.",
+      "reasonPlaceholder": "Motivo (pagado, refinanciado…)",
+      "cancel": "Cancelar",
+      "confirm": "Saldar"
+    }
   },
   "adminPerfiles": {
     "backToAdmin": "← Panel admin",
     "title": "Perfiles",
-    "descripcion": "Activa/renueva el premium (2 meses) tras confirmar el pago — con premium el perfil aparece en la vitrina. Ordena la lista con ↑/↓ y marca con ★ los <strong>destacados del menú</strong> (máx. {max}). El rol <code>artista</code> se asigna en la consola de Firebase.",
+    "descripcion": "Tu vitrina completa. Crea perfiles de relleno, activa o desactiva la membresía, edita, reordena con ↑/↓ y marca los <strong>destacados</strong> (máx. {max}). Los perfiles sin membresía activa salen en gris.",
+    "crearMock": "Crear mock",
     "sinPerfiles": "Aún no hay perfiles creados.",
     "destacadosContador": "Destacados: {count}/{max}",
+    "inactivo": "Inactivo",
     "premiumEstado": {
       "activo": "Premium activo",
       "expirado": "Expirado",
       "ninguno": "Sin activar"
     },
-    "vence": "(vence {fecha})",
+    "vence": "Vence {fecha}",
     "ariaSubir": "Subir",
     "ariaBajar": "Bajar",
+    "ariaEditar": "Editar perfil",
+    "ariaActivar": "Activar membresía",
+    "ariaDesactivar": "Desactivar membresía",
+    "ariaBorrar": "Borrar perfil",
     "ariaQuitarDestacado": "Quitar de destacados",
     "ariaMarcarDestacado": "Marcar destacado",
     "titleDestacado": "Destacado",
     "btnActivar": "Activar",
     "btnRenovar": "Renovar",
+    "mockTitle": "Crear mock profile",
+    "mockDescripcion": "Un perfil de relleno para la vitrina, sin vínculo a ningún usuario. Lo rellenas a mano en el editor. Podrás activarle la membresía como a cualquier otro.",
+    "mockNamePlaceholder": "Nombre artístico",
+    "mockCrear": "Crear y editar",
+    "mockCancelar": "Cancelar",
+    "borrarTitle": "¿Borrar este perfil?",
+    "borrarMensaje": "Se borrará «{nombre}» de forma permanente. Esta acción no se puede deshacer.",
+    "borrarConfirm": "Borrar",
+    "borrarCancelar": "Cancelar",
     "errorCarga": "No se pudieron cargar los perfiles (¿rol admin y reglas?).",
     "errorActivar": "No se pudo activar el premium.",
+    "errorDesactivar": "No se pudo desactivar la membresía.",
     "errorOrden": "No se pudo guardar el orden.",
     "errorMaxDestacados": "Máximo {max} destacados. Quita uno antes de añadir otro.",
-    "errorDestacado": "No se pudo cambiar el destacado."
+    "errorDestacado": "No se pudo cambiar el destacado.",
+    "errorBorrar": "No se pudo borrar el perfil.",
+    "errorMock": "No se pudo crear el perfil.",
+    "link": {
+      "vincularUsuario": "Vincular usuario",
+      "title": "Vincular perfil a un usuario",
+      "descripcion": "Crea un perfil para un usuario real de la app. Al crearlo se le asigna el rol de artista (si no lo tenía). Lo rellenas en el editor y activas la membresía después.",
+      "buscarPlaceholder": "Buscar por email o nombre…",
+      "buscando": "Buscando…",
+      "sinResultados": "Sin usuarios que coincidan.",
+      "rolArtista": "Artista",
+      "yaTiene": "Ya tiene perfil",
+      "nombrePlaceholder": "Nombre artístico del perfil",
+      "crear": "Crear y editar",
+      "cancelar": "Cancelar",
+      "errorBuscar": "No se pudieron buscar usuarios. ¿Funciones desplegadas?",
+      "errorYaTiene": "Ese usuario ya tiene un perfil vinculado.",
+      "errorCrear": "No se pudo crear el perfil vinculado."
+    }
   },
   "producerConsole": {
     "description": "Tus sesiones en vivo. Sin datos de cobro: solo a quién atiendes y cuándo. Si no inicias una sesión, arranca sola {graceMins} min después de la hora agendada.",
@@ -491,7 +726,14 @@
       "titleInactive": "Aparecerá en la vitrina cuando se active tu suscripción.",
       "viewProfile": "Ver perfil",
       "activar": "Activar",
-      "renovar": "Renovar"
+      "renovar": "Renovar",
+      "backToAdmin": "← Admin"
+    },
+    "publishGate": {
+      "title": "Publica tu perfil",
+      "message": "Tu perfil es un borrador: por ahora solo tú puedes verlo. Para publicarlo y que aparezca en la lista de artistas para todo el mundo, activa tu membresía.",
+      "preview": "Ver vista previa",
+      "pay": "Activar membresía"
     },
     "premium": {
       "published": "Publicado",
@@ -516,12 +758,16 @@
       "adjust": "Encuadrar"
     },
     "photoAdjust": {
-      "hint": "Arrastra para mover · ajusta zoom y rotación",
+      "hint": "Arrastra la foto para reencuadrar · ajusta zoom y giro a pasos",
       "zoom": "Zoom",
-      "rotate": "Rotar",
-      "rotate90": "Girar 90°",
+      "rotate": "Girar",
+      "rotate90": "90°",
       "reset": "Restablecer",
-      "done": "Listo"
+      "done": "Listo",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "rotateLeft": "Girar a la izquierda",
+      "rotateRight": "Girar a la derecha"
     },
     "identity": {
       "accentColorTitle": "Color de acento",
@@ -542,7 +788,25 @@
       "add": "Añade una canción de fondo",
       "change": "Cambiar canción",
       "changing": "Subiendo…",
-      "remove": "Quitar"
+      "remove": "Quitar",
+      "removeConfirm": {
+        "title": "¿Quitar la canción?",
+        "message": "Se quitará la canción de intro de tu perfil. Si cambias de opinión, tendrás que volver a subir y recortar una.",
+        "cancel": "Cancelar",
+        "confirm": "Quitar"
+      }
+    },
+    "trim": {
+      "title": "Recortar canción",
+      "hint": "Arrastra los bordes para elegir el tramo que sonará al entrar a tu perfil (máx. {max}s).",
+      "loading": "Cargando onda…",
+      "length": "Duración: {value}",
+      "preview": "Escuchar",
+      "cancel": "Cancelar",
+      "confirm": "Recortar y subir",
+      "processing": "Recortando…",
+      "uploading": "Subiendo…",
+      "error": "No se pudo procesar el audio. Prueba con otro archivo."
     },
     "bio": {
       "sectionTitle": "Sobre ti",
@@ -572,7 +836,10 @@
     "generating": "Generando…",
     "copied": "Copiado",
     "copy": "Copiar",
-    "shareNative": "Compartir…"
+    "shareNative": "Compartir…",
+    "lockedTitle": "Publica tu perfil para compartirlo",
+    "lockedMessage": "Aún no puedes compartir tu perfil porque es un borrador. Activa tu membresía para publicarlo y que cualquiera pueda verlo con el enlace.",
+    "payCta": "Activar membresía"
   },
   "likeButton": {
     "like": "Me gusta",
@@ -609,6 +876,9 @@
     "adminTitle": "Panel de administración",
     "adminMessage": "Esta sección es solo para administradores.",
     "financesTitle": "Finanzas",
+    "assetsTitle": "Bienes",
+    "expensesTitle": "Gastos",
+    "balanceTitle": "Balance",
     "profilesTitle": "Perfiles",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

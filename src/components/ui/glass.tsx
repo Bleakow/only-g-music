@@ -25,6 +25,15 @@ export const glassSurfaceSoft =
   "relative bg-white/[0.04] ring-1 ring-inset ring-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-14px_26px_-14px_rgba(255,255,255,0.1),0_4px_16px_rgba(0,0,0,0.35)] backdrop-blur-md";
 
 /**
+ * Variante para MENÚS/MODALES flotantes SOBRE FOTOGRAFÍAS: más transparente y con
+ * desenfoque más fuerte (más "frost") + brillo especular más marcado en el canto
+ * superior. Deja ver la imagen de fondo manteniendo legibilidad. Úsala con
+ * `<GlassSheen />` dentro (y, si quieres más gloss, un highlight superior extra).
+ */
+export const glassSurfaceMenu =
+  "relative bg-white/[0.05] ring-1 ring-inset ring-white/25 shadow-[0_12px_44px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-md";
+
+/**
  * Reflejo diagonal del cristal. Hereda el radio del contenedor (`rounded-[inherit]`).
  * El canto/borde superior lo da el `inset` highlight de `glassSurface` (sigue la
  * curva) — NO una línea recta, que en círculos quedaba como una raya extraña.

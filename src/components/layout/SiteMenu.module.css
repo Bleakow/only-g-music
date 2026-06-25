@@ -74,8 +74,16 @@
   /* Fondo difuminado neutro: combina con fotos de cualquier color y suaviza
      los cambios bruscos al hacer hover entre artistas. */
   background:
-    radial-gradient(130% 120% at 30% 25%, rgba(124, 58, 237, 0.16), transparent 60%),
-    radial-gradient(120% 100% at 80% 80%, rgba(196, 165, 255, 0.07), transparent 55%),
+    radial-gradient(
+      130% 120% at 30% 25%,
+      rgba(124, 58, 237, 0.16),
+      transparent 60%
+    ),
+    radial-gradient(
+      120% 100% at 80% 80%,
+      rgba(196, 165, 255, 0.07),
+      transparent 55%
+    ),
     #0a0712;
   opacity: 0;
   transition: opacity 0.3s ease;
@@ -179,19 +187,28 @@
   display: flex;
   align-items: flex-start;
   gap: 1rem;
-  /* padding-right amplio: deja libre la esquina donde queda el botón X */
+  /* padding-right amplio: deja libre la esquina del botón X (toggle), en
+     right 1.5rem hasta 640px y en 3rem desde ahí. */
   padding: 1.75rem 4.75rem 1rem 1.75rem;
+}
+
+@media (min-width: 640px) {
+  /* El toggle se mueve a right 3rem → corremos las opciones más a la izquierda. */
+  .panelTop {
+    padding-right: 5.75rem;
+  }
 }
 
 @media (min-width: 768px) {
   .panelTop {
-    padding: 2rem 5.5rem 1rem 2.5rem;
+    padding: 2rem 5.75rem 1rem 2.5rem;
   }
 }
 
+/* Opciones en rejilla de 3 columnas (2 filas para 5-6 opciones). */
 .tabs {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 0.4rem;
 }
 
@@ -199,8 +216,9 @@
 .tabs .tab {
   border: 1px solid transparent;
   border-radius: 9999px;
-  padding: 0.45rem 0.95rem;
+  padding: 0.45rem 0.6rem;
   font-size: 0.72rem;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: #b8b8c8;
@@ -222,8 +240,9 @@
 
 .tabs .tabActive {
   border-radius: 9999px;
-  padding: 0.45rem 0.95rem;
+  padding: 0.45rem 0.6rem;
   font-size: 0.72rem;
+  text-align: center;
   text-transform: uppercase;
   letter-spacing: 1.5px;
   color: #15111f;
@@ -354,5 +373,107 @@
   }
   .panel {
     transition: none;
+  }
+}
+
+/* ── Móvil: ruleta de destacados (foto al 60% inferior) ────────── */
+/* En desktop el preview va al lado (.preview); en móvil la foto del destacado
+   ACTIVO ocupa el 60% inferior del panel y se cambia con swipe vertical. */
+.mobilePhoto {
+  display: none;
+}
+
+.mobilePhotoImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@keyframes mPhotoUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes mPhotoDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.slideUp {
+  animation: mPhotoUp 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.slideDown {
+  animation: mPhotoDown 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (max-width: 767px) {
+  .panel {
+    position: relative;
+  }
+
+  /* La lista de nombres ocupa solo la parte de arriba (no se estira sobre la
+     foto). Tabs y lista quedan por encima de la imagen. */
+  .panelTop,
+  .panelBody {
+    position: relative;
+    z-index: 2;
+  }
+
+  .panelBody {
+    flex: none;
+    overflow: visible;
+  }
+
+  .mobilePhoto {
+    display: block;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 60%;
+    overflow: hidden;
+    z-index: 0;
+    background: #0a0712;
+    touch-action: none;
+    /* Funde el borde superior hacia el menú (sin línea dura). */
+    -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%);
+    mask-image: linear-gradient(to bottom, transparent, #000 18%);
+  }
+
+  /* El pie va sobre la foto, abajo del todo, con degradado para leerse. */
+  .panelFoot {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    border-top: none;
+    background: linear-gradient(to top, rgba(10, 7, 18, 0.92), transparent);
+  }
+
+  /* Destacado activo (el de la foto): resaltado como el hover de desktop. */
+  .item.itemActive {
+    color: transparent;
+    background: linear-gradient(135deg, #f7f7fa, #c4a5ff 70%);
+    -webkit-background-clip: text;
+    background-clip: text;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slideUp,
+  .slideDown {
+    animation: none;
   }
 }

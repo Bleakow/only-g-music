@@ -336,3 +336,129 @@ export const autoStartSessions = onSchedule(
     }
   },
 );
+
+// ── Admin: gestión de perfiles (vincular a usuario real) ───────────────────────
+
+/** ¿El que llama es admin? Lanza si no hay sesión o no tiene el rol. */
+async function assertAdmin(uid: string | undefined): Promise<void> {
+  if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
+  const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
+  if (!Array.isArray(roles) || !roles.includes("admin")) {
+    throw new HttpsError("permission-denied", "Solo administradores.");
+  }
+}
+
+/** Slug URL-safe a partir de un nombre. Sync con `toSlug` (src/domain/artist-profile.ts). */
+function slugify(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Búsqueda de usuarios para el admin (SOLO admin). El cliente no puede leer otros
+ * `users/{uid}` (lo prohíben las reglas), así que la lista para vincular un perfil
+ * pasa por aquí. MVP: trae hasta 200 y filtra por email/nombre en memoria; a
+ * escala se indexa. Devuelve una proyección mínima (sin datos sensibles).
+ */
+export const adminSearchUsers = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+
+  const q = String(request.data?.query ?? "").trim().toLowerCase();
+  const snap = await db.collection("users").limit(200).get();
+  const users = snap.docs
+    .map((d) => {
+      const u = d.data();
+      return {
+        uid: d.id,
+        email: (u.email as string | null) ?? null,
+        displayName: (u.displayName as string | null) ?? null,
+        roles: (u.roles as string[]) ?? [],
+        artistSlug: (u.artistSlug as string | null) ?? null,
+      };
+    })
+    .filter(
+      (u) =>
+        !q ||
+        (u.email?.toLowerCase().includes(q) ?? false) ||
+        (u.displayName?.toLowerCase().includes(q) ?? false),
+    )
+    .slice(0, 25);
+
+  return { users };
+});
+
+/**
+ * Crea un perfil de artista VINCULADO a un usuario real y le asigna el rol
+ * 'artista' (idempotente: `arrayUnion` no duplica si ya lo tiene). SOLO admin y
+ * server-authoritative: el cliente no puede tocar roles/artistSlug de otros. El
+ * perfil arranca como BORRADOR (sin premium); el admin lo rellena y activa luego.
+ * Si el usuario ya tiene un perfil vinculado, no crea otro.
+ */
+export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+
+  const targetUid = request.data?.targetUid;
+  const artisticName =
+    typeof request.data?.artisticName === "string"
+      ? request.data.artisticName.trim()
+      : "";
+  if (typeof targetUid !== "string" || !targetUid) {
+    throw new HttpsError("invalid-argument", "Falta el usuario a vincular.");
+  }
+  if (!artisticName) {
+    throw new HttpsError("invalid-argument", "Falta el nombre artístico.");
+  }
+
+  const userRef = db.doc(`users/${targetUid}`);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "El usuario no existe.");
+  }
+  const existingSlug = userSnap.data()?.artistSlug;
+  if (existingSlug) {
+    throw new HttpsError(
+      "already-exists",
+      `El usuario ya tiene un perfil (${existingSlug}).`,
+    );
+  }
+
+  // Slug único (server-side).
+  const base = slugify(artisticName) || "artista";
+  let slug = base;
+  let n = 2;
+  while ((await db.doc(`artistProfiles/${slug}`).get()).exists) {
+    slug = `${base}-${n++}`;
+  }
+
+  const batch = db.batch();
+  batch.set(db.doc(`artistProfiles/${slug}`), {
+    uid: targetUid,
+    artisticName,
+    tagline: "",
+    genre: "",
+    bio: "",
+    accent: "#8b5cf6",
+    photoURL: "",
+    gallery: [],
+    tracks: [],
+    socials: {},
+    trajectoryStartYear: new Date().getFullYear(),
+    puntos: 0,
+    premium: null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.update(userRef, {
+    artistSlug: slug,
+    roles: FieldValue.arrayUnion("artista"),
+  });
+  await batch.commit();
+
+  logger.info(`Perfil ${slug} vinculado a ${targetUid} (+rol artista)`);
+  return { slug };
+});

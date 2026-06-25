@@ -463,6 +463,76 @@ export function MoveIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function MusicIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M9 18V5l12-2v13" />
+      <circle cx="6" cy="18" r="3" />
+      <circle cx="18" cy="16" r="3" />
+    </svg>
+  );
+}
+
+export function ScissorsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="6" cy="6" r="3" />
+      <circle cx="6" cy="18" r="3" />
+      <path d="M20 4 8.12 15.88" />
+      <path d="M14.47 14.48 20 20" />
+      <path d="M8.12 8.12 12 12" />
+    </svg>
+  );
+}
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M3 6h18" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M10 11v6" />
+      <path d="M14 11v6" />
+    </svg>
+  );
+}
+
+export function CrosshairIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M22 12h-4M6 12H2M12 6V2M12 22v-4" />
+    </svg>
+  );
+}
+
+export function RotateCwIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M21 12a9 9 0 1 1-3-6.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </svg>
+  );
+}
+
+export function RotateCcwIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M3 12a9 9 0 1 0 3-6.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
+export function UserPlusIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M19 8v6M22 11h-6" />
+    </svg>
+  );
+}
+
 export function VerifiedIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg

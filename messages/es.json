@@ -17,7 +17,8 @@
   },
   "common": {
     "comingSoon": "Próximamente",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "close": "Cerrar"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -266,27 +267,61 @@
   "adminPerfiles": {
     "backToAdmin": "← Panel admin",
     "title": "Perfiles",
-    "descripcion": "Activa/renueva el premium (2 meses) tras confirmar el pago — con premium el perfil aparece en la vitrina. Ordena la lista con ↑/↓ y marca con ★ los <strong>destacados del menú</strong> (máx. {max}). El rol <code>artista</code> se asigna en la consola de Firebase.",
+    "descripcion": "Tu vitrina completa. Crea perfiles de relleno, activa o desactiva la membresía, edita, reordena con ↑/↓ y marca los <strong>destacados</strong> (máx. {max}). Los perfiles sin membresía activa salen en gris.",
+    "crearMock": "Crear mock",
     "sinPerfiles": "Aún no hay perfiles creados.",
     "destacadosContador": "Destacados: {count}/{max}",
+    "inactivo": "Inactivo",
     "premiumEstado": {
       "activo": "Premium activo",
       "expirado": "Expirado",
       "ninguno": "Sin activar"
     },
-    "vence": "(vence {fecha})",
+    "vence": "Vence {fecha}",
     "ariaSubir": "Subir",
     "ariaBajar": "Bajar",
+    "ariaEditar": "Editar perfil",
+    "ariaActivar": "Activar membresía",
+    "ariaDesactivar": "Desactivar membresía",
+    "ariaBorrar": "Borrar perfil",
     "ariaQuitarDestacado": "Quitar de destacados",
     "ariaMarcarDestacado": "Marcar destacado",
     "titleDestacado": "Destacado",
     "btnActivar": "Activar",
     "btnRenovar": "Renovar",
+    "mockTitle": "Crear mock profile",
+    "mockDescripcion": "Un perfil de relleno para la vitrina, sin vínculo a ningún usuario. Lo rellenas a mano en el editor. Podrás activarle la membresía como a cualquier otro.",
+    "mockNamePlaceholder": "Nombre artístico",
+    "mockCrear": "Crear y editar",
+    "mockCancelar": "Cancelar",
+    "borrarTitle": "¿Borrar este perfil?",
+    "borrarMensaje": "Se borrará «{nombre}» de forma permanente. Esta acción no se puede deshacer.",
+    "borrarConfirm": "Borrar",
+    "borrarCancelar": "Cancelar",
     "errorCarga": "No se pudieron cargar los perfiles (¿rol admin y reglas?).",
     "errorActivar": "No se pudo activar el premium.",
+    "errorDesactivar": "No se pudo desactivar la membresía.",
     "errorOrden": "No se pudo guardar el orden.",
     "errorMaxDestacados": "Máximo {max} destacados. Quita uno antes de añadir otro.",
-    "errorDestacado": "No se pudo cambiar el destacado."
+    "errorDestacado": "No se pudo cambiar el destacado.",
+    "errorBorrar": "No se pudo borrar el perfil.",
+    "errorMock": "No se pudo crear el perfil.",
+    "link": {
+      "vincularUsuario": "Vincular usuario",
+      "title": "Vincular perfil a un usuario",
+      "descripcion": "Crea un perfil para un usuario real de la app. Al crearlo se le asigna el rol de artista (si no lo tenía). Lo rellenas en el editor y activas la membresía después.",
+      "buscarPlaceholder": "Buscar por email o nombre…",
+      "buscando": "Buscando…",
+      "sinResultados": "Sin usuarios que coincidan.",
+      "rolArtista": "Artista",
+      "yaTiene": "Ya tiene perfil",
+      "nombrePlaceholder": "Nombre artístico del perfil",
+      "crear": "Crear y editar",
+      "cancelar": "Cancelar",
+      "errorBuscar": "No se pudieron buscar usuarios. ¿Funciones desplegadas?",
+      "errorYaTiene": "Ese usuario ya tiene un perfil vinculado.",
+      "errorCrear": "No se pudo crear el perfil vinculado."
+    }
   },
   "producerConsole": {
     "description": "Tus sesiones en vivo. Sin datos de cobro: solo a quién atiendes y cuándo. Si no inicias una sesión, arranca sola {graceMins} min después de la hora agendada.",
@@ -491,7 +526,14 @@
       "titleInactive": "Aparecerá en la vitrina cuando se active tu suscripción.",
       "viewProfile": "Ver perfil",
       "activar": "Activar",
-      "renovar": "Renovar"
+      "renovar": "Renovar",
+      "backToAdmin": "← Admin"
+    },
+    "publishGate": {
+      "title": "Publica tu perfil",
+      "message": "Tu perfil es un borrador: por ahora solo tú puedes verlo. Para publicarlo y que aparezca en la lista de artistas para todo el mundo, activa tu membresía.",
+      "preview": "Ver vista previa",
+      "pay": "Activar membresía"
     },
     "premium": {
       "published": "Publicado",
@@ -516,12 +558,16 @@
       "adjust": "Encuadrar"
     },
     "photoAdjust": {
-      "hint": "Arrastra para mover · ajusta zoom y rotación",
+      "hint": "Arrastra la foto para reencuadrar · ajusta zoom y giro a pasos",
       "zoom": "Zoom",
-      "rotate": "Rotar",
-      "rotate90": "Girar 90°",
+      "rotate": "Girar",
+      "rotate90": "90°",
       "reset": "Restablecer",
-      "done": "Listo"
+      "done": "Listo",
+      "zoomIn": "Acercar",
+      "zoomOut": "Alejar",
+      "rotateLeft": "Girar a la izquierda",
+      "rotateRight": "Girar a la derecha"
     },
     "identity": {
       "accentColorTitle": "Color de acento",
@@ -542,7 +588,25 @@
       "add": "Añade una canción de fondo",
       "change": "Cambiar canción",
       "changing": "Subiendo…",
-      "remove": "Quitar"
+      "remove": "Quitar",
+      "removeConfirm": {
+        "title": "¿Quitar la canción?",
+        "message": "Se quitará la canción de intro de tu perfil. Si cambias de opinión, tendrás que volver a subir y recortar una.",
+        "cancel": "Cancelar",
+        "confirm": "Quitar"
+      }
+    },
+    "trim": {
+      "title": "Recortar canción",
+      "hint": "Arrastra los bordes para elegir el tramo que sonará al entrar a tu perfil (máx. {max}s).",
+      "loading": "Cargando onda…",
+      "length": "Duración: {value}",
+      "preview": "Escuchar",
+      "cancel": "Cancelar",
+      "confirm": "Recortar y subir",
+      "processing": "Recortando…",
+      "uploading": "Subiendo…",
+      "error": "No se pudo procesar el audio. Prueba con otro archivo."
     },
     "bio": {
       "sectionTitle": "Sobre ti",
@@ -572,7 +636,10 @@
     "generating": "Generando…",
     "copied": "Copiado",
     "copy": "Copiar",
-    "shareNative": "Compartir…"
+    "shareNative": "Compartir…",
+    "lockedTitle": "Publica tu perfil para compartirlo",
+    "lockedMessage": "Aún no puedes compartir tu perfil porque es un borrador. Activa tu membresía para publicarlo y que cualquiera pueda verlo con el enlace.",
+    "payCta": "Activar membresía"
   },
   "likeButton": {
     "like": "Me gusta",

@@ -36,6 +36,7 @@ import {
   MAX_DESTACADOS,
   perfilVisible,
   compararOrden,
+  toSlug,
 } from "@/domain/artist-profile";
 
 const COLLECTION = "artistProfiles";
@@ -163,17 +164,65 @@ export async function updateProfile(
 }
 
 /**
- * Activa/renueva el premium del perfil. SOLO admin (las reglas bloquean al
- * cliente sobre `premium`). El `premium` viene de `activarPremium(now)` (dominio).
+ * Activa/renueva (o DESACTIVA con `null`) el premium del perfil. SOLO admin (las
+ * reglas bloquean al cliente sobre `premium`). Para activar, `premium` viene de
+ * `activarPremium(now)`; `null` lo deja como borrador (deja de ser visible).
  */
 export async function setPremium(
   slug: string,
-  premium: Premium,
+  premium: Premium | null,
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTION, slug), {
     premium,
     updatedAt: serverTimestamp(),
   });
+}
+
+/** Borra un perfil (SOLO admin — las reglas lo blindan). Irreversible. */
+export async function deleteProfile(slug: string): Promise<void> {
+  await deleteDoc(doc(db, COLLECTION, slug));
+}
+
+/** ¿Ya existe un perfil con este slug? */
+export async function profileExists(slug: string): Promise<boolean> {
+  return (await getDoc(doc(db, COLLECTION, slug))).exists();
+}
+
+/** Genera un slug único a partir de un nombre (añade -2, -3… si choca). */
+export async function uniqueSlug(name: string): Promise<string> {
+  const base = toSlug(name) || "perfil";
+  let slug = base;
+  let n = 2;
+  while (await profileExists(slug)) slug = `${base}-${n++}`;
+  return slug;
+}
+
+/**
+ * Crea un "mock profile" (relleno de vitrina): un perfil SIN dueño (uid vacío) ni
+ * vínculo a ningún usuario, que el admin rellena luego. Arranca como borrador
+ * (sin premium). Devuelve el slug generado. SOLO admin (rules: isAdmin crea
+ * cualquiera). El resto del contenido se edita en el builder en modo admin.
+ */
+export async function createMockProfile(artisticName: string): Promise<string> {
+  const slug = await uniqueSlug(artisticName);
+  await createProfile(
+    "",
+    slug,
+    {
+      artisticName: artisticName.trim() || "Nuevo perfil",
+      tagline: "",
+      genre: "",
+      bio: "",
+      accent: "#8b5cf6",
+      photoURL: "",
+      gallery: [],
+      tracks: [],
+      socials: {},
+      trajectoryStartYear: new Date().getFullYear(),
+    },
+    null,
+  );
+  return slug;
 }
 
 /**

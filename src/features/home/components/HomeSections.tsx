@@ -1,11 +1,10 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
-import type { Artist } from "@/domain/artist";
-import { ArtistCard } from "@/features/artists/components/ArtistCard";
+import { HomeFeaturedArtists } from "@/features/artists/components/HomeFeaturedArtists";
 
 const SERVICE_KEYS = ["production", "videos", "events"] as const;
 
-export async function HomeSections({ featured }: { featured: Artist[] }) {
+export async function HomeSections() {
   const t = await getTranslations("home");
 
   return (
@@ -18,16 +17,12 @@ export async function HomeSections({ featured }: { featured: Artist[] }) {
           </h2>
           <Link
             href="/artistas"
-            className="shrink-0 text-sm uppercase tracking-[2px] text-white/60 transition-colors hover:text-white"
+            className="shrink-0 text-sm tracking-[2px] text-white/60 uppercase transition-colors hover:text-white"
           >
             {t("seeAll")}
           </Link>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((artist) => (
-            <ArtistCard key={artist.slug} artist={artist} />
-          ))}
-        </div>
+        <HomeFeaturedArtists />
       </section>
 
       {/* Servicios */}

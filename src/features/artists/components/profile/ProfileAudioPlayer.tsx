@@ -31,6 +31,7 @@ export function ProfileAudioPlayer({
   variant = "card",
   className,
   dockBottomClass = "bottom-5",
+  autoPlay = false,
 }: {
   src: string;
   accent: string;
@@ -40,6 +41,9 @@ export function ProfileAudioPlayer({
   /** Posición vertical del dock flotante. En el editor se sube para no tapar la
    *  barra de guardado (que es fija al fondo). */
   dockBottomClass?: string;
+  /** Intenta reproducir al montar; si el navegador lo bloquea, suena al primer
+   *  gesto del visitante (clic/scroll/tecla/touch). Solo en el perfil público. */
+  autoPlay?: boolean;
 }) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
@@ -144,21 +148,75 @@ export function ProfileAudioPlayer({
     if (noCors) audioRef.current?.load();
   }, [noCors]);
 
+  // Arranca el grafo de audio (analizador reactivo), reanuda el contexto y
+  // reproduce. SOLO desde un gesto real del usuario (el botón): crear el grafo
+  // enruta el <audio> por el AudioContext, y si está suspendido (sin gesto) suena
+  // en silencio. Devuelve si logró reproducir.
+  const startPlayback = useCallback(async () => {
+    const a = audioRef.current;
+    if (!a) return false;
+    ensureGraph();
+    await ctxRef.current?.resume().catch(() => {});
+    try {
+      await a.play();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [ensureGraph]);
+
   async function toggle() {
     const a = audioRef.current;
     if (!a) return;
-    if (a.paused) {
-      ensureGraph();
-      await ctxRef.current?.resume().catch(() => {});
-      try {
-        await a.play();
-      } catch {
-        /* el navegador bloqueó la reproducción */
-      }
-    } else {
-      a.pause();
-    }
+    if (a.paused) await startPlayback();
+    else a.pause();
   }
+
+  // Autoplay al entrar al perfil. CLAVE: aquí NO tocamos el grafo de Web Audio —
+  // crearlo sin un gesto enruta el <audio> por un AudioContext suspendido y suena
+  // en silencio (y como play() "resuelve", nada lo recupera = el bug de "queda en
+  // pausa"). Reproducimos el ELEMENTO CRUDO: (1) con sonido si hay activación
+  // pegajosa (p.ej. venir de la lista con un clic); (2) si el navegador lo bloquea,
+  // arranca MUTEADO ya (permitido, la onda se mueve) y desmutea + suena al primer
+  // gesto del visitante en cualquier parte de la página. La onda reactiva (grafo)
+  // se enciende luego, si el visitante usa el botón.
+  useEffect(() => {
+    if (!autoPlay) return;
+    const a = audioRef.current;
+    if (!a) return;
+    let cancelled = false;
+    let cleanupGesture: (() => void) | null = null;
+    const events = ["pointerdown", "keydown", "touchstart"] as const;
+
+    const tryPlay = () => a.play().then(() => true, () => false);
+
+    const armGesture = () => {
+      const onGesture = () => {
+        cleanupGesture?.();
+        cleanupGesture = null;
+        a.muted = false;
+        void tryPlay();
+      };
+      events.forEach((ev) =>
+        window.addEventListener(ev, onGesture, { passive: true }),
+      );
+      cleanupGesture = () =>
+        events.forEach((ev) => window.removeEventListener(ev, onGesture));
+    };
+
+    (async () => {
+      if (await tryPlay()) return; // sonó con sonido (activación pegajosa)
+      if (cancelled) return;
+      a.muted = true; // arranque muteado (permitido) → onda en movimiento
+      await tryPlay();
+      if (!cancelled) armGesture(); // desmutea + suena al primer gesto
+    })();
+
+    return () => {
+      cancelled = true;
+      cleanupGesture?.();
+    };
+  }, [autoPlay, src]);
 
   function seek(clientX: number, el: HTMLElement) {
     const a = audioRef.current;

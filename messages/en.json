@@ -242,7 +242,8 @@
     "quotes": "Quotes",
     "noQuotes": "No quotes yet.",
     "viewPayments": "Payments →",
-    "viewAssets": "Assets →"
+    "viewAssets": "Assets →",
+    "viewExpenses": "Expenses →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",
@@ -263,7 +264,20 @@
     "colDate": "Date",
     "colAmount": "Amount",
     "colStatus": "Status",
-    "clientFallback": "Client"
+    "clientFallback": "Client",
+    "pnlTitle": "Income statement",
+    "manageExpenses": "Manage expenses →",
+    "pnlRevenue": "Revenue",
+    "pnlExpenses": "Expenses",
+    "pnlProfit": "Profit",
+    "pnlMargin": "Margin {value}%",
+    "pnlExpensesByCategory": "Expenses by category",
+    "period": {
+      "mes": "This month",
+      "anio": "This year",
+      "todo": "All",
+      "custom": "Custom"
+    }
   },
   "adminBienes": {
     "backToAdmin": "← Admin panel",
@@ -327,6 +341,67 @@
       "reasonPlaceholder": "Reason (sold, discarded…)",
       "cancel": "Cancel",
       "confirm": "Retire"
+    }
+  },
+  "adminGastos": {
+    "backToAdmin": "← Admin panel",
+    "title": "Expenses",
+    "intro": "The studio's operating expenses (manual entry). They feed the income statement in Finances.",
+    "addButton": "Add expense",
+    "loadError": "Couldn't load the expenses (admin role and rules deployed?).",
+    "totalLabel": "Total expenses",
+    "count": "Entries",
+    "byCategory": "By category",
+    "list": "Expenses",
+    "empty": "No expenses registered yet.",
+    "colConcept": "Concept",
+    "colCategory": "Category",
+    "colDate": "Date",
+    "colRecurrence": "Recurrence",
+    "colAmount": "Amount",
+    "colActions": " ",
+    "statusVoid": "Voided",
+    "void": "Void",
+    "categoria": {
+      "nomina": "Payroll",
+      "arriendo": "Rent",
+      "servicios": "Utilities",
+      "equipos": "Equipment",
+      "marketing": "Marketing",
+      "software": "Software",
+      "impuestos": "Taxes",
+      "otro": "Other"
+    },
+    "recurrencia": {
+      "unico": "One-off",
+      "mensual": "Monthly",
+      "anual": "Yearly"
+    },
+    "add": {
+      "title": "Add expense",
+      "concept": "Concept",
+      "conceptPlaceholder": "Studio rent, Pro Tools license…",
+      "category": "Category",
+      "recurrence": "Recurrence",
+      "amount": "Amount (COP)",
+      "date": "Date",
+      "sede": "Location",
+      "sedeNone": "No location",
+      "note": "Note",
+      "optional": "Optional",
+      "receipt": "Receipt",
+      "receiptPick": "Upload receipt…",
+      "cancel": "Cancel",
+      "submit": "Save",
+      "submitting": "Saving…",
+      "error": "Couldn't save the expense. Check the data and try again."
+    },
+    "voidModal": {
+      "title": "Void expense",
+      "message": "Void \"{concept}\"? It isn't deleted: it stays in history and stops counting in the P&L.",
+      "reasonPlaceholder": "Reason (duplicate, mistake…)",
+      "cancel": "Cancel",
+      "confirm": "Void"
     }
   },
   "adminPerfiles": {
@@ -742,6 +817,7 @@
     "adminMessage": "This section is for administrators only.",
     "financesTitle": "Finances",
     "assetsTitle": "Assets",
+    "expensesTitle": "Expenses",
     "profilesTitle": "Profiles",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

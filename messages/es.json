@@ -242,7 +242,8 @@
     "quotes": "Cotizaciones",
     "noQuotes": "Sin cotizaciones todavía.",
     "viewPayments": "Pagos →",
-    "viewAssets": "Bienes →"
+    "viewAssets": "Bienes →",
+    "viewExpenses": "Gastos →"
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",
@@ -263,7 +264,20 @@
     "colDate": "Fecha",
     "colAmount": "Monto",
     "colStatus": "Estado",
-    "clientFallback": "Cliente"
+    "clientFallback": "Cliente",
+    "pnlTitle": "Estado de resultados",
+    "manageExpenses": "Gestionar gastos →",
+    "pnlRevenue": "Ingresos",
+    "pnlExpenses": "Gastos",
+    "pnlProfit": "Utilidad",
+    "pnlMargin": "Margen {value}%",
+    "pnlExpensesByCategory": "Gastos por categoría",
+    "period": {
+      "mes": "Este mes",
+      "anio": "Este año",
+      "todo": "Todo",
+      "custom": "Personalizado"
+    }
   },
   "adminBienes": {
     "backToAdmin": "← Panel admin",
@@ -327,6 +341,67 @@
       "reasonPlaceholder": "Motivo (venta, descarte…)",
       "cancel": "Cancelar",
       "confirm": "Dar de baja"
+    }
+  },
+  "adminGastos": {
+    "backToAdmin": "← Panel admin",
+    "title": "Gastos",
+    "intro": "Gastos operativos del estudio (registro manual). Alimentan el Estado de Resultados en Finanzas.",
+    "addButton": "Registrar gasto",
+    "loadError": "No se pudieron cargar los gastos (¿rol admin y reglas desplegadas?).",
+    "totalLabel": "Total de gastos",
+    "count": "Registros",
+    "byCategory": "Por categoría",
+    "list": "Gastos",
+    "empty": "Aún no hay gastos registrados.",
+    "colConcept": "Concepto",
+    "colCategory": "Categoría",
+    "colDate": "Fecha",
+    "colRecurrence": "Recurrencia",
+    "colAmount": "Monto",
+    "colActions": " ",
+    "statusVoid": "Anulado",
+    "void": "Anular",
+    "categoria": {
+      "nomina": "Nómina",
+      "arriendo": "Arriendo",
+      "servicios": "Servicios",
+      "equipos": "Equipos",
+      "marketing": "Marketing",
+      "software": "Software",
+      "impuestos": "Impuestos",
+      "otro": "Otro"
+    },
+    "recurrencia": {
+      "unico": "Único",
+      "mensual": "Mensual",
+      "anual": "Anual"
+    },
+    "add": {
+      "title": "Registrar gasto",
+      "concept": "Concepto",
+      "conceptPlaceholder": "Arriendo estudio, licencia Pro Tools…",
+      "category": "Categoría",
+      "recurrence": "Recurrencia",
+      "amount": "Monto (COP)",
+      "date": "Fecha",
+      "sede": "Sede",
+      "sedeNone": "Sin sede",
+      "note": "Nota",
+      "optional": "Opcional",
+      "receipt": "Comprobante",
+      "receiptPick": "Subir comprobante…",
+      "cancel": "Cancelar",
+      "submit": "Guardar",
+      "submitting": "Guardando…",
+      "error": "No se pudo guardar el gasto. Revisa los datos e intenta de nuevo."
+    },
+    "voidModal": {
+      "title": "Anular gasto",
+      "message": "¿Anular \"{concept}\"? No se borra: queda en el historial y deja de contar en el P&L.",
+      "reasonPlaceholder": "Motivo (duplicado, error…)",
+      "cancel": "Cancelar",
+      "confirm": "Anular"
     }
   },
   "adminPerfiles": {
@@ -742,6 +817,7 @@
     "adminMessage": "Esta sección es solo para administradores.",
     "financesTitle": "Finanzas",
     "assetsTitle": "Bienes",
+    "expensesTitle": "Gastos",
     "profilesTitle": "Perfiles",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

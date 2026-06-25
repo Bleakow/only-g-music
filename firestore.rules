@@ -241,6 +241,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Movimientos / gastos (módulo contable — Fase 16b) ────────────
+    // Gastos manuales del Estado de Resultados. TODO admin-only (el productor
+    // NUNCA ve finanzas). Append-only: no se borra (delete = false); anular es
+    // un update que marca anuladoAt/anuladoMotivo. `createdBy` = el admin creador.
+    match /movimientos/{id} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

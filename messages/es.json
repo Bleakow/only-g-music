@@ -888,6 +888,11 @@
     "oro": "Oro",
     "diamante": "Diamante"
   },
+  "error": {
+    "title": "Algo salió mal",
+    "message": "Tuvimos un problema cargando esto. Puedes reintentar.",
+    "retry": "Reintentar"
+  },
   "notificaciones": {
     "title": "Notificaciones",
     "markAllRead": "Marcar todo leído",

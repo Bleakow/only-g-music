@@ -888,6 +888,11 @@
     "oro": "Gold",
     "diamante": "Diamond"
   },
+  "error": {
+    "title": "Something went wrong",
+    "message": "We hit a problem loading this. You can try again.",
+    "retry": "Retry"
+  },
   "notificaciones": {
     "title": "Notifications",
     "markAllRead": "Mark all read",

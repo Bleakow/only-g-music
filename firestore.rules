@@ -283,6 +283,15 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Logs de errores (observabilidad — Fase 4.4) ─────────────────
+    // Cualquier autenticado registra SUS errores (el cliente limita y deduplica);
+    // solo el admin los lee. Append-only.
+    match /errorLogs/{id} {
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

@@ -6,6 +6,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
+import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
 
 export async function generateMetadata({
   params,
@@ -50,7 +51,10 @@ export default async function LocaleLayout({
     <html lang={locale}>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <GlobalErrorListener />
+            {children}
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>

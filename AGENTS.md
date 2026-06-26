@@ -133,7 +133,13 @@ Tres decisiones lo fijan: pago **manual** (QR + comprobante + confirmación huma
   detalle traducido; botón "activar push" no intrusivo). *Deploy: `firebase deploy --only
   functions,firestore:rules`. VAPID en `.env.local`. Pendiente menor: si se quiere texto del push
   por idioma, resolver server-side (hoy es nudge genérico).*
-- **4.4 Observabilidad mínima**: errores (Sentry) + analytics de embudo.
+- ✅ **4.4 Observabilidad mínima**: NATIVO (no Sentry — consistente con 4.3; Sentry queda como
+  upgrade). **Analytics de embudo** con Firebase Analytics (ya configurado): `src/domain/analytics.ts`
+  (catálogo) + `track()` (`lib/firebase/analytics.ts`, lazy + guard, no-op SSR); cableados
+  `quote_submitted` y `artist_profile_submitted` (más eventos = one-liner). **Errores**: `error-log.ts`
+  (persiste a `errorLogs`, dedup + tope) + `GlobalErrorListener` (window.onerror/unhandledrejection) +
+  `app/[locale]/error.tsx` (límite de error de ruta con reintento); reglas `errorLogs` (auth crea,
+  admin lee). *Con esto la **Fase 4 (fundación transversal) queda COMPLETA**.*
 
 ### Fase 4.5 — Internacionalización (i18n) · **PRIORITARIA** *(foundational — antes de seguir creciendo)*
 

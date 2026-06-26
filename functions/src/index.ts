@@ -16,7 +16,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
-import { notify } from "./notify";
+import { notify, type NotifEvento } from "./notify";
 
 initializeApp();
 const db = getFirestore();
@@ -42,6 +42,47 @@ function fmtFecha(ms: number | undefined): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(ms));
+}
+
+/** COP legible para el texto de las notificaciones. */
+function fmtCOP(amount: number | undefined): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(amount ?? 0);
+}
+
+/** UIDs con rol admin (destinatarios de los avisos internos). */
+async function adminUids(): Promise<string[]> {
+  const snap = await db
+    .collection("users")
+    .where("roles", "array-contains", "admin")
+    .get();
+  return snap.docs.map((d) => d.id);
+}
+
+/** Notifica el mismo evento a todos los admin. */
+async function notifyAdmins(
+  evento: NotifEvento,
+  params: Record<string, string | number>,
+  ruta: string,
+): Promise<void> {
+  const uids = await adminUids();
+  await Promise.all(uids.map((uid) => notify(uid, evento, params, ruta)));
+}
+
+/** ¿El uid tiene rol admin? (para elegir el deep link admin vs cliente). */
+async function isAdminUid(uid: string): Promise<boolean> {
+  const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
+  return Array.isArray(roles) && roles.includes("admin");
+}
+
+/** Segmento de ruta de detalle según el tipo de la conversación. */
+function tipoSegment(kind?: string): string | null {
+  if (kind === "quote") return "cotizacion";
+  if (kind === "booking") return "reserva";
+  return null;
 }
 
 /**
@@ -182,6 +223,29 @@ export const onConversationMessage = onDocumentCreated(
       },
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Notifica a los demás participantes (solo mensajes de contenido real;
+    // los de sistema/estado no avisan). El deep link va al detalle según el rol.
+    if (!["mensaje", "comprobante", "propuesta"].includes(msg.tipo)) return;
+    const from = msg.from;
+    if (!from || from === "sistema") return;
+    const conv = (
+      await db.doc(`conversations/${event.params.cid}`).get()
+    ).data();
+    if (!conv) return;
+    const recipients: string[] = (conv.participants ?? []).filter(
+      (p: string) => p && p !== from,
+    );
+    if (recipients.length === 0) return;
+    const u = (await db.doc(`users/${from}`).get()).data();
+    const actor = u?.displayName ?? u?.email ?? "—";
+    const seg = tipoSegment(conv.ref?.kind);
+    for (const r of recipients) {
+      const base = (await isAdminUid(r)) ? "/admin" : "/solicitudes";
+      const ruta =
+        seg && conv.ref?.id ? `${base}/${seg}/${conv.ref.id}` : base;
+      await notify(r, "mensaje-nuevo", { actor }, ruta);
+    }
   },
 );
 
@@ -491,3 +555,72 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
   logger.info(`Perfil ${slug} vinculado a ${targetUid} (+rol artista)`);
   return { slug };
 });
+
+// ── Notificaciones dirigidas por eventos (seam `notify`) ───────────────────────
+
+/** Nueva solicitud de cotización → avisa a los admin. */
+export const onQuoteCreated = onDocumentCreated("quotes/{id}", async (event) => {
+  const q = event.data?.data();
+  if (!q) return;
+  await notifyAdmins(
+    "cotizacion-nueva",
+    { cliente: q.contactName ?? "Un cliente" },
+    `/admin/cotizacion/${event.params.id}`,
+  );
+});
+
+/** El estudio respondió (pendiente → cotizada) → avisa al cliente dueño. */
+export const onQuoteAnswered = onDocumentUpdated("quotes/{id}", async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  if (!after) return;
+  if (before?.status !== "cotizada" && after.status === "cotizada") {
+    await notify(
+      after.uid,
+      "cotizacion-respondida",
+      {},
+      `/solicitudes/cotizacion/${event.params.id}`,
+    );
+  }
+});
+
+/** El cliente subió comprobante (pago en revisión) → avisa a los admin. */
+export const onPaymentUnderReview = onDocumentUpdated(
+  "conversations/{id}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after) return;
+    if (
+      before?.pago?.estado !== "en_revision" &&
+      after.pago?.estado === "en_revision"
+    ) {
+      const payerUid = Array.isArray(after.participants)
+        ? after.participants[0]
+        : undefined;
+      const clientName = payerUid
+        ? ((await db.doc(`users/${payerUid}`).get()).data()?.displayName ??
+          "Un cliente")
+        : "Un cliente";
+      await notifyAdmins(
+        "pago-por-revisar",
+        { cliente: clientName, monto: fmtCOP(after.pago?.monto) },
+        "/admin/pagos",
+      );
+    }
+  },
+);
+
+/** Nuevo perfil de artista creado → avisa a los admin. */
+export const onArtistProfileCreated = onDocumentCreated(
+  "artistProfiles/{slug}",
+  async (event) => {
+    const p = event.data?.data();
+    if (!p) return;
+    await notifyAdmins(
+      "perfil-artista-creado",
+      { nombre: p.artisticName ?? event.params.slug },
+      "/admin/perfiles",
+    );
+  },
+);

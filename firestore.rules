@@ -44,6 +44,12 @@ service cloud.firestore {
               .hasOnly(['leido', 'archivado']);
         allow create, delete: if false;
       }
+
+      // Tokens FCM de cada dispositivo del usuario (para el push). El dueño los
+      // gestiona; las Functions los leen vía Admin SDK.
+      match /fcmTokens/{token} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // ── Solicitudes de cotización ────────────────────────────────────

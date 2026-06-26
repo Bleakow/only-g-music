@@ -13,6 +13,7 @@ import {
   marcarTodoLeido,
 } from "../lib/notifications-repo";
 import { tiempoRelativo } from "../lib/tiempo-relativo";
+import { activarPush, pushDisponible, permisoPush } from "../lib/push";
 
 // A la izquierda del avatar del UserMenu (right-[5.5rem]/right-28), mismo eje.
 const WRAP = "fixed top-4 right-[8.75rem] z-[105] sm:top-5 sm:right-40";
@@ -33,6 +34,10 @@ export function NotificationBell() {
   const [items, setItems] = useState<Notificacion[]>([]);
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"unread" | "all">("unread");
+  const [pushState, setPushState] = useState<NotificationPermission | null>(
+    null,
+  );
+  const [pushBusy, setPushBusy] = useState(false);
 
   const uid = user?.uid ?? null;
 
@@ -42,6 +47,14 @@ export function NotificationBell() {
       return;
     }
     return subscribeNotificaciones(uid, setItems);
+  }, [uid]);
+
+  // Push: si ya hay permiso, refresca el token en silencio; si no, el usuario lo
+  // activa desde el botón del panel (sin pedir permiso al cargar — nada intrusivo).
+  useEffect(() => {
+    if (!uid) return;
+    setPushState(permisoPush());
+    if (permisoPush() === "granted") activarPush(uid);
   }, [uid]);
 
   // Cerrar al clic fuera (el panel es hijo de `ref`, aunque vaya `fixed`).
@@ -192,6 +205,34 @@ export function NotificationBell() {
                   </ul>
                 )}
               </div>
+
+              {/* Footer: activar push en este dispositivo (no intrusivo) */}
+              {pushDisponible() && pushState !== "granted" && (
+                <div className="border-t border-white/10 p-3">
+                  {pushState === "denied" ? (
+                    <p className="text-center text-xs text-silver-500">
+                      {t("notificaciones.pushBlocked")}
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={pushBusy}
+                      onClick={async () => {
+                        setPushBusy(true);
+                        await activarPush(uid);
+                        setPushState(permisoPush());
+                        setPushBusy(false);
+                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-amethyst-400/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white disabled:opacity-50"
+                    >
+                      <BellIcon className="size-3.5" />
+                      {pushBusy
+                        ? t("notificaciones.activating")
+                        : t("notificaciones.enablePush")}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

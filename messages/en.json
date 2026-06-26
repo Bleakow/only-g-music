@@ -895,6 +895,9 @@
     "tabAll": "All",
     "empty": "You have no notifications.",
     "emptyUnread": "You have no unread notifications.",
+    "enablePush": "Enable push here",
+    "activating": "Enabling…",
+    "pushBlocked": "Push blocked in the browser",
     "eventos": {
       "mensaje-nuevo": {
         "titulo": "New message",

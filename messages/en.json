@@ -137,6 +137,11 @@
     "sendReceipt": "Send receipt",
     "receiptMessage": "I sent the payment receipt.",
     "receiptUnderReview": "We received your receipt. The team is reviewing it; we'll confirm via chat.",
+    "proposalTitle": "Studio proposal",
+    "proposalHint": "The studio proposed this price. Accept it to generate your booking, or reject it.",
+    "acceptProposal": "Accept",
+    "rejectProposal": "Reject",
+    "quoteAcceptedNote": "You accepted the proposal. Your booking will be generated shortly — find it in \"My requests\".",
     "conversation": "Conversation"
   },
   "thread": {
@@ -363,6 +368,16 @@
     "colActions": " ",
     "statusVoid": "Voided",
     "void": "Void",
+    "toConfirm": "To confirm ({count})",
+    "toConfirmHint": "Did you pay these recurring expenses? Confirm so they count in the P&L.",
+    "confirmYes": "Yes, paid",
+    "confirmNo": "No",
+    "recurringActive": "Active recurring",
+    "recurring": "Recurring expenses",
+    "recurringTag": "Recurring",
+    "since": "since {date}",
+    "stopSeries": "Stop series",
+    "expensesInPeriod": "Expenses in period",
     "categoria": {
       "nomina": "Payroll",
       "arriendo": "Rent",
@@ -386,6 +401,9 @@
       "recurrence": "Recurrence",
       "amount": "Amount (COP)",
       "date": "Date",
+      "firstCharge": "First charge",
+      "recurUntil": "Recurrence end (optional)",
+      "recurHint": "Recurs on this same date each period. Leave it open-ended to keep going until you stop it.",
       "sede": "Location",
       "sedeNone": "No location",
       "note": "Note",
@@ -399,10 +417,13 @@
     },
     "voidModal": {
       "title": "Void expense",
+      "titleSerie": "Stop recurring series",
       "message": "Void \"{concept}\"? It isn't deleted: it stays in history and stops counting in the P&L.",
+      "messageSerie": "Stop the \"{concept}\" series? It stops generating expenses from today; months already confirmed are kept.",
       "reasonPlaceholder": "Reason (duplicate, mistake…)",
       "cancel": "Cancel",
-      "confirm": "Void"
+      "confirm": "Void",
+      "confirmSerie": "Stop series"
     }
   },
   "adminBalance": {
@@ -871,6 +892,68 @@
     "plata": "Silver",
     "oro": "Gold",
     "diamante": "Diamond"
+  },
+  "error": {
+    "title": "Something went wrong",
+    "message": "We hit a problem loading this. You can try again.",
+    "retry": "Retry"
+  },
+  "notificaciones": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "tabUnread": "Unread",
+    "tabAll": "All",
+    "empty": "You have no notifications.",
+    "emptyUnread": "You have no unread notifications.",
+    "enablePush": "Enable push here",
+    "activating": "Enabling…",
+    "pushBlocked": "Push blocked in the browser",
+    "eventos": {
+      "mensaje-nuevo": {
+        "titulo": "New message",
+        "cuerpo": "{actor} messaged you."
+      },
+      "pago-por-revisar": {
+        "titulo": "Payment to review",
+        "cuerpo": "{cliente} uploaded a {monto} receipt."
+      },
+      "pago-confirmado": {
+        "titulo": "Payment confirmed",
+        "cuerpo": "The studio confirmed your {concepto} payment."
+      },
+      "cotizacion-nueva": {
+        "titulo": "New quote",
+        "cuerpo": "{cliente} requested a quote."
+      },
+      "cotizacion-respondida": {
+        "titulo": "Quote answered",
+        "cuerpo": "The studio answered your request."
+      },
+      "sesion-agendada": {
+        "titulo": "Session scheduled",
+        "cuerpo": "You have a session on {fecha}."
+      },
+      "sesion-proxima": {
+        "titulo": "Upcoming session",
+        "cuerpo": "Your session is on {fecha}."
+      },
+      "gasto-recurrente-por-confirmar": {
+        "titulo": "Expense to confirm",
+        "cuerpo": "Confirm whether you paid {concepto}."
+      },
+      "perfil-artista-creado": {
+        "titulo": "New artist profile",
+        "cuerpo": "{nombre}'s profile was created."
+      },
+      "premium-activado": {
+        "titulo": "Membership active",
+        "cuerpo": "Your premium profile is now active."
+      },
+      "perfil-por-renovar": {
+        "titulo": "Profile expiring",
+        "cuerpo": "Your profile expires in {dias} days."
+      }
+    }
   },
   "guards": {
     "adminTitle": "Admin panel",

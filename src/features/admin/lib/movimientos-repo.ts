@@ -14,7 +14,12 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Movimiento, NuevoMovimiento } from "@/domain/contabilidad";
+import type {
+  Movimiento,
+  NuevoMovimiento,
+  Confirmacion,
+  ConfirmacionEstado,
+} from "@/domain/contabilidad";
 
 const COLLECTION = "movimientos";
 
@@ -33,6 +38,28 @@ function toMillis(v: unknown): number | undefined {
   return ts.toMillis?.();
 }
 
+/** Normaliza el mapa de confirmaciones (Timestamp → epoch ms; descarta basura). */
+function mapConfirmaciones(
+  raw: unknown,
+): Record<string, Confirmacion> | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const out: Record<string, Confirmacion> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const o = (v ?? {}) as {
+      estado?: unknown;
+      montoReal?: unknown;
+      confirmadoEn?: unknown;
+    };
+    if (o.estado !== "pagado" && o.estado !== "no_pagado") continue;
+    out[k] = {
+      estado: o.estado,
+      montoReal: typeof o.montoReal === "number" ? o.montoReal : undefined,
+      confirmadoEn: toMillis(o.confirmadoEn) ?? Date.now(),
+    };
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+
 /** Mapea un documento de Firestore al modelo de dominio. */
 function toMovimiento(id: string, data: DocumentData): Movimiento {
   return {
@@ -42,6 +69,8 @@ function toMovimiento(id: string, data: DocumentData): Movimiento {
     monto: data.monto ?? 0,
     fecha: toMillis(data.fecha) ?? Date.now(),
     recurrencia: data.recurrencia ?? "unico",
+    recurrenciaHasta: toMillis(data.recurrenciaHasta),
+    confirmaciones: mapConfirmaciones(data.confirmaciones),
     sede: data.sede ?? undefined,
     comprobanteUrl: data.comprobanteUrl ?? undefined,
     nota: data.nota ?? undefined,
@@ -94,4 +123,25 @@ export async function anularMovimiento(
     anuladoAt: serverTimestamp(),
     anuladoMotivo: motivo,
   });
+}
+
+/**
+ * Confirma (o descarta) una ocurrencia recurrente: guarda la respuesta del
+ * usuario bajo `confirmaciones.<clave>`. `pagado` la hace contar en el P&L;
+ * `no_pagado` la descarta (sin borrar nada: queda registrada la decisión).
+ */
+export async function confirmarOcurrencia(
+  movimientoId: string,
+  clave: string,
+  estado: ConfirmacionEstado,
+  montoReal?: number,
+): Promise<void> {
+  const patch: Record<string, unknown> = {
+    [`confirmaciones.${clave}.estado`]: estado,
+    [`confirmaciones.${clave}.confirmadoEn`]: serverTimestamp(),
+  };
+  if (montoReal != null) {
+    patch[`confirmaciones.${clave}.montoReal`] = montoReal;
+  }
+  await updateDoc(doc(db, COLLECTION, movimientoId), patch);
 }

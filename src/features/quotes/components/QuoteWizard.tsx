@@ -19,6 +19,7 @@ import { MinusIcon, PlusIcon, CheckIcon, CloseIcon } from "@/components/icons";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { ArtistPicker } from "./ArtistPicker";
 import { createQuoteRequest } from "../lib/quotes-repo";
+import { track } from "@/lib/firebase/analytics";
 import {
   type NewQuoteRequest,
   type QuoteItem,
@@ -216,6 +217,7 @@ export function QuoteWizard() {
       };
 
       const id = await createQuoteRequest(payload);
+      track("quote_submitted");
       setDoneId(id);
     } catch (e) {
       console.error("[cotizar] error:", e);

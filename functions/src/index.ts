@@ -16,6 +16,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { notify, type NotifEvento } from "./notify";
 
 initializeApp();
 const db = getFirestore();
@@ -34,6 +35,73 @@ const GRACIA_MIN = 30;
 const PUNTOS_LIKE = 5;
 const PUNTOS_PAGO_PERFIL = 150;
 
+/** Fecha legible (es-CO) para el texto de las notificaciones. */
+function fmtFecha(ms: number | undefined): string {
+  if (!ms) return "";
+  return new Intl.DateTimeFormat("es-CO", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(ms));
+}
+
+/** COP legible para el texto de las notificaciones. */
+function fmtCOP(amount: number | undefined): string {
+  return new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0,
+  }).format(amount ?? 0);
+}
+
+/** UIDs con rol admin (destinatarios de los avisos internos). */
+async function adminUids(): Promise<string[]> {
+  const snap = await db
+    .collection("users")
+    .where("roles", "array-contains", "admin")
+    .get();
+  return snap.docs.map((d) => d.id);
+}
+
+/** Notifica el mismo evento a todos los admin. */
+async function notifyAdmins(
+  evento: NotifEvento,
+  params: Record<string, string | number>,
+  ruta: string,
+): Promise<void> {
+  const uids = await adminUids();
+  await Promise.all(uids.map((uid) => notify(uid, evento, params, ruta)));
+}
+
+/** ¿El uid tiene rol admin? (para elegir el deep link admin vs cliente). */
+async function isAdminUid(uid: string): Promise<boolean> {
+  const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
+  return Array.isArray(roles) && roles.includes("admin");
+}
+
+/** Segmento de ruta de detalle según el tipo de la conversación. */
+function tipoSegment(kind?: string): string | null {
+  if (kind === "quote") return "cotizacion";
+  if (kind === "booking") return "reserva";
+  return null;
+}
+
+/** Suma meses a un epoch ms recortando el día al último del mes destino. */
+function sumarMesesMs(baseMs: number, meses: number): number {
+  const base = new Date(baseMs);
+  const total = base.getMonth() + meses;
+  const anio = base.getFullYear() + Math.floor(total / 12);
+  const mes = ((total % 12) + 12) % 12;
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  return new Date(anio, mes, Math.min(base.getDate(), ultimoDia)).getTime();
+}
+
+/** Clave de periodo de una ocurrencia ("YYYY-MM" mensual, "YYYY" anual). */
+function claveOcurrencia(ms: number, recurrencia: string): string {
+  const d = new Date(ms);
+  if (recurrencia === "anual") return `${d.getFullYear()}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 /**
  * Al confirmar una reserva de ESTUDIO con productor asignado, crea la proyección
  * `sessions` (SIN `amount`: el productor no ve cobros — invariante de roles).
@@ -48,6 +116,20 @@ export const onBookingConfirmed = onDocumentUpdated(
     if (!after || !afterRef) return;
 
     if (after.estado !== "confirmada") return;
+    const before = event.data?.before.data();
+    const justConfirmed = before?.estado !== "confirmada";
+
+    // Pago confirmado de una reserva (estudio/proyecto, no perfil) → avisa al
+    // cliente. Va aquí (no en la rama de sesión) para cubrir también los proyectos,
+    // que no tienen productor ni slot.
+    if (justConfirmed && after.tipo !== "perfil_artista") {
+      await notify(
+        after.uid,
+        "pago-confirmado",
+        { concepto: after.serviceName ?? "tu reserva" },
+        `/solicitudes/reserva/${event.params.id}`,
+      );
+    }
 
     // Perfil pagado → otorga puntos de gamificación UNA sola vez (flag idempotente).
     if (after.tipo === "perfil_artista") {
@@ -76,6 +158,14 @@ export const onBookingConfirmed = onDocumentUpdated(
     });
     logger.info(
       `Sesión ${reservaId} creada → productor ${after.productorId}`,
+    );
+
+    // Notificaciones (la sesión se acaba de crear → disparan una sola vez).
+    await notify(
+      after.productorId,
+      "sesion-agendada",
+      { fecha: fmtFecha(after.start) },
+      "/consola",
     );
   },
 );
@@ -154,6 +244,29 @@ export const onConversationMessage = onDocumentCreated(
       },
       updatedAt: FieldValue.serverTimestamp(),
     });
+
+    // Notifica a los demás participantes (solo mensajes de contenido real;
+    // los de sistema/estado no avisan). El deep link va al detalle según el rol.
+    if (!["mensaje", "comprobante", "propuesta"].includes(msg.tipo)) return;
+    const from = msg.from;
+    if (!from || from === "sistema") return;
+    const conv = (
+      await db.doc(`conversations/${event.params.cid}`).get()
+    ).data();
+    if (!conv) return;
+    const recipients: string[] = (conv.participants ?? []).filter(
+      (p: string) => p && p !== from,
+    );
+    if (recipients.length === 0) return;
+    const u = (await db.doc(`users/${from}`).get()).data();
+    const actor = u?.displayName ?? u?.email ?? "—";
+    const seg = tipoSegment(conv.ref?.kind);
+    for (const r of recipients) {
+      const base = (await isAdminUid(r)) ? "/admin" : "/solicitudes";
+      const ruta =
+        seg && conv.ref?.id ? `${base}/${seg}/${conv.ref.id}` : base;
+      await notify(r, "mensaje-nuevo", { actor }, ruta);
+    }
   },
 );
 
@@ -233,6 +346,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   await batch.commit();
 
   logger.info(`Pago confirmado: ${conversationId} → premium ${slug}`);
+  await notify(payerUid, "premium-activado", {}, "/artista/perfil");
   return { ok: true };
 });
 
@@ -462,3 +576,217 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
   logger.info(`Perfil ${slug} vinculado a ${targetUid} (+rol artista)`);
   return { slug };
 });
+
+// ── Notificaciones dirigidas por eventos (seam `notify`) ───────────────────────
+
+/** Nueva solicitud de cotización → avisa a los admin. */
+export const onQuoteCreated = onDocumentCreated("quotes/{id}", async (event) => {
+  const q = event.data?.data();
+  if (!q) return;
+  await notifyAdmins(
+    "cotizacion-nueva",
+    { cliente: q.contactName ?? "Un cliente" },
+    `/admin/cotizacion/${event.params.id}`,
+  );
+});
+
+/** El estudio respondió (pendiente → cotizada) → avisa al cliente dueño. */
+export const onQuoteAnswered = onDocumentUpdated("quotes/{id}", async (event) => {
+  const before = event.data?.before.data();
+  const after = event.data?.after.data();
+  if (!after) return;
+  if (before?.status !== "cotizada" && after.status === "cotizada") {
+    await notify(
+      after.uid,
+      "cotizacion-respondida",
+      {},
+      `/solicitudes/cotizacion/${event.params.id}`,
+    );
+  }
+});
+
+/** El cliente subió comprobante (pago en revisión) → avisa a los admin. */
+export const onPaymentUnderReview = onDocumentUpdated(
+  "conversations/{id}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after) return;
+    if (
+      before?.pago?.estado !== "en_revision" &&
+      after.pago?.estado === "en_revision"
+    ) {
+      const payerUid = Array.isArray(after.participants)
+        ? after.participants[0]
+        : undefined;
+      const clientName = payerUid
+        ? ((await db.doc(`users/${payerUid}`).get()).data()?.displayName ??
+          "Un cliente")
+        : "Un cliente";
+      await notifyAdmins(
+        "pago-por-revisar",
+        { cliente: clientName, monto: fmtCOP(after.pago?.monto) },
+        "/admin/pagos",
+      );
+    }
+  },
+);
+
+/** Nuevo perfil de artista creado → avisa a los admin. */
+export const onArtistProfileCreated = onDocumentCreated(
+  "artistProfiles/{slug}",
+  async (event) => {
+    const p = event.data?.data();
+    if (!p) return;
+    await notifyAdmins(
+      "perfil-artista-creado",
+      { nombre: p.artisticName ?? event.params.slug },
+      "/admin/perfiles",
+    );
+  },
+);
+
+// ── Recordatorios programados (crons) ─────────────────────────────────────────
+
+/**
+ * Recordatorio diario de gastos recurrentes por confirmar: por cada serie activa,
+ * si la ocurrencia vigente del periodo aún no se confirmó NI se avisó, avisa a los
+ * admin UNA sola vez (dedup vía `avisadoConfirm`). El backlog se ve in-app.
+ */
+export const recordatorioGastosRecurrentes = onSchedule(
+  { schedule: "every 24 hours", region: REGION },
+  async () => {
+    const now = Date.now();
+    const snap = await db
+      .collection("movimientos")
+      .where("recurrencia", "in", ["mensual", "anual"])
+      .get();
+    let avisos = 0;
+    for (const doc of snap.docs) {
+      const m = doc.data();
+      if (m.anuladoAt) continue; // serie anulada
+      const fechaMs = typeof m.fecha === "number" ? m.fecha : undefined;
+      if (!fechaMs) continue;
+      const hasta =
+        typeof m.recurrenciaHasta === "number" ? m.recurrenciaHasta : undefined;
+      const step = m.recurrencia === "anual" ? 12 : 1;
+
+      // Ocurrencia vigente = la más reciente cuya fecha ya pasó.
+      let last: number | null = null;
+      for (let i = 0; i <= 1200; i++) {
+        const ms = sumarMesesMs(fechaMs, i * step);
+        if (ms > now || (hasta != null && ms > hasta)) break;
+        last = ms;
+      }
+      if (last == null) continue;
+
+      const key = claveOcurrencia(last, m.recurrencia);
+      const confirmaciones = (m.confirmaciones ?? {}) as Record<string, unknown>;
+      if (confirmaciones[key]) continue; // ya respondida
+      const avisado: string[] = Array.isArray(m.avisadoConfirm)
+        ? m.avisadoConfirm
+        : [];
+      if (avisado.includes(key)) continue; // ya avisada
+
+      await notifyAdmins(
+        "gasto-recurrente-por-confirmar",
+        { concepto: m.concepto ?? "" },
+        "/admin/gastos",
+      );
+      await doc.ref.update({ avisadoConfirm: FieldValue.arrayUnion(key) });
+      avisos++;
+    }
+    if (avisos) {
+      logger.info(`Recordatorio: ${avisos} gasto(s) recurrente(s) por confirmar`);
+    }
+  },
+);
+
+/**
+ * Recordatorio diario de perfiles premium por vencer (ventana de 7 días). Avisa al
+ * dueño UNA vez por periodo de premium (dedup vía `renovacionAvisadaPara`, que
+ * guarda el `expiresAt` ya avisado; al renovar cambia y se vuelve a avisar).
+ */
+export const recordatorioRenovacionPerfil = onSchedule(
+  { schedule: "every 24 hours", region: REGION },
+  async () => {
+    const now = Date.now();
+    const limite = now + 7 * 24 * 3_600_000; // 7 días
+    const snap = await db.collection("artistProfiles").get();
+    let avisos = 0;
+    for (const doc of snap.docs) {
+      const p = doc.data();
+      const prem = p.premium;
+      if (!prem?.activo || typeof prem.expiresAt !== "number") continue;
+      if (prem.expiresAt <= now || prem.expiresAt > limite) continue; // fuera de ventana
+      if (p.renovacionAvisadaPara === prem.expiresAt) continue; // ya avisado
+      if (!p.uid) continue;
+      const dias = Math.max(
+        1,
+        Math.ceil((prem.expiresAt - now) / (24 * 3_600_000)),
+      );
+      await notify(p.uid, "perfil-por-renovar", { dias }, "/artista/perfil");
+      await doc.ref.update({ renovacionAvisadaPara: prem.expiresAt });
+      avisos++;
+    }
+    if (avisos) logger.info(`Recordatorio: ${avisos} perfil(es) por renovar`);
+  },
+);
+
+/**
+ * Cotización ACEPTADA → genera la Reserva (server-authoritative): usa el precio
+ * PROPUESTO por el estudio (`proposedPrice`), nunca uno del cliente. Reserva de
+ * tipo `proyecto` (sin slot/fecha): se paga y el agendado se coordina en el chat.
+ * Idempotente vía `bookingId` en el quote. Sin `proposedPrice` no crea nada.
+ */
+export const onQuoteAccepted = onDocumentUpdated(
+  "quotes/{id}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const afterRef = event.data?.after.ref;
+    if (!after || !afterRef) return;
+    if (before?.status === "aceptada" || after.status !== "aceptada") return;
+    if (after.bookingId) return; // ya generada → idempotente
+
+    const amount =
+      typeof after.proposedPrice === "number" ? after.proposedPrice : 0;
+    if (amount <= 0) {
+      logger.warn(
+        `Cotización ${event.params.id} aceptada sin proposedPrice → no se crea reserva`,
+      );
+      return;
+    }
+
+    const items = Array.isArray(after.items) ? after.items : [];
+    const serviceName =
+      items
+        .map((i: { serviceName?: string }) => i.serviceName)
+        .filter(Boolean)
+        .join(", ") || "Proyecto cotizado";
+
+    const bookingRef = db.collection("bookings").doc();
+    const batch = db.batch();
+    batch.set(bookingRef, {
+      uid: after.uid,
+      tipo: "proyecto",
+      serviceSlug: "proyecto",
+      serviceName,
+      sede: after.sede,
+      start: 0,
+      durationMin: 0,
+      amount,
+      quoteId: event.params.id,
+      clientName: after.contactName ?? null,
+      clientEmail: after.contactEmail ?? null,
+      estado: "pendiente_pago",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    batch.update(afterRef, { bookingId: bookingRef.id });
+    await batch.commit();
+
+    logger.info(
+      `Reserva ${bookingRef.id} generada desde cotización ${event.params.id}`,
+    );
+  },
+);

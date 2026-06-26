@@ -17,9 +17,10 @@ export type ReservaEstado =
 
 /**
  * Tipo de reserva. `sesion` es una cita de estudio (con slot); `perfil_artista`
- * es la compra del perfil de artista (reusa el flujo de pago, sin slot/fecha).
+ * es la compra del perfil de artista; `proyecto` nace de una cotización aceptada
+ * (sin slot/fecha — se paga y el agendado se coordina en el chat).
  */
-export type ReservaTipo = "sesion" | "perfil_artista";
+export type ReservaTipo = "sesion" | "perfil_artista" | "proyecto";
 
 export interface Reserva {
   id: string;

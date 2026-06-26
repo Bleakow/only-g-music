@@ -32,6 +32,24 @@ service cloud.firestore {
         && request.resource.data.roles == resource.data.roles;
 
       allow delete: if false;
+
+      // Notificaciones del usuario (campanita). Las CREA el servidor (Admin SDK /
+      // Cloud Functions, vía el seam `notify`); el dueño solo LEE y marca
+      // leído/archivado. Nunca crea ni borra desde el cliente.
+      match /notifications/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow update: if request.auth != null
+          && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['leido', 'archivado']);
+        allow create, delete: if false;
+      }
+
+      // Tokens FCM de cada dispositivo del usuario (para el push). El dueño los
+      // gestiona; las Functions los leen vía Admin SDK.
+      match /fcmTokens/{token} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // ── Solicitudes de cotización ────────────────────────────────────
@@ -46,8 +64,15 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (request.auth != null && resource.data.uid == request.auth.uid);
 
-      // El estudio (admin) responde y cambia el estado; el cliente no edita.
-      allow update: if isAdmin();
+      // El estudio (admin) responde/cambia el estado. El cliente DUEÑO solo puede
+      // aceptar/rechazar su propuesta (cotizada → aceptada/rechazada), sin tocar
+      // nada más (ni el precio propuesto): el monto es server-authoritative.
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && resource.data.status == 'cotizada'
+          && request.resource.data.status in ['aceptada', 'rechazada']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow delete: if false;
     }
 
@@ -263,6 +288,15 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid;
       allow update: if isAdmin();
       allow delete: if false;
+    }
+
+    // ── Logs de errores (observabilidad — Fase 4.4) ─────────────────
+    // Cualquier autenticado registra SUS errores (el cliente limita y deduplica);
+    // solo el admin los lee. Append-only.
+    match /errorLogs/{id} {
+      allow create: if request.auth != null;
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.

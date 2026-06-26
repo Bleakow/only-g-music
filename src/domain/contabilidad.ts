@@ -198,6 +198,16 @@ export type Recurrencia = "unico" | "mensual" | "anual";
 
 export const RECURRENCIAS: Recurrencia[] = ["unico", "mensual", "anual"];
 
+/** Respuesta del usuario a "¿pagaste este egreso recurrente?" (una por periodo). */
+export type ConfirmacionEstado = "pagado" | "no_pagado";
+
+export interface Confirmacion {
+  estado: ConfirmacionEstado;
+  /** Monto realmente pagado, si difirió del de la plantilla. */
+  montoReal?: number;
+  confirmadoEn: number;
+}
+
 /**
  * Un gasto manual. Append-only: NO se borra, se anula (`anuladoAt`) — así el
  * libro conserva la auditoría. Monto SIEMPRE positivo (es una salida).
@@ -211,9 +221,14 @@ export interface Movimiento {
   /** Fecha del gasto (epoch ms). */
   fecha: number;
   recurrencia: Recurrencia;
+  /** Fin de la recurrencia (epoch ms). Sin él, recurre hasta que se anule. */
+  recurrenciaHasta?: number;
   sede?: SedeId;
   comprobanteUrl?: string;
   nota?: string;
+  /** Confirmaciones de ocurrencias recurrentes, por clave de periodo ("YYYY-MM"
+   *  mensual, "YYYY" anual). Solo aplica a gastos recurrentes. */
+  confirmaciones?: Record<string, Confirmacion>;
   // ── Auditoría (append-only) ──
   createdBy: string;
   createdAt: number;
@@ -267,6 +282,147 @@ export function periodoAnio(year: number): Periodo {
   };
 }
 
+// ── Ocurrencias de gasto (expansión de recurrentes) ─────────────────────────
+
+/** Suma `meses` a una fecha recortando el día al último del mes destino (evita
+ *  el desborde de JS: 31 ene + 1 mes ≠ 3 mar). */
+function sumarMeses(base: Date, meses: number): number {
+  const total = base.getMonth() + meses;
+  const anio = base.getFullYear() + Math.floor(total / 12);
+  const mes = ((total % 12) + 12) % 12;
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  return new Date(anio, mes, Math.min(base.getDate(), ultimoDia)).getTime();
+}
+
+/** Clave de periodo de una ocurrencia ("YYYY-MM" mensual, "YYYY" anual). */
+export function claveOcurrencia(fecha: number, recurrencia: Recurrencia): string {
+  const d = new Date(fecha);
+  if (recurrencia === "anual") return `${d.getFullYear()}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+/** Estado de un egreso concreto. */
+export type OcurrenciaEstado = "unico" | "pagado" | "pendiente" | "no_pagado";
+
+/** Un egreso concreto (ocurrencia de un gasto único o recurrente). */
+export interface GastoOcurrencia {
+  movimientoId: string;
+  concepto: string;
+  categoria: GastoCategoria;
+  /** Monto efectivo del egreso (montoReal si se confirmó distinto). */
+  monto: number;
+  fecha: number;
+  sede?: SedeId;
+  recurrente: boolean;
+  estado: OcurrenciaEstado;
+  /** Clave de periodo para confirmar (solo recurrentes). */
+  clave?: string;
+}
+
+/**
+ * Expande UN gasto a sus egresos dentro del periodo. Único → su fecha (si no está
+ * anulado). Recurrente → una ocurrencia por periodo desde `fecha` hasta `ahora`
+ * (no se cuentan egresos futuros), respetando anulación y fin de recurrencia. El
+ * estado de cada recurrente sale de su confirmación (pendiente si aún no hay).
+ */
+export function ocurrenciasMovimiento(
+  m: Movimiento,
+  periodo: Periodo,
+  ahora: number,
+): GastoOcurrencia[] {
+  if (m.recurrencia === "unico") {
+    if (m.anuladoAt != null) return [];
+    if (m.fecha > ahora || !enPeriodo(m.fecha, periodo)) return [];
+    return [
+      {
+        movimientoId: m.id,
+        concepto: m.concepto,
+        categoria: m.categoria,
+        monto: m.monto,
+        fecha: m.fecha,
+        sede: m.sede,
+        recurrente: false,
+        estado: "unico",
+      },
+    ];
+  }
+
+  const out: GastoOcurrencia[] = [];
+  const base = new Date(m.fecha);
+  const paso = m.recurrencia === "mensual" ? 1 : 12;
+  for (let i = 0; i <= 1200; i++) {
+    const ms = sumarMeses(base, i * paso);
+    if (ms > ahora) break; // aún no ocurre
+    if (m.anuladoAt != null && ms >= m.anuladoAt) break; // serie cortada
+    if (m.recurrenciaHasta != null && ms > m.recurrenciaHasta) break; // fin
+    if (!enPeriodo(ms, periodo)) continue;
+    const clave = claveOcurrencia(ms, m.recurrencia);
+    const conf = m.confirmaciones?.[clave];
+    const estado: OcurrenciaEstado =
+      conf?.estado === "pagado"
+        ? "pagado"
+        : conf?.estado === "no_pagado"
+          ? "no_pagado"
+          : "pendiente";
+    out.push({
+      movimientoId: m.id,
+      concepto: m.concepto,
+      categoria: m.categoria,
+      monto: conf?.estado === "pagado" ? (conf.montoReal ?? m.monto) : m.monto,
+      fecha: ms,
+      sede: m.sede,
+      recurrente: true,
+      estado,
+      clave,
+    });
+  }
+  return out;
+}
+
+/** Expande TODOS los gastos a egresos del periodo (recientes primero). */
+export function expandirGastos(
+  movimientos: Movimiento[],
+  periodo: Periodo,
+  ahora: number,
+): GastoOcurrencia[] {
+  const out: GastoOcurrencia[] = [];
+  for (const m of movimientos)
+    out.push(...ocurrenciasMovimiento(m, periodo, ahora));
+  return out.sort((a, b) => b.fecha - a.fecha);
+}
+
+/** ¿La ocurrencia cuenta en el P&L? (único, o recurrente confirmado pagado). */
+export function cuentaEnPnl(o: GastoOcurrencia): boolean {
+  return o.estado === "unico" || o.estado === "pagado";
+}
+
+/**
+ * Cola "por confirmar": ocurrencias recurrentes vencidas SIN respuesta, de todas
+ * las series, más antiguas primero. Los únicos son hechos → no entran aquí.
+ */
+export function pendientesDeConfirmar(
+  movimientos: Movimiento[],
+  ahora: number,
+): GastoOcurrencia[] {
+  return expandirGastos(movimientos, PERIODO_TODO, ahora)
+    .filter((o) => o.estado === "pendiente")
+    .sort((a, b) => a.fecha - b.fecha);
+}
+
+/** ¿Es un gasto recurrente (mensual/anual)? */
+export function esRecurrente(m: Movimiento): boolean {
+  return m.recurrencia !== "unico";
+}
+
+/** ¿Recurrente todavía activo (no anulado, no vencido) a la fecha? */
+export function esRecurrenteActivo(m: Movimiento, ahora: number): boolean {
+  return (
+    esRecurrente(m) &&
+    (m.anuladoAt == null || m.anuladoAt > ahora) &&
+    (m.recurrenciaHasta == null || m.recurrenciaHasta >= ahora)
+  );
+}
+
 export interface GastoPorCategoria {
   categoria: GastoCategoria;
   monto: number;
@@ -301,16 +457,15 @@ export function estadoResultados(
 
   const map = new Map<GastoCategoria, GastoPorCategoria>();
   let gastos = 0;
-  for (const m of movimientos) {
-    if (!movimientoVigente(m, ahora)) continue;
-    if (!enPeriodo(m.fecha, periodo)) continue;
-    gastos += m.monto;
+  for (const o of expandirGastos(movimientos, periodo, ahora)) {
+    if (!cuentaEnPnl(o)) continue;
+    gastos += o.monto;
     const cur =
-      map.get(m.categoria) ??
-      ({ categoria: m.categoria, monto: 0, cantidad: 0 } as GastoPorCategoria);
-    cur.monto += m.monto;
+      map.get(o.categoria) ??
+      ({ categoria: o.categoria, monto: 0, cantidad: 0 } as GastoPorCategoria);
+    cur.monto += o.monto;
     cur.cantidad += 1;
-    map.set(m.categoria, cur);
+    map.set(o.categoria, cur);
   }
 
   const utilidad = ingresos - gastos;

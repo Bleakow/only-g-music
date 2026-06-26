@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { getQuoteById } from "@/features/quotes/lib/quotes-repo";
+import {
+  getQuoteById,
+  updateQuoteStatus,
+} from "@/features/quotes/lib/quotes-repo";
 import {
   getReservaById,
   marcarPagoEnRevision,
@@ -95,6 +98,22 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     }
   }
 
+  // El cliente acepta/rechaza la propuesta del estudio. `aceptada` → una Cloud
+  // Function genera la Reserva (con el precio propuesto, server-authoritative).
+  async function responderCotizacion(status: "aceptada" | "rechazada") {
+    if (!quote) return;
+    setBusy(true);
+    try {
+      await updateQuoteStatus(quote.id, status);
+      const fresh = await getQuoteById(quote.id);
+      setQuote(fresh);
+    } catch (e) {
+      console.error("[cotizacion] responder:", e);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center">
@@ -153,12 +172,14 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
             <p className="text-base font-semibold text-white">
               {reserva.serviceName}
             </p>
-            <p className="text-silver-300">
-              {new Date(reserva.start).toLocaleString(locale, {
-                dateStyle: "long",
-                timeStyle: "short",
-              })}
-            </p>
+            {reserva.start > 0 && (
+              <p className="text-silver-300">
+                {new Date(reserva.start).toLocaleString(locale, {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                })}
+              </p>
+            )}
             <p className="text-silver-300">
               {t("solicitudDetail.venue", {
                 name: sede?.nombre ?? reserva.sede,
@@ -197,6 +218,42 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
           </div>
         )}
       </section>
+
+      {/* Acción: aceptar/rechazar la propuesta del estudio */}
+      {quote && quote.status === "cotizada" && (
+        <section className="mt-6 rounded-xl border border-amethyst-300/30 bg-amethyst-500/10 p-4">
+          <h2 className="font-narrow text-xl font-bold uppercase text-white">
+            {t("solicitudDetail.proposalTitle")}
+          </h2>
+          {quote.proposedPrice != null && (
+            <p className="mt-1 font-narrow text-3xl font-bold text-white">
+              {formatCOP(quote.proposedPrice)}
+            </p>
+          )}
+          <p className="mt-1 text-sm text-silver-300">
+            {t("solicitudDetail.proposalHint")}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Button onClick={() => responderCotizacion("aceptada")} loading={busy}>
+              {t("solicitudDetail.acceptProposal")}
+            </Button>
+            <button
+              type="button"
+              onClick={() => responderCotizacion("rechazada")}
+              disabled={busy}
+              className="rounded-full border border-white/20 px-5 py-2.5 text-sm text-silver-200 transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
+            >
+              {t("solicitudDetail.rejectProposal")}
+            </button>
+          </div>
+        </section>
+      )}
+
+      {quote && quote.status === "aceptada" && (
+        <p className="mt-6 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+          {t("solicitudDetail.quoteAcceptedNote")}
+        </p>
+      )}
 
       {/* Acción: pago de la reserva */}
       {reserva && reserva.estado === "pendiente_pago" && (

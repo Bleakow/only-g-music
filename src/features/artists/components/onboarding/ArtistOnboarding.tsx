@@ -10,6 +10,7 @@ import { toSlug } from "@/domain/artist-profile";
 import { formatCOP } from "@/domain/service";
 import { PRECIO_PERFIL, nuevoPedidoPerfil } from "@/domain/profile-order";
 import { createReserva } from "@/features/booking/lib/booking-repo";
+import { track } from "@/lib/firebase/analytics";
 import { updateArtistPrivateData } from "@/features/auth/lib/user-repo";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -133,6 +134,7 @@ export function ArtistOnboarding() {
           clientEmail: account?.email ?? user.email ?? undefined,
         }),
       );
+      track("artist_profile_submitted");
       router.push(`/solicitudes/reserva/${id}`);
     } catch (err) {
       console.error("[artist-onboarding] error:", err);

@@ -137,6 +137,11 @@
     "sendReceipt": "Send receipt",
     "receiptMessage": "I sent the payment receipt.",
     "receiptUnderReview": "We received your receipt. The team is reviewing it; we'll confirm via chat.",
+    "proposalTitle": "Studio proposal",
+    "proposalHint": "The studio proposed this price. Accept it to generate your booking, or reject it.",
+    "acceptProposal": "Accept",
+    "rejectProposal": "Reject",
+    "quoteAcceptedNote": "You accepted the proposal. Your booking will be generated shortly — find it in \"My requests\".",
     "conversation": "Conversation"
   },
   "thread": {

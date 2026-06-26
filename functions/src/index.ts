@@ -119,6 +119,18 @@ export const onBookingConfirmed = onDocumentUpdated(
     const before = event.data?.before.data();
     const justConfirmed = before?.estado !== "confirmada";
 
+    // Pago confirmado de una reserva (estudio/proyecto, no perfil) → avisa al
+    // cliente. Va aquí (no en la rama de sesión) para cubrir también los proyectos,
+    // que no tienen productor ni slot.
+    if (justConfirmed && after.tipo !== "perfil_artista") {
+      await notify(
+        after.uid,
+        "pago-confirmado",
+        { concepto: after.serviceName ?? "tu reserva" },
+        `/solicitudes/reserva/${event.params.id}`,
+      );
+    }
+
     // Perfil pagado → otorga puntos de gamificación UNA sola vez (flag idempotente).
     if (after.tipo === "perfil_artista") {
       if (after.puntosOtorgados) return;
@@ -155,14 +167,6 @@ export const onBookingConfirmed = onDocumentUpdated(
       { fecha: fmtFecha(after.start) },
       "/consola",
     );
-    if (justConfirmed) {
-      await notify(
-        after.uid,
-        "pago-confirmado",
-        { concepto: after.serviceName ?? "tu sesión" },
-        `/solicitudes/reserva/${reservaId}`,
-      );
-    }
   },
 );
 
@@ -726,5 +730,63 @@ export const recordatorioRenovacionPerfil = onSchedule(
       avisos++;
     }
     if (avisos) logger.info(`Recordatorio: ${avisos} perfil(es) por renovar`);
+  },
+);
+
+/**
+ * Cotización ACEPTADA → genera la Reserva (server-authoritative): usa el precio
+ * PROPUESTO por el estudio (`proposedPrice`), nunca uno del cliente. Reserva de
+ * tipo `proyecto` (sin slot/fecha): se paga y el agendado se coordina en el chat.
+ * Idempotente vía `bookingId` en el quote. Sin `proposedPrice` no crea nada.
+ */
+export const onQuoteAccepted = onDocumentUpdated(
+  "quotes/{id}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    const afterRef = event.data?.after.ref;
+    if (!after || !afterRef) return;
+    if (before?.status === "aceptada" || after.status !== "aceptada") return;
+    if (after.bookingId) return; // ya generada → idempotente
+
+    const amount =
+      typeof after.proposedPrice === "number" ? after.proposedPrice : 0;
+    if (amount <= 0) {
+      logger.warn(
+        `Cotización ${event.params.id} aceptada sin proposedPrice → no se crea reserva`,
+      );
+      return;
+    }
+
+    const items = Array.isArray(after.items) ? after.items : [];
+    const serviceName =
+      items
+        .map((i: { serviceName?: string }) => i.serviceName)
+        .filter(Boolean)
+        .join(", ") || "Proyecto cotizado";
+
+    const bookingRef = db.collection("bookings").doc();
+    const batch = db.batch();
+    batch.set(bookingRef, {
+      uid: after.uid,
+      tipo: "proyecto",
+      serviceSlug: "proyecto",
+      serviceName,
+      sede: after.sede,
+      start: 0,
+      durationMin: 0,
+      amount,
+      quoteId: event.params.id,
+      clientName: after.contactName ?? null,
+      clientEmail: after.contactEmail ?? null,
+      estado: "pendiente_pago",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    batch.update(afterRef, { bookingId: bookingRef.id });
+    await batch.commit();
+
+    logger.info(
+      `Reserva ${bookingRef.id} generada desde cotización ${event.params.id}`,
+    );
   },
 );

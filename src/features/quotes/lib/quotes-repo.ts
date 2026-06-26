@@ -40,6 +40,7 @@ function toQuote(id: string, d: DocumentData): QuoteRequest {
     contactPhone: d.contactPhone ?? undefined,
     estimatedTotal: d.estimatedTotal ?? undefined,
     hasQuoteOnlyItems: d.hasQuoteOnlyItems ?? undefined,
+    proposedPrice: typeof d.proposedPrice === "number" ? d.proposedPrice : undefined,
     status: d.status,
     createdAt: d.createdAt?.toMillis?.() ?? Date.now(),
   };
@@ -92,4 +93,18 @@ export async function updateQuoteStatus(
   status: QuoteStatus,
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTION, id), { status });
+}
+
+/**
+ * El estudio envía la propuesta: pasa a `cotizada` y guarda el precio propuesto
+ * (server-trusted — la Reserva que genere la aceptación usará este monto). SOLO
+ * admin (lo blindan las reglas).
+ */
+export async function setQuoteProposal(
+  id: string,
+  price?: number,
+): Promise<void> {
+  const patch: Record<string, unknown> = { status: "cotizada" };
+  if (price != null) patch.proposedPrice = price;
+  await updateDoc(doc(db, COLLECTION, id), patch);
 }

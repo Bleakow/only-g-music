@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import {
   getQuoteById,
   updateQuoteStatus,
+  setQuoteProposal,
 } from "@/features/quotes/lib/quotes-repo";
 import {
   getReservaById,
@@ -120,7 +121,7 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         // traducido al idioma del cliente. Si el admin escribe algo, va tal cual.
         texto: propText.trim() || undefined,
       });
-      await updateQuoteStatus(id, "cotizada");
+      await setQuoteProposal(id, price ? Number(price) : undefined);
       setPrice("");
       setPropText("");
       await reload();

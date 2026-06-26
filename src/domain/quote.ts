@@ -57,6 +57,9 @@ export interface QuoteRequest {
   estimatedTotal?: number;
   /** true si algún ítem es "a cotizar" (sin precio cerrado). */
   hasQuoteOnlyItems?: boolean;
+  /** Precio propuesto por el estudio (COP), al enviar la propuesta. Server-trusted
+   *  (solo el admin lo escribe); la Reserva generada al aceptar usa ESTE monto. */
+  proposedPrice?: number;
   status: QuoteStatus;
   /** epoch ms. */
   createdAt: number;

@@ -64,8 +64,15 @@ service cloud.firestore {
       allow read: if isAdmin()
         || (request.auth != null && resource.data.uid == request.auth.uid);
 
-      // El estudio (admin) responde y cambia el estado; el cliente no edita.
-      allow update: if isAdmin();
+      // El estudio (admin) responde/cambia el estado. El cliente DUEÑO solo puede
+      // aceptar/rechazar su propuesta (cotizada → aceptada/rechazada), sin tocar
+      // nada más (ni el precio propuesto): el monto es server-authoritative.
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && resource.data.status == 'cotizada'
+          && request.resource.data.status in ['aceptada', 'rechazada']
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']));
       allow delete: if false;
     }
 

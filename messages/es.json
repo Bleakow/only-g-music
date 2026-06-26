@@ -137,6 +137,11 @@
     "sendReceipt": "Enviar comprobante",
     "receiptMessage": "Envié el comprobante de pago.",
     "receiptUnderReview": "Recibimos tu comprobante. La administración lo está revisando; te confirmamos por el chat.",
+    "proposalTitle": "Propuesta del estudio",
+    "proposalHint": "El estudio te propuso este precio. Acéptalo para generar tu reserva, o recházalo.",
+    "acceptProposal": "Aceptar",
+    "rejectProposal": "Rechazar",
+    "quoteAcceptedNote": "Aceptaste la propuesta. Tu reserva se generará en breve — revísala en \"Mis solicitudes\".",
     "conversation": "Conversación"
   },
   "thread": {

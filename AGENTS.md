@@ -121,7 +121,18 @@ Tres decisiones lo fijan: pago **manual** (QR + comprobante + confirmación huma
 
 - ✅ **4.1 Auth hardening**: reset de contraseña (modo en `/login`), verificación de email (al registrarse + reenvío en `/cuenta`), guards unificados (`RequireAuth` + `?next=`) y nuevo **`RequireRole`** sobre `hasAnyRole`.
 - ✅ **4.2 `Sede` como entidad de primera clase**: `Sede {id, nombre, ciudad, direccion, qrPagoUrl?, horario, slots, productores[]}` en `src/domain/sede.ts` + `sedes` (data placeholder) + `sedes-repo`. Unificado: el wizard y `BookingCalendar` ya consumen la misma entidad (antes estaba duplicada). `quote.ts` usa `SedeId`.
-- **4.3 Seam de notificaciones**: interfaz `notify(evento, destinatario)` desacoplada; arranca mínima (email vía Route Handler), sustituible sin tocar llamadores.
+- ✅ **4.3 Seam de notificaciones**: catálogo de eventos PURO (`src/domain/notification.ts`) +
+  `notify()` desacoplado. **Implementación NATIVA Firebase** (no Novu — decisión por costo/control:
+  10k eventos/mes gratis pero vendor + techo; nativo ≈ gratis a esta escala y el seam deja Novu como
+  upgrade sin tocar llamadores). Hecho: **campanita in-app** (`NotificationBell`, Firestore +
+  `onSnapshot`, badge en vivo, tabs no-leídas/todas, tiempo relativo, deep link al panel, i18n por
+  evento es/en); **disparo desde Functions** en los 11 eventos (pago confirmado, sesión agendada,
+  premium activado, cotización nueva/respondida, comprobante por revisar, perfil creado, mensaje
+  nuevo) + **crons** (gasto recurrente por confirmar → /admin/gastos; perfil premium por renovar);
+  **push web FCM** (token + `firebase-messaging-sw.js`, nudge DATA-only → la campanita muestra el
+  detalle traducido; botón "activar push" no intrusivo). *Deploy: `firebase deploy --only
+  functions,firestore:rules`. VAPID en `.env.local`. Pendiente menor: si se quiere texto del push
+  por idioma, resolver server-side (hoy es nudge genérico).*
 - **4.4 Observabilidad mínima**: errores (Sentry) + analytics de embudo.
 
 ### Fase 4.5 — Internacionalización (i18n) · **PRIORITARIA** *(foundational — antes de seguir creciendo)*

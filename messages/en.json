@@ -926,7 +926,7 @@
       },
       "gasto-recurrente-por-confirmar": {
         "titulo": "Expense to confirm",
-        "cuerpo": "You have {count} recurring expenses to confirm."
+        "cuerpo": "Confirm whether you paid {concepto}."
       },
       "perfil-artista-creado": {
         "titulo": "New artist profile",

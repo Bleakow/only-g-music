@@ -85,6 +85,23 @@ function tipoSegment(kind?: string): string | null {
   return null;
 }
 
+/** Suma meses a un epoch ms recortando el día al último del mes destino. */
+function sumarMesesMs(baseMs: number, meses: number): number {
+  const base = new Date(baseMs);
+  const total = base.getMonth() + meses;
+  const anio = base.getFullYear() + Math.floor(total / 12);
+  const mes = ((total % 12) + 12) % 12;
+  const ultimoDia = new Date(anio, mes + 1, 0).getDate();
+  return new Date(anio, mes, Math.min(base.getDate(), ultimoDia)).getTime();
+}
+
+/** Clave de periodo de una ocurrencia ("YYYY-MM" mensual, "YYYY" anual). */
+function claveOcurrencia(ms: number, recurrencia: string): string {
+  const d = new Date(ms);
+  if (recurrencia === "anual") return `${d.getFullYear()}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
 /**
  * Al confirmar una reserva de ESTUDIO con productor asignado, crea la proyección
  * `sessions` (SIN `amount`: el productor no ve cobros — invariante de roles).
@@ -622,5 +639,92 @@ export const onArtistProfileCreated = onDocumentCreated(
       { nombre: p.artisticName ?? event.params.slug },
       "/admin/perfiles",
     );
+  },
+);
+
+// ── Recordatorios programados (crons) ─────────────────────────────────────────
+
+/**
+ * Recordatorio diario de gastos recurrentes por confirmar: por cada serie activa,
+ * si la ocurrencia vigente del periodo aún no se confirmó NI se avisó, avisa a los
+ * admin UNA sola vez (dedup vía `avisadoConfirm`). El backlog se ve in-app.
+ */
+export const recordatorioGastosRecurrentes = onSchedule(
+  { schedule: "every 24 hours", region: REGION },
+  async () => {
+    const now = Date.now();
+    const snap = await db
+      .collection("movimientos")
+      .where("recurrencia", "in", ["mensual", "anual"])
+      .get();
+    let avisos = 0;
+    for (const doc of snap.docs) {
+      const m = doc.data();
+      if (m.anuladoAt) continue; // serie anulada
+      const fechaMs = typeof m.fecha === "number" ? m.fecha : undefined;
+      if (!fechaMs) continue;
+      const hasta =
+        typeof m.recurrenciaHasta === "number" ? m.recurrenciaHasta : undefined;
+      const step = m.recurrencia === "anual" ? 12 : 1;
+
+      // Ocurrencia vigente = la más reciente cuya fecha ya pasó.
+      let last: number | null = null;
+      for (let i = 0; i <= 1200; i++) {
+        const ms = sumarMesesMs(fechaMs, i * step);
+        if (ms > now || (hasta != null && ms > hasta)) break;
+        last = ms;
+      }
+      if (last == null) continue;
+
+      const key = claveOcurrencia(last, m.recurrencia);
+      const confirmaciones = (m.confirmaciones ?? {}) as Record<string, unknown>;
+      if (confirmaciones[key]) continue; // ya respondida
+      const avisado: string[] = Array.isArray(m.avisadoConfirm)
+        ? m.avisadoConfirm
+        : [];
+      if (avisado.includes(key)) continue; // ya avisada
+
+      await notifyAdmins(
+        "gasto-recurrente-por-confirmar",
+        { concepto: m.concepto ?? "" },
+        "/admin/gastos",
+      );
+      await doc.ref.update({ avisadoConfirm: FieldValue.arrayUnion(key) });
+      avisos++;
+    }
+    if (avisos) {
+      logger.info(`Recordatorio: ${avisos} gasto(s) recurrente(s) por confirmar`);
+    }
+  },
+);
+
+/**
+ * Recordatorio diario de perfiles premium por vencer (ventana de 7 días). Avisa al
+ * dueño UNA vez por periodo de premium (dedup vía `renovacionAvisadaPara`, que
+ * guarda el `expiresAt` ya avisado; al renovar cambia y se vuelve a avisar).
+ */
+export const recordatorioRenovacionPerfil = onSchedule(
+  { schedule: "every 24 hours", region: REGION },
+  async () => {
+    const now = Date.now();
+    const limite = now + 7 * 24 * 3_600_000; // 7 días
+    const snap = await db.collection("artistProfiles").get();
+    let avisos = 0;
+    for (const doc of snap.docs) {
+      const p = doc.data();
+      const prem = p.premium;
+      if (!prem?.activo || typeof prem.expiresAt !== "number") continue;
+      if (prem.expiresAt <= now || prem.expiresAt > limite) continue; // fuera de ventana
+      if (p.renovacionAvisadaPara === prem.expiresAt) continue; // ya avisado
+      if (!p.uid) continue;
+      const dias = Math.max(
+        1,
+        Math.ceil((prem.expiresAt - now) / (24 * 3_600_000)),
+      );
+      await notify(p.uid, "perfil-por-renovar", { dias }, "/artista/perfil");
+      await doc.ref.update({ renovacionAvisadaPara: prem.expiresAt });
+      avisos++;
+    }
+    if (avisos) logger.info(`Recordatorio: ${avisos} perfil(es) por renovar`);
   },
 );

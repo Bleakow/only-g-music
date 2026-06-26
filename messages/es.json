@@ -926,7 +926,7 @@
       },
       "gasto-recurrente-por-confirmar": {
         "titulo": "Gasto por confirmar",
-        "cuerpo": "Tienes {count} egresos recurrentes por confirmar."
+        "cuerpo": "Confirma si pagaste {concepto}."
       },
       "perfil-artista-creado": {
         "titulo": "Nuevo perfil de artista",

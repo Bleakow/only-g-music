@@ -877,6 +877,9 @@
     "identity": {
       "accentColorTitle": "Accent color",
       "genrePlaceholder": "Genre",
+      "genreSearch": "Search genre…",
+      "genreEmpty": "No matches",
+      "genreCustom": "Use \"{value}\"",
       "cityPlaceholder": "City",
       "startYearTitle": "Start year",
       "artisticNameLabel": "Artist name",
@@ -971,6 +974,14 @@
     "uploading": "Uploading…",
     "attach": "Attach",
     "remove": "Remove {name}"
+  },
+  "photoUpload": {
+    "add": "Upload photo",
+    "change": "Change",
+    "remove": "Remove photo",
+    "error": "Couldn't upload the image.",
+    "signIn": "Sign in to upload photos.",
+    "tooLarge": "The image exceeds {maxMb} MB."
   },
   "insignia": {
     "plata": "Silver",

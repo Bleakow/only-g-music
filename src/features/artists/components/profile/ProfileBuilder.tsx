@@ -44,6 +44,8 @@ import { GalleryBento } from "./GalleryBento";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { MUSIC_GENRES } from "../../data/genres";
 import {
   PlusIcon,
   CloseIcon,
@@ -67,6 +69,7 @@ import {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_MB = 25;
+const GENRE_OPTIONS = MUSIC_GENRES.map((g) => ({ value: g, label: g }));
 
 let trackSeq = 0;
 interface EditorTrack extends ProfileTrack {
@@ -906,11 +909,20 @@ export function ProfileBuilder({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-[3px] uppercase">
-            <input
+            <SearchableSelect
               value={genre}
-              onChange={(e) => setGenre(e.target.value)}
+              onChange={setGenre}
+              options={GENRE_OPTIONS}
+              allowCustom
+              placement="top"
               placeholder={t("profileBuilder.identity.genrePlaceholder")}
-              className={`${glassField} w-40`}
+              searchPlaceholder={t("profileBuilder.identity.genreSearch")}
+              emptyText={t("profileBuilder.identity.genreEmpty")}
+              customLabel={(v) =>
+                t("profileBuilder.identity.genreCustom", { value: v })
+              }
+              ariaLabel={t("profileBuilder.identity.genrePlaceholder")}
+              className={`${glassField} flex w-44 items-center justify-between gap-2`}
               style={{ color: accent }}
             />
             <input

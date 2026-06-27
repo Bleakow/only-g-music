@@ -877,6 +877,9 @@
     "identity": {
       "accentColorTitle": "Color de acento",
       "genrePlaceholder": "Género",
+      "genreSearch": "Buscar género…",
+      "genreEmpty": "Sin coincidencias",
+      "genreCustom": "Usar \"{value}\"",
       "cityPlaceholder": "Ciudad",
       "startYearTitle": "Año de inicio",
       "artisticNameLabel": "Nombre artístico",
@@ -971,6 +974,14 @@
     "uploading": "Subiendo…",
     "attach": "Adjuntar",
     "remove": "Quitar {name}"
+  },
+  "photoUpload": {
+    "add": "Subir foto",
+    "change": "Cambiar",
+    "remove": "Quitar foto",
+    "error": "No se pudo subir la imagen.",
+    "signIn": "Inicia sesión para subir fotos.",
+    "tooLarge": "La imagen supera {maxMb} MB."
   },
   "insignia": {
     "plata": "Plata",

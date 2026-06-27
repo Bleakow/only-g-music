@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { useAuth } from "@/features/auth/components/AuthProvider";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
+import { PhotoUpload } from "@/components/ui/PhotoUpload";
 import {
   ArrowLeftIcon,
   EditIcon,
@@ -14,7 +14,6 @@ import {
   SpinnerIcon,
   ImageIcon,
 } from "@/components/icons";
-import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
 import {
   type Producer,
   type EditableProducer,
@@ -27,94 +26,6 @@ import {
   deleteProducer,
   setOrden,
 } from "@/features/producers/lib/producers-repo";
-
-/** Ranura de subida de UNA foto: miniatura + botón subir + quitar. */
-function PhotoSlot({
-  uid,
-  url,
-  onChange,
-  label,
-  hint,
-  aspect,
-  onError,
-}: {
-  uid: string;
-  url: string;
-  onChange: (url: string) => void;
-  label: string;
-  hint?: string;
-  aspect: string;
-  onError: (msg: string) => void;
-}) {
-  const t = useTranslations();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setBusy(true);
-    try {
-      const up = await uploadUserFile(uid, file);
-      onChange(up.url);
-    } catch (err) {
-      console.error("[admin-productores] upload:", err);
-      onError(t("adminProductores.errorUpload"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div>
-      <p className="text-silver-300 text-xs font-semibold tracking-[1px] uppercase">
-        {label}
-      </p>
-      {hint && <p className="text-silver-400 mt-0.5 text-[11px]">{hint}</p>}
-      <div
-        className={`relative mt-2 ${aspect} overflow-hidden rounded-xl border border-white/15 bg-white/[0.04]`}
-      >
-        {url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={url} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-white/25">
-            <ImageIcon className="size-8" />
-          </div>
-        )}
-        {busy && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-            <SpinnerIcon className="size-6 animate-spin text-white" />
-          </div>
-        )}
-      </div>
-      <div className="mt-2 flex items-center gap-2">
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/*"
-          onChange={pick}
-          className="hidden"
-        />
-        <GlassButton onClick={() => inputRef.current?.click()} disabled={busy}>
-          {url
-            ? t("adminProductores.changePhoto")
-            : t("adminProductores.uploadPhoto")}
-        </GlassButton>
-        {url && (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="text-silver-400 text-xs underline-offset-4 hover:text-red-200 hover:underline"
-          >
-            {t("adminProductores.removePhoto")}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
 
 function Field({
   label,
@@ -163,8 +74,6 @@ function Field({
  */
 export function AdminProductores() {
   const t = useTranslations();
-  const { user } = useAuth();
-  const uid = user?.uid ?? "";
 
   const [items, setItems] = useState<Producer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -490,21 +399,21 @@ export function AdminProductores() {
 
           {/* Portadas: PC (obligatoria, horizontal) + móvil (opcional, vertical) */}
           <div className="grid gap-4 sm:grid-cols-2">
-            <PhotoSlot
-              uid={uid}
-              url={form.mainPhoto}
+            <PhotoUpload
+              value={form.mainPhoto}
               onChange={(url) => patch({ mainPhoto: url })}
               label={t("adminProductores.coverPc")}
               hint={t("adminProductores.coverPcHint")}
+              emptyLabel={t("adminProductores.coverPc")}
               aspect="aspect-video"
               onError={setError}
             />
-            <PhotoSlot
-              uid={uid}
-              url={form.mainPhotoMobile ?? ""}
+            <PhotoUpload
+              value={form.mainPhotoMobile ?? ""}
               onChange={(url) => patch({ mainPhotoMobile: url || undefined })}
               label={t("adminProductores.coverMobile")}
               hint={t("adminProductores.coverMobileHint")}
+              emptyLabel={t("adminProductores.coverMobile")}
               aspect="aspect-[3/4]"
               onError={setError}
             />
@@ -542,9 +451,13 @@ export function AdminProductores() {
                   </button>
                 </div>
               ))}
-              <GalleryAdder
-                uid={uid}
-                onAdd={(url) => patch({ photos: [...form.photos, url] })}
+              <PhotoUpload
+                value=""
+                onChange={(url) =>
+                  url && patch({ photos: [...form.photos, url] })
+                }
+                emptyLabel={t("adminProductores.addPhoto")}
+                aspect="aspect-[3/4]"
                 onError={setError}
               />
             </div>
@@ -599,59 +512,5 @@ export function AdminProductores() {
         </div>
       </GlassModal>
     </main>
-  );
-}
-
-/** Botón "+" que sube una foto a la galería. */
-function GalleryAdder({
-  uid,
-  onAdd,
-  onError,
-}: {
-  uid: string;
-  onAdd: (url: string) => void;
-  onError: (msg: string) => void;
-}) {
-  const t = useTranslations();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setBusy(true);
-    try {
-      const up = await uploadUserFile(uid, file);
-      onAdd(up.url);
-    } catch (err) {
-      console.error("[admin-productores] gallery upload:", err);
-      onError(t("adminProductores.errorUpload"));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => inputRef.current?.click()}
-      disabled={busy}
-      aria-label={t("adminProductores.addPhoto")}
-      className="flex aspect-[3/4] items-center justify-center rounded-lg border border-dashed border-white/25 text-white/40 transition hover:border-white/50 hover:text-white/70 disabled:opacity-40"
-    >
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        onChange={pick}
-        className="hidden"
-      />
-      {busy ? (
-        <SpinnerIcon className="size-6 animate-spin" />
-      ) : (
-        <PlusIcon className="size-6" />
-      )}
-    </button>
   );
 }

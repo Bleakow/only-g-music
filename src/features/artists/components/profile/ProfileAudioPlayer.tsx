@@ -59,7 +59,9 @@ export function ProfileAudioPlayer({
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [loop, setLoop] = useState(false);
+  // La canción de intro del perfil se repite por defecto (al terminar, vuelve a
+  // empezar). En la tarjeta el botón ◴ permite apagar la repetición.
+  const [loop, setLoop] = useState(true);
   const [docked, setDocked] = useState(false);
   const [noCors, setNoCors] = useState(false);
   const [mounted, setMounted] = useState(false);

@@ -1,29 +1,19 @@
 import type { Metadata } from "next";
-import {
-  getArtistBySlug,
-  getArtistSlugs,
-} from "@/features/artists/lib/artists-repo";
 import { ArtistProfileLoader } from "@/features/artists/components/profile/ArtistProfileLoader";
-import { artistToProfile } from "@/features/artists/lib/profile-display";
 
-export async function generateStaticParams() {
-  const slugs = await getArtistSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
+/**
+ * Render DINÁMICO (SSR on-demand). El perfil se carga en CLIENTE desde Firestore
+ * (`ArtistProfileLoader`), así que no hay nada que prerenderizar.
+ *
+ * CAUSA DEL 500 EN PROD: tener `generateStaticParams` (aunque devolviera []) marca
+ * la ruta como SSG; al intentar la generación estática, el árbol usa APIs
+ * dinámicas y Next lanza `DYNAMIC_SERVER_USAGE` → 500 SOLO en producción (en dev
+ * se perdona). La solución es declararla dinámica, como /admin/.../editar (que sí
+ * funciona por NO tener generateStaticParams).
+ */
+export const dynamic = "force-dynamic";
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const artist = await getArtistBySlug(slug);
-  if (!artist) return { title: "Artista — Only G Music" };
-  return {
-    title: `${artist.name} — Only G Music`,
-    description: artist.tagline,
-  };
-}
+export const metadata: Metadata = { title: "Artista — Only G Music" };
 
 export default async function ArtistPage({
   params,
@@ -31,10 +21,5 @@ export default async function ArtistPage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { slug } = await params;
-  // El servidor pasa el artista semilla (si existe) como fallback para SEO/SSR;
-  // el loader cliente lo reemplaza por el perfil real de Firestore si lo hay.
-  const artist = await getArtistBySlug(slug);
-  const fallback = artist ? artistToProfile(artist) : null;
-
-  return <ArtistProfileLoader slug={slug} fallback={fallback} />;
+  return <ArtistProfileLoader slug={slug} fallback={null} />;
 }

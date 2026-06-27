@@ -31,6 +31,7 @@ export function SiteMenu() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [slideDir, setSlideDir] = useState<1 | -1>(1);
   const touchY = useRef<number | null>(null);
+  const wheelLock = useRef(false);
   const pathname = usePathname();
   const t = useTranslations("nav");
 
@@ -97,6 +98,14 @@ export function SiteMenu() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Ruleta de destacados (móvil): avanza/retrocede un destacado, con loop. Sin
+  // efecto si hay menos de 2 (no hay entre qué alternar).
+  const cycle = (dir: 1 | -1) => {
+    if (featured.length < 2) return;
+    setSlideDir(dir);
+    setActiveIndex((i) => (i + dir + featured.length) % featured.length);
+  };
+
   return (
     <>
       {/* Botón único: muta hamburguesa <-> X. Vive por encima del overlay.
@@ -151,36 +160,41 @@ export function SiteMenu() {
           aria-modal="true"
           aria-label="Menú principal"
           aria-hidden={!open}
+          /* Ruleta de destacados (móvil): el gesto vale en TODO el panel (no solo
+             sobre la foto) — deslizá arriba/abajo. Un swipe = un paso, con umbral
+             (no muy sensible). La rueda/trackpad también cicla (throttle). */
+          onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
+          onTouchEnd={(e) => {
+            if (touchY.current === null) return;
+            const dy = e.changedTouches[0].clientY - touchY.current;
+            touchY.current = null;
+            if (Math.abs(dy) < 45) return; // umbral
+            cycle(dy < 0 ? 1 : -1); // arriba = siguiente
+          }}
+          onWheel={(e) => {
+            if (Math.abs(e.deltaY) < 8 || wheelLock.current) return;
+            wheelLock.current = true;
+            window.setTimeout(() => (wheelLock.current = false), 450);
+            cycle(e.deltaY > 0 ? 1 : -1);
+          }}
         >
-          {/* Foto del destacado ACTIVO (60% inferior) — SOLO móvil. Swipe
-              vertical = ruleta con loop (un paso por swipe, con umbral). El
-              nombre va en la lista de arriba; aquí solo la imagen. */}
-          <div
-            className={styles.mobilePhoto}
-            aria-hidden="true"
-            onTouchStart={(e) => (touchY.current = e.touches[0].clientY)}
-            onTouchEnd={(e) => {
-              if (touchY.current === null || featured.length < 2) return;
-              const dy = e.changedTouches[0].clientY - touchY.current;
-              touchY.current = null;
-              if (Math.abs(dy) < 45) return; // umbral: no muy sensible
-              const dir: 1 | -1 = dy < 0 ? 1 : -1; // arriba = siguiente
-              setSlideDir(dir);
-              setActiveIndex(
-                (i) => (i + dir + featured.length) % featured.length,
-              );
-            }}
-          >
+          {/* Foto del destacado ACTIVO (60% inferior) — SOLO móvil. El nombre va
+              en la lista de arriba; aquí solo la imagen (cambia con el gesto). */}
+          <div className={styles.mobilePhoto} aria-hidden="true">
             {featured[activeIndex] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={`${featured[activeIndex].slug}-${slideDir}`}
-                src={featured[activeIndex].image}
-                alt=""
-                className={`${styles.mobilePhotoImg} ${
+                className={`${styles.mPhotoSlide} ${
                   slideDir === 1 ? styles.slideUp : styles.slideDown
                 }`}
-              />
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={featured[activeIndex].image}
+                  alt=""
+                  className={styles.mobilePhotoImg}
+                />
+              </div>
             )}
           </div>
 

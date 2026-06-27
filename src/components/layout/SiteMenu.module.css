@@ -383,12 +383,32 @@
   display: none;
 }
 
+/* Wrapper del slide de entrada (translateY). La img de dentro hace el paneo
+   (translateX) → dos transforms en elementos distintos, sin pisarse. */
+.mPhotoSlide {
+  position: absolute;
+  inset: 0;
+}
+
 .mobilePhotoImg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  /* Paneo lento a la izquierda, como en pantallas grandes. La escala evita ver
+     el borde al desplazarse. */
+  transform: scale(1.1);
+  animation: mPhotoPan 7s ease-in-out infinite alternate;
+}
+
+@keyframes mPhotoPan {
+  from {
+    transform: scale(1.1) translateX(0);
+  }
+  to {
+    transform: scale(1.1) translateX(-7%);
+  }
 }
 
 @keyframes mPhotoUp {
@@ -441,7 +461,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    height: 60%;
+    height: 66%;
     overflow: hidden;
     z-index: 0;
     background: #0a0712;
@@ -462,18 +482,22 @@
     background: linear-gradient(to top, rgba(10, 7, 18, 0.92), transparent);
   }
 
-  /* Destacado activo (el de la foto): resaltado como el hover de desktop. */
+  /* Destacado activo (el de la foto): sobresale de los demás — corrido a la
+     derecha + degradado claro + brillo, para que sea evidente cuál está activo. */
   .item.itemActive {
     color: transparent;
-    background: linear-gradient(135deg, #f7f7fa, #c4a5ff 70%);
+    background: linear-gradient(135deg, #fff, #c4a5ff 70%);
     -webkit-background-clip: text;
     background-clip: text;
+    transform: translateX(12px);
+    filter: drop-shadow(0 0 10px rgba(196, 165, 255, 0.5));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .slideUp,
-  .slideDown {
+  .slideDown,
+  .mobilePhotoImg {
     animation: none;
   }
 }

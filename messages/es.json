@@ -863,6 +863,10 @@
       "hint": "La foto principal se ve en computadores y pantallas grandes. Sube una versión vertical (opcional) para que en celulares no se recorte mal.",
       "setHint": "Foto vertical para móvil añadida. La principal se usa en computadores."
     },
+    "location": {
+      "title": "Ubicación",
+      "done": "Listo"
+    },
     "photoAdjust": {
       "hint": "Arrastra la foto para reencuadrar · ajusta zoom y giro a pasos",
       "zoom": "Zoom",
@@ -983,6 +987,18 @@
     "error": "No se pudo subir la imagen.",
     "signIn": "Inicia sesión para subir fotos.",
     "tooLarge": "La imagen supera {maxMb} MB."
+  },
+  "location": {
+    "countryPh": "País",
+    "statePh": "Departamento / Estado",
+    "cityPh": "Ciudad",
+    "search": "Buscar…",
+    "empty": "Sin coincidencias",
+    "use": "Usar \"{value}\"",
+    "country": {
+      "CO": "Colombia",
+      "US": "Estados Unidos"
+    }
   },
   "insignia": {
     "plata": "Plata",

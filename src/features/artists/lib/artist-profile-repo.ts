@@ -75,6 +75,7 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     tagline: data.tagline ?? "",
     genre: data.genre ?? "",
     city: data.city ?? undefined,
+    location: (data.location as ArtistProfile["location"]) ?? undefined,
     bio: data.bio ?? "",
     accent: data.accent ?? "#8b5cf6",
     photoURL: data.photoURL ?? "",

@@ -16,6 +16,7 @@
  */
 
 import type { SocialPlatform } from "./artist";
+import type { GeoLocation } from "./location";
 
 // ── Insignia / Nivel (eje 1: reputación ganada) ─────────────────────────────
 
@@ -243,6 +244,8 @@ export interface ArtistProfile {
   tagline: string;
   genre: string;
   city?: string;
+  /** Ubicación estructurada (país/depto/ciudad). `city` queda como respaldo. */
+  location?: GeoLocation;
   bio: string;
   /** Color de acento para teñir su página (hex). */
   accent: string;
@@ -329,6 +332,7 @@ export type EditableProfile = Pick<
   | "tagline"
   | "genre"
   | "city"
+  | "location"
   | "bio"
   | "accent"
   | "photoURL"

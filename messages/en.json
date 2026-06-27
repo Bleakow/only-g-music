@@ -863,6 +863,10 @@
       "hint": "The main photo is shown on desktops and large screens. Upload a vertical version (optional) so it isn't badly cropped on phones.",
       "setHint": "Mobile portrait photo added. The main one is used on desktops."
     },
+    "location": {
+      "title": "Location",
+      "done": "Done"
+    },
     "photoAdjust": {
       "hint": "Drag the photo to reframe · adjust zoom and rotation in steps",
       "zoom": "Zoom",
@@ -983,6 +987,18 @@
     "error": "Couldn't upload the image.",
     "signIn": "Sign in to upload photos.",
     "tooLarge": "The image exceeds {maxMb} MB."
+  },
+  "location": {
+    "countryPh": "Country",
+    "statePh": "State / Department",
+    "cityPh": "City",
+    "search": "Search…",
+    "empty": "No matches",
+    "use": "Use \"{value}\"",
+    "country": {
+      "CO": "Colombia",
+      "US": "United States"
+    }
   },
   "insignia": {
     "plata": "Silver",

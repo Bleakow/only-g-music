@@ -37,6 +37,7 @@ function toProducer(id: string, data: DocumentData): Producer {
     id,
     name: data.name ?? "",
     origin: data.origin ?? "",
+    location: (data.location as Producer["location"]) ?? undefined,
     role: data.role ?? "",
     quote: data.quote ?? "",
     bio: data.bio ?? "",

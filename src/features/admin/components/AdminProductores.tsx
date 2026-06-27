@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { PhotoUpload } from "@/components/ui/PhotoUpload";
+import { LocationPicker } from "@/features/location/components/LocationPicker";
 import {
   ArrowLeftIcon,
   EditIcon,
@@ -19,6 +20,7 @@ import {
   type EditableProducer,
   emptyProducer,
 } from "@/domain/producer";
+import { formatLocation } from "@/domain/location";
 import {
   listProducers,
   createProducer,
@@ -132,6 +134,7 @@ export function AdminProductores() {
     setForm({
       name: p.name,
       origin: p.origin,
+      location: p.location,
       role: p.role,
       quote: p.quote,
       bio: p.bio,
@@ -354,12 +357,21 @@ export function AdminProductores() {
             onChange={(v) => patch({ role: v })}
             placeholder={t("adminProductores.fieldRolePh")}
           />
-          <Field
-            label={t("adminProductores.fieldOrigin")}
-            value={form.origin}
-            onChange={(v) => patch({ origin: v })}
-            placeholder={t("adminProductores.fieldOriginPh")}
-          />
+          <div>
+            <p className="text-silver-300 text-xs font-semibold tracking-[1px] uppercase">
+              {t("adminProductores.fieldOrigin")}
+            </p>
+            <LocationPicker
+              value={form.location ?? null}
+              onChange={(loc) =>
+                patch({
+                  location: loc ?? undefined,
+                  origin: formatLocation(loc),
+                })
+              }
+              className="mt-1 grid gap-2 sm:grid-cols-3"
+            />
+          </div>
           <Field
             label={t("adminProductores.fieldQuote")}
             value={form.quote}

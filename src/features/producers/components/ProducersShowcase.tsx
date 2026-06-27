@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { Producer } from "@/domain/producer";
+import { formatLocation } from "@/domain/location";
 import { listProducers } from "../lib/producers-repo";
 import { SEED_PRODUCERS } from "../data/producers";
 import { FacebookIcon, InstagramIcon, ExpandIcon } from "@/components/icons";
@@ -209,7 +210,7 @@ export function ProducersShowcase() {
                 {p.name}
               </h2>
               <p className="text-silver-200 mt-2 text-sm tracking-[2px] uppercase drop-shadow-[0_2px_8px_#000]">
-                {p.origin}
+                {formatLocation(p.location) || p.origin}
               </p>
               <p className="mt-4 max-w-xl text-2xl text-white/95 drop-shadow-[0_2px_10px_#000] sm:text-3xl">
                 {p.quote}

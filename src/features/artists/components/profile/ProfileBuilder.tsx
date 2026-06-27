@@ -45,6 +45,8 @@ import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { LocationPicker } from "@/features/location/components/LocationPicker";
+import { formatLocation, type GeoLocation } from "@/domain/location";
 import { MUSIC_GENRES } from "../../data/genres";
 import {
   PlusIcon,
@@ -170,6 +172,8 @@ export function ProfileBuilder({
   const [tagline, setTagline] = useState("");
   const [genre, setGenre] = useState("");
   const [city, setCity] = useState("");
+  const [location, setLocation] = useState<GeoLocation | null>(null);
+  const [locOpen, setLocOpen] = useState(false);
   const [bio, setBio] = useState("");
   const [accent, setAccent] = useState("#8b5cf6");
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
@@ -236,6 +240,7 @@ export function ProfileBuilder({
           setTagline(p.tagline);
           setGenre(p.genre);
           setCity(p.city ?? "");
+          setLocation(p.location ?? null);
           setBio(p.bio);
           setAccent(p.accent);
           setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
@@ -281,6 +286,7 @@ export function ProfileBuilder({
       tagline: tagline.trim(),
       genre: genre.trim(),
       city: city.trim() || undefined,
+      location: location ?? undefined,
       bio: bio.trim(),
       accent,
       photoURL,
@@ -340,6 +346,7 @@ export function ProfileBuilder({
     tagline,
     genre,
     city,
+    location,
     bio,
     accent,
     startYear,
@@ -925,13 +932,33 @@ export function ProfileBuilder({
               className={`${glassField} flex w-44 items-center justify-between gap-2`}
               style={{ color: accent }}
             />
-            <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder={t("profileBuilder.identity.cityPlaceholder")}
-              className={`${glassField} w-40`}
+            <button
+              type="button"
+              onClick={() => setLocOpen(true)}
+              aria-label={t("profileBuilder.identity.cityPlaceholder")}
+              className={`${glassField} flex w-44 items-center justify-between gap-2`}
               style={{ color: accent }}
-            />
+            >
+              <span className="truncate">
+                {formatLocation(location) ||
+                  city ||
+                  t("profileBuilder.identity.cityPlaceholder")}
+              </span>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="size-4 shrink-0 opacity-60"
+                aria-hidden="true"
+              >
+                <path
+                  d="m6 9 6 6 6-6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
             <input
               type="number"
               value={startYear}
@@ -1289,6 +1316,30 @@ export function ProfileBuilder({
           >
             <TrashIcon className="size-4" />
             {t("profileBuilder.song.removeConfirm.confirm")}
+          </GlassButton>
+        </div>
+      </GlassModal>
+
+      {/* Editor de ubicación (país → departamento/estado → ciudad) */}
+      <GlassModal
+        open={locOpen}
+        onClose={() => setLocOpen(false)}
+        title={t("profileBuilder.location.title")}
+      >
+        <LocationPicker
+          value={location}
+          onChange={(loc) => {
+            setLocation(loc);
+            setCity(loc?.city ?? "");
+          }}
+          className="grid gap-3"
+        />
+        <div className="mt-6 flex justify-end">
+          <GlassButton
+            onClick={() => setLocOpen(false)}
+            className="!text-amethyst-200"
+          >
+            {t("profileBuilder.location.done")}
           </GlassButton>
         </div>
       </GlassModal>

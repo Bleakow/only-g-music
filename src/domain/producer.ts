@@ -7,6 +7,8 @@
  * idéntica para todos; solo cambian los datos y las fotos. El texto va en un solo
  * idioma (lo que escribe el admin), igual que las bios de los artistas.
  */
+import type { GeoLocation } from "./location";
+
 export interface ProducerSocials {
   facebook?: string;
   instagram?: string;
@@ -18,6 +20,8 @@ export interface Producer {
   name: string;
   /** Ciudad/origen (p. ej. "Barranquilla, Atlántico"). */
   origin: string;
+  /** Ubicación estructurada (país/depto/ciudad). `origin` queda como respaldo. */
+  location?: GeoLocation;
   /** Rol dentro del sello (p. ej. "Fundador y dueño"). */
   role: string;
   /** Frase corta destacada sobre la portada. */

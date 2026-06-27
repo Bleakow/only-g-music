@@ -14,6 +14,7 @@ import {
   GALLERY_SPAN_CLASS,
 } from "@/domain/artist-profile";
 import type { SocialPlatform } from "@/domain/artist";
+import { formatLocation } from "@/domain/location";
 import { useState } from "react";
 import {
   ArrowLeftIcon,
@@ -82,7 +83,8 @@ export function ArtistProfileView({
     profile.trajectoryStartYear >= 1950
       ? aniosDeTrayectoria(profile.trajectoryStartYear, now)
       : null;
-  const meta = [profile.genre, profile.city].filter(Boolean).join(" · ");
+  const ciudad = formatLocation(profile.location) || profile.city;
+  const meta = [profile.genre, ciudad].filter(Boolean).join(" · ");
 
   return (
     <article className="relative min-h-dvh">

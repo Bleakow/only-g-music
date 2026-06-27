@@ -5,7 +5,12 @@ import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
-import { PlusIcon, TrashIcon, SpinnerIcon, CheckIcon } from "@/components/icons";
+import {
+  PlusIcon,
+  TrashIcon,
+  SpinnerIcon,
+  CheckIcon,
+} from "@/components/icons";
 import { formatCOP } from "@/domain/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import {
@@ -23,7 +28,9 @@ import {
 } from "../lib/contabilidad-export";
 import { AddPasivoModal } from "./AddPasivoModal";
 
-export function AdminBalance() {
+export function AdminBalance({
+  embedded = false,
+}: { embedded?: boolean } = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const [now] = useState(() => Date.now());
@@ -141,25 +148,34 @@ export function AdminBalance() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-4xl px-6 pb-24 pt-28 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
-      >
-        {t("adminBalance.backToAdmin")}
-      </Link>
+    <div
+      className={
+        embedded ? "" : "mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12"
+      }
+    >
+      {!embedded && (
+        <Link
+          href="/admin"
+          className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
+        >
+          {t("adminBalance.backToAdmin")}
+        </Link>
+      )}
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
             {t("adminBalance.title")}
           </h1>
-          <p className="mt-2 max-w-xl text-silver-300">
+          <p className="text-silver-300 mt-2 max-w-xl">
             {t("adminBalance.intro")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <GlassButton onClick={() => setShowAdd(true)} className="!text-amethyst-200">
+          <GlassButton
+            onClick={() => setShowAdd(true)}
+            className="!text-amethyst-200"
+          >
             <PlusIcon className="size-4" />
             {t("adminBalance.addButton")}
           </GlassButton>
@@ -179,24 +195,24 @@ export function AdminBalance() {
       )}
 
       {loading ? (
-        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
+        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
       ) : (
         <>
           {/* Hoja de balance: Activos = Pasivos + Patrimonio */}
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-xs uppercase tracking-[2px] text-silver-400">
+              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
                 {t("adminBalance.assets")}
               </p>
-              <p className="mt-1 font-narrow text-2xl font-bold text-white">
+              <p className="font-narrow mt-1 text-2xl font-bold text-white">
                 {formatCOP(balance.activos)}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-xs uppercase tracking-[2px] text-silver-400">
+              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
                 {t("adminBalance.liabilities")}
               </p>
-              <p className="mt-1 font-narrow text-2xl font-bold text-white">
+              <p className="font-narrow mt-1 text-2xl font-bold text-white">
                 {formatCOP(balance.pasivos)}
               </p>
             </div>
@@ -208,39 +224,45 @@ export function AdminBalance() {
               }`}
             >
               <p
-                className={`text-xs uppercase tracking-[2px] ${
+                className={`text-xs tracking-[2px] uppercase ${
                   positivo ? "text-emerald-200" : "text-red-200"
                 }`}
               >
                 {t("adminBalance.equity")}
               </p>
-              <p className="mt-1 font-narrow text-2xl font-bold text-white">
+              <p className="font-narrow mt-1 text-2xl font-bold text-white">
                 {formatCOP(balance.patrimonio)}
               </p>
             </div>
           </div>
-          <p className="mt-3 text-center text-sm text-silver-400">
+          <p className="text-silver-400 mt-3 text-center text-sm">
             {t("adminBalance.equation")}
           </p>
 
           {/* Pasivos */}
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("adminBalance.liabilities")}
             </h2>
             {pasivosOrdenados.length === 0 ? (
-              <p className="mt-2 text-silver-400">{t("adminBalance.empty")}</p>
+              <p className="text-silver-400 mt-2">{t("adminBalance.empty")}</p>
             ) : (
               <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
                 <table className="w-full min-w-[44rem] text-left text-sm">
-                  <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-silver-400">
+                  <thead className="text-silver-400 bg-white/[0.03] text-xs tracking-wide uppercase">
                     <tr>
-                      <th className="px-4 py-3">{t("adminBalance.colConcept")}</th>
+                      <th className="px-4 py-3">
+                        {t("adminBalance.colConcept")}
+                      </th>
                       <th className="px-4 py-3">
                         {t("adminBalance.colCategory")}
                       </th>
-                      <th className="px-4 py-3">{t("adminBalance.colCreditor")}</th>
-                      <th className="px-4 py-3">{t("adminBalance.colDueDate")}</th>
+                      <th className="px-4 py-3">
+                        {t("adminBalance.colCreditor")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("adminBalance.colDueDate")}
+                      </th>
                       <th className="px-4 py-3 text-right">
                         {t("adminBalance.colValue")}
                       </th>
@@ -255,27 +277,27 @@ export function AdminBalance() {
                       return (
                         <tr key={p.id} className={vigente ? "" : "opacity-45"}>
                           <td className="px-4 py-3">
-                            <span className="flex items-center gap-2 text-silver-100">
+                            <span className="text-silver-100 flex items-center gap-2">
                               <span className="truncate">{p.nombre}</span>
                               {!vigente && (
-                                <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-silver-400">
+                                <span className="text-silver-400 shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[10px] tracking-wide uppercase">
                                   {t("adminBalance.statusSettled")}
                                 </span>
                               )}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-silver-300">
+                          <td className="text-silver-300 px-4 py-3">
                             {t(`adminBalance.categoria.${p.categoria}`)}
                           </td>
-                          <td className="px-4 py-3 text-silver-400">
+                          <td className="text-silver-400 px-4 py-3">
                             {p.acreedor ?? "—"}
                           </td>
-                          <td className="px-4 py-3 text-silver-400">
+                          <td className="text-silver-400 px-4 py-3">
                             {p.vencimiento
                               ? fechaCorta(p.vencimiento, locale)
                               : "—"}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-white">
+                          <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
                             {formatCOP(p.monto)}
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -287,7 +309,7 @@ export function AdminBalance() {
                                   setSaldarMotivo("");
                                 }}
                                 aria-label={t("adminBalance.settle")}
-                                className="inline-flex size-8 items-center justify-center rounded-full text-silver-400 transition hover:bg-emerald-500/10 hover:text-emerald-300"
+                                className="text-silver-400 inline-flex size-8 items-center justify-center rounded-full transition hover:bg-emerald-500/10 hover:text-emerald-300"
                               >
                                 <TrashIcon className="size-4" />
                               </button>
@@ -320,7 +342,7 @@ export function AdminBalance() {
         title={t("adminBalance.settleModal.title")}
         className="max-w-md"
       >
-        <p className="text-sm text-silver-300">
+        <p className="text-silver-300 text-sm">
           {t("adminBalance.settleModal.message", {
             name: saldarTarget?.nombre ?? "",
           })}
@@ -329,10 +351,13 @@ export function AdminBalance() {
           value={saldarMotivo}
           onChange={(e) => setSaldarMotivo(e.target.value)}
           placeholder={t("adminBalance.settleModal.reasonPlaceholder")}
-          className="mt-4 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40"
+          className="mt-4 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white ring-1 ring-white/20 transition outline-none ring-inset placeholder:text-white/40 focus:ring-white/50"
         />
         <div className="mt-5 flex items-center justify-end gap-3">
-          <GlassButton onClick={() => setSaldarTarget(null)} disabled={saldarBusy}>
+          <GlassButton
+            onClick={() => setSaldarTarget(null)}
+            disabled={saldarBusy}
+          >
             {t("adminBalance.settleModal.cancel")}
           </GlassButton>
           <GlassButton
@@ -349,6 +374,6 @@ export function AdminBalance() {
           </GlassButton>
         </div>
       </GlassModal>
-    </main>
+    </div>
   );
 }

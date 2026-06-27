@@ -38,7 +38,7 @@ import { AddMovimientoModal } from "./AddMovimientoModal";
 type PeriodoKey = "mes" | "anio" | "todo";
 const PERIODOS: PeriodoKey[] = ["mes", "anio", "todo"];
 
-export function AdminGastos() {
+export function AdminGastos({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useTranslations();
   const locale = useLocale();
   const [now] = useState(() => Date.now());
@@ -93,7 +93,9 @@ export function AdminGastos() {
 
   const pendientes = pendientesDeConfirmar(movimientos, now);
   const pl = estadoResultados([], movimientos, periodo, now);
-  const contables = expandirGastos(movimientos, periodo, now).filter(cuentaEnPnl);
+  const contables = expandirGastos(movimientos, periodo, now).filter(
+    cuentaEnPnl,
+  );
   const recurrentes = movimientos.filter((m) => esRecurrenteActivo(m, now));
   const maxCat = Math.max(1, ...pl.gastosPorCategoria.map((c) => c.monto));
 
@@ -130,23 +132,30 @@ export function AdminGastos() {
     }
   }
 
-  const anularEsSerie = anularTarget != null && anularTarget.recurrencia !== "unico";
+  const anularEsSerie =
+    anularTarget != null && anularTarget.recurrencia !== "unico";
 
   return (
-    <main className="mx-auto min-h-dvh max-w-4xl px-6 pb-24 pt-28 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
-      >
-        {t("adminGastos.backToAdmin")}
-      </Link>
+    <div
+      className={
+        embedded ? "" : "mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12"
+      }
+    >
+      {!embedded && (
+        <Link
+          href="/admin"
+          className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
+        >
+          {t("adminGastos.backToAdmin")}
+        </Link>
+      )}
 
       <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
             {t("adminGastos.title")}
           </h1>
-          <p className="mt-2 max-w-xl text-silver-300">
+          <p className="text-silver-300 mt-2 max-w-xl">
             {t("adminGastos.intro")}
           </p>
         </div>
@@ -166,13 +175,13 @@ export function AdminGastos() {
       )}
 
       {loading ? (
-        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
+        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
       ) : (
         <>
           {/* Cola: por confirmar */}
           {pendientes.length > 0 && (
             <section className="mt-8 rounded-2xl border border-amber-300/30 bg-amber-500/[0.08] p-5">
-              <h2 className="font-narrow text-xl font-bold uppercase text-amber-100">
+              <h2 className="font-narrow text-xl font-bold text-amber-100 uppercase">
                 {t("adminGastos.toConfirm", { count: pendientes.length })}
               </h2>
               <p className="mt-1 text-sm text-amber-100/70">
@@ -191,7 +200,7 @@ export function AdminGastos() {
                         <p className="truncate font-semibold text-white">
                           {o.concepto}
                         </p>
-                        <p className="text-sm text-silver-400">
+                        <p className="text-silver-400 text-sm">
                           {fechaCorta(o.fecha, locale)} · {formatCOP(o.monto)} ·{" "}
                           {t(`adminGastos.categoria.${o.categoria}`)}
                         </p>
@@ -232,10 +241,10 @@ export function AdminGastos() {
                 key={k}
                 type="button"
                 onClick={() => setPeriodoKey(k)}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
                   periodoKey === k
                     ? "border-amethyst-300 bg-amethyst-500/15 text-white"
-                    : "border-white/15 text-silver-300 hover:border-white/30 hover:text-white"
+                    : "text-silver-300 border-white/15 hover:border-white/30 hover:text-white"
                 }`}
               >
                 {t(`adminFinanzas.period.${k}`)}
@@ -245,27 +254,27 @@ export function AdminGastos() {
 
           {/* Resumen */}
           <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-amethyst-300/30 bg-amethyst-500/10 p-5">
-              <p className="text-xs uppercase tracking-[2px] text-amethyst-200">
+            <div className="border-amethyst-300/30 bg-amethyst-500/10 rounded-2xl border p-5">
+              <p className="text-amethyst-200 text-xs tracking-[2px] uppercase">
                 {t("adminGastos.totalLabel")}
               </p>
-              <p className="mt-1 font-narrow text-3xl font-bold text-white">
+              <p className="font-narrow mt-1 text-3xl font-bold text-white">
                 {formatCOP(pl.gastos)}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-xs uppercase tracking-[2px] text-silver-400">
+              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
                 {t("adminGastos.count")}
               </p>
-              <p className="mt-1 font-narrow text-2xl font-bold text-white">
+              <p className="font-narrow mt-1 text-2xl font-bold text-white">
                 {contables.length}
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-xs uppercase tracking-[2px] text-silver-400">
+              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
                 {t("adminGastos.recurringActive")}
               </p>
-              <p className="mt-1 font-narrow text-2xl font-bold text-white">
+              <p className="font-narrow mt-1 text-2xl font-bold text-white">
                 {recurrentes.length}
               </p>
             </div>
@@ -274,7 +283,7 @@ export function AdminGastos() {
           {/* Gastos recurrentes (definiciones) */}
           {recurrentes.length > 0 && (
             <section className="mt-10">
-              <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+              <h2 className="font-narrow text-2xl font-bold text-white uppercase">
                 {t("adminGastos.recurring")}
               </h2>
               <ul className="mt-4 flex flex-col gap-2">
@@ -286,13 +295,16 @@ export function AdminGastos() {
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-white">
                         {m.concepto}{" "}
-                        <span className="text-xs font-normal text-amethyst-200">
+                        <span className="text-amethyst-200 text-xs font-normal">
                           · {t(`adminGastos.recurrencia.${m.recurrencia}`)}
                         </span>
                       </p>
-                      <p className="text-sm text-silver-400">
-                        {formatCOP(m.monto)} · {t(`adminGastos.categoria.${m.categoria}`)} ·{" "}
-                        {t("adminGastos.since", { date: fechaCorta(m.fecha, locale) })}
+                      <p className="text-silver-400 text-sm">
+                        {formatCOP(m.monto)} ·{" "}
+                        {t(`adminGastos.categoria.${m.categoria}`)} ·{" "}
+                        {t("adminGastos.since", {
+                          date: fechaCorta(m.fecha, locale),
+                        })}
                         {m.recurrenciaHasta
                           ? ` → ${fechaCorta(m.recurrenciaHasta, locale)}`
                           : ""}
@@ -304,7 +316,7 @@ export function AdminGastos() {
                         setAnularTarget(m);
                         setAnularMotivo("");
                       }}
-                      className="shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-silver-300 transition hover:bg-red-500/10 hover:text-red-300"
+                      className="text-silver-300 shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide uppercase transition hover:bg-red-500/10 hover:text-red-300"
                     >
                       {t("adminGastos.stopSeries")}
                     </button>
@@ -316,19 +328,23 @@ export function AdminGastos() {
 
           {/* Egresos del periodo (contabilizados) */}
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("adminGastos.expensesInPeriod")}
             </h2>
             {contables.length === 0 ? (
-              <p className="mt-2 text-silver-400">{t("adminGastos.empty")}</p>
+              <p className="text-silver-400 mt-2">{t("adminGastos.empty")}</p>
             ) : (
               <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
                 <table className="w-full min-w-[44rem] text-left text-sm">
-                  <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-silver-400">
+                  <thead className="text-silver-400 bg-white/[0.03] text-xs tracking-wide uppercase">
                     <tr>
                       <th className="px-4 py-3">{t("adminGastos.colDate")}</th>
-                      <th className="px-4 py-3">{t("adminGastos.colConcept")}</th>
-                      <th className="px-4 py-3">{t("adminGastos.colCategory")}</th>
+                      <th className="px-4 py-3">
+                        {t("adminGastos.colConcept")}
+                      </th>
+                      <th className="px-4 py-3">
+                        {t("adminGastos.colCategory")}
+                      </th>
                       <th className="px-4 py-3 text-right">
                         {t("adminGastos.colAmount")}
                       </th>
@@ -339,18 +355,20 @@ export function AdminGastos() {
                   </thead>
                   <tbody className="divide-y divide-white/5">
                     {contables.map((o) => {
-                      const mov = movimientos.find((m) => m.id === o.movimientoId);
+                      const mov = movimientos.find(
+                        (m) => m.id === o.movimientoId,
+                      );
                       return (
                         <tr key={`${o.movimientoId}:${o.clave ?? o.fecha}`}>
-                          <td className="px-4 py-3 text-silver-400">
+                          <td className="text-silver-400 px-4 py-3">
                             {fechaCorta(o.fecha, locale)}
                           </td>
                           <td className="px-4 py-3">
-                            <span className="flex items-center gap-2 text-silver-100">
+                            <span className="text-silver-100 flex items-center gap-2">
                               <span className="truncate">{o.concepto}</span>
                               {o.recurrente && (
                                 <span
-                                  className="shrink-0 rounded-full bg-amethyst-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amethyst-200"
+                                  className="bg-amethyst-500/20 text-amethyst-200 shrink-0 rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase"
                                   title={t("adminGastos.recurringTag")}
                                 >
                                   ↻
@@ -358,10 +376,10 @@ export function AdminGastos() {
                               )}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-silver-300">
+                          <td className="text-silver-300 px-4 py-3">
                             {t(`adminGastos.categoria.${o.categoria}`)}
                           </td>
-                          <td className="px-4 py-3 text-right font-semibold tabular-nums text-white">
+                          <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
                             {formatCOP(o.monto)}
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -373,7 +391,7 @@ export function AdminGastos() {
                                   setAnularMotivo("");
                                 }}
                                 aria-label={t("adminGastos.void")}
-                                className="inline-flex size-8 items-center justify-center rounded-full text-silver-400 transition hover:bg-red-500/10 hover:text-red-300"
+                                className="text-silver-400 inline-flex size-8 items-center justify-center rounded-full transition hover:bg-red-500/10 hover:text-red-300"
                               >
                                 <TrashIcon className="size-4" />
                               </button>
@@ -391,22 +409,22 @@ export function AdminGastos() {
           {/* Desglose por categoría */}
           {pl.gastosPorCategoria.length > 0 && (
             <section className="mt-10">
-              <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+              <h2 className="font-narrow text-2xl font-bold text-white uppercase">
                 {t("adminGastos.byCategory")}
               </h2>
               <div className="mt-4 flex flex-col gap-2">
                 {pl.gastosPorCategoria.map((c) => (
                   <div key={c.categoria} className="flex items-center gap-3">
-                    <span className="w-40 shrink-0 truncate text-sm text-silver-300">
+                    <span className="text-silver-300 w-40 shrink-0 truncate text-sm">
                       {t(`adminGastos.categoria.${c.categoria}`)}
                     </span>
                     <div className="h-6 flex-1 overflow-hidden rounded bg-white/5">
                       <div
-                        className="h-full rounded bg-gradient-to-r from-silver-100 to-amethyst-300"
+                        className="from-silver-100 to-amethyst-300 h-full rounded bg-gradient-to-r"
                         style={{ width: `${(c.monto / maxCat) * 100}%` }}
                       />
                     </div>
-                    <span className="w-32 shrink-0 text-right text-sm font-semibold tabular-nums text-white">
+                    <span className="w-32 shrink-0 text-right text-sm font-semibold text-white tabular-nums">
                       {formatCOP(c.monto)}
                     </span>
                   </div>
@@ -437,7 +455,7 @@ export function AdminGastos() {
         }
         className="max-w-md"
       >
-        <p className="text-sm text-silver-300">
+        <p className="text-silver-300 text-sm">
           {anularEsSerie
             ? t("adminGastos.voidModal.messageSerie", {
                 concept: anularTarget?.concepto ?? "",
@@ -450,10 +468,13 @@ export function AdminGastos() {
           value={anularMotivo}
           onChange={(e) => setAnularMotivo(e.target.value)}
           placeholder={t("adminGastos.voidModal.reasonPlaceholder")}
-          className="mt-4 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40"
+          className="mt-4 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white ring-1 ring-white/20 transition outline-none ring-inset placeholder:text-white/40 focus:ring-white/50"
         />
         <div className="mt-5 flex items-center justify-end gap-3">
-          <GlassButton onClick={() => setAnularTarget(null)} disabled={anularBusy}>
+          <GlassButton
+            onClick={() => setAnularTarget(null)}
+            disabled={anularBusy}
+          >
             {t("adminGastos.voidModal.cancel")}
           </GlassButton>
           <GlassButton
@@ -472,6 +493,6 @@ export function AdminGastos() {
           </GlassButton>
         </div>
       </GlassModal>
-    </main>
+    </div>
   );
 }

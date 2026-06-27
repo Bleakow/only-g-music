@@ -1,0 +1,3 @@
+# Datasets de ubicación generados (minificados a propósito; no formatear —
+# expandirlos hincharía el repo a decenas de miles de líneas).
+src/features/location/data/

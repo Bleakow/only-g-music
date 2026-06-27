@@ -1,18 +1,15 @@
-export interface Producer {
-  slug: string;
-  name: string;
-  origin: string;
-  role: string;
-  quote: string;
-  bio: string;
-  socials: { facebook?: string; instagram?: string };
-  mainPhoto: string;
-  photos: string[];
-}
+import type { Producer } from "@/domain/producer";
 
-export const producers: Producer[] = [
+/**
+ * Semilla de productores: SOLO fallback para que el home no quede vacío antes de
+ * que el admin migre los productores a Firestore (colección `producers`). El texto
+ * va en línea (un idioma), no en i18n, porque ahora es contenido editable desde el
+ * panel "Gestionar productores". `id` reusa los antiguos slugs. `createdAt`/
+ * `updatedAt` van a 0: son placeholders, no documentos reales.
+ */
+export const SEED_PRODUCERS: Producer[] = [
   {
-    slug: "na",
+    id: "na",
     name: "N.A",
     origin: "Barranquilla, Atlántico",
     role: "Fundador y dueño de Only G Music",
@@ -24,9 +21,12 @@ export const producers: Producer[] = [
     },
     mainPhoto: "/hero/NA.jpg",
     photos: ["/hero/Na2.jpg", "/hero/na3.jpg", "/hero/na4.jpg"],
+    orden: 0,
+    createdAt: 0,
+    updatedAt: 0,
   },
   {
-    slug: "dr-dre",
+    id: "dr-dre",
     name: "Dr. Dre",
     origin: "Compton, California",
     role: "Productor invitado",
@@ -38,5 +38,8 @@ export const producers: Producer[] = [
     },
     mainPhoto: "/hero/dre.jpg",
     photos: ["/hero/dre2.jpg", "/hero/dre3.jpg", "/hero/dre4.jpg"],
+    orden: 1,
+    createdAt: 0,
+    updatedAt: 0,
   },
 ];

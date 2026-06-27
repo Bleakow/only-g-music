@@ -38,6 +38,8 @@ export function Hero() {
         })
         .to("#hero-key", { duration: 1, scale: 1 })
         .to("#hero-key-logo", { opacity: 0 }, "<")
+        // La flecha de scroll inicial se desvanece apenas el usuario empieza a bajar.
+        .to("#hero-scroll-hint", { autoAlpha: 0, duration: 0.12 }, 0)
         .to(
           "#logo-mask",
           {
@@ -104,7 +106,7 @@ export function Hero() {
         </section>
       </div>
 
-      <div className="fixed flex h-screen w-full flex-col items-center justify-between px-6 pb-16 pt-3 sm:px-12 sm:pt-6">
+      <div className="fixed flex h-screen w-full flex-col items-center justify-between px-6 pt-3 pb-16 sm:px-12 sm:pt-6">
         <header className="flex w-full">
           <Image
             src="/logo/logo-white.png"
@@ -116,13 +118,34 @@ export function Hero() {
         </header>
       </div>
 
+      {/* Flecha indicadora de scroll (estado inicial). GSAP la desvanece apenas
+          el usuario empieza a bajar; reaparece al volver arriba (scrub). */}
+      <div
+        id="hero-scroll-hint"
+        className="text-silver-200 fixed inset-x-0 bottom-7 z-20 flex flex-col items-center gap-1.5"
+      >
+        <span className="text-[10px] tracking-[3px] uppercase sm:text-xs">
+          {t("scrollHint")}
+        </span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          className="animate-bounce-pulse text-amethyst-300 w-6"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+
       {/* Contenido que se revela al terminar la máscara */}
       <div
         id="hero-reveal"
         className="pointer-events-none fixed inset-0 flex flex-col items-center px-6 pb-10 sm:px-12"
       >
         <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
-          <p className="reveal-item invisible text-xs uppercase tracking-[4px] text-silver-400 sm:text-sm">
+          <p className="reveal-item text-silver-400 invisible text-xs tracking-[4px] uppercase sm:text-sm">
             {t("tagline")}
           </p>
           <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
@@ -134,25 +157,25 @@ export function Hero() {
                   behavior: "smooth",
                 })
               }
-              className="reveal-item invisible pointer-events-auto rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+              className="reveal-item from-silver-100 to-amethyst-300 text-ink pointer-events-auto invisible rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
               {t("explore")}
             </button>
             <Link
               href="/artistas"
-              className="reveal-item invisible pointer-events-auto rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
             >
               {t("artists")}
             </Link>
             <Link
               href="/cotizar"
-              className="reveal-item invisible pointer-events-auto rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
             >
               {t("quote")}
             </Link>
             <Link
               href="/agenda"
-              className="reveal-item invisible pointer-events-auto rounded-full border border-amethyst-400/60 px-8 py-3 text-sm uppercase tracking-[2px] text-amethyst-300 transition hover:border-amethyst-300 hover:bg-amethyst-500/10"
+              className="reveal-item border-amethyst-400/60 text-amethyst-300 hover:border-amethyst-300 hover:bg-amethyst-500/10 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition"
             >
               {t("book")}
             </Link>
@@ -160,10 +183,10 @@ export function Hero() {
         </div>
 
         <div className="reveal-item invisible flex flex-col items-center gap-2">
-          <span className="text-xs uppercase tracking-[3px] text-silver-300 sm:text-sm">
+          <span className="text-silver-300 text-xs tracking-[3px] uppercase sm:text-sm">
             {t("meetProducers")}
           </span>
-          <KeepScrolling className="w-5 animate-bounce-pulse text-amethyst-300" />
+          <KeepScrolling className="animate-bounce-pulse text-amethyst-300 w-5" />
         </div>
       </div>
 

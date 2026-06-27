@@ -85,6 +85,12 @@ export function AdminDashboard() {
           {t("adminDashboard.viewProfiles")}
         </Link>
         <Link
+          href="/admin/productores"
+          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
+        >
+          {t("adminDashboard.viewProducers")}
+        </Link>
+        <Link
           href="/admin/contabilidad"
           className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
         >

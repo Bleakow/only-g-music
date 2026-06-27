@@ -143,6 +143,15 @@ service cloud.firestore {
       }
     }
 
+    // ── Productores (vitrina pública del home) ───────────────────────
+    // Contenido CURADO por el admin que se muestra como secciones del scroll del
+    // home. Lectura PÚBLICA (sin sesión, igual que los perfiles). Escritura solo
+    // admin: ni dueño ni slug — son contenido del sello, no de un usuario.
+    match /producers/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // ── Sesiones (consola del productor — PROYECCIÓN sin finanzas) ───
     // No contiene `amount`: el productor ve a quién atiende y cuándo, nunca el
     // cobro. La lee el admin, el productor asignado o el cliente dueño. La crea

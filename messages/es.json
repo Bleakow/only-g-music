@@ -210,7 +210,8 @@
     "metaDesc": "El roster de Only G: los artistas que hacen el sonido.",
     "title": "Artistas",
     "intro": "El roster de Only G. Conoce a quienes hacen el sonido.",
-    "createProfile": "¿Eres artista? Crea tu perfil →"
+    "createProfile": "¿Eres artista? Crea tu perfil →",
+    "editProfile": "Edita tu perfil →"
   },
   "servicesPage": {
     "metaTitle": "Servicios — Only G Music",

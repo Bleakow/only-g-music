@@ -210,7 +210,8 @@
     "metaDesc": "The Only G roster: the artists who make the sound.",
     "title": "Artists",
     "intro": "The Only G roster. Meet the ones who make the sound.",
-    "createProfile": "Are you an artist? Create your profile →"
+    "createProfile": "Are you an artist? Create your profile →",
+    "editProfile": "Edit your profile →"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",

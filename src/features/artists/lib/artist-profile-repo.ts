@@ -78,6 +78,7 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     bio: data.bio ?? "",
     accent: data.accent ?? "#8b5cf6",
     photoURL: data.photoURL ?? "",
+    photoURLMobile: data.photoURLMobile ?? undefined,
     photoTransform: (data.photoTransform as PhotoTransform) ?? undefined,
     gallery: toGallery(data.gallery),
     tracks: (data.tracks as ArtistProfile["tracks"]) ?? [],

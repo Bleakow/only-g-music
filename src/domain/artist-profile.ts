@@ -44,7 +44,12 @@ export interface InsigniaMeta {
 export const INSIGNIA_META: Record<Insignia, InsigniaMeta> = {
   plata: { id: "plata", label: "Plata", color: "#c0c4cc", descuentoPct: 0 },
   oro: { id: "oro", label: "Oro", color: "#d4af37", descuentoPct: 5 },
-  diamante: { id: "diamante", label: "Diamante", color: "#8b5cf6", descuentoPct: 10 },
+  diamante: {
+    id: "diamante",
+    label: "Diamante",
+    color: "#8b5cf6",
+    descuentoPct: 10,
+  },
 };
 
 /**
@@ -75,7 +80,9 @@ export function progresoInsignia(puntos: number): {
 } {
   const actual = insigniaDePuntos(puntos);
   const siguiente = INSIGNIAS[INSIGNIAS.indexOf(actual) + 1] ?? null;
-  const faltan = siguiente ? Math.max(0, UMBRAL_INSIGNIA[siguiente] - puntos) : 0;
+  const faltan = siguiente
+    ? Math.max(0, UMBRAL_INSIGNIA[siguiente] - puntos)
+    : 0;
   return { actual, siguiente, faltan };
 }
 
@@ -241,8 +248,13 @@ export interface ArtistProfile {
   accent: string;
 
   // Multimedia
-  /** Foto de perfil — OBLIGATORIA. */
+  /** Foto de perfil — OBLIGATORIA. Horizontal/portada, pensada para PC. */
   photoURL: string;
+  /**
+   * Foto VERTICAL para móvil (art direction). Opcional: si no se sube, el móvil
+   * usa `photoURL` centrada. Evita que una foto horizontal se vea como franja.
+   */
+  photoURLMobile?: string;
   /** Encuadre de la foto principal (zoom/pan/rotación). */
   photoTransform?: PhotoTransform;
   /** Galería de mejores fotos artísticas (bento: cada foto con su tamaño). */
@@ -320,6 +332,7 @@ export type EditableProfile = Pick<
   | "bio"
   | "accent"
   | "photoURL"
+  | "photoURLMobile"
   | "photoTransform"
   | "gallery"
   | "tracks"

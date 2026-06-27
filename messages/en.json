@@ -855,6 +855,13 @@
       "change": "Change photo",
       "adjust": "Crop / frame"
     },
+    "photoMobile": {
+      "add": "Mobile photo",
+      "changeShort": "Change mobile",
+      "remove": "Remove mobile",
+      "hint": "The main photo is shown on desktops and large screens. Upload a vertical version (optional) so it isn't badly cropped on phones.",
+      "setHint": "Mobile portrait photo added. The main one is used on desktops."
+    },
     "photoAdjust": {
       "hint": "Drag the photo to reframe · adjust zoom and rotation in steps",
       "zoom": "Zoom",

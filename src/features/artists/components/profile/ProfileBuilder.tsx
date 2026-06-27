@@ -5,7 +5,10 @@ import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { uploadUserFile, uploadUserBlob } from "@/features/uploads/lib/uploads-repo";
+import {
+  uploadUserFile,
+  uploadUserBlob,
+} from "@/features/uploads/lib/uploads-repo";
 import type { SocialPlatform } from "@/domain/artist";
 import {
   type EditableProfile,
@@ -168,6 +171,8 @@ export function ProfileBuilder({
   const [accent, setAccent] = useState("#8b5cf6");
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
   const [photoURL, setPhotoURL] = useState("");
+  // Foto vertical opcional para móvil (art direction). La principal es para PC.
+  const [photoMobile, setPhotoMobile] = useState("");
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [songURL, setSongURL] = useState("");
   // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
@@ -182,9 +187,9 @@ export function ProfileBuilder({
   const [playerY, setPlayerY] = useState(DEFAULT_PLAYER_Y);
   const [playerSize, setPlayerSize] = useState<PlayerSize>(DEFAULT_PLAYER_SIZE);
   const [tracks, setTracks] = useState<EditorTrack[]>([]);
-  const [socials, setSocials] = useState<Partial<Record<SocialPlatform, string>>>(
-    {},
-  );
+  const [socials, setSocials] = useState<
+    Partial<Record<SocialPlatform, string>>
+  >({});
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [uploading, setUploading] = useState<string | null>(null);
@@ -192,7 +197,15 @@ export function ProfileBuilder({
   const [error, setError] = useState<string | null>(null);
   const [pt, setPt] = useState<PhotoTransform>(DEFAULT_PHOTO_TRANSFORM);
   const [adjusting, setAdjusting] = useState(false);
-  const dragRef = useRef({ active: false, sx: 0, sy: 0, bx: 0, by: 0, w: 1, h: 1 });
+  const dragRef = useRef({
+    active: false,
+    sx: 0,
+    sy: 0,
+    bx: 0,
+    by: 0,
+    w: 1,
+    h: 1,
+  });
   const heroRef = useRef<HTMLElement | null>(null);
   const playerBoxRef = useRef<HTMLDivElement | null>(null);
   const playerDragRef = useRef({ active: false, dx: 0, dy: 0 });
@@ -224,6 +237,7 @@ export function ProfileBuilder({
           setAccent(p.accent);
           setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
           setPhotoURL(p.photoURL);
+          setPhotoMobile(p.photoURLMobile ?? "");
           setPt(p.photoTransform ?? DEFAULT_PHOTO_TRANSFORM);
           setGallery(p.gallery);
           setSongURL(p.entryTrackUrl ?? "");
@@ -231,9 +245,7 @@ export function ProfileBuilder({
           setPlayerX(p.playerX ?? DEFAULT_PLAYER_X);
           setPlayerY(p.playerY ?? DEFAULT_PLAYER_Y);
           setPlayerSize(p.playerSize ?? DEFAULT_PLAYER_SIZE);
-          setTracks(
-            p.tracks.map((t) => ({ ...t, _id: `t${trackSeq++}` })),
-          );
+          setTracks(p.tracks.map((t) => ({ ...t, _id: `t${trackSeq++}` })));
           setSocials(p.socials);
           setPremiumData(p.premium);
           setPuntos(p.puntos ?? 0);
@@ -269,6 +281,7 @@ export function ProfileBuilder({
       bio: bio.trim(),
       accent,
       photoURL,
+      photoURLMobile: photoMobile || undefined,
       photoTransform: pt,
       gallery,
       tracks: tracks
@@ -328,6 +341,7 @@ export function ProfileBuilder({
     accent,
     startYear,
     photoURL,
+    photoMobile,
     pt,
     gallery,
     songURL,
@@ -347,7 +361,12 @@ export function ProfileBuilder({
     const out: string[] = [];
     for (const f of files) {
       if (f.size > MAX_MB * 1024 * 1024) {
-        setError(t("profileBuilder.errors.fileTooLarge", { name: f.name, maxMb: MAX_MB }));
+        setError(
+          t("profileBuilder.errors.fileTooLarge", {
+            name: f.name,
+            maxMb: MAX_MB,
+          }),
+        );
         continue;
       }
       const u = await uploadUserFile(user.uid, f);
@@ -366,6 +385,17 @@ export function ProfileBuilder({
       setUploading(null);
     }
   }
+  // Foto vertical para móvil (opcional). No usa el encuadre (ya viene recortada).
+  async function onPhotoMobile(files: File[]) {
+    setUploading("photoMobile");
+    setError(null);
+    try {
+      const [url] = await uploadFiles(files.slice(0, 1));
+      if (url) setPhotoMobile(url);
+    } finally {
+      setUploading(null);
+    }
+  }
   // Elegir canción = abrir el recortador con el archivo. La subida real ocurre
   // en onTrimConfirm con SOLO el fragmento recortado.
   function pickSong(files: File[]) {
@@ -374,7 +404,10 @@ export function ProfileBuilder({
     setError(null);
     if (f.size > MAX_MB * 1024 * 1024) {
       setError(
-        t("profileBuilder.errors.fileTooLarge", { name: f.name, maxMb: MAX_MB }),
+        t("profileBuilder.errors.fileTooLarge", {
+          name: f.name,
+          maxMb: MAX_MB,
+        }),
       );
       return;
     }
@@ -426,7 +459,9 @@ export function ProfileBuilder({
   }
 
   function setTrack(i: number, patch: Partial<ProfileTrack>) {
-    setTracks((prev) => prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)));
+    setTracks((prev) =>
+      prev.map((t, idx) => (idx === i ? { ...t, ...patch } : t)),
+    );
   }
 
   // Arrastre para reposicionar la foto (pan) en modo ajuste.
@@ -524,12 +559,16 @@ export function ProfileBuilder({
 
   if (!slug) {
     return (
-      <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 text-center">
-        <h1 className="font-narrow text-4xl font-bold uppercase">{t("profileBuilder.noSlug.title")}</h1>
-        <p className="mt-3 text-silver-300">{t("profileBuilder.noSlug.description")}</p>
+      <main className="mx-auto min-h-dvh max-w-lg px-6 pt-28 pb-24 text-center">
+        <h1 className="font-narrow text-4xl font-bold uppercase">
+          {t("profileBuilder.noSlug.title")}
+        </h1>
+        <p className="text-silver-300 mt-3">
+          {t("profileBuilder.noSlug.description")}
+        </p>
         <Link
           href="/artista/nuevo"
-          className="mt-8 inline-flex rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-7 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink"
+          className="from-silver-100 to-amethyst-300 text-ink mt-8 inline-flex rounded-full bg-gradient-to-r px-7 py-3 text-sm font-semibold tracking-[2px] uppercase"
         >
           {t("profileBuilder.noSlug.cta")}
         </Link>
@@ -539,7 +578,7 @@ export function ProfileBuilder({
 
   if (!ready) {
     return (
-      <main className="grid min-h-dvh place-items-center text-silver-300">
+      <main className="text-silver-300 grid min-h-dvh place-items-center">
         {t("common.loading")}
       </main>
     );
@@ -565,33 +604,50 @@ export function ProfileBuilder({
   const pubChip =
     estadoPremium === "activo"
       ? porVencer
-        ? { label: t("profileBuilder.premium.expiresIn", { days: diasRestantes }), cls: "bg-amber-500/15 text-amber-300" }
-        : { label: t("profileBuilder.premium.published"), cls: "bg-emerald-500/15 text-emerald-300" }
+        ? {
+            label: t("profileBuilder.premium.expiresIn", {
+              days: diasRestantes,
+            }),
+            cls: "bg-amber-500/15 text-amber-300",
+          }
+        : {
+            label: t("profileBuilder.premium.published"),
+            cls: "bg-emerald-500/15 text-emerald-300",
+          }
       : estadoPremium === "expirado"
-        ? { label: t("profileBuilder.premium.expired"), cls: "bg-red-500/15 text-red-300" }
-        : { label: t("profileBuilder.premium.draft"), cls: "bg-white/10 text-silver-300" };
+        ? {
+            label: t("profileBuilder.premium.expired"),
+            cls: "bg-red-500/15 text-red-300",
+          }
+        : {
+            label: t("profileBuilder.premium.draft"),
+            cls: "bg-white/10 text-silver-300",
+          };
   // ¿Mostrar acción de pago? Sin suscripción, vencida, o por vencer.
   const mostrarRenovar = estadoPremium !== "activo" || porVencer;
-  const renovarLabel = estadoPremium === "ninguno" ? t("profileBuilder.statusBar.activar") : t("profileBuilder.statusBar.renovar");
+  const renovarLabel =
+    estadoPremium === "ninguno"
+      ? t("profileBuilder.statusBar.activar")
+      : t("profileBuilder.statusBar.renovar");
 
   return (
     <article className="relative min-h-dvh pb-24">
       {/* Barra de estado (publicación + guardado + acción). Abajo para no quedar
           bajo el botón de menú/perfil; oculta mientras se ajusta la foto. */}
       {!adjusting && (
-        <div className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 bg-ink/90 px-4 py-3 backdrop-blur sm:px-8">
+        <div className="bg-ink/90 fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 px-4 py-3 backdrop-blur sm:px-8">
           <div className="flex items-center gap-3">
             {adminMode ? (
               <Link
                 href="/admin/perfiles"
-                className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[2px] text-silver-200 transition hover:bg-white/20 hover:text-white"
+                className="text-silver-200 inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold tracking-[2px] uppercase transition hover:bg-white/20 hover:text-white"
               >
                 <ArrowLeftIcon className="size-3.5" />
                 {t("profileBuilder.statusBar.backToAdmin")}
               </Link>
             ) : (
               <span
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[2px] ${pubChip.cls}`}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold tracking-[2px] uppercase ${pubChip.cls}`}
                 title={
                   estadoPremium === "activo"
                     ? t("profileBuilder.statusBar.titleActive")
@@ -608,7 +664,7 @@ export function ProfileBuilder({
               <button
                 type="button"
                 onClick={renovar}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-4 py-1.5 text-sm font-semibold uppercase tracking-[1px] text-ink transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
+                className="from-silver-100 to-amethyst-300 text-ink inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r px-4 py-1.5 text-sm font-semibold tracking-[1px] uppercase transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
               >
                 <RepeatIcon className="size-4" />
                 {renovarLabel}
@@ -643,7 +699,10 @@ export function ProfileBuilder({
             fill
             sizes="100vw"
             className="object-cover"
-            style={{ transform: photoTransformCss(pt), transformOrigin: "center" }}
+            style={{
+              transform: photoTransformCss(pt),
+              transformOrigin: "center",
+            }}
             priority
           />
         ) : (
@@ -658,38 +717,67 @@ export function ProfileBuilder({
               accept="image/*"
               onFiles={onPhoto}
               disabled={uploading === "photo"}
-              className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/30 px-10 py-8 text-white/70 transition hover:border-amethyst-300 hover:text-white"
+              className="hover:border-amethyst-300 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/30 px-10 py-8 text-white/70 transition hover:text-white"
             >
               {uploading === "photo" ? (
                 <SpinnerIcon className="size-7 animate-spin" />
               ) : (
                 <PlusIcon className="size-7" />
               )}
-              <span className="text-sm">{t("profileBuilder.photo.upload")}</span>
+              <span className="text-sm">
+                {t("profileBuilder.photo.upload")}
+              </span>
             </UploadButton>
           </div>
         )}
 
         {/* Foto puesta: cambiar / ajustar (mismos GlassButton que Atrás/Ajustes) */}
         {photoURL && !adjusting && (
-          <div className="absolute right-4 top-20 z-20 flex gap-2">
-            <UploadButton
-              glass
-              accept="image/*"
-              onFiles={onPhoto}
-              disabled={uploading === "photo"}
-            >
-              {uploading === "photo" ? (
-                <SpinnerIcon className="size-4 animate-spin" />
-              ) : (
-                <ImageIcon className="size-4" />
+          <div className="absolute top-20 right-4 z-20 flex max-w-[min(80vw,22rem)] flex-col items-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
+              <UploadButton
+                glass
+                accept="image/*"
+                onFiles={onPhoto}
+                disabled={uploading === "photo"}
+              >
+                {uploading === "photo" ? (
+                  <SpinnerIcon className="size-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-4" />
+                )}
+                {t("profileBuilder.photo.change")}
+              </UploadButton>
+              <GlassButton onClick={() => setAdjusting(true)}>
+                <CropIcon className="size-4" />
+                {t("profileBuilder.photo.adjust")}
+              </GlassButton>
+              <UploadButton
+                glass
+                accept="image/*"
+                onFiles={onPhotoMobile}
+                disabled={uploading === "photoMobile"}
+              >
+                {uploading === "photoMobile" ? (
+                  <SpinnerIcon className="size-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-4" />
+                )}
+                {photoMobile
+                  ? t("profileBuilder.photoMobile.changeShort")
+                  : t("profileBuilder.photoMobile.add")}
+              </UploadButton>
+              {photoMobile && (
+                <GlassButton onClick={() => setPhotoMobile("")}>
+                  {t("profileBuilder.photoMobile.remove")}
+                </GlassButton>
               )}
-              {t("profileBuilder.photo.change")}
-            </UploadButton>
-            <GlassButton onClick={() => setAdjusting(true)}>
-              <CropIcon className="size-4" />
-              {t("profileBuilder.photo.adjust")}
-            </GlassButton>
+            </div>
+            <p className="max-w-xs rounded-lg bg-black/45 px-2.5 py-1 text-right text-[11px] leading-snug text-white/75 backdrop-blur">
+              {photoMobile
+                ? t("profileBuilder.photoMobile.setHint")
+                : t("profileBuilder.photoMobile.hint")}
+            </p>
           </div>
         )}
 
@@ -711,24 +799,30 @@ export function ProfileBuilder({
                 <div className="relative flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
                   {/* Zoom */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+                    <span className="text-[10px] font-semibold tracking-[2px] text-white/55 uppercase">
                       {t("profileBuilder.photoAdjust.zoom")}
                     </span>
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.zoomOut")}
                       onStep={() =>
-                        setPt((p) => ({ ...p, scale: clamp(p.scale - 0.1, 1, 3) }))
+                        setPt((p) => ({
+                          ...p,
+                          scale: clamp(p.scale - 0.1, 1, 3),
+                        }))
                       }
                     >
                       <MinusIcon className="size-4" />
                     </StepButton>
-                    <span className="w-11 text-center text-sm tabular-nums text-white">
+                    <span className="w-11 text-center text-sm text-white tabular-nums">
                       {pt.scale.toFixed(1)}×
                     </span>
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.zoomIn")}
                       onStep={() =>
-                        setPt((p) => ({ ...p, scale: clamp(p.scale + 0.1, 1, 3) }))
+                        setPt((p) => ({
+                          ...p,
+                          scale: clamp(p.scale + 0.1, 1, 3),
+                        }))
                       }
                     >
                       <PlusIcon className="size-4" />
@@ -737,7 +831,7 @@ export function ProfileBuilder({
 
                   {/* Girar */}
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+                    <span className="text-[10px] font-semibold tracking-[2px] text-white/55 uppercase">
                       {t("profileBuilder.photoAdjust.rotate")}
                     </span>
                     <StepButton
@@ -751,7 +845,7 @@ export function ProfileBuilder({
                     >
                       <RotateCcwIcon className="size-4" />
                     </StepButton>
-                    <span className="w-11 text-center text-sm tabular-nums text-white">
+                    <span className="w-11 text-center text-sm text-white tabular-nums">
                       {Math.round(pt.rotation)}°
                     </span>
                     <StepButton
@@ -771,7 +865,10 @@ export function ProfileBuilder({
                 <div className="relative mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-3">
                   <GlassButton
                     onClick={() =>
-                      setPt((p) => ({ ...p, rotation: (p.rotation + 90) % 360 }))
+                      setPt((p) => ({
+                        ...p,
+                        rotation: (p.rotation + 90) % 360,
+                      }))
                     }
                   >
                     <RotateCwIcon className="size-4" />
@@ -790,7 +887,7 @@ export function ProfileBuilder({
                   </GlassButton>
                 </div>
               </div>
-              <p className="mt-2 text-center text-[10px] uppercase tracking-[2px] text-white/45">
+              <p className="mt-2 text-center text-[10px] tracking-[2px] text-white/45 uppercase">
                 {t("profileBuilder.photoAdjust.hint")}
               </p>
             </div>
@@ -808,7 +905,7 @@ export function ProfileBuilder({
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm font-bold uppercase tracking-[3px]">
+          <div className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-[3px] uppercase">
             <input
               value={genre}
               onChange={(e) => setGenre(e.target.value)}
@@ -838,7 +935,7 @@ export function ProfileBuilder({
           {/* Nombre: con etiqueta + lápiz + subrayado punteado para que se note
               que es editable (antes, si no tocabas las letras, no se veía). */}
           <div className="mt-3">
-            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[2px] text-white/55">
+            <span className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold tracking-[2px] text-white/55 uppercase">
               <EditIcon className="size-3" />
               {t("profileBuilder.identity.artisticNameLabel")}
             </span>
@@ -846,14 +943,14 @@ export function ProfileBuilder({
               value={artisticName}
               onChange={(e) => setArtisticName(e.target.value)}
               placeholder={t("profileBuilder.identity.artisticNamePlaceholder")}
-              className={`${titleInput} border-b-2 border-dashed border-white/25 pb-1 focus:border-amethyst-300`}
+              className={`${titleInput} focus:border-amethyst-300 border-b-2 border-dashed border-white/25 pb-1`}
             />
           </div>
           <input
             value={tagline}
             onChange={(e) => setTagline(e.target.value)}
             placeholder={t("profileBuilder.identity.taglinePlaceholder")}
-            className="mt-3 w-full max-w-xl border-b border-dashed border-white/20 bg-transparent pb-1 text-lg text-white/80 outline-none transition focus:border-amethyst-300/70 placeholder:text-white/40"
+            className="focus:border-amethyst-300/70 mt-3 w-full max-w-xl border-b border-dashed border-white/20 bg-transparent pb-1 text-lg text-white/80 transition outline-none placeholder:text-white/40"
           />
         </div>
 
@@ -944,7 +1041,7 @@ export function ProfileBuilder({
                   <button
                     type="button"
                     onClick={() => setPlayerOverlay(true)}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-sm text-silver-300 transition hover:border-amethyst-300/60 hover:text-white"
+                    className="text-silver-300 hover:border-amethyst-300/60 inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-1.5 text-sm transition hover:text-white"
                   >
                     <EyeIcon className="size-4" />
                     {t("profileBuilder.player.showOnPhoto")}
@@ -1007,7 +1104,7 @@ export function ProfileBuilder({
           value={bio}
           onChange={(e) => setBio(e.target.value)}
           placeholder={t("profileBuilder.bio.placeholder")}
-          className="min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed text-silver-100 outline-none transition focus:bg-white/10 placeholder:text-white/30"
+          className="text-silver-100 min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed transition outline-none placeholder:text-white/30 focus:bg-white/10"
         />
       </Block>
 
@@ -1018,9 +1115,14 @@ export function ProfileBuilder({
 
       {/* Galería bento ordenable (dnd-kit): arrastra una foto y las demás se
           acomodan solas; pulsa ⤢ para cambiar su tamaño. */}
-      <Block title={t("profileBuilder.gallery.sectionTitle", { count: gallery.length, limit: GALLERY_LIMIT })}>
+      <Block
+        title={t("profileBuilder.gallery.sectionTitle", {
+          count: gallery.length,
+          limit: GALLERY_LIMIT,
+        })}
+      >
         {gallery.length > 1 && (
-          <p className="mb-3 text-xs text-silver-400">
+          <p className="text-silver-400 mb-3 text-xs">
             {t("profileBuilder.gallery.hint")}
           </p>
         )}
@@ -1028,7 +1130,9 @@ export function ProfileBuilder({
           items={gallery}
           onReorder={setGallery}
           onResize={cycleGallerySpan}
-          onRemove={(url) => setGallery((g) => g.filter((it) => it.url !== url))}
+          onRemove={(url) =>
+            setGallery((g) => g.filter((it) => it.url !== url))
+          }
           addSlot={
             gallery.length < GALLERY_LIMIT ? (
               <UploadButton
@@ -1036,7 +1140,7 @@ export function ProfileBuilder({
                 multiple
                 onFiles={onGallery}
                 disabled={uploading === "gallery"}
-                className="flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:border-amethyst-300 hover:text-white"
+                className="hover:border-amethyst-300 flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:text-white"
               >
                 {uploading === "gallery" ? (
                   <SpinnerIcon className="size-6 animate-spin" />
@@ -1053,14 +1157,19 @@ export function ProfileBuilder({
       <Block title={t("profileBuilder.tracks.sectionTitle")}>
         <div className="flex flex-col gap-3">
           {tracks.map((track, i) => (
-            <div key={track._id} className={`${glassSurfaceSoft} rounded-xl p-3`}>
+            <div
+              key={track._id}
+              className={`${glassSurfaceSoft} rounded-xl p-3`}
+            >
               <GlassSheen />
               <div className="relative">
                 <div className="flex items-center gap-2">
                   <input
                     value={track.title}
                     onChange={(e) => setTrack(i, { title: e.target.value })}
-                    placeholder={t("profileBuilder.tracks.titlePlaceholder", { n: i + 1 })}
+                    placeholder={t("profileBuilder.tracks.titlePlaceholder", {
+                      n: i + 1,
+                    })}
                     className={`${ghostInput} flex-1`}
                   />
                   <button
@@ -1069,7 +1178,7 @@ export function ProfileBuilder({
                       setTracks((prev) => prev.filter((_, idx) => idx !== i))
                     }
                     aria-label={t("profileBuilder.tracks.removeAriaLabel")}
-                    className="flex size-9 shrink-0 items-center justify-center rounded-full text-silver-400 transition hover:bg-white/10 hover:text-white"
+                    className="text-silver-400 flex size-9 shrink-0 items-center justify-center rounded-full transition hover:bg-white/10 hover:text-white"
                   >
                     <CloseIcon className="size-4" />
                   </button>
@@ -1077,13 +1186,17 @@ export function ProfileBuilder({
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   <input
                     value={track.youtubeUrl ?? ""}
-                    onChange={(e) => setTrack(i, { youtubeUrl: e.target.value })}
+                    onChange={(e) =>
+                      setTrack(i, { youtubeUrl: e.target.value })
+                    }
                     placeholder={t("profileBuilder.tracks.youtubePlaceholder")}
                     className={ghostInput}
                   />
                   <input
                     value={track.spotifyUrl ?? ""}
-                    onChange={(e) => setTrack(i, { spotifyUrl: e.target.value })}
+                    onChange={(e) =>
+                      setTrack(i, { spotifyUrl: e.target.value })
+                    }
                     placeholder={t("profileBuilder.tracks.spotifyPlaceholder")}
                     className={ghostInput}
                   />
@@ -1091,8 +1204,11 @@ export function ProfileBuilder({
               </div>
             </div>
           ))}
-          <GlassButton onClick={() => setTracks((prev) => [...prev, newTrack()])}>
-            <PlusIcon className="size-4" /> {t("profileBuilder.tracks.addButton")}
+          <GlassButton
+            onClick={() => setTracks((prev) => [...prev, newTrack()])}
+          >
+            <PlusIcon className="size-4" />{" "}
+            {t("profileBuilder.tracks.addButton")}
           </GlassButton>
         </div>
       </Block>
@@ -1119,7 +1235,7 @@ export function ProfileBuilder({
         onClose={() => setShowPublishGate(false)}
         title={t("profileBuilder.publishGate.title")}
       >
-        <p className="text-sm text-silver-300">
+        <p className="text-silver-300 text-sm">
           {t("profileBuilder.publishGate.message")}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
@@ -1145,7 +1261,7 @@ export function ProfileBuilder({
         onClose={() => setConfirmRemoveSong(false)}
         title={t("profileBuilder.song.removeConfirm.title")}
       >
-        <p className="text-sm text-silver-300">
+        <p className="text-silver-300 text-sm">
           {t("profileBuilder.song.removeConfirm.message")}
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
@@ -1223,7 +1339,7 @@ function StepButton({
       onPointerUp={stop}
       onPointerLeave={stop}
       onPointerCancel={stop}
-      className="flex size-9 touch-none items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-inset ring-white/25 transition hover:bg-white/20 active:scale-90"
+      className="flex size-9 touch-none items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 transition ring-inset hover:bg-white/20 active:scale-90"
     >
       {children}
     </button>
@@ -1234,8 +1350,9 @@ function SaveIndicator({ state }: { state: SaveState }) {
   const t = useTranslations();
   if (state === "saving")
     return (
-      <span className="inline-flex items-center gap-1.5 text-xs text-silver-300">
-        <SpinnerIcon className="size-4 animate-spin" /> {t("profileBuilder.save.saving")}
+      <span className="text-silver-300 inline-flex items-center gap-1.5 text-xs">
+        <SpinnerIcon className="size-4 animate-spin" />{" "}
+        {t("profileBuilder.save.saving")}
       </span>
     );
   if (state === "saved")
@@ -1245,7 +1362,11 @@ function SaveIndicator({ state }: { state: SaveState }) {
       </span>
     );
   if (state === "error")
-    return <span className="text-xs text-red-300">{t("profileBuilder.save.error")}</span>;
+    return (
+      <span className="text-xs text-red-300">
+        {t("profileBuilder.save.error")}
+      </span>
+    );
   return null;
 }
 
@@ -1258,7 +1379,7 @@ function Block({
 }) {
   return (
     <section className="mx-auto mt-8 max-w-3xl px-6">
-      <h2 className="mb-3 font-narrow text-2xl font-bold uppercase text-white">
+      <h2 className="font-narrow mb-3 text-2xl font-bold text-white uppercase">
         {title}
       </h2>
       {children}

@@ -855,6 +855,13 @@
       "change": "Cambiar foto",
       "adjust": "Encuadrar"
     },
+    "photoMobile": {
+      "add": "Foto móvil",
+      "changeShort": "Cambiar móvil",
+      "remove": "Quitar móvil",
+      "hint": "La foto principal se ve en computadores y pantallas grandes. Sube una versión vertical (opcional) para que en celulares no se recorte mal.",
+      "setHint": "Foto vertical para móvil añadida. La principal se usa en computadores."
+    },
     "photoAdjust": {
       "hint": "Arrastra la foto para reencuadrar · ajusta zoom y giro a pasos",
       "zoom": "Zoom",

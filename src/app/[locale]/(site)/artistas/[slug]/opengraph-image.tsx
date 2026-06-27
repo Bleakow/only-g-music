@@ -38,64 +38,62 @@ export default async function Image({
   }
 
   return new ImageResponse(
-    (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-end",
+        width: "100%",
+        height: "100%",
+        padding: "72px",
+        backgroundImage: "linear-gradient(135deg, #0b0b0f 0%, #16101f 100%)",
+      }}
+    >
       <div
         style={{
           display: "flex",
-          flexDirection: "column",
-          justifyContent: "flex-end",
-          width: "100%",
-          height: "100%",
-          padding: "72px",
-          backgroundImage: "linear-gradient(135deg, #0b0b0f 0%, #16101f 100%)",
+          width: "128px",
+          height: "10px",
+          borderRadius: "9999px",
+          backgroundColor: accent,
+          marginBottom: "28px",
+        }}
+      />
+      {genre ? (
+        <div
+          style={{
+            display: "flex",
+            color: accent,
+            fontSize: "32px",
+            letterSpacing: "6px",
+          }}
+        >
+          {genre.toUpperCase()}
+        </div>
+      ) : null}
+      <div
+        style={{
+          display: "flex",
+          color: "#ffffff",
+          fontSize: "96px",
+          fontWeight: 800,
+          lineHeight: 1.05,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            width: "128px",
-            height: "10px",
-            borderRadius: "9999px",
-            backgroundColor: accent,
-            marginBottom: "28px",
-          }}
-        />
-        {genre ? (
-          <div
-            style={{
-              display: "flex",
-              color: accent,
-              fontSize: "32px",
-              letterSpacing: "6px",
-            }}
-          >
-            {genre.toUpperCase()}
-          </div>
-        ) : null}
-        <div
-          style={{
-            display: "flex",
-            color: "#ffffff",
-            fontSize: "96px",
-            fontWeight: 800,
-            lineHeight: 1.05,
-          }}
-        >
-          {name}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            marginTop: "24px",
-            color: "rgba(255,255,255,0.65)",
-            fontSize: "30px",
-            letterSpacing: "4px",
-          }}
-        >
-          ONLY G MUSIC
-        </div>
+        {name}
       </div>
-    ),
+      <div
+        style={{
+          display: "flex",
+          marginTop: "24px",
+          color: "rgba(255,255,255,0.65)",
+          fontSize: "30px",
+          letterSpacing: "4px",
+        }}
+      >
+        ONLY G MUSIC
+      </div>
+    </div>,
     { ...size },
   );
 }

@@ -241,6 +241,7 @@
     "summary": "{quotesCount, plural, one {# quote} other {# quotes}} pending reply · {paymentsCount, plural, one {# payment} other {# payments}} to review.",
     "viewFinances": "View finances →",
     "viewProfiles": "Profiles →",
+    "viewAccounting": "Accounting →",
     "loadError": "Could not load requests (do you have the admin role and deployed rules?).",
     "bookings": "Bookings",
     "noBookings": "No bookings yet.",
@@ -250,6 +251,32 @@
     "viewAssets": "Assets →",
     "viewExpenses": "Expenses →",
     "viewBalance": "Balance →"
+  },
+  "adminContabilidad": {
+    "backToAdmin": "← Admin panel",
+    "title": "Accounting",
+    "intro": "All your accounting in one place: income statement, payments, expenses, assets and balance sheet. Share or download the report as PDF or Excel.",
+    "share": "Share",
+    "downloadPdf": "Download PDF",
+    "downloadExcel": "Download Excel",
+    "loadError": "Could not load accounting.",
+    "exportError": "Could not generate the report.",
+    "tabs": {
+      "resultados": "Income Statement",
+      "pagos": "Payments",
+      "gastos": "Expenses",
+      "bienes": "Assets",
+      "balance": "Balance"
+    },
+    "export": {
+      "title": "Accounting report — Only G Music",
+      "generated": "Generated: {date}",
+      "income": "Income",
+      "expenses": "Expenses",
+      "profit": "Profit",
+      "margin": "Margin",
+      "total": "Total"
+    }
   },
   "adminFinanzas": {
     "backToAdmin": "← Admin panel",

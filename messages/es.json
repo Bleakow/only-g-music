@@ -241,6 +241,7 @@
     "summary": "{quotesCount, plural, one {# cotización} other {# cotizaciones}} por responder · {paymentsCount, plural, one {# pago} other {# pagos}} por revisar.",
     "viewFinances": "Ver finanzas →",
     "viewProfiles": "Perfiles →",
+    "viewAccounting": "Contabilidad →",
     "loadError": "No se pudieron cargar las solicitudes (¿tienes rol admin y reglas desplegadas?).",
     "bookings": "Reservas",
     "noBookings": "Sin reservas todavía.",
@@ -250,6 +251,32 @@
     "viewAssets": "Bienes →",
     "viewExpenses": "Gastos →",
     "viewBalance": "Balance →"
+  },
+  "adminContabilidad": {
+    "backToAdmin": "← Panel admin",
+    "title": "Contabilidad",
+    "intro": "Toda la contabilidad en un solo lugar: estado de resultados, pagos, gastos, bienes y balance. Comparte o descarga el informe en PDF o Excel.",
+    "share": "Compartir",
+    "downloadPdf": "Descargar PDF",
+    "downloadExcel": "Descargar Excel",
+    "loadError": "No se pudo cargar la contabilidad.",
+    "exportError": "No se pudo generar el informe.",
+    "tabs": {
+      "resultados": "Estado de Resultados",
+      "pagos": "Pagos",
+      "gastos": "Gastos",
+      "bienes": "Bienes",
+      "balance": "Balance"
+    },
+    "export": {
+      "title": "Informe contable — Only G Music",
+      "generated": "Generado: {date}",
+      "income": "Ingresos",
+      "expenses": "Gastos",
+      "profit": "Utilidad",
+      "margin": "Margen",
+      "total": "Total"
+    }
   },
   "adminFinanzas": {
     "backToAdmin": "← Panel admin",

@@ -49,20 +49,22 @@ export function AdminDashboard() {
     };
   }, [t]);
 
-  const pendientesQuotes = quotes.filter((q) => q.status === "pendiente").length;
+  const pendientesQuotes = quotes.filter(
+    (q) => q.status === "pendiente",
+  ).length;
   const pendientesPagos = reservas.filter(
     (r) => r.estado === "pago_en_revision",
   ).length;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-4xl px-6 pb-24 pt-28 sm:px-12">
-      <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+    <main className="mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12">
+      <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
         {t("adminDashboard.eyebrow")}
       </p>
-      <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
+      <h1 className="font-narrow mt-2 text-5xl font-bold uppercase sm:text-6xl">
         {t("adminDashboard.title")}
       </h1>
-      <p className="mt-3 text-silver-300">
+      <p className="text-silver-300 mt-3">
         {t("adminDashboard.summary", {
           quotesCount: pendientesQuotes,
           paymentsCount: pendientesPagos,
@@ -72,39 +74,21 @@ export function AdminDashboard() {
       <div className="mt-5 flex flex-wrap gap-3">
         <Link
           href="/admin/finanzas"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
         >
           {t("adminDashboard.viewFinances")}
         </Link>
         <Link
           href="/admin/perfiles"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
         >
           {t("adminDashboard.viewProfiles")}
         </Link>
         <Link
-          href="/admin/pagos"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+          href="/admin/contabilidad"
+          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
         >
-          {t("adminDashboard.viewPayments")}
-        </Link>
-        <Link
-          href="/admin/bienes"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
-        >
-          {t("adminDashboard.viewAssets")}
-        </Link>
-        <Link
-          href="/admin/gastos"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
-        >
-          {t("adminDashboard.viewExpenses")}
-        </Link>
-        <Link
-          href="/admin/balance"
-          className="inline-flex rounded-full border border-amethyst-400/60 px-5 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
-        >
-          {t("adminDashboard.viewBalance")}
+          {t("adminDashboard.viewAccounting")}
         </Link>
       </div>
 
@@ -115,15 +99,15 @@ export function AdminDashboard() {
       )}
 
       {loading ? (
-        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
+        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
       ) : (
         <>
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("adminDashboard.bookings")}
             </h2>
             {reservas.length === 0 ? (
-              <p className="mt-2 text-silver-400">
+              <p className="text-silver-400 mt-2">
                 {t("adminDashboard.noBookings")}
               </p>
             ) : (
@@ -138,8 +122,9 @@ export function AdminDashboard() {
                         <p className="truncate font-semibold text-white">
                           {r.serviceName}
                         </p>
-                        <p className="text-sm text-silver-400">
-                          {fechaCorta(r.start, locale)} · {formatCOP(r.amount ?? 0)}
+                        <p className="text-silver-400 text-sm">
+                          {fechaCorta(r.start, locale)} ·{" "}
+                          {formatCOP(r.amount ?? 0)}
                         </p>
                       </div>
                       <Badge
@@ -154,11 +139,11 @@ export function AdminDashboard() {
           </section>
 
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("adminDashboard.quotes")}
             </h2>
             {quotes.length === 0 ? (
-              <p className="mt-2 text-silver-400">
+              <p className="text-silver-400 mt-2">
                 {t("adminDashboard.noQuotes")}
               </p>
             ) : (
@@ -174,7 +159,7 @@ export function AdminDashboard() {
                           {q.contactName} ·{" "}
                           {q.items.map((i) => i.serviceName).join(", ")}
                         </p>
-                        <p className="text-sm text-silver-400">
+                        <p className="text-silver-400 text-sm">
                           {fechaCorta(q.createdAt, locale)} ·{" "}
                           {formatCOP(q.estimatedTotal ?? 0)}
                           {q.hasQuoteOnlyItems

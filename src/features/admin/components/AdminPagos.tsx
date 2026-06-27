@@ -13,26 +13,32 @@ import type { Conversation } from "@/domain/conversation";
  * uno abre la burbuja en su conversación, donde el admin ve el comprobante y
  * confirma (botón en PagoPanel → Cloud Function confirmPayment).
  */
-export function AdminPagos() {
+export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useTranslations();
   const [pagos, setPagos] = useState<Conversation[]>([]);
 
   useEffect(() => subscribePendingPayments(setPagos), []);
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-24 pt-28 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
-      >
-        {t("adminPagos.backToAdmin")}
-      </Link>
-      <h1 className="mt-4 font-narrow text-5xl font-bold uppercase sm:text-6xl">
+    <div
+      className={
+        embedded ? "" : "mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12"
+      }
+    >
+      {!embedded && (
+        <Link
+          href="/admin"
+          className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
+        >
+          {t("adminPagos.backToAdmin")}
+        </Link>
+      )}
+      <h1 className="font-narrow mt-4 text-5xl font-bold uppercase sm:text-6xl">
         {t("adminPagos.title")}
       </h1>
 
       {pagos.length === 0 ? (
-        <p className="mt-10 text-silver-400">{t("adminPagos.empty")}</p>
+        <p className="text-silver-400 mt-10">{t("adminPagos.empty")}</p>
       ) : (
         <ul className="mt-8 flex flex-col gap-3">
           {pagos.map((c) => (
@@ -40,13 +46,13 @@ export function AdminPagos() {
               <button
                 type="button"
                 onClick={() => openConversation(c.id)}
-                className="flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amethyst-300/50"
+                className="hover:border-amethyst-300/50 flex w-full items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition"
               >
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-white">
                     {c.ref?.id}
                   </p>
-                  <p className="text-sm text-silver-400">
+                  <p className="text-silver-400 text-sm">
                     {formatCOP(c.pago?.monto ?? 0)}
                     {c.pago?.metodo
                       ? ` · ${t(`chat.metodos.${c.pago.metodo}`)}`
@@ -61,6 +67,6 @@ export function AdminPagos() {
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

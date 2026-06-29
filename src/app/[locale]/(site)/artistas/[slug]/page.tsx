@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
+import { alternatesFor } from "@/lib/seo";
 import { ArtistProfileLoader } from "@/features/artists/components/profile/ArtistProfileLoader";
 
 /**
@@ -13,7 +15,33 @@ import { ArtistProfileLoader } from "@/features/artists/components/profile/Artis
  */
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Artista — Only G Music" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  let name = "";
+  try {
+    const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    const res = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/artistProfiles/${slug}`,
+      { next: { revalidate: 300 } },
+    );
+    if (res.ok) {
+      const fields = (await res.json())?.fields ?? {};
+      name = fields.artisticName?.stringValue ?? "";
+    }
+  } catch {
+    /* sin red/perfil: cae al título de marca */
+  }
+  const t = await getTranslations({ locale, namespace: "meta" });
+  return {
+    title: name ? `${name} — Only G Music` : t("artistFallbackTitle"),
+    description: name ? t("artistDescription", { name }) : t("rootDesc"),
+    alternates: alternatesFor(locale, `/artistas/${slug}`),
+  };
+}
 
 export default async function ArtistPage({
   params,

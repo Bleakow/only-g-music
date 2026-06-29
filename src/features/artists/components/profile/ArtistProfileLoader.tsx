@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { ArtistProfile } from "@/domain/artist-profile";
@@ -21,6 +22,8 @@ export function ArtistProfileLoader({
   fallback: ArtistProfile | null;
 }) {
   const { user } = useAuth();
+  const tCommon = useTranslations("common");
+  const tArtist = useTranslations("artistProfile");
   const [profile, setProfile] = useState<ArtistProfile | null>(fallback);
   const [source, setSource] = useState<ProfileSource>("seed");
   const [loading, setLoading] = useState(true);
@@ -53,19 +56,19 @@ export function ArtistProfileLoader({
   if (loading)
     return (
       <main className="grid min-h-dvh place-items-center text-silver-300">
-        Cargando…
+        {tCommon("loading")}
       </main>
     );
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
-        Artista no encontrado
+        {tArtist("notFound")}
       </h1>
       <Link
         href="/artistas"
         className="mt-8 rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
       >
-        Ver artistas
+        {tArtist("backToArtists")}
       </Link>
     </main>
   );

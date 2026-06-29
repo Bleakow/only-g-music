@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { alternatesFor } from "@/lib/seo";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
   const t = await getTranslations("productionsPage");
-  return { title: t("metaTitle"), description: t("metaDesc") };
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: alternatesFor(locale, "/producciones"),
+  };
 }
 
 export default async function ProduccionesPage() {

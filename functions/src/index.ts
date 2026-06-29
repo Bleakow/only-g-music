@@ -17,6 +17,7 @@ import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { notify, type NotifEvento } from "./notify";
+import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
 
 initializeApp();
 const db = getFirestore();
@@ -62,7 +63,34 @@ async function adminUids(): Promise<string[]> {
   return snap.docs.map((d) => d.id);
 }
 
-/** Notifica el mismo evento a todos los admin. */
+/**
+ * Texto (es-CO) del aviso de WhatsApp para los eventos internos de admin. Vive aquí
+ * (lado servidor) porque CallMeBot necesita el texto YA resuelto — a diferencia de
+ * la notificación in-app, que guarda evento+params y traduce el cliente.
+ */
+function textoWhatsAppAdmin(
+  evento: NotifEvento,
+  params: Record<string, string | number>,
+): string {
+  switch (evento) {
+    case "cotizacion-nueva":
+      return `🟣 *Nueva cotización* de ${params.cliente ?? "un cliente"}.`;
+    case "pago-por-revisar":
+      return `💸 *Pago por revisar*: ${params.cliente ?? "un cliente"} — ${params.monto ?? ""}.`;
+    case "perfil-artista-creado":
+      return `🎤 *Nuevo perfil de artista*: ${params.nombre ?? ""}.`;
+    case "gasto-recurrente-por-confirmar":
+      return `📅 *Gasto recurrente por confirmar*: ${params.concepto ?? ""}.`;
+    default:
+      return "🔔 Nuevo evento en Only G.";
+  }
+}
+
+/**
+ * Notifica el mismo evento a todos los admin. Canales: in-app + push (por admin) y,
+ * además, un WhatsApp al número del negocio (un solo destinatario opt-in, ver
+ * ./whatsapp). El WhatsApp es best-effort y no-op si no está configurado.
+ */
 async function notifyAdmins(
   evento: NotifEvento,
   params: Record<string, string | number>,
@@ -70,6 +98,7 @@ async function notifyAdmins(
 ): Promise<void> {
   const uids = await adminUids();
   await Promise.all(uids.map((uid) => notify(uid, evento, params, ruta)));
+  await notifyAdminWhatsApp(textoWhatsAppAdmin(evento, params) + deepLink(ruta));
 }
 
 /** ¿El uid tiene rol admin? (para elegir el deep link admin vs cliente). */

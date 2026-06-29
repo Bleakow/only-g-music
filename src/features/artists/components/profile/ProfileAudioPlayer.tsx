@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import type { PlayerSize } from "@/domain/artist-profile";
 import {
@@ -27,7 +28,7 @@ export const PLAYER_SIZE_W: Record<PlayerSize, string> = {
 export function ProfileAudioPlayer({
   src,
   accent,
-  title = "Canción del perfil",
+  title,
   variant = "card",
   className,
   dockBottomClass = "bottom-5",
@@ -45,6 +46,9 @@ export function ProfileAudioPlayer({
    *  gesto del visitante (clic/scroll/tecla/touch). Solo en el perfil público. */
   autoPlay?: boolean;
 }) {
+  const t = useTranslations("artistProfile");
+  const resolvedTitle = title ?? t("profileSong");
+
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
   const inlineCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -244,7 +248,7 @@ export function ProfileAudioPlayer({
     <div className="relative">
       {!isOverlay && (
         <p className="mb-3 text-xs uppercase tracking-[3px] text-silver-300">
-          {title}
+          {resolvedTitle}
         </p>
       )}
 
@@ -343,13 +347,13 @@ export function ProfileAudioPlayer({
       />
 
       {isOverlay ? (
-        <div ref={anchorRef} aria-label="Canción del perfil" className={className}>
+        <div ref={anchorRef} aria-label={resolvedTitle} className={className}>
           {inner}
         </div>
       ) : (
         <section
           ref={anchorRef}
-          aria-label="Canción del perfil"
+          aria-label={resolvedTitle}
           className="mx-auto max-w-2xl px-6 py-8"
         >
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">

@@ -56,6 +56,19 @@ export function sendPasswordReset(email: string) {
   return sendPasswordResetEmail(auth, email);
 }
 
+/**
+ * Sincroniza el perfil de Firebase Auth (nombre y/o foto) con el doc de Firestore.
+ * La UI usa el objeto de Auth como fallback, así que conviene mantenerlos a la par.
+ * No-op si no hay sesión.
+ */
+export async function updateAuthProfile(data: {
+  displayName?: string;
+  photoURL?: string;
+}): Promise<void> {
+  if (!auth.currentUser) return;
+  await updateProfile(auth.currentUser, data);
+}
+
 /** Reenvía el correo de verificación al usuario en sesión. */
 export function resendEmailVerification() {
   return auth.currentUser

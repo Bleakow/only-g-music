@@ -8,6 +8,7 @@
     "home": "Home",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
+    "menuLabel": "Main menu",
     "empty": "No featured artists yet."
   },
   "language": {
@@ -18,7 +19,12 @@
   "common": {
     "comingSoon": "Coming soon",
     "loading": "Loading…",
-    "close": "Close"
+    "close": "Close",
+    "previous": "Previous",
+    "next": "Next",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel"
   },
   "auth": {
     "login": "Sign in",
@@ -94,7 +100,13 @@
     "emailUnverified": "Your email is not verified yet.",
     "resendVerification": "Resend verification",
     "verifySent": "We resent the verification email. Check your inbox (and spam).",
-    "settingsSoon": "Soon you'll be able to edit your profile, photo and preferences here."
+    "edit": "Edit profile",
+    "nameLabel": "Name",
+    "namePlaceholder": "Your name",
+    "photoLabel": "Photo",
+    "nameRequired": "Enter your name.",
+    "saveError": "Couldn't save. Try again.",
+    "settingsSoon": "Soon you'll be able to adjust your preferences here."
   },
   "status": {
     "pendiente": "Pending",
@@ -210,8 +222,9 @@
     "metaDesc": "The Only G roster: the artists who make the sound.",
     "title": "Artists",
     "intro": "The Only G roster. Meet the ones who make the sound.",
-    "createProfile": "Are you an artist? Create your profile →",
-    "editProfile": "Edit your profile →"
+    "back": "Home",
+    "createProfile": "Are you an artist? Create your profile",
+    "editProfile": "Edit your profile"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",
@@ -753,7 +766,10 @@
     "portraitAlt": "Portrait of {name}",
     "galleryPhotoAlt": "{name} — photo {n}",
     "topTracks": "Top tracks",
-    "seedNotice": "Sample profile. Real artist profiles (with gallery and players) arrive in Phase 15."
+    "seedNotice": "Sample profile. Real artist profiles (with gallery and players) arrive in Phase 15.",
+    "notFound": "Artist not found",
+    "backToArtists": "See artists",
+    "profileSong": "Profile song"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -927,11 +943,17 @@
       "placeholder": "Tell your story, style, and milestones…"
     },
     "socials": {
-      "sectionTitle": "Socials"
+      "sectionTitle": "Socials",
+      "add": "Add social network",
+      "linkPlaceholder": "{label} link",
+      "remove": "Remove {label}"
     },
     "gallery": {
       "sectionTitle": "Gallery ({count}/{limit})",
-      "hint": "Drag a photo to reorder (on mobile, long-press) · tap ⤢ to resize."
+      "hint": "Drag a photo to reorder (on mobile, long-press) · tap ⤢ to resize.",
+      "resize": "Resize",
+      "remove": "Remove photo",
+      "move": "Move"
     },
     "tracks": {
       "sectionTitle": "Top tracks",
@@ -1102,7 +1124,9 @@
   },
   "meta": {
     "rootTitle": "Only G Music",
-    "rootDesc": "Music production company — artists, events and productions."
+    "rootDesc": "Music production company — artists, events and productions.",
+    "artistFallbackTitle": "Artist — Only G Music",
+    "artistDescription": "{name}'s profile on Only G Music."
   },
   "chat": {
     "title": "Messages",

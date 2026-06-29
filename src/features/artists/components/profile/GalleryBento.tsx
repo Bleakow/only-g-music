@@ -12,6 +12,7 @@
  */
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import {
   DndContext,
@@ -54,6 +55,7 @@ function Tile({
   onResize: (index: number) => void;
   onRemove: (url: string) => void;
 }) {
+  const t = useTranslations("profileBuilder.gallery");
   const {
     attributes,
     listeners,
@@ -89,7 +91,7 @@ function Tile({
         className="pointer-events-none absolute left-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10px] font-semibold uppercase tracking-[1px] text-white/90 backdrop-blur-sm"
       >
         <MoveIcon className="size-3.5" />
-        Mover
+        {t("move")}
       </span>
 
       {/* Redimensionar (cicla el tamaño). stopPropagation: no inicia arrastre. */}
@@ -97,7 +99,7 @@ function Tile({
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onResize(index)}
-        aria-label="Cambiar tamaño"
+        aria-label={t("resize")}
         className="absolute bottom-2 left-2 flex size-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
       >
         <ExpandIcon className="size-4" />
@@ -108,7 +110,7 @@ function Tile({
         type="button"
         onPointerDown={(e) => e.stopPropagation()}
         onClick={() => onRemove(item.url)}
-        aria-label="Quitar foto"
+        aria-label={t("remove")}
         className="absolute right-2 top-2 flex size-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm transition hover:bg-black/75"
       >
         <CloseIcon className="size-4" />

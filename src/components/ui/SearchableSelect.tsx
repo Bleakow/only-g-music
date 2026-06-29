@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { glassSurfaceMenu } from "@/components/ui/glass";
 import { CheckIcon, SpinnerIcon } from "@/components/icons";
 
 export interface SelectOption {
   value: string;
   label: string;
+}
+
+/** Coordenadas `fixed` del menú flotante (ancladas al disparador). */
+interface MenuPosition {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
 }
 
 /**
@@ -52,7 +61,11 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  const [menuPos, setMenuPos] = useState<MenuPosition | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const selected = options.find((o) => o.value === value);
@@ -64,13 +77,51 @@ export function SearchableSelect({
     return options.filter((o) => o.label.toLowerCase().includes(q));
   }, [options, query]);
 
-  // Cerrar al hacer clic fuera.
+  useEffect(() => setMounted(true), []);
+
+  // El menú se PORTALIZA a <body> con posición fija calculada desde el disparador.
+  // Así NO vive dentro de contenedores con overflow (p. ej. el cuerpo scrollable
+  // del modal), que lo recortaban y, al expandirse, hacían crecer el área de scroll
+  // deformando todo el modal.
+  const computePosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const gap = 8;
+    const width = Math.max(r.width, 224); // 14rem mín. (como el w-[max(100%,14rem)] previo)
+    const left = Math.min(Math.max(8, r.left), window.innerWidth - width - 8);
+    setMenuPos(
+      placement === "top"
+        ? { left, width, bottom: window.innerHeight - r.top + gap }
+        : { left, width, top: r.bottom + gap },
+    );
+  }, [placement]);
+
+  // Recolocar al abrir y mientras se hace scroll/resize. `capture: true` para
+  // enterarnos del scroll de CUALQUIER ancestro (incluido el cuerpo del modal).
+  useEffect(() => {
+    if (!open) {
+      setMenuPos(null);
+      return;
+    }
+    computePosition();
+    const onReflow = () => computePosition();
+    window.addEventListener("scroll", onReflow, true);
+    window.addEventListener("resize", onReflow);
+    return () => {
+      window.removeEventListener("scroll", onReflow, true);
+      window.removeEventListener("resize", onReflow);
+    };
+  }, [open, computePosition]);
+
+  // Cerrar al hacer clic fuera (del disparador Y del menú portalizado).
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      const inRoot = rootRef.current?.contains(target);
+      const inMenu = menuRef.current?.contains(target);
+      if (!inRoot && !inMenu) setOpen(false);
     };
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -123,6 +174,7 @@ export function SearchableSelect({
   return (
     <div ref={rootRef} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -150,12 +202,21 @@ export function SearchableSelect({
         </svg>
       </button>
 
-      {open && (
-        <div
-          className={`${glassSurfaceMenu} absolute z-50 w-[max(100%,14rem)] rounded-xl p-2 ${
-            placement === "top" ? "bottom-full mb-2" : "top-full mt-2"
-          }`}
-        >
+      {open &&
+        mounted &&
+        menuPos &&
+        createPortal(
+          <div
+            ref={menuRef}
+            style={{
+              position: "fixed",
+              left: menuPos.left,
+              top: menuPos.top,
+              bottom: menuPos.bottom,
+              width: menuPos.width,
+            }}
+            className={`${glassSurfaceMenu} z-[90] rounded-xl p-2`}
+          >
           <input
             ref={inputRef}
             value={query}
@@ -216,8 +277,9 @@ export function SearchableSelect({
               </>
             )}
           </ul>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

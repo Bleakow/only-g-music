@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/domain/artist";
 import { SOCIAL_META } from "../../lib/socials";
 import { PlusIcon, CloseIcon } from "@/components/icons";
@@ -23,6 +24,7 @@ export function SocialPalette({
   value: Partial<Record<SocialPlatform, string>>;
   onChange: (next: Partial<Record<SocialPlatform, string>>) => void;
 }) {
+  const t = useTranslations("profileBuilder.socials");
   const [open, setOpen] = useState(false);
   const added = SOCIAL_PLATFORMS.filter((p) => p in value);
   const available = SOCIAL_PLATFORMS.filter((p) => !(p in value));
@@ -55,13 +57,13 @@ export function SocialPalette({
             <input
               value={value[p] ?? ""}
               onChange={(e) => setUrl(p, e.target.value)}
-              placeholder={`Link de ${label}`}
+              placeholder={t("linkPlaceholder", { label })}
               className={INPUT}
             />
             <button
               type="button"
               onClick={() => remove(p)}
-              aria-label={`Quitar ${label}`}
+              aria-label={t("remove", { label })}
               className="flex size-9 shrink-0 items-center justify-center rounded-full text-silver-400 transition hover:bg-white/10 hover:text-white"
             >
               <CloseIcon className="size-4" />
@@ -73,7 +75,7 @@ export function SocialPalette({
       {available.length > 0 && (
         <div>
           <GlassButton onClick={() => setOpen((v) => !v)}>
-            <PlusIcon className="size-4" /> Añadir red social
+            <PlusIcon className="size-4" /> {t("add")}
           </GlassButton>
           {open && (
             <div className="mt-2 flex flex-wrap gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">

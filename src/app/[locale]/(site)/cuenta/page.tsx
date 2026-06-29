@@ -5,6 +5,9 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { resendEmailVerification } from "@/features/auth/lib/auth-actions";
+import { EditProfileModal } from "@/features/auth/components/EditProfileModal";
+import { GlassButton } from "@/components/ui/GlassButton";
+import { EditIcon } from "@/components/icons";
 
 function initials(name: string | null, email: string | null): string {
   const base = name?.trim() || email || "?";
@@ -19,6 +22,7 @@ export default function CuentaPage() {
   const t = useTranslations();
   const locale = useLocale();
   const [verifySent, setVerifySent] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   // Protección: sin sesión → a login.
   useEffect(() => {
@@ -98,6 +102,13 @@ export default function CuentaPage() {
         </p>
       )}
 
+      <div className="mt-6">
+        <GlassButton onClick={() => setEditOpen(true)}>
+          <EditIcon className="size-4" />
+          {t("account.edit")}
+        </GlassButton>
+      </div>
+
       {/* Verificación de email */}
       {!user.emailVerified && (
         <div className="mt-6 rounded-lg border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
@@ -133,6 +144,8 @@ export default function CuentaPage() {
       >
         {t("userMenu.logout")}
       </button>
+
+      <EditProfileModal open={editOpen} onClose={() => setEditOpen(false)} />
     </main>
   );
 }

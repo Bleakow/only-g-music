@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { routing } from "@/i18n/routing";
+import { SITE_URL } from "@/lib/seo";
 import "../globals.css";
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
@@ -16,10 +17,18 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
   return {
+    metadataBase: new URL(SITE_URL),
     title: t("rootTitle"),
     description: t("rootDesc"),
     manifest: "/manifest.webmanifest",
     icons: { icon: "/favicon.svg" },
+    openGraph: {
+      type: "website",
+      siteName: "Only G Music",
+      locale,
+      title: t("rootTitle"),
+      description: t("rootDesc"),
+    },
   };
 }
 

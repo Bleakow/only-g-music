@@ -1,11 +1,17 @@
 import type { Metadata } from "next";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
+import { alternatesFor } from "@/lib/seo";
 import { BookingCalendar } from "@/features/booking/components/BookingCalendar";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 
 export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getLocale();
   const t = await getTranslations("agendaPage");
-  return { title: t("metaTitle"), description: t("metaDesc") };
+  return {
+    title: t("metaTitle"),
+    description: t("metaDesc"),
+    alternates: alternatesFor(locale, "/agenda"),
+  };
 }
 
 export default async function AgendaPage({

@@ -115,7 +115,7 @@ Tres decisiones lo fijan: pago **manual** (QR + comprobante + confirmación huma
 0. ✅ Cimientos (Next + Firebase + hero con scroll).
 1. ✅ Vitrina pública + perfiles de artista (estilo GTA VI). *Núcleo completo; pendiente contenido real del cliente.*
 2. ✅ Auth + perfiles de usuario — **correo + Google + Facebook**, modelo de cuenta, reglas Firebase. **Roles múltiples**: `roles: Role[]` (`cliente | productor | admin | artista`). Regla: *"tiene el rol"*, nunca *"es el rol"*. *(Pendiente del cliente: desplegar `firestore.rules`.)*
-3. ✅ Área de cuenta — UI de perfil (`UserMenu`, `/cuenta`, guard `RequireAuth`). *Pendiente: edición de perfil.*
+3. ✅ Área de cuenta — UI de perfil (`UserMenu`, `/cuenta`, guard `RequireAuth`) + **edición de perfil** (`EditProfileModal`: nombre + avatar; `updateUserProfile` sobre `users/{uid}` sin tocar `roles` + `updateAuthProfile` sincroniza Firebase Auth + `refreshAccount`).
 
 ### Fase 4 — Fundación transversal *(desbloquea todo lo demás)*
 
@@ -170,11 +170,22 @@ para N.
   catálogo conmuta (Destacados↔Featured). *Pendiente menor pasado a 4.5b: helpers de fecha/número
   por locale.* ⚠️ Gotcha pnpm 11: `pnpm add` dejó build-scripts sin aprobar en `pnpm-workspace.yaml`
   (placeholders) → `ERR_PNPM_IGNORED_BUILDS` rompía `pnpm dev`; arreglado con `allowBuilds: true`.
-- **4.5b — Extracción incremental**: migrar los ~68 componentes al catálogo, feature por
-  feature (pública primero: home/artistas/servicios → cuenta/solicitudes → admin/consola).
-  Tolera paralelismo una vez existe el seam.
-- **4.5c — SEO multi-idioma**: `hreflang` alternates, metadata por locale, sitemap por
-  idioma. Se funde con la Fase 7.
+- ✅ **4.5b — Extracción incremental**: COMPLETA. La migración se hizo de forma incremental
+  feature por feature (la regla "todo texto nuevo al catálogo" la fue cerrando con cada fase);
+  el remate final migró los últimos ~20 strings (aria-labels + textos del perfil de artista:
+  `ArtistProfileLoader`, `ProfileAudioPlayer`, `SocialPalette`, `GalleryBento`, `PhotoViewer`,
+  `GlassModal`, `SiteMenu`). 77/102 componentes ya usaban next-intl; el resto eran sin texto.
+  *Quedan a propósito fuera: placeholders neutrales al idioma (URLs, números) y el
+  `metadata.title` estático de `artistas/[slug]` → pertenece a 4.5c (SEO).*
+- ✅ **4.5c — SEO multi-idioma**: COMPLETA. `metadataBase` + `openGraph` en el layout raíz;
+  **hreflang/canonical POR PÁGINA** vía helper `src/lib/seo.ts` (`alternatesFor` + `SITE_URL`
+  de `NEXT_PUBLIC_SITE_URL`) en home + páginas públicas (artistas/servicios/producciones/
+  eventos/agenda); **`artistas/[slug]` pasó a `generateMetadata` dinámico** (título por artista
+  vía REST de Firestore + descripción i18n + alternates); **`sitemap.ts`** (rutas públicas × es/en
+  con alternates) y **`robots.ts`** (disallow de privadas; `/*/artista/` con barra para NO bloquear
+  los perfiles públicos `/artistas/{slug}`). *Pendiente menor (fase 7): JSON-LD `MusicGroup`/
+  `MusicArtist`, y perfiles dinámicos en el sitemap (requiere listar premium-visibles vía REST).
+  **Con esto la Fase 4.5 (i18n) queda COMPLETA.***
 
 > **⚠️ Convivencia**: 4.5a es incompatible con desarrollo de features en paralelo (mueve
 > todo `app/`). Congelar el árbol o correr en worktree y mergear con el repo quieto.

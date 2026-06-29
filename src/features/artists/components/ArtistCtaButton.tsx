@@ -1,8 +1,9 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
+import { GlassButton } from "@/components/ui/GlassButton";
+import { ArrowLeftIcon } from "@/components/icons";
 
 /**
  * CTA de la vitrina de artistas. Si el usuario YA tiene perfil/alta de artista
@@ -16,11 +17,13 @@ export function ArtistCtaButton() {
   const hasProfile = !!account?.artistSlug;
 
   return (
-    <Link
+    <GlassButton
       href={hasProfile ? "/artista/perfil" : "/artista/nuevo"}
-      className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 mt-5 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
+      className="mt-5"
     >
       {hasProfile ? t("editProfile") : t("createProfile")}
-    </Link>
+      {/* Flecha animada (espejo de la del botón Atrás): se desliza a la derecha. */}
+      <ArrowLeftIcon className="size-4 rotate-180 transition-transform duration-300 group-hover:translate-x-1" />
+    </GlassButton>
   );
 }

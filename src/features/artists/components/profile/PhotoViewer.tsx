@@ -8,6 +8,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { CloseIcon, ArrowLeftIcon } from "@/components/icons";
@@ -23,6 +24,7 @@ export function PhotoViewer({
   onClose: () => void;
   onNavigate: (next: number) => void;
 }) {
+  const tCommon = useTranslations("common");
   const [mounted, setMounted] = useState(false);
   const startX = useRef<number | null>(null);
 
@@ -83,7 +85,7 @@ export function PhotoViewer({
       <button
         type="button"
         onClick={onClose}
-        aria-label="Cerrar"
+        aria-label={tCommon("close")}
         className="absolute right-4 top-4 z-10 flex size-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
       >
         <CloseIcon className="size-6" />
@@ -111,7 +113,7 @@ export function PhotoViewer({
               e.stopPropagation();
               go(-1);
             }}
-            aria-label="Anterior"
+            aria-label={tCommon("previous")}
             className="absolute left-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
           >
             <ArrowLeftIcon className="size-6" />
@@ -122,7 +124,7 @@ export function PhotoViewer({
               e.stopPropagation();
               go(1);
             }}
-            aria-label="Siguiente"
+            aria-label={tCommon("next")}
             className="absolute right-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20"
           >
             <ArrowLeftIcon className="size-6 rotate-180" />

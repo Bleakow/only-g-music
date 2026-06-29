@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
 import { glassSurface, GlassSheen } from "./glass";
 import { CloseIcon } from "@/components/icons";
@@ -23,6 +24,7 @@ export function GlassModal({
   title?: string;
   className?: string;
 }) {
+  const tCommon = useTranslations("common");
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -60,7 +62,7 @@ export function GlassModal({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={tCommon("close")}
             className="absolute right-0 top-0 flex size-9 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white"
           >
             <CloseIcon className="size-5" />

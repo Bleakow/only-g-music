@@ -158,7 +158,7 @@ export function SiteMenu() {
           className={styles.panel}
           role="dialog"
           aria-modal="true"
-          aria-label="Menú principal"
+          aria-label={t("menuLabel")}
           aria-hidden={!open}
           /* Ruleta de destacados (móvil): el gesto vale en TODO el panel (no solo
              sobre la foto) — deslizá arriba/abajo. Un swipe = un paso, con umbral

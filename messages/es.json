@@ -8,6 +8,7 @@
     "home": "Inicio",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
+    "menuLabel": "Menú principal",
     "empty": "Aún no hay destacados."
   },
   "language": {
@@ -18,7 +19,12 @@
   "common": {
     "comingSoon": "Próximamente",
     "loading": "Cargando…",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "previous": "Anterior",
+    "next": "Siguiente",
+    "save": "Guardar",
+    "saving": "Guardando…",
+    "cancel": "Cancelar"
   },
   "auth": {
     "login": "Iniciar sesión",
@@ -94,7 +100,13 @@
     "emailUnverified": "Tu correo aún no está verificado.",
     "resendVerification": "Reenviar verificación",
     "verifySent": "Te reenviamos el correo de verificación. Revisa tu bandeja (y el spam).",
-    "settingsSoon": "Pronto podrás editar tu perfil, foto y preferencias aquí."
+    "edit": "Editar perfil",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "Tu nombre",
+    "photoLabel": "Foto",
+    "nameRequired": "Escribe tu nombre.",
+    "saveError": "No se pudo guardar. Inténtalo de nuevo.",
+    "settingsSoon": "Pronto podrás ajustar tus preferencias aquí."
   },
   "status": {
     "pendiente": "Pendiente",
@@ -210,8 +222,9 @@
     "metaDesc": "El roster de Only G: los artistas que hacen el sonido.",
     "title": "Artistas",
     "intro": "El roster de Only G. Conoce a quienes hacen el sonido.",
-    "createProfile": "¿Eres artista? Crea tu perfil →",
-    "editProfile": "Edita tu perfil →"
+    "back": "Inicio",
+    "createProfile": "¿Eres artista? Crea tu perfil",
+    "editProfile": "Edita tu perfil"
   },
   "servicesPage": {
     "metaTitle": "Servicios — Only G Music",
@@ -753,7 +766,10 @@
     "portraitAlt": "Retrato de {name}",
     "galleryPhotoAlt": "{name} — foto {n}",
     "topTracks": "Más sonadas",
-    "seedNotice": "Perfil de muestra. Los perfiles reales de artista (con galería y reproductores) llegan con la Fase 15."
+    "seedNotice": "Perfil de muestra. Los perfiles reales de artista (con galería y reproductores) llegan con la Fase 15.",
+    "notFound": "Artista no encontrado",
+    "backToArtists": "Ver artistas",
+    "profileSong": "Canción del perfil"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -927,11 +943,17 @@
       "placeholder": "Cuenta tu historia, estilo e hitos…"
     },
     "socials": {
-      "sectionTitle": "Redes"
+      "sectionTitle": "Redes",
+      "add": "Añadir red social",
+      "linkPlaceholder": "Link de {label}",
+      "remove": "Quitar {label}"
     },
     "gallery": {
       "sectionTitle": "Galería ({count}/{limit})",
-      "hint": "Arrastra una foto para reordenar (en móvil, mantén pulsado) · pulsa ⤢ para cambiar su tamaño."
+      "hint": "Arrastra una foto para reordenar (en móvil, mantén pulsado) · pulsa ⤢ para cambiar su tamaño.",
+      "resize": "Cambiar tamaño",
+      "remove": "Quitar foto",
+      "move": "Mover"
     },
     "tracks": {
       "sectionTitle": "Más sonadas",
@@ -1102,7 +1124,9 @@
   },
   "meta": {
     "rootTitle": "Only G Music",
-    "rootDesc": "Productora musical — artistas, eventos y producciones."
+    "rootDesc": "Productora musical — artistas, eventos y producciones.",
+    "artistFallbackTitle": "Artista — Only G Music",
+    "artistDescription": "Perfil de {name} en Only G Music."
   },
   "chat": {
     "title": "Mensajes",

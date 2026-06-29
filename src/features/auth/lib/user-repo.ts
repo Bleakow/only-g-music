@@ -55,6 +55,20 @@ export async function updateArtistPrivateData(
   await updateDoc(doc(db, COLLECTION, uid), { ...data });
 }
 
+/**
+ * Actualiza los campos editables de la cuenta (nombre y foto). NO toca `roles`
+ * (las reglas exigen que queden igual que el doc actual), así que el update pasa.
+ */
+export async function updateUserProfile(
+  uid: string,
+  data: { displayName: string; photoURL: string },
+): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, uid), {
+    displayName: data.displayName,
+    photoURL: data.photoURL,
+  });
+}
+
 /** Lee la cuenta de un usuario. Devuelve null si no existe el documento. */
 export async function getUserAccount(uid: string): Promise<UserAccount | null> {
   const snap = await getDoc(doc(db, COLLECTION, uid));

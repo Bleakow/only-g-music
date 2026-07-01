@@ -31,7 +31,7 @@ import { PRECIO_PERFIL } from "@/domain/profile-order";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import type { PagoMetodo } from "@/domain/conversation";
+import type { MetodoPago } from "@/domain/payment-method";
 import {
   createProfile,
   getProfileBySlug,
@@ -550,13 +550,14 @@ export function ProfileBuilder({
     setShowPagoPicker(true);
   }
 
-  async function iniciarPago(metodo: PagoMetodo) {
+  async function iniciarPago(metodo: MetodoPago) {
     if (!user || !slug) return;
     setShowPagoPicker(false);
     try {
       const id = await createPaymentConversation({
         uid: user.uid,
-        slug,
+        concepto: "premium",
+        ref: { kind: "premium", id: slug },
         metodo,
         monto: PRECIO_PERFIL,
       });
@@ -1256,7 +1257,7 @@ export function ProfileBuilder({
         <PaymentMethodPicker
           onPick={iniciarPago}
           onClose={() => setShowPagoPicker(false)}
-          tierAlto={insigniaDePuntos(puntos) === "diamante"}
+          insignia={insigniaDePuntos(puntos)}
         />
       )}
 

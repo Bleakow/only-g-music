@@ -2,24 +2,27 @@
 
 import { useTranslations } from "next-intl";
 import { CloseIcon } from "@/components/icons";
-import type { PagoMetodo } from "@/domain/conversation";
-import { METODOS_PAGO } from "../data/payment-methods";
+import type { Insignia } from "@/domain/artist-profile";
+import type { MetodoPago } from "@/domain/payment-method";
+import { metodosConEstado } from "@/domain/payment-method";
 
 /**
- * Selector de método de pago (modal). El efectivo (`soloTierAlto`) solo se
- * habilita si `tierAlto` (hoy = insignia diamante); si no, queda bloqueado con
- * su aviso. Al elegir un método, `onPick` abre el chat de pago correspondiente.
+ * Selector de método de pago (modal). La disponibilidad sale del dominio
+ * (`metodosConEstado`): la tarjeta queda "próximamente" y el efectivo solo se
+ * habilita con insignia diamante; el resto queda libre. Al elegir un método
+ * disponible, `onPick` abre el chat de pago correspondiente.
  */
 export function PaymentMethodPicker({
   onPick,
   onClose,
-  tierAlto,
+  insignia,
 }: {
-  onPick: (metodo: PagoMetodo) => void;
+  onPick: (metodo: MetodoPago) => void;
   onClose: () => void;
-  tierAlto: boolean;
+  insignia: Insignia | null;
 }) {
   const t = useTranslations();
+  const metodos = metodosConEstado(insignia);
 
   return (
     <div
@@ -46,28 +49,27 @@ export function PaymentMethodPicker({
         </h3>
 
         <ul className="mt-5 flex flex-col gap-2">
-          {METODOS_PAGO.map((m) => {
-            const locked = !!m.soloTierAlto && !tierAlto;
-            return (
-              <li key={m.id}>
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={() => onPick(m.id)}
-                  className="flex w-full flex-col gap-0.5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amethyst-300/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:bg-white/[0.03]"
-                >
-                  <span className="font-semibold text-white">
-                    {t(`chat.metodos.${m.id}`)}
+          {metodos.map(({ metodo, disponible, bloqueo }) => (
+            <li key={metodo}>
+              <button
+                type="button"
+                disabled={!disponible}
+                onClick={() => onPick(metodo)}
+                className="flex w-full flex-col gap-0.5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:border-amethyst-300/60 hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-white/10 disabled:hover:bg-white/[0.03]"
+              >
+                <span className="font-semibold text-white">
+                  {t(`chat.metodos.${metodo}`)}
+                </span>
+                {bloqueo && (
+                  <span className="text-xs text-silver-400">
+                    {bloqueo.tipo === "proximamente"
+                      ? t("pago.comingSoon")
+                      : t("pago.cashOnlyHigherTier")}
                   </span>
-                  {locked && (
-                    <span className="text-xs text-silver-400">
-                      {t("pago.cashOnlyHigherTier")}
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
+                )}
+              </button>
+            </li>
+          ))}
         </ul>
       </div>
     </div>

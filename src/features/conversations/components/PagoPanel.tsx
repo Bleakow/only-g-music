@@ -1,25 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
+import { CopyIcon, CheckIcon } from "@/components/icons";
 import { formatCOP } from "@/domain/service";
 import type { Conversation } from "@/domain/conversation";
+import type { DestinoPago } from "@/domain/payment-destination";
+import { instruccionPago, resolverDestinoPago } from "@/domain/payment-destination";
+import { getReservaById } from "@/features/booking/lib/booking-repo";
+import { getSedeById } from "@/features/sedes/lib/sedes-repo";
 import {
   marcarComprobanteEnRevision,
   sendConversationMessage,
   confirmarPago,
 } from "../lib/conversations-repo";
-import { metodoPagoInfo } from "../data/payment-methods";
+import { getCompanyPaymentDest } from "../lib/payment-config-repo";
 
 /**
- * Panel del chat de PAGO (premium). Renderiza la fase según `pago.estado`:
- *  - comprobante_pendiente: datos del método + subir comprobante (cliente).
+ * Panel del chat de PAGO (premium/reserva). Renderiza la fase según `pago.estado`:
+ *  - comprobante_pendiente: destino de pago (dato + QR + copiar) + subir comprobante.
  *  - en_revision: aviso "admin revisando"; si es admin, botón de confirmar.
- *  - confirmado: nada (el mensaje `pago_confirmado` ya lo refleja en el hilo).
- * La activación del premium y el cierre del hilo son server-authoritative
- * (Cloud Function confirmPayment); aquí solo se disparan las acciones.
+ *  - confirmado: nada (el mensaje `pago_confirmado` lo refleja en el hilo).
+ * La confirmación y el cierre del hilo son server-authoritative (confirmPayment).
  */
 export function PagoPanel({
   conversation,
@@ -34,13 +38,54 @@ export function PagoPanel({
   const [comprobante, setComprobante] = useState<UploadedFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [destino, setDestino] = useState<DestinoPago>({});
+  const [copied, setCopied] = useState(false);
+
+  const refKind = conversation.ref?.kind;
+  const refId = conversation.ref?.id;
+
+  // Destino de pago: default de la compañía, o el override de la sede si el pago
+  // es de una reserva (resolverDestinoPago = override ?? default).
+  useEffect(() => {
+    let active = true;
+    async function resolver(): Promise<DestinoPago> {
+      const company = await getCompanyPaymentDest();
+      if (refKind === "booking" && refId) {
+        const reserva = await getReservaById(refId);
+        if (reserva) {
+          const sede = await getSedeById(reserva.sede);
+          return resolverDestinoPago(sede?.pago, company);
+        }
+      }
+      return company;
+    }
+    resolver()
+      .then((d) => {
+        if (active) setDestino(d);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [refKind, refId]);
 
   const pago = conversation.pago;
   if (!pago) return null;
 
   const montoFmt = formatCOP(pago.monto);
   const metodoLabel = pago.metodo ? t(`chat.metodos.${pago.metodo}`) : "";
-  const info = pago.metodo ? metodoPagoInfo(pago.metodo) : undefined;
+  const instr = pago.metodo ? instruccionPago(pago.metodo, destino) : null;
+
+  async function copiar(valor?: string) {
+    if (!valor) return;
+    try {
+      await navigator.clipboard.writeText(valor);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* sin clipboard: el usuario copia a mano */
+    }
+  }
 
   async function enviarComprobante() {
     if (!comprobante[0] || !uid) return;
@@ -77,24 +122,52 @@ export function PagoPanel({
     }
   }
 
-  // Comprobante pendiente: instrucciones + subida (cliente). El admin no sube.
+  // Comprobante pendiente: destino de pago + subida (cliente). El admin no sube.
   if (pago.estado === "comprobante_pendiente" && !isAdmin) {
+    const sinDatos = !instr?.valor && !instr?.qrUrl && !instr?.nota;
     return (
       <section className="rounded-xl border border-amethyst-300/30 bg-amethyst-500/5 p-4">
         <p className="font-semibold text-white">
           {t("pago.payWith", { monto: montoFmt, metodo: metodoLabel })}
         </p>
-        {info?.datos && (
-          <p className="mt-1 text-sm text-silver-200">{info.datos}</p>
+
+        {instr?.valor && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="font-mono text-sm text-silver-100">
+              {instr.valor}
+            </span>
+            <button
+              type="button"
+              onClick={() => copiar(instr?.valor)}
+              className="inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs text-silver-200 transition hover:border-amethyst-300/60 hover:text-white"
+            >
+              {copied ? (
+                <CheckIcon className="size-3.5" />
+              ) : (
+                <CopyIcon className="size-3.5" />
+              )}
+              {copied ? t("pago.copied") : t("pago.copy")}
+            </button>
+          </div>
         )}
-        {info?.qrUrl && (
+
+        {instr?.qrUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={info.qrUrl}
+            src={instr.qrUrl}
             alt={metodoLabel}
             className="mt-3 size-40 rounded-lg object-contain"
           />
         )}
+
+        {instr?.nota && (
+          <p className="mt-2 text-sm text-silver-200">{instr.nota}</p>
+        )}
+
+        {sinDatos && (
+          <p className="mt-2 text-sm text-silver-300">{t("pago.noInfo")}</p>
+        )}
+
         <p className="mt-2 text-xs text-silver-400">{t("pago.instructions")}</p>
         <div className="mt-3">
           <FileUpload

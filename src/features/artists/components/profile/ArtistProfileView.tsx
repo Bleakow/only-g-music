@@ -25,8 +25,8 @@ import {
 import { GlassButton } from "@/components/ui/GlassButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SOCIAL_META } from "../../lib/socials";
-import type { ProfileSource } from "../../lib/profile-display";
 import { TrackPlayers } from "./TrackPlayers";
+import { InsigniaBadge } from "./InsigniaBadge";
 import { LikeButton } from "./LikeButton";
 import { ShareProfile } from "./ShareProfile";
 import { MembershipPayButton } from "./MembershipPayButton";
@@ -68,11 +68,9 @@ function Socials({ socials }: { socials: ArtistProfile["socials"] }) {
  */
 export function ArtistProfileView({
   profile,
-  source,
   isOwner = false,
 }: {
   profile: ArtistProfile;
-  source: ProfileSource;
   isOwner?: boolean;
 }) {
   const t = useTranslations();
@@ -145,6 +143,7 @@ export function ArtistProfileView({
 
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
+            <InsigniaBadge puntos={profile.puntos} />
             {isPremium && (
               <span className="border-amethyst-300/50 bg-amethyst-500/15 text-amethyst-200 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[2px] uppercase">
                 <VerifiedIcon className="size-4" />
@@ -318,11 +317,6 @@ export function ArtistProfileView({
         </section>
       )}
 
-      {source === "seed" && (
-        <p className="mx-auto max-w-3xl px-6 pb-16 text-center text-xs text-white/30">
-          {t("artistProfile.seedNotice")}
-        </p>
-      )}
     </article>
   );
 }

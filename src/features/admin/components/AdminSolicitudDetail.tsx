@@ -23,6 +23,11 @@ import { useAuth } from "@/features/auth/components/AuthProvider";
 import { Button } from "@/components/ui/Button";
 import { formatCOP } from "@/domain/service";
 import { sedes } from "@/features/sedes/data/sedes";
+import { getSedeById } from "@/features/sedes/lib/sedes-repo";
+import {
+  adminGetUsersByIds,
+  type AdminUserHit,
+} from "@/features/admin/lib/admin-users-repo";
 import {
   nextQuoteStates,
   type QuoteRequest,
@@ -49,7 +54,8 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const [price, setPrice] = useState("");
   const [propText, setPropText] = useState("");
   const [sesion, setSesion] = useState<Sesion | null>(null);
-  const [productorIdInput, setProductorIdInput] = useState("");
+  const [productoresSede, setProductoresSede] = useState<AdminUserHit[]>([]);
+  const [selectedProductor, setSelectedProductor] = useState("");
   const [convId, setConvId] = useState<string | null>(null);
 
   const parent = tipo === "cotizacion" ? "quotes" : "bookings";
@@ -82,11 +88,11 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   }
 
   async function asignarProductor() {
-    if (!reserva || !productorIdInput.trim()) return;
+    if (!reserva || !selectedProductor) return;
     setBusy(true);
     try {
-      await setBookingProductor(id, productorIdInput.trim());
-      setProductorIdInput("");
+      await setBookingProductor(id, selectedProductor);
+      setSelectedProductor("");
       await reload();
     } catch (e) {
       console.error("[admin] asignar productor:", e);
@@ -106,6 +112,24 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, id]);
+
+  // Productores registrados en la sede de la reserva (para el desplegable).
+  useEffect(() => {
+    if (!reserva || reserva.productorId || reserva.tipo === "perfil_artista") {
+      setProductoresSede([]);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const s = await getSedeById(reserva.sede);
+      const uids = s?.productores ?? [];
+      const users = uids.length ? await adminGetUsersByIds(uids) : [];
+      if (active) setProductoresSede(users);
+    })().catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [reserva]);
 
   async function enviarPropuesta() {
     if (!quote) return;
@@ -425,20 +449,49 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               <p className="text-sm text-silver-400">
                 {t("adminSolicitud.assignProducerHint")}
               </p>
-              <input
-                value={productorIdInput}
-                onChange={(e) => setProductorIdInput(e.target.value)}
-                placeholder={t("adminSolicitud.producerUidPlaceholder")}
-                className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
-              />
-              <Button
-                onClick={asignarProductor}
-                loading={busy}
-                disabled={!productorIdInput.trim()}
-                className="self-start"
-              >
-                {t("adminSolicitud.assignProducer")}
-              </Button>
+              {productoresSede.length === 0 ? (
+                <p className="text-sm text-silver-400">
+                  {t.rich("adminSolicitud.noSedeProducers", {
+                    link: (chunks) => (
+                      <Link
+                        href="/admin/estudios"
+                        className="text-amethyst-200 underline underline-offset-2 hover:text-white"
+                      >
+                        {chunks}
+                      </Link>
+                    ),
+                  })}
+                </p>
+              ) : (
+                <>
+                  <select
+                    value={selectedProductor}
+                    onChange={(e) => setSelectedProductor(e.target.value)}
+                    className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
+                  >
+                    <option value="">
+                      {t("adminSolicitud.selectProducer")}
+                    </option>
+                    {productoresSede.map((p) => (
+                      <option
+                        key={p.uid}
+                        value={p.uid}
+                        className="bg-neutral-900"
+                      >
+                        {p.displayName || p.email || p.uid}
+                      </option>
+                    ))}
+                  </select>
+                  <Button
+                    onClick={asignarProductor}
+                    loading={busy}
+                    disabled={!selectedProductor}
+                    className="self-start"
+                  >
+                    {t("adminSolicitud.assignProducer")}
+                  </Button>
+                </>
+              )}
             </div>
           )}
         </section>

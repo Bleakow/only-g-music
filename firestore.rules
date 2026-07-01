@@ -12,6 +12,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
     }
 
+    // ── Config de la compañía (destino de pago, etc.) ────────────────
+    // Lectura para autenticados (el pagador ve a dónde pagar); escritura admin.
+    // Docs: config/payments.
+    match /config/{doc} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // ── Sedes/estudios (override editable: dirección, horario, pago) ──
+    // Lectura para autenticados; el admin edita el override. La semilla base
+    // vive en código; aquí solo se guardan los campos que el admin cambia.
+    match /sedes/{id} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
     // ── Cuentas de usuario ───────────────────────────────────────────
     // Cada quien lee/escribe SU propio documento. Los `roles` NO se pueden
     // auto-asignar ni escalar desde el cliente: al crear, deben ser

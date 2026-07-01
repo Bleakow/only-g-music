@@ -193,7 +193,7 @@ para N.
 
 ### Track Captación (público que convierte)
 
-5. 🔨 **Perfiles que venden**: ✅ CTA "Cotizar con [artista]" en `/artistas/[slug]` → `/cotizar?colaborador=slug` (pre-llena el colaborador en el wizard); ✅ social links muertos (`"#"`) ocultos. *Pendiente: bios/tracks/fotos reales (contenido del cliente).*
+5. ✅ **Perfiles que venden**: ✅ CTA "Cotizar con [artista]" en `/artistas/[slug]` → `/cotizar?colaborador=slug` (pre-llena el colaborador en el wizard); ✅ CTA "Edita tu perfil"/"Ajustes" para el dueño; ✅ social links muertos (`"#"`) ocultos; ✅ **insignia (Plata/Oro/Diamante) en el hero del perfil público** (`InsigniaBadge` cableado, derivada de `puntos`, lidera la fila de badges); ✅ retirada la maquinaria muerta de la semilla (`ProfileSource`/`artistToProfile`/`seedNotice`). **Código de la fase COMPLETO.** *Pendiente NO-código: bios/tracks/fotos reales + activar premium/curaduría desde admin (contenido y operación del cliente).*
 6. **Portfolio + prueba social**: `/producciones` y `/eventos` con contenido real (casos, reproductor) + testimonios/reseñas.
 7. **SEO y descubrimiento**: metadata por ruta, OG images, sitemap, structured data (`MusicGroup`), SSG/ISR en artistas/servicios.
 

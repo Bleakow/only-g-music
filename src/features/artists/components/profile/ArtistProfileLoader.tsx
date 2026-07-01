@@ -6,7 +6,6 @@ import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { ArtistProfile } from "@/domain/artist-profile";
 import { getProfileBySlug } from "../../lib/artist-profile-repo";
-import type { ProfileSource } from "../../lib/profile-display";
 import { ArtistProfileView } from "./ArtistProfileView";
 
 /**
@@ -25,7 +24,6 @@ export function ArtistProfileLoader({
   const tCommon = useTranslations("common");
   const tArtist = useTranslations("artistProfile");
   const [profile, setProfile] = useState<ArtistProfile | null>(fallback);
-  const [source, setSource] = useState<ProfileSource>("seed");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,7 +33,6 @@ export function ArtistProfileLoader({
         if (!active) return;
         if (p) {
           setProfile(p);
-          setSource("firestore");
         }
         setLoading(false);
       })
@@ -49,7 +46,6 @@ export function ArtistProfileLoader({
     return (
       <ArtistProfileView
         profile={profile}
-        source={source}
         isOwner={!!user && !!profile.uid && user.uid === profile.uid}
       />
     );

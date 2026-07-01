@@ -21,6 +21,35 @@ function Badge({ estado, label }: { estado: string; label: string }) {
   );
 }
 
+function ReservaCard({
+  r,
+  locale,
+  statusLabel,
+}: {
+  r: Reserva;
+  locale: string;
+  statusLabel: string;
+}) {
+  // Las citas tienen `start` real; las producciones (sin slot) caen a createdAt.
+  const fecha = r.start > 0 ? r.start : r.createdAt;
+  return (
+    <li>
+      <Link
+        href={`/solicitudes/reserva/${r.id}`}
+        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-white">{r.serviceName}</p>
+          <p className="text-sm text-silver-400">
+            {fechaCorta(fecha, locale)} · {formatCOP(r.amount ?? 0)}
+          </p>
+        </div>
+        <Badge estado={r.estado} label={statusLabel} />
+      </Link>
+    </li>
+  );
+}
+
 export function SolicitudesList() {
   const { user } = useAuth();
   const t = useTranslations();
@@ -52,6 +81,13 @@ export function SolicitudesList() {
     };
   }, [user, t]);
 
+  // Citas = sesiones de estudio (con fecha real), próximas primero.
+  const citas = reservas
+    .filter((r) => r.tipo === "sesion" || !r.tipo)
+    .sort((a, b) => b.start - a.start);
+  // Todo lo demás (producciones de proyecto + compras de perfil) va al catch-all.
+  const producciones = reservas.filter((r) => r.tipo !== "sesion" && !!r.tipo);
+
   return (
     <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
       <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
@@ -69,14 +105,14 @@ export function SolicitudesList() {
         <p className="mt-10 text-silver-300">{t("common.loading")}</p>
       ) : (
         <>
-          {/* Reservas */}
+          {/* Mis citas (sesiones agendadas) */}
           <section className="mt-10">
             <h2 className="font-narrow text-2xl font-bold uppercase text-white">
-              {t("solicitudes.bookings")}
+              {t("solicitudes.citas")}
             </h2>
-            {reservas.length === 0 ? (
+            {citas.length === 0 ? (
               <p className="mt-2 text-silver-400">
-                {t("solicitudes.noBookings")}{" "}
+                {t("solicitudes.noCitas")}{" "}
                 <Link
                   href="/servicios"
                   className="text-amethyst-300 underline-offset-4 hover:underline"
@@ -87,28 +123,36 @@ export function SolicitudesList() {
               </p>
             ) : (
               <ul className="mt-4 flex flex-col gap-3">
-                {reservas.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={`/solicitudes/reserva/${r.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">
-                          {r.serviceName}
-                        </p>
-                        <p className="text-sm text-silver-400">
-                          {fechaCorta(r.start, locale)} ·{" "}
-                          {formatCOP(r.amount ?? 0)}
-                        </p>
-                      </div>
-                      <Badge estado={r.estado} label={t(`status.${r.estado}`)} />
-                    </Link>
-                  </li>
+                {citas.map((r) => (
+                  <ReservaCard
+                    key={r.id}
+                    r={r}
+                    locale={locale}
+                    statusLabel={t(`status.${r.estado}`)}
+                  />
                 ))}
               </ul>
             )}
           </section>
+
+          {/* Producciones y demás reservas */}
+          {producciones.length > 0 && (
+            <section className="mt-10">
+              <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+                {t("solicitudes.bookings")}
+              </h2>
+              <ul className="mt-4 flex flex-col gap-3">
+                {producciones.map((r) => (
+                  <ReservaCard
+                    key={r.id}
+                    r={r}
+                    locale={locale}
+                    statusLabel={t(`status.${r.estado}`)}
+                  />
+                ))}
+              </ul>
+            </section>
+          )}
 
           {/* Cotizaciones */}
           <section className="mt-10">

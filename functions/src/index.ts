@@ -327,10 +327,20 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   }
   if (conv.pago?.estado === "confirmado") return { ok: true }; // idempotente
 
-  const slug = conv.ref?.id;
-  if (conv.ref?.kind !== "premium" || typeof slug !== "string") {
-    throw new HttpsError("failed-precondition", "Pago sin perfil asociado.");
+  const refKind = conv.ref?.kind;
+  const refId = conv.ref?.id;
+  if (typeof refId !== "string") {
+    throw new HttpsError("failed-precondition", "Pago sin contexto asociado.");
   }
+
+  // Pago de RESERVA: transiciona la reserva (dispara la sesión) y cierra el hilo.
+  if (refKind === "booking") {
+    return await confirmarPagoReserva(convRef, conv, refId);
+  }
+  if (refKind !== "premium") {
+    throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
+  }
+  const slug = refId;
 
   const now = Date.now();
   const expira = new Date(now);
@@ -378,6 +388,56 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   await notify(payerUid, "premium-activado", {}, "/artista/perfil");
   return { ok: true };
 });
+
+/**
+ * Confirma el pago de una RESERVA (SOLO admin, vía confirmPayment). Transiciona
+ * la reserva a `confirmada` — eso dispara onBookingConfirmed (crea la sesión y
+ * notifica al cliente) — y cierra/bloquea el chat de pago. NO escribe en
+ * `transactions`: el ingreso de reservas lo DERIVA /admin/finanzas de las
+ * reservas confirmadas (escribirlo aquí lo contaría dos veces).
+ */
+async function confirmarPagoReserva(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+  bookingId: string,
+): Promise<{ ok: true }> {
+  const bookingRef = db.doc(`bookings/${bookingId}`);
+  const booking = (await bookingRef.get()).data();
+  if (!booking) throw new HttpsError("not-found", "Reserva inexistente.");
+  if (
+    booking.estado !== "pago_en_revision" &&
+    booking.estado !== "pendiente_pago"
+  ) {
+    throw new HttpsError(
+      "failed-precondition",
+      "La reserva no está lista para confirmar.",
+    );
+  }
+
+  const batch = db.batch();
+  batch.update(bookingRef, {
+    estado: "confirmada",
+    confirmedAt: FieldValue.serverTimestamp(),
+  });
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: conv.pago?.monto ?? booking.amount ?? 0,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(
+    `Pago de reserva confirmado: ${convRef.id} → booking ${bookingId}`,
+  );
+  // La notificación al cliente ("pago-confirmado") la dispara onBookingConfirmed.
+  return { ok: true };
+}
 
 /**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
@@ -606,6 +666,80 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
   return { slug };
 });
 
+/**
+ * Asigna el rol `productor` a un usuario y lo registra en una sede (SOLO admin,
+ * server-authoritative; el cliente no puede tocar roles). Idempotente
+ * (`arrayUnion`). El rol da acceso a la consola; la sede lo lista como productor.
+ */
+export const adminAssignProductor = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+
+    const targetUid = request.data?.targetUid;
+    const sedeId = request.data?.sedeId;
+    if (typeof targetUid !== "string" || !targetUid) {
+      throw new HttpsError("invalid-argument", "Falta el usuario.");
+    }
+    if (typeof sedeId !== "string" || !sedeId) {
+      throw new HttpsError("invalid-argument", "Falta la sede.");
+    }
+
+    const userRef = db.doc(`users/${targetUid}`);
+    if (!(await userRef.get()).exists) {
+      throw new HttpsError("not-found", "El usuario no existe.");
+    }
+
+    const batch = db.batch();
+    batch.update(userRef, { roles: FieldValue.arrayUnion("productor") });
+    batch.set(
+      db.doc(`sedes/${sedeId}`),
+      { productores: FieldValue.arrayUnion(targetUid) },
+      { merge: true },
+    );
+    await batch.commit();
+
+    logger.info(`Productor ${targetUid} asignado a sede ${sedeId}`);
+    return { ok: true };
+  },
+);
+
+/**
+ * Proyección de usuarios por sus UIDs (SOLO admin). El cliente no puede leer
+ * otros `users/{uid}`; sirve para mostrar por nombre a los productores ya
+ * asignados a una sede. Devuelve solo los que existen (tope 50).
+ */
+export const adminGetUsersByIds = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+
+    const uids = Array.isArray(request.data?.uids)
+      ? (request.data.uids as unknown[]).filter(
+          (u): u is string => typeof u === "string",
+        )
+      : [];
+    if (uids.length === 0) return { users: [] };
+
+    const snaps = await Promise.all(
+      uids.slice(0, 50).map((uid) => db.doc(`users/${uid}`).get()),
+    );
+    const users = snaps
+      .filter((s) => s.exists)
+      .map((s) => {
+        const u = s.data() ?? {};
+        return {
+          uid: s.id,
+          email: (u.email as string | null) ?? null,
+          displayName: (u.displayName as string | null) ?? null,
+          roles: (u.roles as string[]) ?? [],
+          artistSlug: (u.artistSlug as string | null) ?? null,
+        };
+      });
+    return { users };
+  },
+);
+
 // ── Notificaciones dirigidas por eventos (seam `notify`) ───────────────────────
 
 /** Nueva solicitud de cotización → avisa a los admin. */
@@ -645,6 +779,14 @@ export const onPaymentUnderReview = onDocumentUpdated(
       before?.pago?.estado !== "en_revision" &&
       after.pago?.estado === "en_revision"
     ) {
+      // Reserva: refleja el comprobante en el estado de la reserva (server-side).
+      if (after.ref?.kind === "booking" && typeof after.ref?.id === "string") {
+        const bRef = db.doc(`bookings/${after.ref.id}`);
+        const b = (await bRef.get()).data();
+        if (b?.estado === "pendiente_pago") {
+          await bRef.update({ estado: "pago_en_revision" });
+        }
+      }
       const payerUid = Array.isArray(after.participants)
         ? after.participants[0]
         : undefined;

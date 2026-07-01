@@ -26,8 +26,9 @@ import type {
   ConversationMessage,
   NewConversation,
   NewConversationMessage,
-  PagoMetodo,
+  PagoConcepto,
 } from "@/domain/conversation";
+import type { MetodoPago } from "@/domain/payment-method";
 
 const COL = "conversations";
 
@@ -150,26 +151,28 @@ export async function sendConversationMessage(
   );
 }
 
-// ── Pago (chat de pago premium) ─────────────────────────────────────────────
+// ── Pago (chat de pago: premium, reserva) ───────────────────────────────────
 
 /**
- * Abre un chat de pago de premium para el artista dueño de `slug`, con el método
- * ya elegido. Estado inicial: `comprobante_pendiente` (falta subir comprobante).
- * El `monto` es informativo: la confirmación server-side usa el precio fijo.
+ * Abre un chat de pago para un `concepto` (premium, reserva) con el método ya
+ * elegido, enlazado a su entidad de contexto vía `ref`. Estado inicial:
+ * `comprobante_pendiente` (falta subir comprobante). El `monto` es informativo:
+ * la confirmación server-side es la autoridad.
  */
 export async function createPaymentConversation(params: {
   uid: string;
-  slug: string;
-  metodo: PagoMetodo;
+  concepto: PagoConcepto;
+  ref: NonNullable<Conversation["ref"]>;
+  metodo: MetodoPago;
   monto: number;
 }): Promise<string> {
   return createConversation({
     type: "pago",
     participants: [params.uid],
     status: "abierto",
-    ref: { kind: "premium", id: params.slug },
+    ref: params.ref,
     pago: {
-      concepto: "premium",
+      concepto: params.concepto,
       monto: params.monto,
       metodo: params.metodo,
       estado: "comprobante_pendiente",

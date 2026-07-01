@@ -45,3 +45,29 @@ export async function adminLinkProfile(
   const res = await linkProfileFn({ targetUid, artisticName });
   return res.data.slug;
 }
+
+const assignProductorFn = httpsCallable<
+  { targetUid: string; sedeId: string },
+  { ok: boolean }
+>(functions, "adminAssignProductor");
+
+/** Da el rol 'productor' a un usuario y lo registra en la sede (SOLO admin). */
+export async function adminAssignProductor(
+  targetUid: string,
+  sedeId: string,
+): Promise<void> {
+  await assignProductorFn({ targetUid, sedeId });
+}
+
+const getUsersByIdsFn = httpsCallable<
+  { uids: string[] },
+  { users: AdminUserHit[] }
+>(functions, "adminGetUsersByIds");
+
+/** Proyección de usuarios por UID (para mostrar los productores asignados). */
+export async function adminGetUsersByIds(
+  uids: string[],
+): Promise<AdminUserHit[]> {
+  const res = await getUsersByIdsFn({ uids });
+  return res.data.users;
+}

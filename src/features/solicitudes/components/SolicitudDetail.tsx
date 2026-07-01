@@ -3,23 +3,25 @@
 import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
   getQuoteById,
   updateQuoteStatus,
 } from "@/features/quotes/lib/quotes-repo";
-import {
-  getReservaById,
-  marcarPagoEnRevision,
-} from "@/features/booking/lib/booking-repo";
+import { getReservaById } from "@/features/booking/lib/booking-repo";
 import {
   ensureSupportConversation,
-  sendConversationMessage,
+  createPaymentConversation,
 } from "@/features/conversations/lib/conversations-repo";
+import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
 import { ConversationView } from "@/features/conversations/components/ConversationView";
-import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
+import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 import { Button } from "@/components/ui/Button";
 import { sedes } from "@/features/sedes/data/sedes";
 import { formatCOP } from "@/domain/service";
+import { insigniaDePuntos, type Insignia } from "@/domain/artist-profile";
+import type { MetodoPago } from "@/domain/payment-method";
 import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
 import { badgeClass } from "../lib/estados";
@@ -29,12 +31,14 @@ type Tipo = "cotizacion" | "reserva";
 export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const t = useTranslations();
   const locale = useLocale();
+  const { account } = useAuth();
   const [quote, setQuote] = useState<QuoteRequest | null>(null);
   const [reserva, setReserva] = useState<Reserva | null>(null);
   const [loading, setLoading] = useState(true);
-  const [comprobante, setComprobante] = useState<UploadedFile[]>([]);
   const [busy, setBusy] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
+  const [insignia, setInsignia] = useState<Insignia | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   const parent = tipo === "cotizacion" ? "quotes" : "bookings";
   const ownerUid = quote?.uid ?? reserva?.uid ?? null;
@@ -73,28 +77,41 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
     };
   }, [tipo, id]);
 
-  async function enviarComprobante() {
-    if (!reserva || !comprobante[0]) return;
-    setBusy(true);
+  // Insignia del pagador (deriva el gate de efectivo del picker). Un no-artista
+  // no tiene perfil → insignia null → efectivo bloqueado.
+  useEffect(() => {
+    const slug = account?.artistSlug;
+    if (!slug) {
+      setInsignia(null);
+      return;
+    }
+    let active = true;
+    getProfileBySlug(slug)
+      .then((p) => {
+        if (active) setInsignia(p ? insigniaDePuntos(p.puntos ?? 0) : null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [account?.artistSlug]);
+
+  // Arranca el pago de la reserva: abre un chat de pago propio (tipo `pago`) y la
+  // burbuja. El comprobante y la confirmación viven en ese hilo (PagoPanel).
+  async function iniciarPagoReserva(metodo: MetodoPago) {
+    if (!reserva) return;
+    setShowPicker(false);
     try {
-      await marcarPagoEnRevision(reserva.id, comprobante[0].url);
-      const cid =
-        convId ??
-        (await ensureSupportConversation("bookings", reserva.id, reserva.uid));
-      await sendConversationMessage(cid, {
-        from: reserva.uid,
-        tipo: "comprobante",
-        texto: t("solicitudDetail.receiptMessage"),
-        attachmentUrl: comprobante[0].url,
-        attachmentName: comprobante[0].name,
+      const cid = await createPaymentConversation({
+        uid: reserva.uid,
+        concepto: "reserva",
+        ref: { kind: "booking", id: reserva.id },
+        metodo,
+        monto: reserva.amount ?? 0,
       });
-      const fresh = await getReservaById(reserva.id);
-      setReserva(fresh);
-      setComprobante([]);
+      openConversation(cid);
     } catch (e) {
-      console.error("[comprobante] error:", e);
-    } finally {
-      setBusy(false);
+      console.error("[reserva] iniciarPago:", e);
     }
   }
 
@@ -255,40 +272,27 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </p>
       )}
 
-      {/* Acción: pago de la reserva */}
+      {/* Acción: pago de la reserva → abre un chat de pago propio */}
       {reserva && reserva.estado === "pendiente_pago" && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
           <h2 className="font-narrow text-xl font-bold uppercase text-white">
             {t("solicitudDetail.payment")}
           </h2>
-          {sede?.qrPagoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={sede.qrPagoUrl}
-              alt={t("solicitudDetail.qrAlt")}
-              className="mt-3 size-44 rounded-lg object-contain"
-            />
-          ) : (
-            <p className="mt-2 text-sm text-silver-300">
-              {t("solicitudDetail.paymentInfo")}
-            </p>
-          )}
-          <div className="mt-3">
-            <FileUpload
-              value={comprobante}
-              onChange={setComprobante}
-              accept="image/*,application/pdf"
-            />
-          </div>
-          <Button
-            className="mt-3"
-            onClick={enviarComprobante}
-            loading={busy}
-            disabled={comprobante.length === 0}
-          >
-            {t("solicitudDetail.sendReceipt")}
+          <p className="mt-2 text-sm text-silver-300">
+            {t("solicitudDetail.paymentStartHint")}
+          </p>
+          <Button className="mt-3" onClick={() => setShowPicker(true)}>
+            {t("solicitudDetail.pay")}
           </Button>
         </section>
+      )}
+
+      {showPicker && (
+        <PaymentMethodPicker
+          onPick={iniciarPagoReserva}
+          onClose={() => setShowPicker(false)}
+          insignia={insignia}
+        />
       )}
 
       {reserva && reserva.estado === "pago_en_revision" && (
@@ -297,7 +301,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </p>
       )}
 
-      {/* Hilo */}
+      {/* Hilo de soporte */}
       <section className="mt-8">
         <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
           {t("solicitudDetail.conversation")}

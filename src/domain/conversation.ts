@@ -11,6 +11,7 @@
  *
  * Tipos puros y portables: NO importar nada de UI ni de Firebase aquí.
  */
+import type { MetodoPago } from "./payment-method";
 
 export type ConversationType = "soporte" | "pago" | "directo";
 
@@ -46,7 +47,7 @@ export interface ConversationMessage {
   /** Código de estado (cuando `tipo === "estado"`): se traduce al pintarlo. */
   estado?: string;
   /** Método elegido (cuando `tipo === "metodo"`). */
-  metodo?: PagoMetodo;
+  metodo?: MetodoPago;
   /** Monto en COP (contexto de pago). */
   monto?: number;
   /** Precio propuesto en COP (cuando `tipo === "propuesta"`). */
@@ -61,8 +62,7 @@ export type NewConversationMessage = Omit<
 
 // ── Pago (máquina de estados, solo type "pago") ─────────────────────────────
 
-export type PagoMetodo = "nequi" | "bancolombia" | "llave" | "efectivo";
-export type PagoConcepto = "premium";
+export type PagoConcepto = "premium" | "reserva";
 
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
@@ -75,7 +75,7 @@ export interface PagoState {
   concepto: PagoConcepto;
   /** Monto a pagar en COP. */
   monto: number;
-  metodo?: PagoMetodo;
+  metodo?: MetodoPago;
   estado: PagoEstado;
 }
 

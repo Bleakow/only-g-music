@@ -7,7 +7,7 @@ import { createPaymentConversation } from "@/features/conversations/lib/conversa
 import { openConversation } from "@/features/conversations/lib/open-conversation";
 import { PRECIO_PERFIL } from "@/domain/profile-order";
 import { insigniaDePuntos } from "@/domain/artist-profile";
-import type { PagoMetodo } from "@/domain/conversation";
+import type { MetodoPago } from "@/domain/payment-method";
 
 /**
  * Botón "Activar membresía" autocontenido: abre el selector de método de pago y,
@@ -31,12 +31,13 @@ export function MembershipPayButton({
 }) {
   const [showPicker, setShowPicker] = useState(false);
 
-  async function iniciarPago(metodo: PagoMetodo) {
+  async function iniciarPago(metodo: MetodoPago) {
     setShowPicker(false);
     try {
       const id = await createPaymentConversation({
         uid,
-        slug,
+        concepto: "premium",
+        ref: { kind: "premium", id: slug },
         metodo,
         monto: PRECIO_PERFIL,
       });
@@ -55,7 +56,7 @@ export function MembershipPayButton({
         <PaymentMethodPicker
           onPick={iniciarPago}
           onClose={() => setShowPicker(false)}
-          tierAlto={insigniaDePuntos(puntos) === "diamante"}
+          insignia={insigniaDePuntos(puntos)}
         />
       )}
     </>

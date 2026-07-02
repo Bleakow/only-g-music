@@ -26,7 +26,6 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SOCIAL_META } from "../../lib/socials";
 import { TrackPlayers } from "./TrackPlayers";
-import { InsigniaBadge } from "./InsigniaBadge";
 import { LikeButton } from "./LikeButton";
 import { ShareProfile } from "./ShareProfile";
 import { MembershipPayButton } from "./MembershipPayButton";
@@ -81,8 +80,15 @@ export function ArtistProfileView({
     profile.trajectoryStartYear >= 1950
       ? aniosDeTrayectoria(profile.trajectoryStartYear, now)
       : null;
+  const generos =
+    profile.genres && profile.genres.length > 0
+      ? profile.genres
+      : profile.genre
+        ? [profile.genre]
+        : [];
   const ciudad = formatLocation(profile.location) || profile.city;
-  const meta = [profile.genre, ciudad].filter(Boolean).join(" · ");
+  // En el hero, hasta 3 géneros; el resto se listan como chips más abajo.
+  const meta = [...generos.slice(0, 3), ciudad].filter(Boolean).join(" · ");
 
   return (
     <article className="relative min-h-dvh">
@@ -143,7 +149,6 @@ export function ArtistProfileView({
 
         <div className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <InsigniaBadge puntos={profile.puntos} />
             {isPremium && (
               <span className="border-amethyst-300/50 bg-amethyst-500/15 text-amethyst-200 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[2px] uppercase">
                 <VerifiedIcon className="size-4" />
@@ -250,6 +255,26 @@ export function ArtistProfileView({
           <p className="text-silver-100 [&::first-letter]:font-narrow [&::first-letter]:text-amethyst-300 mt-5 text-xl leading-relaxed sm:text-[1.6rem] sm:leading-[1.6] [&::first-letter]:float-left [&::first-letter]:mr-3 [&::first-letter]:text-7xl [&::first-letter]:leading-[0.7] [&::first-letter]:font-bold">
             {profile.bio}
           </p>
+          {generos.length > 3 && (
+            <div className="mt-8">
+              <p
+                className="font-narrow text-sm font-bold tracking-[4px] uppercase"
+                style={{ color: profile.accent }}
+              >
+                {t("artistProfile.genres")}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {generos.map((g) => (
+                  <span
+                    key={g}
+                    className="rounded-full border border-white/15 px-3 py-1 text-sm text-white/80"
+                  >
+                    {g}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-10">
             <Socials socials={profile.socials} />
           </div>

@@ -814,6 +814,7 @@
     "portraitAlt": "Portrait of {name}",
     "galleryPhotoAlt": "{name} — photo {n}",
     "topTracks": "Top tracks",
+    "genres": "Genres",
     "notFound": "Artist not found",
     "backToArtists": "See artists",
     "profileSong": "Profile song"
@@ -946,6 +947,8 @@
     "identity": {
       "accentColorTitle": "Accent color",
       "genrePlaceholder": "Genre",
+      "genreAdd": "Add genre",
+      "genreRemove": "Remove {value}",
       "genreSearch": "Search genre…",
       "genreEmpty": "No matches",
       "genreCustom": "Use \"{value}\"",

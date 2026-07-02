@@ -242,7 +242,11 @@ export interface ArtistProfile {
   artisticName: string;
   /** Frase célebre (debajo del nombre). */
   tagline: string;
+  /** Género primario (= genres[0]). Lo usan card/OG/SEO. */
   genre: string;
+  /** Todos los géneros que maneja. En el perfil se muestran hasta 3 y el resto
+   *  como chips. Opcional por compat: los perfiles viejos solo tienen `genre`. */
+  genres?: string[];
   city?: string;
   /** Ubicación estructurada (país/depto/ciudad). `city` queda como respaldo. */
   location?: GeoLocation;
@@ -331,6 +335,7 @@ export type EditableProfile = Pick<
   | "artisticName"
   | "tagline"
   | "genre"
+  | "genres"
   | "city"
   | "location"
   | "bio"

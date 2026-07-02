@@ -74,6 +74,11 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     artisticName: data.artisticName ?? "",
     tagline: data.tagline ?? "",
     genre: data.genre ?? "",
+    genres: Array.isArray(data.genres)
+      ? (data.genres as string[])
+      : data.genre
+        ? [data.genre as string]
+        : [],
     city: data.city ?? undefined,
     location: (data.location as ArtistProfile["location"]) ?? undefined,
     bio: data.bio ?? "",

@@ -814,6 +814,7 @@
     "portraitAlt": "Retrato de {name}",
     "galleryPhotoAlt": "{name} — foto {n}",
     "topTracks": "Más sonadas",
+    "genres": "Géneros",
     "notFound": "Artista no encontrado",
     "backToArtists": "Ver artistas",
     "profileSong": "Canción del perfil"
@@ -946,6 +947,8 @@
     "identity": {
       "accentColorTitle": "Color de acento",
       "genrePlaceholder": "Género",
+      "genreAdd": "Añadir género",
+      "genreRemove": "Quitar {value}",
       "genreSearch": "Buscar género…",
       "genreEmpty": "Sin coincidencias",
       "genreCustom": "Usar \"{value}\"",

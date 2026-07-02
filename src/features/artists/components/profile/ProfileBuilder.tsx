@@ -170,7 +170,7 @@ export function ProfileBuilder({
 
   const [artisticName, setArtisticName] = useState("");
   const [tagline, setTagline] = useState("");
-  const [genre, setGenre] = useState("");
+  const [genres, setGenres] = useState<string[]>([]);
   const [city, setCity] = useState("");
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [locOpen, setLocOpen] = useState(false);
@@ -238,7 +238,9 @@ export function ProfileBuilder({
           existsRef.current = true;
           setArtisticName(p.artisticName);
           setTagline(p.tagline);
-          setGenre(p.genre);
+          setGenres(
+            p.genres && p.genres.length ? p.genres : p.genre ? [p.genre] : [],
+          );
           setCity(p.city ?? "");
           setLocation(p.location ?? null);
           setBio(p.bio);
@@ -284,7 +286,8 @@ export function ProfileBuilder({
     return {
       artisticName: artisticName.trim(),
       tagline: tagline.trim(),
-      genre: genre.trim(),
+      genre: genres[0] ?? "",
+      genres,
       city: city.trim() || undefined,
       location: location ?? undefined,
       bio: bio.trim(),
@@ -344,7 +347,7 @@ export function ProfileBuilder({
   }, [
     artisticName,
     tagline,
-    genre,
+    genres,
     city,
     location,
     bio,
@@ -917,20 +920,42 @@ export function ProfileBuilder({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-[3px] uppercase">
+            {genres.map((g) => (
+              <span
+                key={g}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/30 px-3 py-1 backdrop-blur"
+                style={{ color: accent }}
+              >
+                {g}
+                <button
+                  type="button"
+                  onClick={() => setGenres(genres.filter((x) => x !== g))}
+                  aria-label={t("profileBuilder.identity.genreRemove", {
+                    value: g,
+                  })}
+                  className="text-white/50 transition hover:text-white"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
             <SearchableSelect
-              value={genre}
-              onChange={setGenre}
+              value=""
+              onChange={(v) => {
+                const g = v.trim();
+                if (g && !genres.includes(g)) setGenres([...genres, g]);
+              }}
               options={GENRE_OPTIONS}
               allowCustom
               placement="top"
-              placeholder={t("profileBuilder.identity.genrePlaceholder")}
+              placeholder={t("profileBuilder.identity.genreAdd")}
               searchPlaceholder={t("profileBuilder.identity.genreSearch")}
               emptyText={t("profileBuilder.identity.genreEmpty")}
               customLabel={(v) =>
                 t("profileBuilder.identity.genreCustom", { value: v })
               }
-              ariaLabel={t("profileBuilder.identity.genrePlaceholder")}
-              className={`${glassField} flex w-44 items-center justify-between gap-2`}
+              ariaLabel={t("profileBuilder.identity.genreAdd")}
+              className={`${glassField} flex items-center justify-between gap-2`}
               style={{ color: accent }}
             />
             <button

@@ -15,8 +15,9 @@ import {
 import { tiempoRelativo } from "../lib/tiempo-relativo";
 import { activarPush, pushDisponible, permisoPush } from "../lib/push";
 
-// A la izquierda del avatar del UserMenu (right-[5.5rem]/right-28), mismo eje.
-const WRAP = "fixed top-4 right-[8.75rem] z-[105] sm:top-5 sm:right-40";
+// Extremo IZQUIERDO de la barra superior: la campanita va primera y el avatar a
+// su derecha. El menú hamburguesa vive en el lado opuesto (derecha).
+const WRAP = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
 
 /**
  * Campanita de notificaciones (estilo Inbox): contador de no leídas en tiempo
@@ -61,7 +62,8 @@ export function NotificationBell() {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
@@ -111,31 +113,33 @@ export function NotificationBell() {
         onClick={() => setOpen((v) => !v)}
         aria-label={t("notificaciones.title")}
         aria-expanded={open}
-        className="relative flex size-10 items-center justify-center rounded-full border border-white/25 bg-black/40 text-silver-100 backdrop-blur-sm transition hover:border-amethyst-300 hover:text-white"
+        className="text-silver-100 hover:border-amethyst-300 relative flex size-10 items-center justify-center rounded-full border border-white/25 bg-black/40 backdrop-blur-sm transition hover:text-white"
       >
         <BellIcon className="size-5" />
         {count > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-w-[1.1rem] items-center justify-center rounded-full bg-amethyst-400 px-1 text-[0.65rem] font-bold text-ink ring-2 ring-black/50">
+          <span className="bg-amethyst-400 text-ink absolute -top-0.5 -right-0.5 flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold ring-2 ring-black/50">
             {count > 9 ? "9+" : count}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="fixed right-3 top-[4.5rem] w-[min(22rem,calc(100vw-1.5rem))] sm:right-4 sm:top-[5.25rem]">
-          <div className={`${glassSurfaceMenu} overflow-hidden rounded-2xl`}>
+        <div className="fixed top-[4.5rem] left-3 w-[min(22rem,calc(100vw-1.5rem))] sm:top-[5.25rem] sm:left-4">
+          <div
+            className={`${glassSurfaceMenu} animate-panel-reveal overflow-hidden rounded-2xl`}
+          >
             <GlassSheen />
             <div className="relative [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
               {/* Header */}
               <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-                <p className="font-narrow text-lg font-bold uppercase tracking-wide text-white">
+                <p className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
                   {t("notificaciones.title")}
                 </p>
                 {count > 0 && (
                   <button
                     type="button"
                     onClick={todoLeido}
-                    className="flex items-center gap-1 text-xs text-amethyst-200 transition hover:text-white"
+                    className="text-amethyst-200 flex items-center gap-1 text-xs transition hover:text-white"
                   >
                     <CheckIcon className="size-3.5" />
                     {t("notificaciones.markAllRead")}
@@ -150,7 +154,7 @@ export function NotificationBell() {
                     key={k}
                     type="button"
                     onClick={() => setTab(k)}
-                    className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide transition ${
+                    className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase transition ${
                       tab === k
                         ? "bg-white/10 text-white"
                         : "text-silver-400 hover:text-white"
@@ -166,7 +170,7 @@ export function NotificationBell() {
               {/* Lista */}
               <div className="max-h-[60vh] overflow-y-auto p-2">
                 {lista.length === 0 ? (
-                  <p className="px-3 py-10 text-center text-sm text-silver-400">
+                  <p className="text-silver-400 px-3 py-10 text-center text-sm">
                     {tab === "unread"
                       ? t("notificaciones.emptyUnread")
                       : t("notificaciones.empty")}
@@ -192,10 +196,10 @@ export function NotificationBell() {
                             <span className="block truncate text-sm font-semibold text-white">
                               {t(`notificaciones.eventos.${n.evento}.titulo`)}
                             </span>
-                            <span className="block text-xs text-silver-300">
+                            <span className="text-silver-300 block text-xs">
                               {cuerpo(n)}
                             </span>
-                            <span className="mt-0.5 block text-[0.65rem] uppercase tracking-wide text-silver-500">
+                            <span className="text-silver-500 mt-0.5 block text-[0.65rem] tracking-wide uppercase">
                               {tiempoRelativo(n.createdAt, locale)}
                             </span>
                           </span>
@@ -210,7 +214,7 @@ export function NotificationBell() {
               {pushDisponible() && pushState !== "granted" && (
                 <div className="border-t border-white/10 p-3">
                   {pushState === "denied" ? (
-                    <p className="text-center text-xs text-silver-500">
+                    <p className="text-silver-500 text-center text-xs">
                       {t("notificaciones.pushBlocked")}
                     </p>
                   ) : (
@@ -223,7 +227,7 @@ export function NotificationBell() {
                         setPushState(permisoPush());
                         setPushBusy(false);
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-lg border border-amethyst-400/40 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white disabled:opacity-50"
+                      className="border-amethyst-400/40 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 flex w-full items-center justify-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold tracking-wide uppercase transition hover:text-white disabled:opacity-50"
                     >
                       <BellIcon className="size-3.5" />
                       {pushBusy

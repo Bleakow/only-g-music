@@ -32,10 +32,10 @@ function PersonIcon({ className = "" }: { className?: string }) {
   );
 }
 
-/** Posición fija, a la izquierda del botón hamburguesa del SiteMenu (que está en
- *  right 1.5rem móvil / 3rem sm). Dejamos aire extra: con el panel saliendo 1rem
- *  hacia afuera, su canto derecho queda ~14px a la izquierda de la hamburguesa. */
-const WRAP = "fixed top-4 right-[5.5rem] z-[105] sm:top-5 sm:right-28";
+/** Posición fija en el extremo IZQUIERDO, a la derecha de la campanita. El menú
+ *  hamburguesa vive en el lado opuesto (derecha). El panel abre hacia adentro
+ *  (derecha); por eso su anclaje y el origen del reveal van a la izquierda. */
+const WRAP = "fixed top-4 left-[5.5rem] z-[105] sm:top-5 sm:left-28";
 
 // Opción del menú: borde sutil (le da definición y ayuda a leer el texto sobre
 // fondos con foto). Hover = borde amatista + barrido + leve deslizamiento.
@@ -45,6 +45,9 @@ const ITEM =
 export function UserMenu() {
   const { user, account, loading, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  // `render` mantiene el panel montado durante la animación de CIERRE (se
+  // desmonta en onAnimationEnd). Cerrado ⇒ desmontado ⇒ no tapa la campanita.
+  const [render, setRender] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const t = useTranslations();
@@ -58,6 +61,12 @@ export function UserMenu() {
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  // Al abrir, monta el panel de inmediato; el desmontaje lo hace onAnimationEnd
+  // cuando la animación de cierre termina.
+  useEffect(() => {
+    if (open) setRender(true);
   }, [open]);
 
   if (loading) return null;
@@ -80,7 +89,7 @@ export function UserMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label={user ? t("userMenu.account") : t("userMenu.access")}
         aria-expanded={open}
-        className="text-silver-100 hover:border-amethyst-300 absolute top-0 right-0 z-20 flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white"
+        className="text-silver-100 hover:border-amethyst-300 absolute top-0 left-0 z-20 flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white"
       >
         {user && photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -92,25 +101,24 @@ export function UserMenu() {
         )}
       </button>
 
-      {/* El menú se REVELA con un círculo (clip-path) que crece desde el avatar:
-          el panel está a tamaño completo (el desenfoque del fondo se ve correcto
-          desde el inicio, no solo al final) y el avatar queda ESTÁTICO encima —
-          el menú aparece a su alrededor. Centro del círculo = centro del avatar
-          (2.25rem desde el canto sup-der del panel, que va 1rem más afuera). */}
-      <div
-        inert={!open}
-        aria-hidden={!open}
-        style={{
-          clipPath: open
-            ? "circle(170% at right 2.25rem top 2.25rem)"
-            : "circle(0% at right 2.25rem top 2.25rem)",
-          transition: "clip-path 450ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-        className={`absolute top-[-1rem] right-[-1rem] w-64 ${
-          open ? "" : "pointer-events-none"
-        }`}
-      >
-        <div className={`${glassSurfaceMenu} overflow-hidden rounded-2xl`}>
+      {/* Panel del menú. Se monta con `render` (que sigue true durante el cierre)
+          y se DESMONTA en onAnimationEnd al cerrar → cerrado no existe en el DOM y
+          no puede robarle clics a la campanita vecina. Abre con
+          `animate-menu-reveal` (círculo que crece desde el avatar) y cierra con
+          `animate-menu-conceal` (se encoge de vuelta). El `backdrop-blur` del
+          cristal desenfoca bien: al acabar, el clip-path vuelve a `none`. */}
+      {render && (
+        <div
+          inert={!open}
+          onAnimationEnd={(e) => {
+            if (e.target === e.currentTarget && !open) setRender(false);
+          }}
+          className={`${glassSurfaceMenu} ${
+            open
+              ? "animate-menu-reveal"
+              : "animate-menu-conceal pointer-events-none"
+          } absolute top-[-1rem] left-[-1rem] w-64 overflow-hidden rounded-2xl`}
+        >
           <GlassSheen />
           {/* Gloss superior extra (más brillo de cristal). */}
           <span className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent" />
@@ -118,9 +126,9 @@ export function UserMenu() {
           <div className="relative [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
             {user ? (
               <>
-                {/* Nombre/correo a la IZQUIERDA; el círculo (avatar) va a la
-                    derecha, fuera del recorte, alineado con el trigger. */}
-                <div className="border-b border-white/10 p-4 pr-16 text-right">
+                {/* Nombre/correo a la DERECHA; el círculo (avatar) va a la
+                    izquierda, fuera del recorte, alineado con el trigger. */}
+                <div className="border-b border-white/10 p-4 pl-16 text-left">
                   <p className="truncate text-sm font-semibold text-white">
                     {name ?? t("userMenu.user")}
                   </p>
@@ -238,7 +246,7 @@ export function UserMenu() {
             )}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

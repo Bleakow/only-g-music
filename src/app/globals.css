@@ -6,6 +6,10 @@
   --font-narrow: "OGMNarrow", system-ui, sans-serif;
 
   --animate-bounce-pulse: bounce-pulse 2s ease-in-out infinite;
+  --animate-menu-reveal: menu-reveal 450ms cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-menu-conceal: menu-conceal 450ms cubic-bezier(0.22, 1, 0.36, 1)
+    forwards;
+  --animate-panel-reveal: panel-reveal 320ms cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── Paleta de marca: plata + amatista ─────────────────────── */
   /* Plata (metálica) */
@@ -75,6 +79,45 @@
     transform: translateY(0);
     scale: 0.8;
     opacity: 0.8;
+  }
+}
+
+/* Menú de cuenta (UserMenu): reveal circular que crece desde el avatar. Se
+   dispara al MONTAR el panel (render condicional `{open && …}`, para que cerrado
+   no exista en el DOM y no tape la campanita vecina). Termina en 170% (cubre
+   todo); al acabar, el clip-path vuelve a `none`, así que el backdrop-filter del
+   cristal queda sin recorte y desenfoca sin que nada lo anule. */
+@keyframes menu-reveal {
+  from {
+    clip-path: circle(0% at left 2.25rem top 2.25rem);
+  }
+  to {
+    clip-path: circle(170% at left 2.25rem top 2.25rem);
+  }
+}
+
+/* UserMenu al CERRAR: el círculo se encoge de vuelta hacia el avatar. Se aplica
+   mientras el panel sigue montado; al terminar (onAnimationEnd) el componente lo
+   desmonta. `forwards` lo deja en 0% (oculto) hasta el desmontaje, sin parpadeo. */
+@keyframes menu-conceal {
+  from {
+    clip-path: circle(170% at left 2.25rem top 2.25rem);
+  }
+  to {
+    clip-path: circle(0% at left 2.25rem top 2.25rem);
+  }
+}
+
+/* Panel de notificaciones al expandirse: reveal circular (diagonal) desde la
+   esquina superior derecha, cerca de la campanita, con leve fundido. */
+@keyframes panel-reveal {
+  from {
+    clip-path: circle(0% at left 2.5rem top 0);
+    opacity: 0;
+  }
+  to {
+    clip-path: circle(140% at left 2.5rem top 0);
+    opacity: 1;
   }
 }
 

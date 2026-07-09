@@ -30,7 +30,7 @@
 /* En móvil: bajar el logo principal para que no quede pegado arriba ni cortado. */
 @media (max-width: 640px) {
   .heroKeyLogo {
-    top: 20%;
+    top: calc(8% + 15px);
     width: clamp(200px, 72vw, 300px);
   }
 }

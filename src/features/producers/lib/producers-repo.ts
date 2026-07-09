@@ -10,6 +10,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   serverTimestamp,
   updateDoc,
@@ -57,6 +58,12 @@ function toProducer(id: string, data: DocumentData): Producer {
 export async function listProducers(): Promise<Producer[]> {
   const snap = await getDocs(collection(db, COLLECTION));
   return snap.docs.map((d) => toProducer(d.id, d.data())).sort(compararOrden);
+}
+
+/** Un productor por su id. `null` si no existe. Público en lectura. */
+export async function getProducer(id: string): Promise<Producer | null> {
+  const snap = await getDoc(doc(db, COLLECTION, id));
+  return snap.exists() ? toProducer(snap.id, snap.data()) : null;
 }
 
 /** Crea un productor. Devuelve el id generado. SOLO admin (lo blindan las reglas). */

@@ -195,6 +195,13 @@
   },
   "home": {
     "tagline": "Productora musical · Barranquilla & Bogotá",
+    "kicker": "Producción musical",
+    "heroTitle": "El sonido es visión",
+    "heroSubtitle": "Creando sonidos. Construyendo emoción. Contando historias.",
+    "exploreWork": "Explora nuestro trabajo",
+    "follow": "Síguenos",
+    "heroHeadline": "Producimos tu",
+    "heroHeadlineAccent": "próximo hit",
     "explore": "Explorar",
     "artists": "Artistas",
     "quote": "Cotizar producción",
@@ -866,6 +873,11 @@
     "facebookOf": "Facebook de {name}",
     "instagramOf": "Instagram de {name}",
     "close": "Cerrar",
+    "viewProfile": "Ver perfil de {name}",
+    "sectionTitle": "Productores",
+    "back": "Volver",
+    "notFound": "Productor no encontrado",
+    "notFoundHint": "Puede que ya no exista o el enlace sea incorrecto.",
     "items": {
       "na": {
         "role": "Fundador y dueño de Only G Music",

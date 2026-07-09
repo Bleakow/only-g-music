@@ -18,6 +18,11 @@ import { ProducerCardsStrip } from "@/features/producers/components/ProducerCard
 
 gsap.registerPlugin(ScrollTrigger);
 
+// Imágenes de fondo del hero servidas desde Firebase Storage (públicas). NO van en
+// el repo por copyright (ver .gitignore de public/hero); viven en Storage.
+const HERO_IMG =
+  "https://storage.googleapis.com/only-g-music-745ca.firebasestorage.app/hero";
+
 export function Hero() {
   const rootRef = useRef<HTMLDivElement>(null);
   const t = useTranslations("home");
@@ -133,11 +138,11 @@ export function Hero() {
             <picture>
               <source
                 media="(max-width: 640px)"
-                srcSet="/hero/Web%20principal%20-%20mobile.png"
+                srcSet={`${HERO_IMG}/web-principal-mobile.png`}
               />
               <img
                 id="hero-key-background"
-                src="/hero/Web%20principal%20image.png"
+                src={`${HERO_IMG}/web-principal.png`}
                 alt=""
                 className="h-full w-full object-cover"
               />
@@ -248,10 +253,10 @@ export function Hero() {
         <picture>
           <source
             media="(max-width: 640px)"
-            srcSet="/hero/Web%20secondary%20-%20mobile.png"
+            srcSet={`${HERO_IMG}/web-secondary-mobile.png`}
           />
           <img
-            src="/hero/Web%20Secondary.png"
+            src={`${HERO_IMG}/web-secondary.png`}
             alt=""
             className="h-full w-full object-cover"
           />

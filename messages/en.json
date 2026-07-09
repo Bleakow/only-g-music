@@ -195,6 +195,13 @@
   },
   "home": {
     "tagline": "Music production company · Barranquilla & Bogotá",
+    "kicker": "Music production",
+    "heroTitle": "Sound is vision",
+    "heroSubtitle": "Crafting sounds. Building emotion. Telling stories.",
+    "exploreWork": "Explore our work",
+    "follow": "Follow us",
+    "heroHeadline": "We produce your",
+    "heroHeadlineAccent": "next hit",
     "explore": "Explore",
     "artists": "Artists",
     "quote": "Quote a production",
@@ -866,6 +873,11 @@
     "facebookOf": "{name} on Facebook",
     "instagramOf": "{name} on Instagram",
     "close": "Close",
+    "viewProfile": "View {name}'s profile",
+    "sectionTitle": "Producers",
+    "back": "Back",
+    "notFound": "Producer not found",
+    "notFoundHint": "It may no longer exist or the link is incorrect.",
     "items": {
       "na": {
         "role": "Founder and owner of Only G Music",

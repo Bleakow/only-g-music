@@ -2,12 +2,17 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
-import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import {
+  getMessages,
+  getTranslations,
+  setRequestLocale,
+} from "next-intl/server";
 import { routing } from "@/i18n/routing";
 import { SITE_URL } from "@/lib/seo";
 import "../globals.css";
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
+import { InitialLoader } from "@/components/loaders/InitialLoader";
 
 export async function generateMetadata({
   params,
@@ -62,6 +67,7 @@ export default async function LocaleLayout({
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
             <GlobalErrorListener />
+            <InitialLoader />
             {children}
           </AuthProvider>
         </NextIntlClientProvider>

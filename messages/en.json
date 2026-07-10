@@ -9,7 +9,8 @@
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
     "menuLabel": "Main menu",
-    "empty": "No featured artists yet."
+    "empty": "No featured artists yet.",
+    "swipeHint": "Swipe to explore"
   },
   "language": {
     "label": "Language",
@@ -195,9 +196,9 @@
   },
   "home": {
     "tagline": "Music production company · Barranquilla & Bogotá",
-    "kicker": "Music production",
-    "heroTitle": "Sound is vision",
-    "heroSubtitle": "Crafting sounds. Building emotion. Telling stories.",
+    "kicker": "Music distribution",
+    "heroTitle": "Sound is <br></br>vision",
+    "heroSubtitle": "Art begins where the fear <br></br>of expression ends.",
     "exploreWork": "Explore our work",
     "follow": "Follow us",
     "heroHeadline": "We produce your",
@@ -231,12 +232,14 @@
   },
   "artistsPage": {
     "metaTitle": "Artists — Only G Music",
-    "metaDesc": "The Only G roster: the artists who make the sound.",
+    "metaDesc": "Discover the artists and the sound they create.",
     "title": "Artists",
-    "intro": "The Only G roster. Meet the ones who make the sound.",
+    "kicker": "Talent on stage",
+    "intro": "Discover the artists and the sound they create.",
     "back": "Home",
     "createProfile": "Are you an artist? Create your profile",
-    "editProfile": "Edit your profile"
+    "editProfile": "Edit your profile",
+    "viewProfile": "View profile"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",
@@ -263,8 +266,9 @@
     "intro": "Here will live Only G's tours, dates and live experiences."
   },
   "adminDashboard": {
-    "eyebrow": "Admin",
-    "title": "Panel",
+    "eyebrow": "Administration",
+    "title": "Control Panel",
+    "subtitle": "Manage artists, bookings, finances and operations for Only G Music.",
     "summary": "{quotesCount, plural, one {# quote} other {# quotes}} pending reply · {paymentsCount, plural, one {# payment} other {# payments}} to review.",
     "viewFinances": "View finances →",
     "viewProfiles": "Profiles →",
@@ -280,7 +284,39 @@
     "viewExpenses": "Expenses →",
     "viewBalance": "Balance →",
     "viewPaymentsConfig": "Payment details →",
-    "viewEstudios": "Studios →"
+    "viewEstudios": "Studios →",
+    "statBookings": "Active bookings",
+    "statPayments": "Pending payments",
+    "statQuotes": "Quotes",
+    "statPendingResponse": "Pending reply",
+    "quickTitle": "Quick access",
+    "quickFinanzasSub": "Income and payments",
+    "quickArtistasSub": "Profiles and contracts",
+    "quickProductoresSub": "Producer management",
+    "quickEstudiosSub": "Rooms and availability",
+    "quickPagosSub": "Methods and details",
+    "quickCotizacionesSub": "Requests and quotes",
+    "bookingsActive": "Active bookings",
+    "viewAll": "View all",
+    "activityTitle": "Recent activity",
+    "viewAllActivity": "View all",
+    "activityQuote": "New quote · {name}",
+    "activityBooking": "Booking · {name}",
+    "noActivity": "No recent activity."
+  },
+  "adminNav": {
+    "panel": "Control Panel",
+    "back": "Back",
+    "section": "Management",
+    "finanzas": "Finances",
+    "artistas": "Artists",
+    "productores": "Producers",
+    "estudios": "Studios",
+    "cotizaciones": "Quotes",
+    "pagos": "Payments",
+    "roleAdmin": "Administrator",
+    "helpTitle": "Need help?",
+    "helpText": "Support available 24/7."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
@@ -635,7 +671,14 @@
   "adminPerfiles": {
     "backToAdmin": "← Admin panel",
     "title": "Profiles",
-    "descripcion": "Your full showcase. Create filler profiles, activate or deactivate membership, edit, reorder with ↑/↓ and mark the <strong>featured</strong> ones (max. {max}). Profiles without active membership show in gray.",
+    "descripcion": "Your showcase. Search, activate or deactivate membership, edit and mark the <strong>featured</strong> ones (max. {max}). Use “Curate showcase” to order the ones shown first. Profiles without active membership show in gray.",
+    "buscarPerfil": "Search by name…",
+    "curarEscaparate": "Curate showcase",
+    "curarTitle": "Showcase order",
+    "curarNota": "These are the ones shown first in the showcase; the rest appear by date.",
+    "curarVacio": "No visible profiles yet.",
+    "curarCerrar": "Close",
+    "errorCurar": "Could not save the order.",
     "crearMock": "Create mock",
     "sinPerfiles": "No profiles created yet.",
     "destacadosContador": "Featured: {count}/{max}",

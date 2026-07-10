@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
 import {
@@ -34,6 +33,7 @@ import {
   confirmarOcurrencia,
 } from "../lib/movimientos-repo";
 import { AddMovimientoModal } from "./AddMovimientoModal";
+import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 
 type PeriodoKey = "mes" | "anio" | "todo";
 const PERIODOS: PeriodoKey[] = ["mes", "anio", "todo"];
@@ -136,304 +136,313 @@ export function AdminGastos({ embedded = false }: { embedded?: boolean } = {}) {
     anularTarget != null && anularTarget.recurrencia !== "unico";
 
   return (
-    <div
-      className={
-        embedded ? "" : "mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12"
-      }
-    >
+    <div className={embedded ? "" : "pb-24"}>
       {!embedded && (
-        <Link
-          href="/admin"
-          className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
-        >
-          {t("adminGastos.backToAdmin")}
-        </Link>
+        <AdminPageHeader
+          eyebrow={t("adminDashboard.eyebrow")}
+          title={t("adminGastos.title")}
+          subtitle={t("adminGastos.intro")}
+        />
       )}
 
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
-            {t("adminGastos.title")}
-          </h1>
-          <p className="text-silver-300 mt-2 max-w-xl">
-            {t("adminGastos.intro")}
-          </p>
-        </div>
-        <GlassButton
-          onClick={() => setShowAdd(true)}
-          className="!text-amethyst-200"
+      <div className={embedded ? "" : "px-6 sm:px-10"}>
+        <div
+          className={
+            embedded
+              ? "flex flex-wrap items-end justify-between gap-4"
+              : "flex justify-end"
+          }
         >
-          <PlusIcon className="size-4" />
-          {t("adminGastos.addButton")}
-        </GlassButton>
-      </div>
-
-      {error && (
-        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
-
-      {loading ? (
-        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
-      ) : (
-        <>
-          {/* Cola: por confirmar */}
-          {pendientes.length > 0 && (
-            <section className="mt-8 rounded-2xl border border-amber-300/30 bg-amber-500/[0.08] p-5">
-              <h2 className="font-narrow text-xl font-bold text-amber-100 uppercase">
-                {t("adminGastos.toConfirm", { count: pendientes.length })}
-              </h2>
-              <p className="mt-1 text-sm text-amber-100/70">
-                {t("adminGastos.toConfirmHint")}
+          {embedded && (
+            <div>
+              <h1 className="font-narrow text-3xl font-bold text-white uppercase sm:text-4xl">
+                {t("adminGastos.title")}
+              </h1>
+              <p className="text-silver-300 mt-2 max-w-xl text-sm">
+                {t("adminGastos.intro")}
               </p>
-              <ul className="mt-4 flex flex-col gap-2">
-                {pendientes.map((o) => {
-                  const key = `${o.movimientoId}:${o.clave}`;
-                  const busy = confirming.has(key);
-                  return (
+            </div>
+          )}
+          <GlassButton
+            onClick={() => setShowAdd(true)}
+            className="!text-amethyst-200"
+          >
+            <PlusIcon className="size-4" />
+            {t("adminGastos.addButton")}
+          </GlassButton>
+        </div>
+
+        {error && (
+          <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
+
+        {loading ? (
+          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+        ) : (
+          <>
+            {/* Cola: por confirmar */}
+            {pendientes.length > 0 && (
+              <section className="mt-8 rounded-2xl border border-amber-300/30 bg-amber-500/[0.08] p-5 backdrop-blur-sm">
+                <h2 className="font-narrow text-xl font-bold text-amber-100 uppercase">
+                  {t("adminGastos.toConfirm", { count: pendientes.length })}
+                </h2>
+                <p className="mt-1 text-sm text-amber-100/70">
+                  {t("adminGastos.toConfirmHint")}
+                </p>
+                <ul className="mt-4 flex flex-col gap-2">
+                  {pendientes.map((o) => {
+                    const key = `${o.movimientoId}:${o.clave}`;
+                    const busy = confirming.has(key);
+                    return (
+                      <li
+                        key={key}
+                        className={`${adminInner} flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3`}
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold text-white">
+                            {o.concepto}
+                          </p>
+                          <p className="text-silver-400 text-sm">
+                            {fechaCorta(o.fecha, locale)} · {formatCOP(o.monto)}{" "}
+                            · {t(`adminGastos.categoria.${o.categoria}`)}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <GlassButton
+                            onClick={() => confirmar(o, "pagado")}
+                            disabled={busy}
+                            className="!text-emerald-300"
+                          >
+                            {busy ? (
+                              <SpinnerIcon className="size-4 animate-spin" />
+                            ) : (
+                              <CheckIcon className="size-4" />
+                            )}
+                            {t("adminGastos.confirmYes")}
+                          </GlassButton>
+                          <GlassButton
+                            onClick={() => confirmar(o, "no_pagado")}
+                            disabled={busy}
+                            className="!text-silver-300"
+                          >
+                            <CloseIcon className="size-4" />
+                            {t("adminGastos.confirmNo")}
+                          </GlassButton>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+
+            {/* Selector de periodo */}
+            <div className="mt-8 flex flex-wrap items-center gap-2">
+              {PERIODOS.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setPeriodoKey(k)}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
+                    periodoKey === k
+                      ? "border-amethyst-300 bg-amethyst-500/15 text-white"
+                      : "text-silver-300 border-white/15 hover:border-white/30 hover:text-white"
+                  }`}
+                >
+                  {t(`adminFinanzas.period.${k}`)}
+                </button>
+              ))}
+            </div>
+
+            {/* Resumen */}
+            <div className={`${adminCard} mt-4 grid gap-4 p-5 sm:grid-cols-3`}>
+              <div className="border-amethyst-300/30 bg-amethyst-500/10 rounded-xl border p-4">
+                <p className="text-amethyst-200 text-xs tracking-[2px] uppercase">
+                  {t("adminGastos.totalLabel")}
+                </p>
+                <p className="font-narrow mt-1 text-3xl font-bold text-white">
+                  {formatCOP(pl.gastos)}
+                </p>
+              </div>
+              <div className={`${adminInner} rounded-xl p-4`}>
+                <p className="text-silver-400 text-xs tracking-[2px] uppercase">
+                  {t("adminGastos.count")}
+                </p>
+                <p className="font-narrow mt-1 text-2xl font-bold text-white">
+                  {contables.length}
+                </p>
+              </div>
+              <div className={`${adminInner} rounded-xl p-4`}>
+                <p className="text-silver-400 text-xs tracking-[2px] uppercase">
+                  {t("adminGastos.recurringActive")}
+                </p>
+                <p className="font-narrow mt-1 text-2xl font-bold text-white">
+                  {recurrentes.length}
+                </p>
+              </div>
+            </div>
+
+            {/* Gastos recurrentes (definiciones) */}
+            {recurrentes.length > 0 && (
+              <section className={`${adminCard} mt-10 p-5`}>
+                <h2 className="font-narrow text-2xl font-bold text-white uppercase">
+                  {t("adminGastos.recurring")}
+                </h2>
+                <ul className="mt-4 flex flex-col gap-2">
+                  {recurrentes.map((m) => (
                     <li
-                      key={key}
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                      key={m.id}
+                      className={`${adminInner} flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3`}
                     >
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-white">
-                          {o.concepto}
+                          {m.concepto}{" "}
+                          <span className="text-amethyst-200 text-xs font-normal">
+                            · {t(`adminGastos.recurrencia.${m.recurrencia}`)}
+                          </span>
                         </p>
                         <p className="text-silver-400 text-sm">
-                          {fechaCorta(o.fecha, locale)} · {formatCOP(o.monto)} ·{" "}
-                          {t(`adminGastos.categoria.${o.categoria}`)}
+                          {formatCOP(m.monto)} ·{" "}
+                          {t(`adminGastos.categoria.${m.categoria}`)} ·{" "}
+                          {t("adminGastos.since", {
+                            date: fechaCorta(m.fecha, locale),
+                          })}
+                          {m.recurrenciaHasta
+                            ? ` → ${fechaCorta(m.recurrenciaHasta, locale)}`
+                            : ""}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <GlassButton
-                          onClick={() => confirmar(o, "pagado")}
-                          disabled={busy}
-                          className="!text-emerald-300"
-                        >
-                          {busy ? (
-                            <SpinnerIcon className="size-4 animate-spin" />
-                          ) : (
-                            <CheckIcon className="size-4" />
-                          )}
-                          {t("adminGastos.confirmYes")}
-                        </GlassButton>
-                        <GlassButton
-                          onClick={() => confirmar(o, "no_pagado")}
-                          disabled={busy}
-                          className="!text-silver-300"
-                        >
-                          <CloseIcon className="size-4" />
-                          {t("adminGastos.confirmNo")}
-                        </GlassButton>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAnularTarget(m);
+                          setAnularMotivo("");
+                        }}
+                        className="text-silver-300 shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide uppercase transition hover:bg-red-500/10 hover:text-red-300"
+                      >
+                        {t("adminGastos.stopSeries")}
+                      </button>
                     </li>
-                  );
-                })}
-              </ul>
-            </section>
-          )}
-
-          {/* Selector de periodo */}
-          <div className="mt-8 flex flex-wrap items-center gap-2">
-            {PERIODOS.map((k) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setPeriodoKey(k)}
-                className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
-                  periodoKey === k
-                    ? "border-amethyst-300 bg-amethyst-500/15 text-white"
-                    : "text-silver-300 border-white/15 hover:border-white/30 hover:text-white"
-                }`}
-              >
-                {t(`adminFinanzas.period.${k}`)}
-              </button>
-            ))}
-          </div>
-
-          {/* Resumen */}
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div className="border-amethyst-300/30 bg-amethyst-500/10 rounded-2xl border p-5">
-              <p className="text-amethyst-200 text-xs tracking-[2px] uppercase">
-                {t("adminGastos.totalLabel")}
-              </p>
-              <p className="font-narrow mt-1 text-3xl font-bold text-white">
-                {formatCOP(pl.gastos)}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
-                {t("adminGastos.count")}
-              </p>
-              <p className="font-narrow mt-1 text-2xl font-bold text-white">
-                {contables.length}
-              </p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <p className="text-silver-400 text-xs tracking-[2px] uppercase">
-                {t("adminGastos.recurringActive")}
-              </p>
-              <p className="font-narrow mt-1 text-2xl font-bold text-white">
-                {recurrentes.length}
-              </p>
-            </div>
-          </div>
-
-          {/* Gastos recurrentes (definiciones) */}
-          {recurrentes.length > 0 && (
-            <section className="mt-10">
-              <h2 className="font-narrow text-2xl font-bold text-white uppercase">
-                {t("adminGastos.recurring")}
-              </h2>
-              <ul className="mt-4 flex flex-col gap-2">
-                {recurrentes.map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-white">
-                        {m.concepto}{" "}
-                        <span className="text-amethyst-200 text-xs font-normal">
-                          · {t(`adminGastos.recurrencia.${m.recurrencia}`)}
-                        </span>
-                      </p>
-                      <p className="text-silver-400 text-sm">
-                        {formatCOP(m.monto)} ·{" "}
-                        {t(`adminGastos.categoria.${m.categoria}`)} ·{" "}
-                        {t("adminGastos.since", {
-                          date: fechaCorta(m.fecha, locale),
-                        })}
-                        {m.recurrenciaHasta
-                          ? ` → ${fechaCorta(m.recurrenciaHasta, locale)}`
-                          : ""}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAnularTarget(m);
-                        setAnularMotivo("");
-                      }}
-                      className="text-silver-300 shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wide uppercase transition hover:bg-red-500/10 hover:text-red-300"
-                    >
-                      {t("adminGastos.stopSeries")}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* Egresos del periodo (contabilizados) */}
-          <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
-              {t("adminGastos.expensesInPeriod")}
-            </h2>
-            {contables.length === 0 ? (
-              <p className="text-silver-400 mt-2">{t("adminGastos.empty")}</p>
-            ) : (
-              <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-                <table className="w-full min-w-[44rem] text-left text-sm">
-                  <thead className="text-silver-400 bg-white/[0.03] text-xs tracking-wide uppercase">
-                    <tr>
-                      <th className="px-4 py-3">{t("adminGastos.colDate")}</th>
-                      <th className="px-4 py-3">
-                        {t("adminGastos.colConcept")}
-                      </th>
-                      <th className="px-4 py-3">
-                        {t("adminGastos.colCategory")}
-                      </th>
-                      <th className="px-4 py-3 text-right">
-                        {t("adminGastos.colAmount")}
-                      </th>
-                      <th className="px-4 py-3 text-right">
-                        {t("adminGastos.colActions")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {contables.map((o) => {
-                      const mov = movimientos.find(
-                        (m) => m.id === o.movimientoId,
-                      );
-                      return (
-                        <tr key={`${o.movimientoId}:${o.clave ?? o.fecha}`}>
-                          <td className="text-silver-400 px-4 py-3">
-                            {fechaCorta(o.fecha, locale)}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-silver-100 flex items-center gap-2">
-                              <span className="truncate">{o.concepto}</span>
-                              {o.recurrente && (
-                                <span
-                                  className="bg-amethyst-500/20 text-amethyst-200 shrink-0 rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase"
-                                  title={t("adminGastos.recurringTag")}
-                                >
-                                  ↻
-                                </span>
-                              )}
-                            </span>
-                          </td>
-                          <td className="text-silver-300 px-4 py-3">
-                            {t(`adminGastos.categoria.${o.categoria}`)}
-                          </td>
-                          <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
-                            {formatCOP(o.monto)}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {!o.recurrente && mov && (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setAnularTarget(mov);
-                                  setAnularMotivo("");
-                                }}
-                                aria-label={t("adminGastos.void")}
-                                className="text-silver-400 inline-flex size-8 items-center justify-center rounded-full transition hover:bg-red-500/10 hover:text-red-300"
-                              >
-                                <TrashIcon className="size-4" />
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                  ))}
+                </ul>
+              </section>
             )}
-          </section>
 
-          {/* Desglose por categoría */}
-          {pl.gastosPorCategoria.length > 0 && (
-            <section className="mt-10">
+            {/* Egresos del periodo (contabilizados) */}
+            <section className={`${adminCard} mt-10 p-5`}>
               <h2 className="font-narrow text-2xl font-bold text-white uppercase">
-                {t("adminGastos.byCategory")}
+                {t("adminGastos.expensesInPeriod")}
               </h2>
-              <div className="mt-4 flex flex-col gap-2">
-                {pl.gastosPorCategoria.map((c) => (
-                  <div key={c.categoria} className="flex items-center gap-3">
-                    <span className="text-silver-300 w-40 shrink-0 truncate text-sm">
-                      {t(`adminGastos.categoria.${c.categoria}`)}
-                    </span>
-                    <div className="h-6 flex-1 overflow-hidden rounded bg-white/5">
-                      <div
-                        className="from-silver-100 to-amethyst-300 h-full rounded bg-gradient-to-r"
-                        style={{ width: `${(c.monto / maxCat) * 100}%` }}
-                      />
-                    </div>
-                    <span className="w-32 shrink-0 text-right text-sm font-semibold text-white tabular-nums">
-                      {formatCOP(c.monto)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              {contables.length === 0 ? (
+                <p className="text-silver-400 mt-2">{t("adminGastos.empty")}</p>
+              ) : (
+                <div
+                  className={`${adminInner} mt-4 overflow-x-auto rounded-xl`}
+                >
+                  <table className="w-full min-w-[44rem] text-left text-sm">
+                    <thead className="text-silver-400 bg-white/[0.03] text-xs tracking-wide uppercase">
+                      <tr>
+                        <th className="px-4 py-3">
+                          {t("adminGastos.colDate")}
+                        </th>
+                        <th className="px-4 py-3">
+                          {t("adminGastos.colConcept")}
+                        </th>
+                        <th className="px-4 py-3">
+                          {t("adminGastos.colCategory")}
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          {t("adminGastos.colAmount")}
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          {t("adminGastos.colActions")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {contables.map((o) => {
+                        const mov = movimientos.find(
+                          (m) => m.id === o.movimientoId,
+                        );
+                        return (
+                          <tr key={`${o.movimientoId}:${o.clave ?? o.fecha}`}>
+                            <td className="text-silver-400 px-4 py-3">
+                              {fechaCorta(o.fecha, locale)}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-silver-100 flex items-center gap-2">
+                                <span className="truncate">{o.concepto}</span>
+                                {o.recurrente && (
+                                  <span
+                                    className="bg-amethyst-500/20 text-amethyst-200 shrink-0 rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase"
+                                    title={t("adminGastos.recurringTag")}
+                                  >
+                                    ↻
+                                  </span>
+                                )}
+                              </span>
+                            </td>
+                            <td className="text-silver-300 px-4 py-3">
+                              {t(`adminGastos.categoria.${o.categoria}`)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
+                              {formatCOP(o.monto)}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {!o.recurrente && mov && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setAnularTarget(mov);
+                                    setAnularMotivo("");
+                                  }}
+                                  aria-label={t("adminGastos.void")}
+                                  className="text-silver-400 inline-flex size-8 items-center justify-center rounded-full transition hover:bg-red-500/10 hover:text-red-300"
+                                >
+                                  <TrashIcon className="size-4" />
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </section>
-          )}
-        </>
-      )}
+
+            {/* Desglose por categoría */}
+            {pl.gastosPorCategoria.length > 0 && (
+              <section className={`${adminCard} mt-10 p-5`}>
+                <h2 className="font-narrow text-2xl font-bold text-white uppercase">
+                  {t("adminGastos.byCategory")}
+                </h2>
+                <div className="mt-4 flex flex-col gap-2">
+                  {pl.gastosPorCategoria.map((c) => (
+                    <div key={c.categoria} className="flex items-center gap-3">
+                      <span className="text-silver-300 w-40 shrink-0 truncate text-sm">
+                        {t(`adminGastos.categoria.${c.categoria}`)}
+                      </span>
+                      <div className="h-6 flex-1 overflow-hidden rounded bg-white/5">
+                        <div
+                          className="from-silver-100 to-amethyst-300 h-full rounded bg-gradient-to-r"
+                          style={{ width: `${(c.monto / maxCat) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-32 shrink-0 text-right text-sm font-semibold text-white tabular-nums">
+                        {formatCOP(c.monto)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+      </div>
 
       <AddMovimientoModal
         open={showAdd}

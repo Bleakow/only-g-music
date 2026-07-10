@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { SpinnerIcon } from "@/components/icons";
 import type { DestinoPago } from "@/domain/payment-destination";
@@ -11,6 +10,7 @@ import {
   setCompanyPaymentDest,
 } from "@/features/conversations/lib/payment-config-repo";
 import { DestinoPagoFields } from "./DestinoPagoFields";
+import { AdminPageHeader, adminCard } from "./admin-ui";
 
 /**
  * Datos de pago por DEFECTO de la compañía (SOLO admin) — el destino que ve el
@@ -70,50 +70,48 @@ export function AdminConfigPagos() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
-      >
-        {t("adminConfigPagos.backToAdmin")}
-      </Link>
+    <main className="pb-24">
+      <AdminPageHeader
+        eyebrow={t("adminDashboard.eyebrow")}
+        title={t("adminConfigPagos.title")}
+        subtitle={t("adminConfigPagos.intro")}
+      />
 
-      <h1 className="font-narrow mt-4 text-5xl font-bold uppercase sm:text-6xl">
-        {t("adminConfigPagos.title")}
-      </h1>
-      <p className="text-silver-300 mt-2 max-w-xl">
-        {t("adminConfigPagos.intro")}
-      </p>
+      <div className="px-6 sm:px-10">
+        {loading ? (
+          <p className="text-silver-300">{t("common.loading")}</p>
+        ) : (
+          <div className={`${adminCard} max-w-2xl p-5 sm:p-6`}>
+            <DestinoPagoFields
+              value={form}
+              onChange={patch}
+              onError={setError}
+            />
 
-      {loading ? (
-        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
-      ) : (
-        <div className="mt-8">
-          <DestinoPagoFields value={form} onChange={patch} onError={setError} />
-
-          {error && (
-            <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-4 flex items-center gap-3">
-            <GlassButton
-              onClick={guardar}
-              disabled={saving}
-              className="!text-amethyst-200"
-            >
-              {saving && <SpinnerIcon className="size-4 animate-spin" />}
-              {t("adminConfigPagos.save")}
-            </GlassButton>
-            {saved && (
-              <span className="text-sm text-emerald-300">
-                {t("adminConfigPagos.saved")}
-              </span>
+            {error && (
+              <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {error}
+              </p>
             )}
+
+            <div className="mt-4 flex items-center gap-3">
+              <GlassButton
+                onClick={guardar}
+                disabled={saving}
+                className="!text-amethyst-200"
+              >
+                {saving && <SpinnerIcon className="size-4 animate-spin" />}
+                {t("adminConfigPagos.save")}
+              </GlassButton>
+              {saved && (
+                <span className="text-sm text-emerald-300">
+                  {t("adminConfigPagos.saved")}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </main>
   );
 }

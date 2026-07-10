@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { EditIcon, SpinnerIcon } from "@/components/icons";
@@ -15,6 +14,7 @@ import {
 } from "@/features/sedes/lib/sedes-repo";
 import { DestinoPagoFields } from "./DestinoPagoFields";
 import { SedeProductores } from "./SedeProductores";
+import { AdminPageHeader, adminCard } from "./admin-ui";
 
 function Field({
   label,
@@ -36,7 +36,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="mt-1 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/35"
+        className="mt-1 w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white ring-1 ring-white/20 transition outline-none ring-inset placeholder:text-white/35 focus:ring-white/50"
       />
     </label>
   );
@@ -135,60 +135,54 @@ export function AdminEstudios() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-6 pt-28 pb-24 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
-      >
-        {t("adminEstudios.backToAdmin")}
-      </Link>
+    <main className="pb-24">
+      <AdminPageHeader
+        eyebrow={t("adminDashboard.eyebrow")}
+        title={t("adminEstudios.title")}
+        subtitle={t("adminEstudios.intro")}
+      />
 
-      <h1 className="font-narrow mt-4 text-5xl font-bold uppercase sm:text-6xl">
-        {t("adminEstudios.title")}
-      </h1>
-      <p className="text-silver-300 mt-2 max-w-xl">
-        {t("adminEstudios.intro")}
-      </p>
+      <div className="px-6 sm:px-10">
+        {error && !editId && (
+          <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
-      {error && !editId && (
-        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
-
-      {loading ? (
-        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
-      ) : (
-        <ul className="mt-8 flex flex-col gap-3">
-          {items.map((s) => (
-            <li
-              key={s.id}
-              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"
-            >
-              <div className="min-w-0">
-                <p className="font-semibold text-white">{s.nombre}</p>
-                <p className="text-silver-400 truncate text-sm">
-                  {s.ciudad} · {s.direccion}
-                </p>
-                <p className="text-silver-500 text-xs">
-                  {s.pago
-                    ? t("adminEstudios.pagoPropio")
-                    : t("adminEstudios.pagoDefault")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => abrirEditar(s)}
-                aria-label={t("adminEstudios.edit")}
-                title={t("adminEstudios.edit")}
-                className="text-silver-200 flex size-9 shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+        {loading ? (
+          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+        ) : (
+          <ul className="mt-8 flex flex-col gap-3">
+            {items.map((s) => (
+              <li
+                key={s.id}
+                className={`${adminCard} flex items-center justify-between gap-3 p-4`}
               >
-                <EditIcon className="size-4" />
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <div className="min-w-0">
+                  <p className="font-semibold text-white">{s.nombre}</p>
+                  <p className="text-silver-400 truncate text-sm">
+                    {s.ciudad} · {s.direccion}
+                  </p>
+                  <p className="text-silver-500 text-xs">
+                    {s.pago
+                      ? t("adminEstudios.pagoPropio")
+                      : t("adminEstudios.pagoDefault")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => abrirEditar(s)}
+                  aria-label={t("adminEstudios.edit")}
+                  title={t("adminEstudios.edit")}
+                  className="text-silver-200 flex size-9 shrink-0 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                >
+                  <EditIcon className="size-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <GlassModal
         open={!!editId}

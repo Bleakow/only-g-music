@@ -15,9 +15,10 @@ import {
 import { tiempoRelativo } from "../lib/tiempo-relativo";
 import { activarPush, pushDisponible, permisoPush } from "../lib/push";
 
-// Extremo IZQUIERDO de la barra superior: la campanita va primera y el avatar a
-// su derecha. El menú hamburguesa vive en el lado opuesto (derecha).
-const WRAP = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
+// Posición del conjunto. `left` (default): extremo IZQUIERDO de la home (la
+// campanita primera, el avatar a su derecha). `right`: topbar del panel admin.
+const WRAP_LEFT = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
+const WRAP_RIGHT = "fixed top-4 right-6 z-[105] sm:top-5 sm:right-12";
 
 /**
  * Campanita de notificaciones (estilo Inbox): contador de no leídas en tiempo
@@ -25,7 +26,11 @@ const WRAP = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
  * donde se actúa. El texto se traduce al idioma ACTUAL desde `evento`+`params`
  * (no se guarda resuelto). Solo se muestra con sesión iniciada.
  */
-export function NotificationBell() {
+export function NotificationBell({
+  align = "left",
+}: {
+  align?: "left" | "right";
+}) {
   const { user } = useAuth();
   const t = useTranslations();
   const locale = useLocale();
@@ -106,8 +111,10 @@ export function NotificationBell() {
     }
   }
 
+  const wrap = align === "right" ? WRAP_RIGHT : WRAP_LEFT;
+
   return (
-    <div ref={ref} className={WRAP}>
+    <div ref={ref} className={wrap}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -124,7 +131,11 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="fixed top-[4.5rem] left-3 w-[min(22rem,calc(100vw-1.5rem))] sm:top-[5.25rem] sm:left-4">
+        <div
+          className={`fixed top-[4.5rem] w-[min(22rem,calc(100vw-1.5rem))] sm:top-[5.25rem] ${
+            align === "right" ? "right-3 sm:right-4" : "left-3 sm:left-4"
+          }`}
+        >
           <div
             className={`${glassSurfaceMenu} animate-panel-reveal overflow-hidden rounded-2xl`}
           >

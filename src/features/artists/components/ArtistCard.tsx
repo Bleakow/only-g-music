@@ -6,6 +6,7 @@ import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import type { Artist } from "@/domain/artist";
 import styles from "./ArtistCard.module.css";
+import { ArrowLeftIcon } from "@/components/icons";
 
 export function ArtistCard({ artist }: { artist: Artist }) {
   const t = useTranslations();
@@ -47,7 +48,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
       data-active={active}
       onMouseEnter={() => setActive(true)}
       onMouseLeave={() => setActive(false)}
-      className={`${styles.card} relative block aspect-[3/4] overflow-hidden rounded-lg bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
+      className={`${styles.card} group relative block aspect-[4/5] overflow-hidden rounded-xl bg-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white`}
     >
       {artist.video ? (
         <video
@@ -65,26 +66,52 @@ export function ArtistCard({ artist }: { artist: Artist }) {
           src={artist.image}
           alt={t("artistProfile.portraitAlt", { name: artist.name })}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
           className={`${styles.media} ${styles.pan} object-cover`}
         />
       )}
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+      {/* Degradado para legibilidad del texto (más denso abajo). */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
 
+      {/* Punto de acento del artista. */}
       <span
-        className="absolute right-4 top-4 size-2 rounded-full"
+        className="absolute top-3 right-3 size-2 rounded-full ring-2 ring-black/25"
         style={{ backgroundColor: artist.accent }}
         aria-hidden="true"
       />
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5">
-        <p className="text-xs uppercase tracking-[3px] text-white/70">
-          {artist.genre}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
+        {/* Meta: género (teñido con su acento) · ciudad. */}
+        <p className="flex items-center gap-1.5 text-[0.62rem] font-medium tracking-[2.5px] uppercase">
+          <span style={{ color: artist.accent }}>{artist.genre}</span>
+          {artist.city && (
+            <>
+              <span className="text-white/30">·</span>
+              <span className="text-white/70">{artist.city}</span>
+            </>
+          )}
         </p>
-        <h3 className="font-narrow text-3xl font-bold uppercase leading-none text-white drop-shadow-[0_2px_8px_#000]">
+
+        <h3 className="font-narrow mt-0.5 text-2xl leading-none font-bold text-white uppercase drop-shadow-[0_2px_8px_#000]">
           {artist.name}
         </h3>
+
+        {/* Reveal al enfocar (hover en desktop / centrado en móvil): tagline +
+            botón "Ver perfil". El grid 0fr→1fr anima la altura con suavidad. */}
+        <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-300 group-data-[active=true]:grid-rows-[1fr] group-data-[active=true]:opacity-100">
+          <div className="overflow-hidden">
+            {artist.tagline && (
+              <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-white/65">
+                {artist.tagline}
+              </p>
+            )}
+            <span className="mt-2.5 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[0.65rem] font-medium tracking-[1.5px] text-white uppercase backdrop-blur-sm">
+              {t("artistsPage.viewProfile")}
+              <ArrowLeftIcon className="size-3 rotate-180" />
+            </span>
+          </div>
+        </div>
       </div>
     </Link>
   );

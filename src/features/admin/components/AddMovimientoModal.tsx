@@ -16,12 +16,12 @@ import {
 } from "@/domain/contabilidad";
 import type { SedeId } from "@/domain/sede";
 import { addMovimiento } from "../lib/movimientos-repo";
+import { adminInput, adminLabel } from "./admin-ui";
 
 const SEDES: SedeId[] = ["barranquilla", "bogota"];
 
-const inputCls =
-  "w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40";
-const labelCls = "mb-1 block text-xs uppercase tracking-wide text-silver-400";
+const inputCls = adminInput;
+const labelCls = adminLabel;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {
@@ -186,15 +186,17 @@ export function AddMovimientoModal({
         </div>
 
         {recurrencia !== "unico" && (
-          <div className="rounded-lg border border-amethyst-300/20 bg-amethyst-500/[0.06] p-3">
-            <label className={labelCls}>{t("adminGastos.add.recurUntil")}</label>
+          <div className="border-amethyst-300/20 bg-amethyst-500/[0.06] rounded-lg border p-3">
+            <label className={labelCls}>
+              {t("adminGastos.add.recurUntil")}
+            </label>
             <input
               type="date"
               value={hasta}
               onChange={(e) => setHasta(e.target.value)}
               className={inputCls}
             />
-            <p className="mt-2 text-xs text-silver-400">
+            <p className="text-silver-400 mt-2 text-xs">
               {t("adminGastos.add.recurHint")}
             </p>
           </div>
@@ -231,7 +233,7 @@ export function AddMovimientoModal({
 
         <div>
           <label className={labelCls}>{t("adminGastos.add.receipt")}</label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-sm text-silver-300 transition hover:border-white/40 hover:text-white">
+          <label className="text-silver-300 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-sm transition hover:border-white/40 hover:text-white">
             <ImageIcon className="size-4" />
             <span className="truncate">
               {comprobante

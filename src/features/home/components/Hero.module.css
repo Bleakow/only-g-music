@@ -20,7 +20,7 @@
 
 .heroKeyLogo {
   position: absolute;
-  top: 6%;
+  top: 2.5%;
   left: 50%;
   width: clamp(240px, 60vw, 360px);
   height: auto;

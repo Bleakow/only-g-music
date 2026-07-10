@@ -72,7 +72,7 @@ export function Hero() {
             "#logo-mask",
             {
               maskSize: "clamp(20vh, 25%, 30vh)",
-              maskPosition: isDesktop ? "center 5%" : "center 12%",
+              maskPosition: isDesktop ? "center 3%" : "center 12%",
               ease: "expo.out",
             },
             0.15,
@@ -136,13 +136,16 @@ export function Hero() {
             {/* Fondo responsive: imagen dedicada para móvil (vertical) y desktop.
                 Nombres con espacios → URL-encoded (los espacios en srcSet rompen). */}
             <picture>
+              {/* ?v=N: cache-bust puntual al reemplazar la foto (el objeto viejo
+                  quedó cacheado con max-age largo). Súbelo si vuelves a cambiarla
+                  y no propaga solo en ~5 min. */}
               <source
                 media="(max-width: 640px)"
-                srcSet={`${HERO_IMG}/web-principal-mobile.png`}
+                srcSet={`${HERO_IMG}/web-principal-mobile.png?v=2`}
               />
               <img
                 id="hero-key-background"
-                src={`${HERO_IMG}/web-principal.png`}
+                src={`${HERO_IMG}/web-principal.png?v=2`}
                 alt=""
                 className="h-full w-full object-cover"
               />
@@ -163,10 +166,14 @@ export function Hero() {
             {t("kicker")}
           </p>
           <h1 className="font-narrow mt-3 text-6xl leading-[0.9] font-bold tracking-tight text-white uppercase drop-shadow-[0_2px_14px_rgba(0,0,0,0.65)] sm:text-8xl">
-            {t("heroTitle")}
+            {t.rich("heroTitle", {
+              br: () => <br className="sm:hidden" />,
+            })}
           </h1>
           <p className="text-silver-200 mt-5 max-w-md text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:text-base">
-            {t("heroSubtitle")}
+            {t.rich("heroSubtitle", {
+              br: () => <br className="sm:hidden" />,
+            })}
           </p>
           <button
             type="button"
@@ -314,7 +321,7 @@ export function Hero() {
         <ProducerCardsStrip />
       </div>
 
-      <SiteMenu />
+      <SiteMenu showAccount />
     </div>
   );
 }

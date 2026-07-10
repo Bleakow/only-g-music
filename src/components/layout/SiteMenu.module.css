@@ -293,6 +293,13 @@
   list-style: none;
 }
 
+/* Rueda móvil de destacados (rueda + hint): oculta en desktop; se activa en el
+   media móvil. */
+.wheelWrap,
+.wheelHint {
+  display: none;
+}
+
 .item {
   display: block;
   padding: 0.25rem 0;
@@ -498,6 +505,159 @@
   .slideUp,
   .slideDown,
   .mobilePhotoImg {
+    animation: none;
+  }
+}
+
+/* ── Móvil: rueda vertical de destacados (picker estilo Apple/Spotify) ── */
+@media (max-width: 767px) {
+  /* La lista plana se reemplaza por la rueda. */
+  .list {
+    display: none;
+  }
+
+  .wheelWrap {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* Ventana de la rueda: recorta y funde arriba/abajo (señal de "hay más"). */
+  .wheel {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 12rem;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 28%,
+      #000 72%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent,
+      #000 28%,
+      #000 72%,
+      transparent
+    );
+  }
+
+  /* Pila de nombres; se traslada (inline transform) para centrar el activo. */
+  .wheelList {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .wheelItem {
+    display: flex;
+    align-items: center;
+    height: 3.4rem; /* = WHEEL_SLOT en el TSX */
+    font-family: var(--font-narrow);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: clamp(1.5rem, 6.5vw, 2.3rem);
+    line-height: 1;
+    white-space: nowrap;
+    color: #d4d4e0;
+    text-decoration: none;
+    transform-origin: left center;
+    transition:
+      opacity 0.4s ease,
+      filter 0.4s ease,
+      transform 0.4s ease,
+      color 0.3s ease;
+  }
+
+  /* Activo: iluminado (degradado claro + brillo amatista). */
+  .wheelItem.wheelActive {
+    color: transparent;
+    background: linear-gradient(135deg, #fff, #c4a5ff 70%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    filter: drop-shadow(0 0 12px rgba(196, 165, 255, 0.55));
+  }
+
+  /* Indicador vertical de posición (activo alargado). */
+  .wheelDots {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .dot,
+  .dotActive {
+    width: 5px;
+    border-radius: 9999px;
+    transition:
+      height 0.3s ease,
+      background 0.3s ease;
+  }
+
+  .dot {
+    height: 5px;
+    background: rgba(196, 165, 255, 0.3);
+  }
+
+  .dotActive {
+    height: 20px;
+    background: linear-gradient(#fff, #c4a5ff);
+    box-shadow: 0 0 8px rgba(196, 165, 255, 0.6);
+  }
+
+  /* Hint "Desliza". */
+  .wheelHint {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    margin: 0.75rem 0 0;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #9a9ab0;
+  }
+
+  .wheelArrow {
+    display: inline-block;
+    color: #c4a5ff;
+    animation: wheelBob 1.6s ease-in-out infinite;
+  }
+
+  .wheelArrow:last-child {
+    animation-delay: 0.8s;
+  }
+}
+
+@keyframes wheelBob {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wheelList,
+  .wheelItem {
+    transition: none;
+  }
+  .wheelArrow {
     animation: none;
   }
 }

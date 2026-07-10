@@ -20,7 +20,13 @@ const NAV = [
   { href: "/eventos", key: "events" },
 ] as const;
 
-export function SiteMenu() {
+export function SiteMenu({
+  showAccount = false,
+}: {
+  /** Campanita + avatar SOLO cuando es true (la ventana principal). El resto de
+   *  la web muestra únicamente la hamburguesa. */
+  showAccount?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<Artist | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -67,13 +73,19 @@ export function SiteMenu() {
 
   // Red de seguridad: al cambiar de ruta, desbloquea el scroll del fondo.
   useEffect(() => {
+    document.documentElement.style.overflow = "";
     document.body.style.overflow = "";
   }, [pathname]);
 
-  // Bloquea el scroll del fondo solo mientras está abierto.
+  // Bloquea el scroll del fondo mientras está abierto. Se bloquea en <html> Y
+  // <body>: según la página el contenedor de scroll (y su barra) es uno u otro;
+  // bloquear solo body deja la barra de <html> visible aunque no scrollee.
   useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
+    const v = open ? "hidden" : "";
+    document.documentElement.style.overflow = v;
+    document.body.style.overflow = v;
     return () => {
+      document.documentElement.style.overflow = "";
       document.body.style.overflow = "";
     };
   }, [open]);
@@ -98,13 +110,18 @@ export function SiteMenu() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
-  // Ruleta de destacados (móvil): avanza/retrocede un destacado, con loop. Sin
-  // efecto si hay menos de 2 (no hay entre qué alternar).
+  // Ruleta de destacados (móvil): avanza/retrocede un destacado. CLAMP (sin wrap)
+  // para que la rueda se traslade linealmente y no salte al llegar a los extremos.
+  // Sin efecto si hay menos de 2 (no hay entre qué alternar).
   const cycle = (dir: 1 | -1) => {
     if (featured.length < 2) return;
     setSlideDir(dir);
-    setActiveIndex((i) => (i + dir + featured.length) % featured.length);
+    setActiveIndex((i) => Math.min(Math.max(i + dir, 0), featured.length - 1));
   };
+
+  // Alto de cada slot de la rueda móvil (rem). DEBE coincidir con la altura de
+  // `.wheelItem` en el CSS para que el activo quede centrado.
+  const WHEEL_SLOT = 3.4;
 
   return (
     <>
@@ -124,9 +141,10 @@ export function SiteMenu() {
         </button>
       )}
 
-      {/* Campanita + menú de cuenta (avatar/login). Ocultos cuando el menú grande
-          o el visor de fotos están abiertos. */}
-      {!open && !viewerOpen && (
+      {/* Campanita + menú de cuenta (avatar/login): SOLO en la ventana principal
+          (el Hero pasa showAccount). Ocultos también con el menú grande o el
+          visor de fotos abiertos. */}
+      {showAccount && !open && !viewerOpen && (
         <>
           <NotificationBell />
           <UserMenu />
@@ -226,6 +244,8 @@ export function SiteMenu() {
           </div>
 
           <div className={styles.panelBody}>
+            {/* DESKTOP: lista con hover (muestra la foto del artista en el preview
+                de la izquierda). Oculta en móvil. */}
             <ul className={styles.list}>
               {featured.slice(0, 4).map((a, i) => (
                 <li key={a.slug}>
@@ -246,6 +266,80 @@ export function SiteMenu() {
                 <li className={styles.empty}>{t("empty")}</li>
               )}
             </ul>
+
+            {/* MÓVIL: rueda vertical tipo picker (activo centrado + iluminado;
+                vecinos escalados, atenuados y difuminados; máscara de blur arriba y
+                abajo). Se desliza con el gesto (cycle). Oculta en desktop. */}
+            {featured.length > 0 && (
+              <div className={styles.wheelWrap}>
+                <div className={styles.wheel}>
+                  <div
+                    className={styles.wheelList}
+                    style={{
+                      transform: `translateY(${-(
+                        activeIndex * WHEEL_SLOT +
+                        WHEEL_SLOT / 2
+                      )}rem)`,
+                    }}
+                  >
+                    {featured.slice(0, 4).map((a, i) => {
+                      const d = Math.abs(i - activeIndex);
+                      const active = d === 0;
+                      return (
+                        <Link
+                          key={a.slug}
+                          href={`/artistas/${a.slug}`}
+                          onClick={close}
+                          className={`${styles.wheelItem} ${
+                            active ? styles.wheelActive : ""
+                          }`}
+                          style={{
+                            opacity: active
+                              ? 1
+                              : d === 1
+                                ? 0.5
+                                : d === 2
+                                  ? 0.24
+                                  : 0.12,
+                            filter: active
+                              ? "none"
+                              : `blur(${Math.min(d * 1.4, 4)}px)`,
+                            transform: `scale(${Math.max(1 - d * 0.13, 0.62)})`,
+                            // Solo el activo (centrado) recibe el tap; los vecinos
+                            // difuminados no interceptan. Con teclado siguen siendo
+                            // accesibles (pointer-events no afecta al foco).
+                            pointerEvents: active ? "auto" : "none",
+                          }}
+                        >
+                          {a.name}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Indicador de posición: puntos verticales (activo alargado). */}
+                <div className={styles.wheelDots} aria-hidden="true">
+                  {featured.slice(0, 4).map((a, i) => (
+                    <span
+                      key={a.slug}
+                      className={
+                        i === activeIndex ? styles.dotActive : styles.dot
+                      }
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Hint: señala que se desliza. */}
+            {featured.length > 1 && (
+              <p className={styles.wheelHint} aria-hidden="true">
+                <span className={styles.wheelArrow}>↑</span>
+                {t("swipeHint")}
+                <span className={styles.wheelArrow}>↓</span>
+              </p>
+            )}
           </div>
 
           <div className={styles.panelFoot}>

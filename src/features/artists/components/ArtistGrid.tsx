@@ -35,7 +35,7 @@ export function ArtistGrid({ artists }: { artists: Artist[] }) {
   return (
     <div
       ref={ref}
-      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
     >
       {artists.map((artist) => (
         <div key={artist.slug} className="artist-card">

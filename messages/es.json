@@ -9,7 +9,8 @@
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "menuLabel": "Menú principal",
-    "empty": "Aún no hay destacados."
+    "empty": "Aún no hay destacados.",
+    "swipeHint": "Desliza para explorar"
   },
   "language": {
     "label": "Idioma",
@@ -195,9 +196,9 @@
   },
   "home": {
     "tagline": "Productora musical · Barranquilla & Bogotá",
-    "kicker": "Producción musical",
-    "heroTitle": "El sonido es visión",
-    "heroSubtitle": "Creando sonidos. Construyendo emoción. Contando historias.",
+    "kicker": "Distribuidora musical",
+    "heroTitle": "El sonido es <br></br>visión",
+    "heroSubtitle": "El arte comienza donde termina el <br></br>miedo a expresarse.",
     "exploreWork": "Explora nuestro trabajo",
     "follow": "Síguenos",
     "heroHeadline": "Producimos tu",
@@ -231,12 +232,14 @@
   },
   "artistsPage": {
     "metaTitle": "Artistas — Only G Music",
-    "metaDesc": "El roster de Only G: los artistas que hacen el sonido.",
+    "metaDesc": "Descubre a los artistas y el sonido que crean.",
     "title": "Artistas",
-    "intro": "El roster de Only G. Conoce a quienes hacen el sonido.",
+    "kicker": "Talento en escena",
+    "intro": "Descubre a los artistas y el sonido que crean.",
     "back": "Inicio",
     "createProfile": "¿Eres artista? Crea tu perfil",
-    "editProfile": "Edita tu perfil"
+    "editProfile": "Edita tu perfil",
+    "viewProfile": "Ver perfil"
   },
   "servicesPage": {
     "metaTitle": "Servicios — Only G Music",
@@ -263,8 +266,9 @@
     "intro": "Aquí vivirán las giras, fechas y experiencias en vivo de Only G."
   },
   "adminDashboard": {
-    "eyebrow": "Admin",
-    "title": "Panel",
+    "eyebrow": "Administración",
+    "title": "Panel de Control",
+    "subtitle": "Gestiona artistas, reservas, finanzas y operaciones de Only G Music.",
     "summary": "{quotesCount, plural, one {# cotización} other {# cotizaciones}} por responder · {paymentsCount, plural, one {# pago} other {# pagos}} por revisar.",
     "viewFinances": "Ver finanzas →",
     "viewProfiles": "Perfiles →",
@@ -280,7 +284,39 @@
     "viewExpenses": "Gastos →",
     "viewBalance": "Balance →",
     "viewPaymentsConfig": "Datos de pago →",
-    "viewEstudios": "Estudios →"
+    "viewEstudios": "Estudios →",
+    "statBookings": "Reservas activas",
+    "statPayments": "Pagos pendientes",
+    "statQuotes": "Cotizaciones",
+    "statPendingResponse": "Pendiente de respuesta",
+    "quickTitle": "Accesos rápidos",
+    "quickFinanzasSub": "Ingresos y pagos",
+    "quickArtistasSub": "Perfiles y contratos",
+    "quickProductoresSub": "Gestión de productores",
+    "quickEstudiosSub": "Salas y disponibilidad",
+    "quickPagosSub": "Métodos y datos",
+    "quickCotizacionesSub": "Solicitudes y envíos",
+    "bookingsActive": "Reservas activas",
+    "viewAll": "Ver todas",
+    "activityTitle": "Actividad reciente",
+    "viewAllActivity": "Ver todo",
+    "activityQuote": "Nueva cotización · {name}",
+    "activityBooking": "Reserva · {name}",
+    "noActivity": "Sin actividad reciente."
+  },
+  "adminNav": {
+    "panel": "Panel de Control",
+    "back": "Atrás",
+    "section": "Gestión",
+    "finanzas": "Finanzas",
+    "artistas": "Artistas",
+    "productores": "Productores",
+    "estudios": "Estudios",
+    "cotizaciones": "Cotizaciones",
+    "pagos": "Pagos",
+    "roleAdmin": "Administrador",
+    "helpTitle": "¿Necesitas ayuda?",
+    "helpText": "Soporte disponible 24/7 para ti."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -635,7 +671,14 @@
   "adminPerfiles": {
     "backToAdmin": "← Panel admin",
     "title": "Perfiles",
-    "descripcion": "Tu vitrina completa. Crea perfiles de relleno, activa o desactiva la membresía, edita, reordena con ↑/↓ y marca los <strong>destacados</strong> (máx. {max}). Los perfiles sin membresía activa salen en gris.",
+    "descripcion": "Tu vitrina. Busca, activa o desactiva la membresía, edita y marca los <strong>destacados</strong> (máx. {max}). Usa «Curar escaparate» para ordenar los primeros que se ven. Los perfiles sin membresía activa salen en gris.",
+    "buscarPerfil": "Buscar por nombre…",
+    "curarEscaparate": "Curar escaparate",
+    "curarTitle": "Orden del escaparate",
+    "curarNota": "Estos son los primeros que se ven en el escaparate; el resto aparece por fecha.",
+    "curarVacio": "No hay perfiles visibles todavía.",
+    "curarCerrar": "Cerrar",
+    "errorCurar": "No se pudo guardar el orden.",
     "crearMock": "Crear mock",
     "sinPerfiles": "Aún no hay perfiles creados.",
     "destacadosContador": "Destacados: {count}/{max}",

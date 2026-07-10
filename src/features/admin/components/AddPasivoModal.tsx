@@ -13,12 +13,12 @@ import {
 } from "@/domain/contabilidad";
 import type { SedeId } from "@/domain/sede";
 import { addPasivo } from "../lib/pasivos-repo";
+import { adminInput, adminLabel } from "./admin-ui";
 
 const SEDES: SedeId[] = ["barranquilla", "bogota"];
 
-const inputCls =
-  "w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40";
-const labelCls = "mb-1 block text-xs uppercase tracking-wide text-silver-400";
+const inputCls = adminInput;
+const labelCls = adminLabel;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {

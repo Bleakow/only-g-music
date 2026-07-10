@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { ShareIcon, SpinnerIcon } from "@/components/icons";
 import { formatCOP } from "@/domain/service";
@@ -29,6 +28,7 @@ import { AdminGastos } from "./AdminGastos";
 import { AdminBienes } from "./AdminBienes";
 import { AdminBalance } from "./AdminBalance";
 import { EstadoResultados } from "./EstadoResultados";
+import { AdminPageHeader } from "./admin-ui";
 
 type TabKey = "resultados" | "pagos" | "gastos" | "bienes" | "balance";
 const TABS: TabKey[] = ["resultados", "pagos", "gastos", "bienes", "balance"];
@@ -186,24 +186,13 @@ export function AdminContabilidad() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
+    <main className="pb-24">
+      <AdminPageHeader
+        eyebrow={t("adminDashboard.eyebrow")}
+        title={t("adminContabilidad.title")}
+        subtitle={t("adminContabilidad.intro")}
       >
-        {t("adminContabilidad.backToAdmin")}
-      </Link>
-
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
-            {t("adminContabilidad.title")}
-          </h1>
-          <p className="text-silver-300 mt-2 max-w-xl">
-            {t("adminContabilidad.intro")}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="mt-6 flex flex-wrap gap-2">
           <GlassButton onClick={compartir} disabled={!data || busy !== null}>
             {busy === "share" ? (
               <SpinnerIcon className="size-4 animate-spin" />
@@ -224,40 +213,42 @@ export function AdminContabilidad() {
             {t("adminContabilidad.downloadExcel")}
           </GlassButton>
         </div>
-      </div>
+      </AdminPageHeader>
 
-      {error && (
-        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
-
-      {/* Pestañas */}
-      <div className="mt-8 flex flex-wrap gap-2 border-b border-white/10 pb-3">
-        {TABS.map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setTab(k)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold tracking-wide uppercase transition ${
-              tab === k
-                ? "bg-amethyst-500/20 ring-amethyst-300/50 text-white ring-1 ring-inset"
-                : "text-silver-300 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            {t(`adminContabilidad.tabs.${k}`)}
-          </button>
-        ))}
-      </div>
-
-      <div className="mt-6">
-        {tab === "resultados" && (
-          <EstadoResultados txs={txs} movimientos={movs} />
+      <div className="px-6 sm:px-10">
+        {error && (
+          <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
         )}
-        {tab === "pagos" && <AdminPagos embedded />}
-        {tab === "gastos" && <AdminGastos embedded />}
-        {tab === "bienes" && <AdminBienes embedded />}
-        {tab === "balance" && <AdminBalance embedded />}
+
+        {/* Pestañas */}
+        <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
+          {TABS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold tracking-wide uppercase transition ${
+                tab === k
+                  ? "bg-amethyst-500/20 ring-amethyst-300/50 text-white ring-1 ring-inset"
+                  : "text-silver-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {t(`adminContabilidad.tabs.${k}`)}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          {tab === "resultados" && (
+            <EstadoResultados txs={txs} movimientos={movs} />
+          )}
+          {tab === "pagos" && <AdminPagos embedded />}
+          {tab === "gastos" && <AdminGastos embedded />}
+          {tab === "bienes" && <AdminBienes embedded />}
+          {tab === "balance" && <AdminBalance embedded />}
+        </div>
       </div>
     </main>
   );

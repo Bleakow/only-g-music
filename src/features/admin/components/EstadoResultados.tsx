@@ -64,12 +64,12 @@ export function EstadoResultados({
   return (
     <section className="mt-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+        <h2 className="font-narrow text-2xl font-bold text-white uppercase">
           {t("adminFinanzas.pnlTitle")}
         </h2>
         <Link
           href="/admin/gastos"
-          className="text-sm text-amethyst-200 underline-offset-4 hover:text-white hover:underline"
+          className="text-amethyst-200 text-sm underline-offset-4 hover:text-white hover:underline"
         >
           {t("adminFinanzas.manageExpenses")}
         </Link>
@@ -82,10 +82,10 @@ export function EstadoResultados({
             key={k}
             type="button"
             onClick={() => setPeriodoKey(k)}
-            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+            className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
               periodoKey === k
                 ? "border-amethyst-300 bg-amethyst-500/15 text-white"
-                : "border-white/15 text-silver-300 hover:border-white/30 hover:text-white"
+                : "text-silver-300 border-white/15 hover:border-white/30 hover:text-white"
             }`}
           >
             {t(`adminFinanzas.period.${k}`)}
@@ -97,14 +97,14 @@ export function EstadoResultados({
               type="date"
               value={customDesde}
               onChange={(e) => setCustomDesde(e.target.value)}
-              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white outline-none ring-1 ring-inset ring-white/20 focus:ring-white/50"
+              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 outline-none ring-inset focus:ring-white/50"
             />
             <span className="text-silver-500">→</span>
             <input
               type="date"
               value={customHasta}
               onChange={(e) => setCustomHasta(e.target.value)}
-              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white outline-none ring-1 ring-inset ring-white/20 focus:ring-white/50"
+              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 outline-none ring-inset focus:ring-white/50"
             />
           </div>
         )}
@@ -113,18 +113,18 @@ export function EstadoResultados({
       {/* Ingresos / Gastos / Utilidad */}
       <div className="mt-5 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-xs uppercase tracking-[2px] text-silver-400">
+          <p className="text-silver-400 text-xs tracking-[2px] uppercase">
             {t("adminFinanzas.pnlRevenue")}
           </p>
-          <p className="mt-1 font-narrow text-2xl font-bold text-white">
+          <p className="font-narrow mt-1 text-2xl font-bold text-white">
             {formatCOP(pl.ingresos)}
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-          <p className="text-xs uppercase tracking-[2px] text-silver-400">
+          <p className="text-silver-400 text-xs tracking-[2px] uppercase">
             {t("adminFinanzas.pnlExpenses")}
           </p>
-          <p className="mt-1 font-narrow text-2xl font-bold text-white">
+          <p className="font-narrow mt-1 text-2xl font-bold text-white">
             {formatCOP(pl.gastos)}
           </p>
         </div>
@@ -136,16 +136,16 @@ export function EstadoResultados({
           }`}
         >
           <p
-            className={`text-xs uppercase tracking-[2px] ${
+            className={`text-xs tracking-[2px] uppercase ${
               positivo ? "text-emerald-200" : "text-red-200"
             }`}
           >
             {t("adminFinanzas.pnlProfit")}
           </p>
-          <p className="mt-1 font-narrow text-2xl font-bold text-white">
+          <p className="font-narrow mt-1 text-2xl font-bold text-white">
             {formatCOP(pl.utilidad)}
           </p>
-          <p className="mt-1 text-xs text-silver-400">
+          <p className="text-silver-400 mt-1 text-xs">
             {t("adminFinanzas.pnlMargin", {
               value: Math.round(pl.margen * 100),
             })}
@@ -172,7 +172,7 @@ export function EstadoResultados({
       {/* Gastos por categoría en el periodo */}
       {pl.gastosPorCategoria.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-silver-300">
+          <h3 className="text-silver-300 text-sm font-semibold tracking-wide uppercase">
             {t("adminFinanzas.pnlExpensesByCategory")}
           </h3>
           <ul className="mt-3 flex flex-col gap-1.5">
@@ -184,7 +184,7 @@ export function EstadoResultados({
                 <span className="text-silver-300">
                   {t(`adminGastos.categoria.${c.categoria}`)}
                 </span>
-                <span className="font-semibold tabular-nums text-white">
+                <span className="font-semibold text-white tabular-nums">
                   {formatCOP(c.monto)}
                 </span>
               </li>
@@ -209,20 +209,20 @@ function FlujoBar({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <span className="w-20 shrink-0 text-xs uppercase tracking-wide text-silver-400">
+      <span className="text-silver-400 w-20 shrink-0 text-xs tracking-wide uppercase">
         {label}
       </span>
       <div className="h-5 flex-1 overflow-hidden rounded bg-white/5">
         <div
           className={`h-full rounded ${
             tone === "rev"
-              ? "bg-gradient-to-r from-silver-100 to-amethyst-300"
+              ? "from-silver-100 to-amethyst-300 bg-gradient-to-r"
               : "bg-gradient-to-r from-red-400/70 to-red-300"
           }`}
           style={{ width: `${(value / max) * 100}%` }}
         />
       </div>
-      <span className="w-28 shrink-0 text-right text-sm font-semibold tabular-nums text-white">
+      <span className="w-28 shrink-0 text-right text-sm font-semibold text-white tabular-nums">
         {formatCOP(value)}
       </span>
     </div>

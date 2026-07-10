@@ -35,14 +35,15 @@ function PersonIcon({ className = "" }: { className?: string }) {
 /** Posición fija en el extremo IZQUIERDO, a la derecha de la campanita. El menú
  *  hamburguesa vive en el lado opuesto (derecha). El panel abre hacia adentro
  *  (derecha); por eso su anclaje y el origen del reveal van a la izquierda. */
-const WRAP = "fixed top-4 left-[5.5rem] z-[105] sm:top-5 sm:left-28";
+const WRAP_LEFT = "fixed top-4 left-[5.5rem] z-[105] sm:top-5 sm:left-28";
+const WRAP_RIGHT = "fixed top-4 right-[5.5rem] z-[105] sm:top-5 sm:right-28";
 
 // Opción del menú: borde sutil (le da definición y ayuda a leer el texto sobre
 // fondos con foto). Hover = borde amatista + barrido + leve deslizamiento.
 const ITEM =
   "flex items-center rounded-lg border border-white/15 px-3 py-2.5 text-sm text-silver-100 transition-all duration-200 hover:border-amethyst-300/60 hover:bg-gradient-to-r hover:from-amethyst-500/25 hover:to-transparent hover:pl-4 hover:text-white";
 
-export function UserMenu() {
+export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
   const { user, account, loading, logout } = useAuth();
   const [open, setOpen] = useState(false);
   // `render` mantiene el panel montado durante la animación de CIERRE (se
@@ -82,14 +83,18 @@ export function UserMenu() {
     router.push("/");
   }
 
+  const wrap = align === "right" ? WRAP_RIGHT : WRAP_LEFT;
+
   return (
-    <div ref={ref} className={WRAP}>
+    <div ref={ref} className={wrap}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={user ? t("userMenu.account") : t("userMenu.access")}
         aria-expanded={open}
-        className="text-silver-100 hover:border-amethyst-300 absolute top-0 left-0 z-20 flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white"
+        className={`text-silver-100 hover:border-amethyst-300 absolute top-0 z-20 flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white ${
+          align === "right" ? "right-0" : "left-0"
+        }`}
       >
         {user && photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -117,7 +122,9 @@ export function UserMenu() {
             open
               ? "animate-menu-reveal"
               : "animate-menu-conceal pointer-events-none"
-          } absolute top-[-1rem] left-[-1rem] w-64 overflow-hidden rounded-2xl`}
+          } absolute top-[-1rem] w-64 overflow-hidden rounded-2xl ${
+            align === "right" ? "right-[-1rem]" : "left-[-1rem]"
+          }`}
         >
           <GlassSheen />
           {/* Gloss superior extra (más brillo de cristal). */}
@@ -128,7 +135,11 @@ export function UserMenu() {
               <>
                 {/* Nombre/correo a la DERECHA; el círculo (avatar) va a la
                     izquierda, fuera del recorte, alineado con el trigger. */}
-                <div className="border-b border-white/10 p-4 pl-16 text-left">
+                <div
+                  className={`border-b border-white/10 p-4 ${
+                    align === "right" ? "pr-16 text-right" : "pl-16 text-left"
+                  }`}
+                >
                   <p className="truncate text-sm font-semibold text-white">
                     {name ?? t("userMenu.user")}
                   </p>

@@ -10,9 +10,9 @@ import {
   adminLinkProfile,
   type AdminUserHit,
 } from "../lib/admin-users-repo";
+import { adminInput } from "./admin-ui";
 
-const inputCls =
-  "w-full rounded-lg bg-white/[0.06] px-4 py-2.5 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40";
+const inputCls = adminInput;
 
 /**
  * Vincular un perfil NUEVO a un usuario real de la app: busca el usuario (vía
@@ -99,7 +99,7 @@ export function LinkUserModal({
       title={t("adminPerfiles.link.title")}
       className="max-w-lg"
     >
-      <p className="text-sm text-silver-300">
+      <p className="text-silver-300 text-sm">
         {t("adminPerfiles.link.descripcion")}
       </p>
 
@@ -116,12 +116,12 @@ export function LinkUserModal({
 
       <div className="mt-3 max-h-56 overflow-y-auto rounded-lg border border-white/10 bg-white/[0.02]">
         {searching ? (
-          <p className="flex items-center gap-2 p-4 text-sm text-silver-400">
+          <p className="text-silver-400 flex items-center gap-2 p-4 text-sm">
             <SpinnerIcon className="size-4 animate-spin" />
             {t("adminPerfiles.link.buscando")}
           </p>
         ) : results.length === 0 ? (
-          <p className="p-4 text-sm text-silver-400">
+          <p className="text-silver-400 p-4 text-sm">
             {t("adminPerfiles.link.sinResultados")}
           </p>
         ) : (
@@ -148,23 +148,25 @@ export function LinkUserModal({
                         {u.displayName ?? u.email ?? u.uid}
                       </p>
                       {u.email && (
-                        <p className="truncate text-xs text-silver-400">
+                        <p className="text-silver-400 truncate text-xs">
                           {u.email}
                         </p>
                       )}
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
                       {yaArtista && (
-                        <span className="rounded-full bg-amethyst-500/20 px-2 py-0.5 text-[10px] uppercase tracking-wide text-amethyst-200">
+                        <span className="bg-amethyst-500/20 text-amethyst-200 rounded-full px-2 py-0.5 text-[10px] tracking-wide uppercase">
                           {t("adminPerfiles.link.rolArtista")}
                         </span>
                       )}
                       {yaVinculado && (
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-silver-300">
+                        <span className="text-silver-300 rounded-full bg-white/10 px-2 py-0.5 text-[10px] tracking-wide uppercase">
                           {t("adminPerfiles.link.yaTiene")}
                         </span>
                       )}
-                      {sel && <CheckIcon className="size-4 text-amethyst-200" />}
+                      {sel && (
+                        <CheckIcon className="text-amethyst-200 size-4" />
+                      )}
                     </div>
                   </button>
                 </li>

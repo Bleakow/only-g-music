@@ -40,6 +40,7 @@ import {
   type Sesion,
 } from "@/domain/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
+import { AdminPageHeader, adminCard } from "./admin-ui";
 
 type Tipo = "cotizacion" | "reserva";
 
@@ -209,12 +210,6 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         <h1 className="font-narrow text-3xl font-bold uppercase">
           {t("adminSolicitud.notFound")}
         </h1>
-        <Link
-          href="/admin"
-          className="mt-6 rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
-        >
-          {t("adminSolicitud.backToPanel")}
-        </Link>
       </main>
     );
   }
@@ -222,294 +217,302 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const estado = tipo === "cotizacion" ? quote!.status : reserva!.estado;
   const label = t(`status.${estado}`);
   const sede = reserva ? sedes.find((s) => s.id === reserva.sede) : undefined;
+  const titulo =
+    tipo === "cotizacion"
+      ? t("solicitudDetail.quote")
+      : t("solicitudDetail.booking");
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-24 pt-28 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
-      >
-        ← {t("userMenu.adminPanel")}
-      </Link>
+    <main className="pb-24">
+      <AdminPageHeader eyebrow={t("adminDashboard.eyebrow")} title={titulo} />
 
-      <div className="mt-4 flex items-center justify-between gap-3">
-        <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
-          {tipo === "cotizacion"
-            ? t("solicitudDetail.quote")
-            : t("solicitudDetail.booking")}
-        </h1>
-        <span
-          className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClass(estado)}`}
-        >
-          {label}
-        </span>
-      </div>
-
-      {/* Resumen */}
-      <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm">
-        {quote && (
-          <div className="flex flex-col gap-2">
-            <p className="text-silver-300">
-              {quote.contactName} · {quote.contactEmail}
-              {quote.contactPhone ? ` · ${quote.contactPhone}` : ""}
-            </p>
-            <ul className="flex flex-col gap-1">
-              {quote.items.map((i, idx) => (
-                <li key={idx} className="flex justify-between text-silver-100">
-                  <span>
-                    {i.serviceName}{" "}
-                    <span className="text-silver-400">× {i.quantity}</span>
-                  </span>
-                  <span>
-                    {i.unitPrice != null
-                      ? formatCOP(i.unitPrice * i.quantity)
-                      : t("solicitudDetail.toQuote")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-            {quote.details && (
-              <p className="text-silver-300">“{quote.details}”</p>
-            )}
-            {quote.budget && (
-              <p className="text-silver-400">
-                {t("adminSolicitud.clientBudget", { budget: quote.budget })}
-              </p>
-            )}
-            {quote.collaborators && quote.collaborators.length > 0 && (
-              <p className="text-silver-400">
-                {t("adminSolicitud.artists", {
-                  names: quote.collaborators.map((c) => c.name).join(", "),
-                })}
-              </p>
-            )}
-          </div>
-        )}
-        {reserva && (
-          <div className="flex flex-col gap-1">
-            <p className="text-base font-semibold text-white">
-              {reserva.serviceName}
-            </p>
-            <p className="text-silver-300">
-              {new Date(reserva.start).toLocaleString(locale, {
-                dateStyle: "long",
-                timeStyle: "short",
-              })}{" "}
-              · {sede?.nombre ?? reserva.sede}
-            </p>
-            <p className="font-semibold text-white">
-              {formatCOP(reserva.amount ?? 0)}
-            </p>
-            {reserva.comprobanteUrl && (
-              <a
-                href={reserva.comprobanteUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-amethyst-200 underline underline-offset-2 hover:text-white"
-              >
-                {t("adminSolicitud.viewReceipt")}
-              </a>
-            )}
-            {reserva.tipo === "perfil_artista" && (
-              <p className="mt-1 rounded-lg border border-amethyst-300/30 bg-amethyst-500/10 px-3 py-2 text-xs text-amethyst-100">
-                {t.rich("adminSolicitud.artistProfileNote", {
-                  strong: (chunks) => <strong>{chunks}</strong>,
-                  code: (chunks) => <code>{chunks}</code>,
-                  link: (chunks) => (
-                    <Link
-                      href="/admin/perfiles"
-                      className="underline underline-offset-2"
-                    >
-                      {chunks}
-                    </Link>
-                  ),
-                })}
-              </p>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Acciones */}
-      <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-          {t("adminSolicitud.actions")}
-        </h2>
-
-        {quote && (quote.status === "pendiente" || quote.status === "cotizada") && (
-          <div className="mb-4 flex flex-col gap-2">
-            <span className="text-xs uppercase tracking-[2px] text-silver-300">
-              {t("adminSolicitud.sendProposal")}
-            </span>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-silver-400">
-                $
-              </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={
-                  price
-                    ? new Intl.NumberFormat(locale).format(Number(price))
-                    : ""
-                }
-                onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))}
-                placeholder={t("adminSolicitud.proposedPrice")}
-                className="w-full rounded-lg border border-white/15 bg-black/30 py-2.5 pl-7 pr-4 text-sm tabular-nums text-silver-50 outline-none focus:border-amethyst-300"
-              />
-            </div>
-            <textarea
-              value={propText}
-              onChange={(e) => setPropText(e.target.value)}
-              rows={2}
-              placeholder={t("adminSolicitud.proposalDetail")}
-              className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
-            />
-            <Button onClick={enviarPropuesta} loading={busy} className="self-start">
-              {t("adminSolicitud.sendProposal")}
-            </Button>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {quote &&
-            nextQuoteStates(quote.status)
-              .filter((s) => s !== "cotizada")
-              .map((s) => (
-                <Button
-                  key={s}
-                  size="sm"
-                  variant={s === "rechazada" ? "danger" : "secondary"}
-                  onClick={() => cambiarQuote(s)}
-                  loading={busy}
-                >
-                  {t("adminSolicitud.markAs", {
-                    status: t(`status.${s}`).toLowerCase(),
-                  })}
-                </Button>
-              ))}
-          {reserva &&
-            nextReservaStates(reserva.estado)
-              // Un perfil no tiene sesión: en_curso/completada no aplican.
-              .filter(
-                (s) =>
-                  reserva.tipo !== "perfil_artista" ||
-                  (s !== "en_curso" && s !== "completada"),
-              )
-              .map((s) => (
-              <Button
-                key={s}
-                size="sm"
-                variant={
-                  s === "confirmada"
-                    ? "primary"
-                    : s === "cancelada"
-                      ? "danger"
-                      : "secondary"
-                }
-                onClick={() => cambiarReserva(s)}
-                loading={busy}
-              >
-                {t(`status.${s}`)}
-              </Button>
-            ))}
-          {quote &&
-            nextQuoteStates(quote.status).filter((s) => s !== "cotizada")
-              .length === 0 &&
-            quote.status !== "pendiente" &&
-            quote.status !== "cotizada" && (
-              <p className="text-sm text-silver-400">Sin acciones disponibles.</p>
-            )}
-          {reserva && nextReservaStates(reserva.estado).length === 0 && (
-            <p className="text-sm text-silver-400">Estado final.</p>
-          )}
+      <div className="px-6 sm:px-10">
+        <div className="flex justify-end">
+          <span
+            className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClass(estado)}`}
+          >
+            {label}
+          </span>
         </div>
-      </section>
 
-      {/* Sesión del productor (solo reservas de estudio, no perfiles) */}
-      {reserva && reserva.tipo !== "perfil_artista" && (
-        <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
-          <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-            {t("adminSolicitud.producerSession")}
-          </h2>
-          {sesion ? (
-            <p className="text-sm text-silver-300">
-              {t("adminSolicitud.sessionCreated")}{" "}
-              <code className="text-amethyst-200">{sesion.productorId}</code> ·{" "}
-              {t(`status.${sesion.estado}`)}
-            </p>
-          ) : reserva.productorId ? (
-            <p className="text-sm text-silver-300">
-              {t("adminSolicitud.producerAssigned")}{" "}
-              <code className="text-amethyst-200">{reserva.productorId}</code>.{" "}
-              {t("adminSolicitud.sessionAutoCreated")}
-            </p>
-          ) : (
+        {/* Resumen */}
+        <section className={`${adminCard} mt-4 p-4 text-sm`}>
+          {quote && (
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-silver-400">
-                {t("adminSolicitud.assignProducerHint")}
+              <p className="text-silver-300">
+                {quote.contactName} · {quote.contactEmail}
+                {quote.contactPhone ? ` · ${quote.contactPhone}` : ""}
               </p>
-              {productoresSede.length === 0 ? (
-                <p className="text-sm text-silver-400">
-                  {t.rich("adminSolicitud.noSedeProducers", {
+              <ul className="flex flex-col gap-1">
+                {quote.items.map((i, idx) => (
+                  <li
+                    key={idx}
+                    className="text-silver-100 flex justify-between"
+                  >
+                    <span>
+                      {i.serviceName}{" "}
+                      <span className="text-silver-400">× {i.quantity}</span>
+                    </span>
+                    <span>
+                      {i.unitPrice != null
+                        ? formatCOP(i.unitPrice * i.quantity)
+                        : t("solicitudDetail.toQuote")}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {quote.details && (
+                <p className="text-silver-300">“{quote.details}”</p>
+              )}
+              {quote.budget && (
+                <p className="text-silver-400">
+                  {t("adminSolicitud.clientBudget", { budget: quote.budget })}
+                </p>
+              )}
+              {quote.collaborators && quote.collaborators.length > 0 && (
+                <p className="text-silver-400">
+                  {t("adminSolicitud.artists", {
+                    names: quote.collaborators.map((c) => c.name).join(", "),
+                  })}
+                </p>
+              )}
+            </div>
+          )}
+          {reserva && (
+            <div className="flex flex-col gap-1">
+              <p className="text-base font-semibold text-white">
+                {reserva.serviceName}
+              </p>
+              <p className="text-silver-300">
+                {new Date(reserva.start).toLocaleString(locale, {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                })}{" "}
+                · {sede?.nombre ?? reserva.sede}
+              </p>
+              <p className="font-semibold text-white">
+                {formatCOP(reserva.amount ?? 0)}
+              </p>
+              {reserva.comprobanteUrl && (
+                <a
+                  href={reserva.comprobanteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-amethyst-200 underline underline-offset-2 hover:text-white"
+                >
+                  {t("adminSolicitud.viewReceipt")}
+                </a>
+              )}
+              {reserva.tipo === "perfil_artista" && (
+                <p className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-100 mt-1 rounded-lg border px-3 py-2 text-xs">
+                  {t.rich("adminSolicitud.artistProfileNote", {
+                    strong: (chunks) => <strong>{chunks}</strong>,
+                    code: (chunks) => <code>{chunks}</code>,
                     link: (chunks) => (
                       <Link
-                        href="/admin/estudios"
-                        className="text-amethyst-200 underline underline-offset-2 hover:text-white"
+                        href="/admin/perfiles"
+                        className="underline underline-offset-2"
                       >
                         {chunks}
                       </Link>
                     ),
                   })}
                 </p>
-              ) : (
-                <>
-                  <select
-                    value={selectedProductor}
-                    onChange={(e) => setSelectedProductor(e.target.value)}
-                    className="w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm text-silver-50 outline-none focus:border-amethyst-300"
-                  >
-                    <option value="">
-                      {t("adminSolicitud.selectProducer")}
-                    </option>
-                    {productoresSede.map((p) => (
-                      <option
-                        key={p.uid}
-                        value={p.uid}
-                        className="bg-neutral-900"
-                      >
-                        {p.displayName || p.email || p.uid}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    onClick={asignarProductor}
-                    loading={busy}
-                    disabled={!selectedProductor}
-                    className="self-start"
-                  >
-                    {t("adminSolicitud.assignProducer")}
-                  </Button>
-                </>
               )}
             </div>
           )}
         </section>
-      )}
 
-      {/* Hilo */}
-      <section className="mt-8">
-        <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
-          {t("adminSolicitud.conversationWithClient")}
-        </h2>
-        {convId ? (
-          <div className="flex h-[28rem] flex-col">
-            <ConversationView conversationId={convId} />
+        {/* Acciones */}
+        <section className={`${adminCard} mt-6 p-4`}>
+          <h2 className="font-narrow mb-3 text-xl font-bold text-white uppercase">
+            {t("adminSolicitud.actions")}
+          </h2>
+
+          {quote &&
+            (quote.status === "pendiente" || quote.status === "cotizada") && (
+              <div className="mb-4 flex flex-col gap-2">
+                <span className="text-silver-300 text-xs tracking-[2px] uppercase">
+                  {t("adminSolicitud.sendProposal")}
+                </span>
+                <div className="relative">
+                  <span className="text-silver-400 pointer-events-none absolute top-1/2 left-3 -translate-y-1/2">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={
+                      price
+                        ? new Intl.NumberFormat(locale).format(Number(price))
+                        : ""
+                    }
+                    onChange={(e) =>
+                      setPrice(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder={t("adminSolicitud.proposedPrice")}
+                    className="text-silver-50 focus:border-amethyst-300 w-full rounded-lg border border-white/15 bg-black/30 py-2.5 pr-4 pl-7 text-sm tabular-nums outline-none"
+                  />
+                </div>
+                <textarea
+                  value={propText}
+                  onChange={(e) => setPropText(e.target.value)}
+                  rows={2}
+                  placeholder={t("adminSolicitud.proposalDetail")}
+                  className="text-silver-50 focus:border-amethyst-300 w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm outline-none"
+                />
+                <Button
+                  onClick={enviarPropuesta}
+                  loading={busy}
+                  className="self-start"
+                >
+                  {t("adminSolicitud.sendProposal")}
+                </Button>
+              </div>
+            )}
+
+          <div className="flex flex-wrap gap-2">
+            {quote &&
+              nextQuoteStates(quote.status)
+                .filter((s) => s !== "cotizada")
+                .map((s) => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={s === "rechazada" ? "danger" : "secondary"}
+                    onClick={() => cambiarQuote(s)}
+                    loading={busy}
+                  >
+                    {t("adminSolicitud.markAs", {
+                      status: t(`status.${s}`).toLowerCase(),
+                    })}
+                  </Button>
+                ))}
+            {reserva &&
+              nextReservaStates(reserva.estado)
+                // Un perfil no tiene sesión: en_curso/completada no aplican.
+                .filter(
+                  (s) =>
+                    reserva.tipo !== "perfil_artista" ||
+                    (s !== "en_curso" && s !== "completada"),
+                )
+                .map((s) => (
+                  <Button
+                    key={s}
+                    size="sm"
+                    variant={
+                      s === "confirmada"
+                        ? "primary"
+                        : s === "cancelada"
+                          ? "danger"
+                          : "secondary"
+                    }
+                    onClick={() => cambiarReserva(s)}
+                    loading={busy}
+                  >
+                    {t(`status.${s}`)}
+                  </Button>
+                ))}
+            {quote &&
+              nextQuoteStates(quote.status).filter((s) => s !== "cotizada")
+                .length === 0 &&
+              quote.status !== "pendiente" &&
+              quote.status !== "cotizada" && (
+                <p className="text-silver-400 text-sm">
+                  Sin acciones disponibles.
+                </p>
+              )}
+            {reserva && nextReservaStates(reserva.estado).length === 0 && (
+              <p className="text-silver-400 text-sm">Estado final.</p>
+            )}
           </div>
-        ) : (
-          <p className="text-sm text-silver-400">{t("common.loading")}</p>
+        </section>
+
+        {/* Sesión del productor (solo reservas de estudio, no perfiles) */}
+        {reserva && reserva.tipo !== "perfil_artista" && (
+          <section className={`${adminCard} mt-6 p-4`}>
+            <h2 className="font-narrow mb-3 text-xl font-bold text-white uppercase">
+              {t("adminSolicitud.producerSession")}
+            </h2>
+            {sesion ? (
+              <p className="text-silver-300 text-sm">
+                {t("adminSolicitud.sessionCreated")}{" "}
+                <code className="text-amethyst-200">{sesion.productorId}</code>{" "}
+                · {t(`status.${sesion.estado}`)}
+              </p>
+            ) : reserva.productorId ? (
+              <p className="text-silver-300 text-sm">
+                {t("adminSolicitud.producerAssigned")}{" "}
+                <code className="text-amethyst-200">{reserva.productorId}</code>
+                . {t("adminSolicitud.sessionAutoCreated")}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="text-silver-400 text-sm">
+                  {t("adminSolicitud.assignProducerHint")}
+                </p>
+                {productoresSede.length === 0 ? (
+                  <p className="text-silver-400 text-sm">
+                    {t.rich("adminSolicitud.noSedeProducers", {
+                      link: (chunks) => (
+                        <Link
+                          href="/admin/estudios"
+                          className="text-amethyst-200 underline underline-offset-2 hover:text-white"
+                        >
+                          {chunks}
+                        </Link>
+                      ),
+                    })}
+                  </p>
+                ) : (
+                  <>
+                    <select
+                      value={selectedProductor}
+                      onChange={(e) => setSelectedProductor(e.target.value)}
+                      className="text-silver-50 focus:border-amethyst-300 w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-sm outline-none"
+                    >
+                      <option value="">
+                        {t("adminSolicitud.selectProducer")}
+                      </option>
+                      {productoresSede.map((p) => (
+                        <option
+                          key={p.uid}
+                          value={p.uid}
+                          className="bg-neutral-900"
+                        >
+                          {p.displayName || p.email || p.uid}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      onClick={asignarProductor}
+                      loading={busy}
+                      disabled={!selectedProductor}
+                      className="self-start"
+                    >
+                      {t("adminSolicitud.assignProducer")}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </section>
         )}
-      </section>
+
+        {/* Hilo */}
+        <section className={`${adminCard} mt-8 p-4`}>
+          <h2 className="font-narrow mb-3 text-xl font-bold text-white uppercase">
+            {t("adminSolicitud.conversationWithClient")}
+          </h2>
+          {convId ? (
+            <div className="flex h-[28rem] flex-col">
+              <ConversationView conversationId={convId} />
+            </div>
+          ) : (
+            <p className="text-silver-400 text-sm">{t("common.loading")}</p>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

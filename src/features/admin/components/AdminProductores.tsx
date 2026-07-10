@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { PhotoUpload } from "@/components/ui/PhotoUpload";
@@ -28,6 +27,7 @@ import {
   deleteProducer,
   setOrden,
 } from "@/features/producers/lib/producers-repo";
+import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 
 function Field({
   label,
@@ -222,117 +222,112 @@ export function AdminProductores() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-5xl px-6 pt-28 pb-24 sm:px-12">
-      <Link
-        href="/admin"
-        className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
+    <main className="pb-24">
+      <AdminPageHeader
+        eyebrow={t("adminDashboard.eyebrow")}
+        title={t("adminProductores.title")}
+        subtitle={t("adminProductores.intro")}
       >
-        {t("adminProductores.backToAdmin")}
-      </Link>
-
-      <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
-            {t("adminProductores.title")}
-          </h1>
-          <p className="text-silver-300 mt-2 max-w-2xl">
-            {t("adminProductores.intro")}
-          </p>
+        <div className="mt-4">
+          <GlassButton onClick={abrirNuevo} className="!text-amethyst-200">
+            <PlusIcon className="size-4" />
+            {t("adminProductores.add")}
+          </GlassButton>
         </div>
-        <GlassButton onClick={abrirNuevo} className="!text-amethyst-200">
-          <PlusIcon className="size-4" />
-          {t("adminProductores.add")}
-        </GlassButton>
-      </div>
+      </AdminPageHeader>
 
-      {error && (
-        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
-        </p>
-      )}
+      <div className="px-6 sm:px-10">
+        {error && (
+          <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
-      {loading ? (
-        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
-      ) : items.length === 0 ? (
-        <p className="text-silver-400 mt-10">{t("adminProductores.empty")}</p>
-      ) : (
-        <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {items.map((p, i) => (
-            <li
-              key={p.id}
-              className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
-            >
-              <div className="relative aspect-[3/4] bg-neutral-900">
-                {p.mainPhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={p.mainPhoto}
-                    alt={p.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-white/20">
-                    <ImageIcon className="size-8" />
+        {loading ? (
+          <p className="text-silver-300">{t("common.loading")}</p>
+        ) : items.length === 0 ? (
+          <p className="text-silver-400">{t("adminProductores.empty")}</p>
+        ) : (
+          <div className={`${adminCard} p-5`}>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {items.map((p, i) => (
+                <li
+                  key={p.id}
+                  className={`overflow-hidden rounded-xl ${adminInner}`}
+                >
+                  <div className="relative aspect-[3/4] bg-neutral-900">
+                    {p.mainPhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.mainPhoto}
+                        alt={p.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-white/20">
+                        <ImageIcon className="size-8" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+
+                    {/* Reordenar */}
+                    <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => mover(i, -1)}
+                        disabled={i === 0 || busyOrden}
+                        aria-label={t("adminProductores.ariaUp")}
+                        className="text-silver-200 flex size-6 items-center justify-center rounded bg-black/50 backdrop-blur transition hover:bg-black/70 hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowLeftIcon className="size-3.5 rotate-90" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => mover(i, 1)}
+                        disabled={i === items.length - 1 || busyOrden}
+                        aria-label={t("adminProductores.ariaDown")}
+                        className="text-silver-200 flex size-6 items-center justify-center rounded bg-black/50 backdrop-blur transition hover:bg-black/70 hover:text-white disabled:opacity-30"
+                      >
+                        <ArrowLeftIcon className="size-3.5 -rotate-90" />
+                      </button>
+                    </div>
+
+                    <div className="absolute inset-x-0 bottom-0 p-3">
+                      <p className="font-narrow truncate text-lg leading-none font-bold text-white uppercase drop-shadow-[0_2px_8px_#000]">
+                        {p.name || "—"}
+                      </p>
+                      <p className="text-silver-300 mt-1 truncate text-[11px]">
+                        {p.role}
+                      </p>
+                    </div>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 
-                {/* Reordenar */}
-                <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
-                  <button
-                    type="button"
-                    onClick={() => mover(i, -1)}
-                    disabled={i === 0 || busyOrden}
-                    aria-label={t("adminProductores.ariaUp")}
-                    className="text-silver-200 flex size-6 items-center justify-center rounded bg-black/50 backdrop-blur transition hover:bg-black/70 hover:text-white disabled:opacity-30"
-                  >
-                    <ArrowLeftIcon className="size-3.5 rotate-90" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => mover(i, 1)}
-                    disabled={i === items.length - 1 || busyOrden}
-                    aria-label={t("adminProductores.ariaDown")}
-                    className="text-silver-200 flex size-6 items-center justify-center rounded bg-black/50 backdrop-blur transition hover:bg-black/70 hover:text-white disabled:opacity-30"
-                  >
-                    <ArrowLeftIcon className="size-3.5 -rotate-90" />
-                  </button>
-                </div>
-
-                <div className="absolute inset-x-0 bottom-0 p-3">
-                  <p className="font-narrow truncate text-lg leading-none font-bold text-white uppercase drop-shadow-[0_2px_8px_#000]">
-                    {p.name || "—"}
-                  </p>
-                  <p className="text-silver-300 mt-1 truncate text-[11px]">
-                    {p.role}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-1 p-2">
-                <button
-                  type="button"
-                  onClick={() => abrirEditar(p)}
-                  aria-label={t("adminProductores.ariaEdit")}
-                  title={t("adminProductores.ariaEdit")}
-                  className="text-silver-200 flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
-                >
-                  <EditIcon className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(p)}
-                  aria-label={t("adminProductores.ariaDelete")}
-                  title={t("adminProductores.ariaDelete")}
-                  className="text-silver-400 flex size-9 items-center justify-center rounded-lg transition hover:bg-red-500/15 hover:text-red-200"
-                >
-                  <TrashIcon className="size-4" />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+                  <div className="flex items-center justify-end gap-1 p-2">
+                    <button
+                      type="button"
+                      onClick={() => abrirEditar(p)}
+                      aria-label={t("adminProductores.ariaEdit")}
+                      title={t("adminProductores.ariaEdit")}
+                      className="text-silver-200 flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 hover:text-white"
+                    >
+                      <EditIcon className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(p)}
+                      aria-label={t("adminProductores.ariaDelete")}
+                      title={t("adminProductores.ariaDelete")}
+                      className="text-silver-400 flex size-9 items-center justify-center rounded-lg transition hover:bg-red-500/15 hover:text-red-200"
+                    >
+                      <TrashIcon className="size-4" />
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {/* Editor crear/editar */}
       <GlassModal

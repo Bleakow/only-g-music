@@ -1,22 +1,109 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType, type SVGProps } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { listAllQuotes } from "@/features/quotes/lib/quotes-repo";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
+import { isReservaActiva } from "@/domain/booking";
 import { formatCOP } from "@/domain/service";
 import { badgeClass, fechaCorta } from "@/features/solicitudes/lib/estados";
+import { glassSurface, GlassSheen } from "@/components/ui/glass";
+import {
+  CalendarIcon,
+  PaymentIcon,
+  QuoteIcon,
+  FinanceIcon,
+  ArtistIcon,
+  ProducersIcon,
+  StudioIcon,
+  MusicIcon,
+  KebabIcon,
+  ArrowRightIcon,
+} from "./admin-icons";
+import { adminCard, adminInner } from "./admin-ui";
 
-function Badge({ estado, label }: { estado: string; label: string }) {
+type Icon = ComponentType<SVGProps<SVGSVGElement>>;
+
+const pad = (n: number) => String(n).padStart(2, "0");
+
+// Contenedor translúcido (deja ver la imagen de fondo a través del cristal) +
+// backing oscuro y frosteado para las opciones internas (legibilidad del texto).
+const OUTER = `${adminCard} p-5`;
+const INNER = adminInner;
+
+const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
+  {
+    key: "finanzas",
+    sub: "quickFinanzasSub",
+    href: "/admin/finanzas",
+    Icon: FinanceIcon,
+  },
+  {
+    key: "artistas",
+    sub: "quickArtistasSub",
+    href: "/admin/perfiles",
+    Icon: ArtistIcon,
+  },
+  {
+    key: "productores",
+    sub: "quickProductoresSub",
+    href: "/admin/productores",
+    Icon: ProducersIcon,
+  },
+  {
+    key: "estudios",
+    sub: "quickEstudiosSub",
+    href: "/admin/estudios",
+    Icon: StudioIcon,
+  },
+  {
+    key: "pagos",
+    sub: "quickPagosSub",
+    href: "/admin/pagos",
+    Icon: PaymentIcon,
+  },
+  {
+    key: "cotizaciones",
+    sub: "quickCotizacionesSub",
+    href: "/admin/cotizaciones",
+    Icon: QuoteIcon,
+  },
+];
+
+function StatCard({
+  Icon,
+  value,
+  label,
+  sub,
+  subClass,
+}: {
+  Icon: Icon;
+  value: string;
+  label: string;
+  sub: string;
+  subClass?: string;
+}) {
   return (
-    <span
-      className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${badgeClass(estado)}`}
-    >
-      {label}
-    </span>
+    <div className={`${glassSurface} relative overflow-hidden rounded-2xl p-5`}>
+      <GlassSheen />
+      <div className="relative flex items-start gap-4">
+        <span className="bg-amethyst-500/20 text-amethyst-200 ring-amethyst-400/30 flex size-12 shrink-0 items-center justify-center rounded-xl ring-1">
+          <Icon className="size-6" />
+        </span>
+        <div className="min-w-0">
+          <p className="font-narrow text-4xl leading-none font-bold text-white">
+            {value}
+          </p>
+          <p className="mt-1.5 text-sm font-semibold text-white">{label}</p>
+          <p className={`mt-0.5 text-xs ${subClass ?? "text-silver-400"}`}>
+            {sub}
+          </p>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -49,154 +136,215 @@ export function AdminDashboard() {
     };
   }, [t]);
 
-  const pendientesQuotes = quotes.filter(
-    (q) => q.status === "pendiente",
-  ).length;
+  const activas = reservas.filter((r) => isReservaActiva(r.estado));
   const pendientesPagos = reservas.filter(
     (r) => r.estado === "pago_en_revision",
   ).length;
+  const pendientesQuotes = quotes.filter(
+    (q) => q.status === "pendiente",
+  ).length;
+
+  // Actividad: cotizaciones + reservas más recientes, mezcladas por fecha.
+  const activity = [
+    ...quotes.map((q) => ({
+      id: `q-${q.id}`,
+      Icon: QuoteIcon as Icon,
+      text: t("adminDashboard.activityQuote", { name: q.contactName }),
+      at: q.createdAt,
+    })),
+    ...reservas.map((r) => ({
+      id: `r-${r.id}`,
+      Icon: CalendarIcon as Icon,
+      text: t("adminDashboard.activityBooking", { name: r.serviceName }),
+      at: r.createdAt,
+    })),
+  ]
+    .sort((a, b) => b.at - a.at)
+    .slice(0, 5);
 
   return (
-    <main className="mx-auto min-h-dvh max-w-4xl px-6 pt-28 pb-24 sm:px-12">
-      <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
-        {t("adminDashboard.eyebrow")}
-      </p>
-      <h1 className="font-narrow mt-2 text-5xl font-bold uppercase sm:text-6xl">
-        {t("adminDashboard.title")}
-      </h1>
-      <p className="text-silver-300 mt-3">
-        {t("adminDashboard.summary", {
-          quotesCount: pendientesQuotes,
-          paymentsCount: pendientesPagos,
-        })}
-      </p>
-
-      <div className="mt-5 flex flex-wrap gap-3">
-        <Link
-          href="/admin/finanzas"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewFinances")}
-        </Link>
-        <Link
-          href="/admin/perfiles"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewProfiles")}
-        </Link>
-        <Link
-          href="/admin/productores"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewProducers")}
-        </Link>
-        <Link
-          href="/admin/contabilidad"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewAccounting")}
-        </Link>
-        <Link
-          href="/admin/config-pagos"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewPaymentsConfig")}
-        </Link>
-        <Link
-          href="/admin/estudios"
-          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[2px] uppercase transition hover:text-white"
-        >
-          {t("adminDashboard.viewEstudios")}
-        </Link>
-      </div>
-
-      {error && (
-        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-          {error}
+    <main className="pb-16">
+      {/* Cabecera (el fondo de imagen lo pone ahora el shell del panel). */}
+      <header className="px-6 pt-20 pb-10 sm:px-10 sm:pt-24 sm:pb-12">
+        <p className="text-amethyst-300 text-xs font-semibold tracking-[4px] uppercase">
+          {t("adminDashboard.eyebrow")}
         </p>
-      )}
+        <h1 className="font-narrow mt-2 text-5xl leading-[0.9] font-bold uppercase drop-shadow-[0_2px_16px_rgba(0,0,0,0.75)] sm:text-7xl">
+          {t("adminDashboard.title")}
+        </h1>
+        <p className="text-silver-200 mt-4 max-w-md text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:text-base">
+          {t("adminDashboard.subtitle")}
+        </p>
+      </header>
 
-      {loading ? (
-        <p className="text-silver-300 mt-10">{t("common.loading")}</p>
-      ) : (
-        <>
-          <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
-              {t("adminDashboard.bookings")}
-            </h2>
-            {reservas.length === 0 ? (
-              <p className="text-silver-400 mt-2">
-                {t("adminDashboard.noBookings")}
-              </p>
-            ) : (
-              <ul className="mt-4 flex flex-col gap-3">
-                {reservas.map((r) => (
-                  <li key={r.id}>
-                    <Link
-                      href={`/admin/reserva/${r.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">
-                          {r.serviceName}
-                        </p>
-                        <p className="text-silver-400 text-sm">
-                          {fechaCorta(r.start, locale)} ·{" "}
-                          {formatCOP(r.amount ?? 0)}
-                        </p>
-                      </div>
-                      <Badge
-                        estado={r.estado}
-                        label={t(`status.${r.estado}`)}
-                      />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+      <div className="px-6 sm:px-10">
+        {error && (
+          <p className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
-          <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
-              {t("adminDashboard.quotes")}
-            </h2>
-            {quotes.length === 0 ? (
-              <p className="text-silver-400 mt-2">
-                {t("adminDashboard.noQuotes")}
-              </p>
-            ) : (
-              <ul className="mt-4 flex flex-col gap-3">
-                {quotes.map((q) => (
-                  <li key={q.id}>
+        {loading ? (
+          <p className="text-silver-300 py-16 text-center">
+            {t("common.loading")}
+          </p>
+        ) : (
+          <>
+            {/* Contenedor reordenable: en MÓVIL (flex-col) el orden es accesos →
+                stats → reservas → actividad; en DESKTOP (grid) es la maqueta de
+                2 columnas (stats arriba, accesos+actividad izq, reservas der). */}
+            <div className="mt-4 flex flex-col gap-4 lg:grid lg:grid-cols-5">
+              {/* Stat cards */}
+              <section className="order-2 grid gap-4 sm:grid-cols-3 lg:order-1 lg:col-span-5">
+                <StatCard
+                  Icon={CalendarIcon}
+                  value={pad(activas.length)}
+                  label={t("adminDashboard.statBookings")}
+                  sub={t("adminDashboard.bookingsActive")}
+                />
+                <StatCard
+                  Icon={PaymentIcon}
+                  value={pad(pendientesPagos)}
+                  label={t("adminDashboard.statPayments")}
+                  sub={t("adminDashboard.statPendingResponse")}
+                  subClass={pendientesPagos > 0 ? "text-sky-300" : undefined}
+                />
+                <StatCard
+                  Icon={QuoteIcon}
+                  value={pad(pendientesQuotes)}
+                  label={t("adminDashboard.statQuotes")}
+                  sub={t("adminDashboard.statPendingResponse")}
+                  subClass={pendientesQuotes > 0 ? "text-amber-300" : undefined}
+                />
+              </section>
+
+              {/* Accesos rápidos */}
+              <section className={`${OUTER} order-1 lg:order-2 lg:col-span-2`}>
+                <GlassSheen />
+                <div className="relative">
+                  <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
+                    {t("adminDashboard.quickTitle")}
+                  </h2>
+                  <div className="mt-4 grid grid-cols-2 gap-2.5">
+                    {QUICK.map(({ key, sub, href, Icon }) => (
+                      <Link
+                        key={key}
+                        href={href}
+                        className={`group flex flex-col gap-2 rounded-xl ${INNER} p-3 transition hover:bg-black/35 hover:ring-white/25`}
+                      >
+                        <span className="text-amethyst-200 flex size-9 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/15 ring-inset">
+                          <Icon className="size-5" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-white">
+                            {t(`adminNav.${key}`)}
+                          </span>
+                          <span className="text-silver-400 block truncate text-[0.7rem]">
+                            {t(`adminDashboard.${sub}`)}
+                          </span>
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* Actividad reciente */}
+              <section className={`${OUTER} order-4 lg:col-span-2`}>
+                <GlassSheen />
+                <div className="relative">
+                  <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
+                    {t("adminDashboard.activityTitle")}
+                  </h2>
+                  {activity.length === 0 ? (
+                    <p className="text-silver-400 mt-3 text-sm">
+                      {t("adminDashboard.noActivity")}
+                    </p>
+                  ) : (
+                    <ul className="mt-3 flex flex-col gap-2">
+                      {activity.map(({ id, Icon, text, at }) => (
+                        <li
+                          key={id}
+                          className={`${INNER} flex items-center gap-3 rounded-xl p-2.5`}
+                        >
+                          <span className="text-silver-300 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/12 ring-inset">
+                            <Icon className="size-4" />
+                          </span>
+                          <span className="text-silver-200 min-w-0 flex-1 truncate text-sm">
+                            {text}
+                          </span>
+                          <span className="text-silver-500 shrink-0 text-xs">
+                            {fechaCorta(at, locale)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+
+              {/* Reservas activas */}
+              <section
+                className={`${OUTER} order-3 lg:col-span-3 lg:row-span-2`}
+              >
+                <GlassSheen />
+                <div className="relative">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
+                      {t("adminDashboard.bookingsActive")}
+                    </h2>
                     <Link
-                      href={`/admin/cotizacion/${q.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25"
+                      href="/admin/finanzas"
+                      className="text-amethyst-200 flex items-center gap-1 text-xs font-semibold tracking-wide uppercase transition hover:text-white"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-white">
-                          {q.contactName} ·{" "}
-                          {q.items.map((i) => i.serviceName).join(", ")}
-                        </p>
-                        <p className="text-silver-400 text-sm">
-                          {fechaCorta(q.createdAt, locale)} ·{" "}
-                          {formatCOP(q.estimatedTotal ?? 0)}
-                          {q.hasQuoteOnlyItems
-                            ? ` + ${t("solicitudDetail.toQuote")}`
-                            : ""}
-                        </p>
-                      </div>
-                      <Badge
-                        estado={q.status}
-                        label={t(`status.${q.status}`)}
-                      />
+                      {t("adminDashboard.viewAll")}
+                      <ArrowRightIcon className="size-3.5" />
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-        </>
-      )}
+                  </div>
+
+                  {activas.length === 0 ? (
+                    <p className="text-silver-400 mt-4 text-sm">
+                      {t("adminDashboard.noBookings")}
+                    </p>
+                  ) : (
+                    <ul className="mt-4 flex flex-col gap-2.5">
+                      {activas.map((r) => (
+                        <li key={r.id}>
+                          <Link
+                            href={`/admin/reserva/${r.id}`}
+                            className={`flex items-center gap-3 rounded-xl ${INNER} p-3 transition hover:bg-black/35 hover:ring-white/25`}
+                          >
+                            <span className="text-amethyst-200 flex size-11 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/15 ring-inset">
+                              <MusicIcon className="size-5" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-semibold text-white">
+                                {r.serviceName}
+                              </span>
+                              <span className="text-silver-400 block truncate text-xs">
+                                {fechaCorta(r.start, locale)}
+                              </span>
+                            </span>
+                            <span className="hidden shrink-0 text-sm font-semibold text-white sm:block">
+                              {formatCOP(r.amount ?? 0)}
+                            </span>
+                            <span
+                              className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs ${badgeClass(r.estado)}`}
+                            >
+                              {t(`status.${r.estado}`)}
+                            </span>
+                            <KebabIcon className="text-silver-500 size-4 shrink-0" />
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </div>
     </main>
   );
 }

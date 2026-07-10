@@ -14,12 +14,12 @@ import {
 } from "@/domain/contabilidad";
 import type { SedeId } from "@/domain/sede";
 import { addActivo } from "../lib/activos-repo";
+import { adminInput, adminLabel } from "./admin-ui";
 
 const SEDES: SedeId[] = ["barranquilla", "bogota"];
 
-const inputCls =
-  "w-full rounded-lg bg-white/[0.06] px-3 py-2 text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/40";
-const labelCls = "mb-1 block text-xs uppercase tracking-wide text-silver-400";
+const inputCls = adminInput;
+const labelCls = adminLabel;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {
@@ -77,7 +77,9 @@ export function AddActivoModal({
     setBusy(true);
     setError(false);
     try {
-      const fotoUrl = foto ? (await uploadUserFile(user.uid, foto)).url : undefined;
+      const fotoUrl = foto
+        ? (await uploadUserFile(user.uid, foto)).url
+        : undefined;
       const nuevo: NuevoActivo = {
         nombre: nombre.trim(),
         categoria,
@@ -224,7 +226,7 @@ export function AddActivoModal({
 
         <div>
           <label className={labelCls}>{t("adminBienes.add.photo")}</label>
-          <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-sm text-silver-300 transition hover:border-white/40 hover:text-white">
+          <label className="text-silver-300 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-white/20 px-3 py-2.5 text-sm transition hover:border-white/40 hover:text-white">
             <ImageIcon className="size-4" />
             <span className="truncate">
               {foto ? foto.name : t("adminBienes.add.photoPick")}

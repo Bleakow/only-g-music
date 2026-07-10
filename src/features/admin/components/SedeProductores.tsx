@@ -122,7 +122,7 @@ export function SedeProductores({ sedeId }: { sedeId: SedeId }) {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && buscar()}
           placeholder={t("adminEstudios.buscarUsuario")}
-          className="flex-1 rounded-lg bg-white/[0.06] px-3 py-2 text-sm text-white outline-none ring-1 ring-inset ring-white/20 transition focus:ring-white/50 placeholder:text-white/35"
+          className="flex-1 rounded-lg bg-white/[0.06] px-3 py-2 text-sm text-white ring-1 ring-white/20 transition outline-none ring-inset placeholder:text-white/35 focus:ring-white/50"
         />
         <button
           type="button"
@@ -157,7 +157,9 @@ export function SedeProductores({ sedeId }: { sedeId: SedeId }) {
                   className="text-amethyst-200 hover:border-amethyst-300/60 inline-flex shrink-0 items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs transition disabled:opacity-40"
                 >
                   <PlusIcon className="size-3" />
-                  {ya ? t("adminEstudios.yaAsignado") : t("adminEstudios.asignar")}
+                  {ya
+                    ? t("adminEstudios.yaAsignado")
+                    : t("adminEstudios.asignar")}
                 </button>
               </li>
             );

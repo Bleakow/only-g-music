@@ -21,7 +21,6 @@ export function ArtistProfileLoader({
   fallback: ArtistProfile | null;
 }) {
   const { user } = useAuth();
-  const tCommon = useTranslations("common");
   const tArtist = useTranslations("artistProfile");
   const [profile, setProfile] = useState<ArtistProfile | null>(fallback);
   const [loading, setLoading] = useState(true);
@@ -49,12 +48,10 @@ export function ArtistProfileLoader({
         isOwner={!!user && !!profile.uid && user.uid === profile.uid}
       />
     );
-  if (loading)
-    return (
-      <main className="grid min-h-dvh place-items-center text-silver-300">
-        {tCommon("loading")}
-      </main>
-    );
+  // Sin texto "Cargando": el vinilo de la ruta (loading.tsx) ya cubrió la
+  // transición y este fetch cliente es rápido; un lienzo oscuro evita el flash de
+  // texto entre el loader y el contenido.
+  if (loading) return <div className="bg-ink min-h-dvh" />;
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
       <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
@@ -62,7 +59,7 @@ export function ArtistProfileLoader({
       </h1>
       <Link
         href="/artistas"
-        className="mt-8 rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+        className="border-silver-300/40 text-silver-100 hover:border-silver-100 mt-8 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
       >
         {tArtist("backToArtists")}
       </Link>

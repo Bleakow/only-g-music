@@ -29,7 +29,8 @@ export type NotifEvento =
   | "perfil-por-renovar"
   | "convenio-solicitado"
   | "convenio-aprobado"
-  | "convenio-rechazado";
+  | "convenio-rechazado"
+  | "beat-vendido";
 
 /**
  * Crea una notificación para `uid`. `getFirestore()` se resuelve en runtime (no

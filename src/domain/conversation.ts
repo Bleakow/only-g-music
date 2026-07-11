@@ -22,7 +22,10 @@ export type ConversationType = "soporte" | "pago" | "directo";
  *    cliente envió el comprobante y el admin lo revisa); el cliente no escribe.
  *  - "cerrado": hilo finalizado, queda en el historial, nadie escribe.
  */
-export type ConversationStatus = "abierto" | "esperando_confirmacion" | "cerrado";
+export type ConversationStatus =
+  | "abierto"
+  | "esperando_confirmacion"
+  | "cerrado";
 
 /** Autor de un mensaje: el UID del usuario, o "sistema" (mensajes automáticos). */
 export type MessageFrom = string;
@@ -62,7 +65,7 @@ export type NewConversationMessage = Omit<
 
 // ── Pago (máquina de estados, solo type "pago") ─────────────────────────────
 
-export type PagoConcepto = "premium" | "reserva";
+export type PagoConcepto = "premium" | "reserva" | "beat";
 
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
@@ -93,7 +96,7 @@ export interface Conversation {
   participants: string[];
   status: ConversationStatus;
   /** Enlace opcional a la entidad de contexto. */
-  ref?: { kind: "quote" | "booking" | "premium"; id: string };
+  ref?: { kind: "quote" | "booking" | "premium" | "beat"; id: string };
   /** Estado del pago (solo `type === "pago"`). */
   pago?: PagoState;
   /** Resumen del último mensaje (para listar conversaciones sin leer su hilo). */

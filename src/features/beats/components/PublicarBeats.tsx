@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
+import {
+  uploadUserFile,
+  uploadBeatMaster,
+} from "@/features/uploads/lib/uploads-repo";
 import {
   createBeat,
   deleteBeat,
@@ -41,14 +44,16 @@ function FieldShell({
 
 /**
  * Publicación de beats (rol `beatmaker`): formulario para subir un beat nuevo
- * + "Mis beats" (listar/activar/desactivar/borrar los propios). La venta NO
- * vive aquí — es el catálogo `/beats` (con el botón "Comprar" inerte) el que
- * la mostrará en otro slice.
+ * + "Mis beats" (listar/activar/desactivar/borrar los propios). La venta vive
+ * en el catálogo `/beats` (botón "Comprar"); este formulario sube el PREVIEW
+ * público (`audioUrl`) y, opcionalmente, el MÁSTER privado (`masterPath`) que
+ * el servidor entrega al comprador tras confirmar el pago.
  */
 export function PublicarBeats() {
   const t = useTranslations();
   const { user, account } = useAuth();
   const audioInputRef = useRef<HTMLInputElement>(null);
+  const masterInputRef = useRef<HTMLInputElement>(null);
 
   const [titulo, setTitulo] = useState("");
   const [genero, setGenero] = useState("");
@@ -57,6 +62,9 @@ export function PublicarBeats() {
   const [coverUrl, setCoverUrl] = useState("");
   const [bpm, setBpm] = useState("");
   const [uploadingAudio, setUploadingAudio] = useState(false);
+  const [masterPath, setMasterPath] = useState("");
+  const [masterName, setMasterName] = useState("");
+  const [uploadingMaster, setUploadingMaster] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,6 +111,28 @@ export function PublicarBeats() {
     }
   }
 
+  async function onPickMaster(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !user) return;
+    if (file.size > 100 * 1024 * 1024) {
+      setError(t("photoUpload.tooLarge", { maxMb: 100 }));
+      return;
+    }
+    setError(null);
+    setUploadingMaster(true);
+    try {
+      const path = await uploadBeatMaster(user.uid, file);
+      setMasterPath(path);
+      setMasterName(file.name);
+    } catch (err) {
+      console.error("[publicar-beats] master upload:", err);
+      setError(t("beats.errorPublicar"));
+    } finally {
+      setUploadingMaster(false);
+    }
+  }
+
   function resetForm() {
     setTitulo("");
     setGenero("");
@@ -110,6 +140,8 @@ export function PublicarBeats() {
     setAudioName("");
     setCoverUrl("");
     setBpm("");
+    setMasterPath("");
+    setMasterName("");
   }
 
   async function publish() {
@@ -141,6 +173,7 @@ export function PublicarBeats() {
         titulo: titulo.trim(),
         genero,
         audioUrl,
+        masterPath: masterPath || undefined,
         coverUrl: coverUrl || undefined,
         bpm: bpmValido,
       });
@@ -250,6 +283,37 @@ export function PublicarBeats() {
           </p>
         </FieldShell>
 
+        <FieldShell label={t("beats.campoMaster")}>
+          <button
+            type="button"
+            onClick={() => masterInputRef.current?.click()}
+            disabled={uploadingMaster}
+            className={`${INPUT} flex items-center gap-2 text-left disabled:opacity-60`}
+          >
+            {uploadingMaster ? (
+              <>
+                <SpinnerIcon className="size-4 animate-spin" />
+                {t("beats.subiendo")}
+              </>
+            ) : masterName ? (
+              <>
+                <MusicIcon className="text-amethyst-300 size-4 shrink-0" />
+                <span className="truncate">{masterName}</span>
+              </>
+            ) : (
+              <span className="text-silver-400">{t("beats.campoMaster")}</span>
+            )}
+          </button>
+          <input
+            ref={masterInputRef}
+            type="file"
+            accept="audio/*"
+            onChange={onPickMaster}
+            className="hidden"
+          />
+          <p className="text-silver-400 text-xs">{t("beats.masterHint")}</p>
+        </FieldShell>
+
         <FieldShell label={t("beats.campoPortada")}>
           <PhotoUpload
             value={coverUrl}
@@ -278,7 +342,7 @@ export function PublicarBeats() {
             de texto, que cae en el mismo onSubmit. */}
         <GlassButton
           onClick={() => void publish()}
-          disabled={busy || uploadingAudio}
+          disabled={busy || uploadingAudio || uploadingMaster}
           className="self-start"
         >
           {busy ? t("beats.publicando") : t("beats.publicar")}
@@ -323,9 +387,22 @@ export function PublicarBeats() {
                 <p className="truncate text-sm font-semibold text-white">
                   {beat.titulo}
                 </p>
-                <p className="text-silver-400 truncate text-xs">
-                  {beat.genero}
-                </p>
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <p className="text-silver-400 truncate text-xs">
+                    {beat.genero}
+                  </p>
+                  <span
+                    className={`shrink-0 rounded-full px-1.5 py-0.5 text-[0.6rem] tracking-wide uppercase ${
+                      beat.masterPath
+                        ? "bg-emerald-500/15 text-emerald-300"
+                        : "bg-white/[0.06] text-white/40"
+                    }`}
+                  >
+                    {beat.masterPath
+                      ? t("beats.conMaster")
+                      : t("beats.sinMaster")}
+                  </span>
+                </div>
               </div>
 
               <button

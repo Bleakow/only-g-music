@@ -29,14 +29,33 @@ export async function uploadUserBlob(
   const safeName = name.replace(/[^\w.\-]+/g, "_");
   const path = `uploads/${uid}/${Date.now()}-${safeName}`;
   const r = storageRef(storage, path);
-  await uploadBytes(r, blob, blob.type ? { contentType: blob.type } : undefined);
+  await uploadBytes(
+    r,
+    blob,
+    blob.type ? { contentType: blob.type } : undefined,
+  );
   return { url: await getDownloadURL(r), name };
 }
 
 /** Sube un archivo bajo `uploads/{uid}/` y devuelve su URL + nombre original. */
-export function uploadUserFile(
+export function uploadUserFile(uid: string, file: File): Promise<UploadedFile> {
+  return uploadUserBlob(uid, file, file.name);
+}
+
+// Sube el MÁSTER de un beat a una ruta PRIVADA (beats/masters/{uid}/...). Devuelve
+// la RUTA (no una URL): el archivo NO debe ser públicamente descargable; se entrega
+// por URL firmada desde el servidor tras la compra.
+export async function uploadBeatMaster(
   uid: string,
   file: File,
-): Promise<UploadedFile> {
-  return uploadUserBlob(uid, file, file.name);
+): Promise<string> {
+  const safe = file.name.replace(/[^\w.\-]+/g, "_");
+  const path = `beats/masters/${uid}/${Date.now()}-${safe}`;
+  const r = storageRef(storage, path);
+  await uploadBytes(
+    r,
+    file,
+    file.type ? { contentType: file.type } : undefined,
+  );
+  return path; // NO getDownloadURL
 }

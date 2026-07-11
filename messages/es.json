@@ -301,6 +301,9 @@
     "pause": "Pausar",
     "comprar": "Comprar",
     "comprarPronto": "Compra disponible pronto",
+    "errorComprar": "No se pudo iniciar la compra.",
+    "esTuyo": "Tu beat",
+    "elegirMetodo": "¿Cómo vas a pagar?",
     "por": "por {nombre}",
     "bpm": "{bpm} BPM",
     "publicarTitle": "Publicar un beat",
@@ -309,6 +312,10 @@
     "campoGenero": "Género",
     "campoAudioPreview": "Audio de preview (público)",
     "audioPreviewHint": "Sube una versión de preview con tu tag; el archivo completo se entregará tras la compra (próximamente).",
+    "campoMaster": "Máster / archivo completo (privado)",
+    "masterHint": "Se entrega al comprador tras la compra; no se descarga desde el catálogo. Opcional por ahora.",
+    "conMaster": "Con máster",
+    "sinMaster": "Sin máster",
     "campoPortada": "Portada",
     "campoBpm": "BPM",
     "subiendo": "Subiendo…",
@@ -324,7 +331,34 @@
     "errorCargar": "No se pudieron cargar los beats.",
     "faltaAudio": "Sube el audio del beat.",
     "faltaTitulo": "Escribe un título.",
-    "faltaGenero": "Elige un género."
+    "faltaGenero": "Elige un género.",
+    "pedirAMedida": "Pedir un beat a medida",
+    "peticionesTitle": "Peticiones de beats",
+    "peticionesIntro": "Pide un beat a medida: sube un ejemplo o cuéntanos tu idea y un beatmaker se pondrá manos a la obra.",
+    "solicitar": "Solicitar un beat",
+    "campoDescripcion": "Describe tu idea",
+    "campoEjemplo": "Ejemplo/referencia (opcional)",
+    "campoGeneroOpcional": "Género (opcional)",
+    "cualquiera": "Cualquiera",
+    "enviarPeticion": "Enviar petición",
+    "enviando": "Enviando…",
+    "misPeticiones": "Mis peticiones",
+    "sinMisPeticiones": "Aún no has pedido ningún beat.",
+    "abiertas": "Peticiones abiertas",
+    "sinAbiertas": "No hay peticiones abiertas ahora mismo.",
+    "tomar": "Tomar",
+    "tomando": "Tomando…",
+    "tomadaAviso": "Ya la tomó un beatmaker; te contactará.",
+    "tomarAviso": "Al tomar una petición, coordina la entrega con el cliente por chat.",
+    "tomarError": "No se pudo tomar la petición. Inténtalo de nuevo.",
+    "peticionError": "No se pudo enviar la petición.",
+    "peticionCargarError": "No se pudieron cargar las peticiones.",
+    "peticionEstado": {
+      "abierta": "Abierta",
+      "tomada": "Tomada",
+      "entregada": "Entregada",
+      "cerrada": "Cerrada"
+    }
   },
   "adminDashboard": {
     "eyebrow": "Administración",
@@ -359,6 +393,7 @@
     "quickCotizacionesSub": "Solicitudes y envíos",
     "quickRolesSub": "Otorga y quita permisos",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
+    "quickBeatsSub": "Ventas y pagos de beatmakers",
     "bookingsActive": "Reservas activas",
     "viewAll": "Ver todas",
     "activityTitle": "Actividad reciente",
@@ -379,6 +414,7 @@
     "pagos": "Pagos",
     "roles": "Roles",
     "convenios": "Convenios",
+    "beats": "Beats",
     "roleAdmin": "Administrador",
     "helpTitle": "¿Necesitas ayuda?",
     "helpText": "Soporte disponible 24/7 para ti."
@@ -420,6 +456,22 @@
       "aprobada": "Aprobada",
       "rechazada": "Rechazada"
     }
+  },
+  "adminBeats": {
+    "title": "Ventas y pagos de beats",
+    "intro": "Revisa las ventas de beats y marca los pagos pendientes a los beatmakers.",
+    "pendientes": "Por pagar a beatmakers",
+    "pagadas": "Pagadas",
+    "sinVentas": "Aún no hay ventas.",
+    "marcarPagado": "Marcar pagado",
+    "totalPendiente": "Total por pagar: {monto}",
+    "comprador": "Comprador",
+    "beatmaker": "Beatmaker",
+    "precio": "Precio",
+    "comision": "Comisión",
+    "neto": "Neto beatmaker",
+    "errorPagar": "No se pudo marcar el pago. Inténtalo de nuevo.",
+    "errorCargar": "No se pudieron cargar las ventas de beats."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -1339,6 +1391,10 @@
       "convenio-rechazado": {
         "titulo": "Convenio rechazado",
         "cuerpo": "Tu solicitud de convenio fue rechazada. {motivo}"
+      },
+      "beat-vendido": {
+        "titulo": "Beat vendido",
+        "cuerpo": "Se vendió tu beat \"{titulo}\"."
       }
     }
   },
@@ -1353,6 +1409,7 @@
     "productoresTitle": "Productores",
     "rolesTitle": "Roles",
     "conveniosTitle": "Solicitudes de convenio",
+    "beatsTitle": "Ventas y pagos de beats",
     "paymentsConfigTitle": "Datos de pago",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",

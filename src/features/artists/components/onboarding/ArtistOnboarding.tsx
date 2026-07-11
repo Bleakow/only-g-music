@@ -5,6 +5,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
+import { DatePicker } from "@/components/ui/DatePicker";
 import { hasAnyRole } from "@/domain/user";
 import { toSlug } from "@/domain/artist-profile";
 import { formatCOP } from "@/domain/service";
@@ -16,6 +17,7 @@ import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
 const CURRENT_YEAR = new Date().getFullYear();
+const TODAY = new Date().toISOString().slice(0, 10);
 
 function FieldShell({
   label,
@@ -28,11 +30,11 @@ function FieldShell({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs uppercase tracking-[2px] text-silver-300">
+      <span className="text-silver-300 text-xs tracking-[2px] uppercase">
         {label}
       </span>
       {children}
-      {hint && <span className="text-xs text-silver-500">{hint}</span>}
+      {hint && <span className="text-silver-500 text-xs">{hint}</span>}
     </label>
   );
 }
@@ -66,18 +68,18 @@ export function ArtistOnboarding() {
   if (account?.artistSlug) {
     const activo = hasAnyRole(account, ["artista"]);
     return (
-      <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 text-center">
+      <main className="mx-auto min-h-dvh max-w-lg px-6 pt-28 pb-24 text-center">
         <h1 className="font-narrow text-4xl font-bold uppercase">
           {t("artistOnboarding.alreadyRegistered.title")}
         </h1>
-        <p className="mt-3 text-silver-300">
+        <p className="text-silver-300 mt-3">
           {activo
             ? t("artistOnboarding.alreadyRegistered.activeBody")
             : t("artistOnboarding.alreadyRegistered.pendingBody")}
         </p>
         <Link
           href={activo ? "/artista/perfil" : "/solicitudes"}
-          className="mt-8 inline-flex rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-7 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink"
+          className="from-silver-100 to-amethyst-300 text-ink mt-8 inline-flex rounded-full bg-gradient-to-r px-7 py-3 text-sm font-semibold tracking-[2px] uppercase"
         >
           {activo
             ? t("artistOnboarding.alreadyRegistered.goToProfile")
@@ -98,7 +100,9 @@ export function ArtistOnboarding() {
       return;
     }
     if (!year || year < 1950 || year > CURRENT_YEAR) {
-      setError(t("artistOnboarding.errors.invalidYear", { year: CURRENT_YEAR }));
+      setError(
+        t("artistOnboarding.errors.invalidYear", { year: CURRENT_YEAR }),
+      );
       return;
     }
     if (photo.length === 0) {
@@ -144,27 +148,27 @@ export function ArtistOnboarding() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-lg px-6 pb-24 pt-28 sm:px-8">
-      <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+    <main className="mx-auto min-h-dvh max-w-lg px-6 pt-28 pb-24 sm:px-8">
+      <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
         {t("artistOnboarding.eyebrow")}
       </p>
-      <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
+      <h1 className="font-narrow mt-2 text-5xl font-bold uppercase sm:text-6xl">
         {t("artistOnboarding.heroTitle")}
       </h1>
-      <p className="mt-3 text-silver-300">
+      <p className="text-silver-300 mt-3">
         {t.rich("artistOnboarding.heroParagraph", {
           strong: (c) => <strong className="text-silver-100">{c}</strong>,
         })}
       </p>
 
-      <div className="mt-6 rounded-2xl border border-amethyst-300/30 bg-amethyst-500/10 p-5">
-        <p className="text-xs uppercase tracking-[2px] text-amethyst-200">
+      <div className="border-amethyst-300/30 bg-amethyst-500/10 mt-6 rounded-2xl border p-5">
+        <p className="text-amethyst-200 text-xs tracking-[2px] uppercase">
           {t("artistOnboarding.pricingLabel")}
         </p>
-        <p className="mt-1 font-narrow text-3xl font-bold text-white">
+        <p className="font-narrow mt-1 text-3xl font-bold text-white">
           {formatCOP(PRECIO_PERFIL)}
         </p>
-        <p className="mt-1 text-sm text-silver-400">
+        <p className="text-silver-400 mt-1 text-sm">
           {t("artistOnboarding.pricingNote")}
         </p>
       </div>
@@ -195,12 +199,11 @@ export function ArtistOnboarding() {
 
         <div className="grid grid-cols-2 gap-4">
           <FieldShell label={t("artistOnboarding.fields.birthDate.label")}>
-            <input
-              type="date"
-              className={INPUT}
+            <DatePicker
               value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              required
+              onChange={setBirthDate}
+              max={TODAY}
+              className={INPUT}
             />
           </FieldShell>
           <FieldShell
@@ -222,7 +225,7 @@ export function ArtistOnboarding() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <span className="text-xs uppercase tracking-[2px] text-silver-300">
+          <span className="text-silver-300 text-xs tracking-[2px] uppercase">
             {t("artistOnboarding.fields.photo.label")}
           </span>
           <FileUpload

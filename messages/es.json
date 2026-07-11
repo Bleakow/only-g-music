@@ -5,6 +5,7 @@
     "services": "Servicios",
     "productions": "Producciones",
     "events": "Eventos",
+    "beats": "Beats",
     "home": "Inicio",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
@@ -27,6 +28,13 @@
     "saving": "Guardando…",
     "cancel": "Cancelar"
   },
+  "datePicker": {
+    "today": "Hoy",
+    "placeholder": "Seleccionar fecha",
+    "open": "Abrir calendario",
+    "prev": "Mes anterior",
+    "next": "Mes siguiente"
+  },
   "auth": {
     "login": "Iniciar sesión",
     "createAccount": "Crear cuenta",
@@ -42,7 +50,10 @@
     "cliente": "Cliente",
     "productor": "Productor",
     "admin": "Admin",
-    "artista": "Artista"
+    "artista": "Cantante",
+    "beatmaker": "Beatmaker",
+    "modelo": "Modelo",
+    "bailarin": "Bailarín"
   },
   "userMenu": {
     "account": "Menú de cuenta",
@@ -53,6 +64,7 @@
     "becomeArtist": "Conviértete en artista",
     "adminPanel": "Panel admin",
     "console": "Consola",
+    "myBeats": "Mis beats",
     "availability": "Disponibilidad",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
@@ -68,9 +80,14 @@
     "email": "Correo",
     "password": "Contraseña",
     "howJoin": "¿Cómo te unes?",
-    "justExplore": "Solo explorar",
-    "iAmArtist": "Soy artista",
+    "fnVisitante": "Solo explorar",
+    "fnCantante": "Soy cantante",
+    "fnProductor": "Soy productor",
+    "fnBeatmaker": "Soy beatmaker",
     "artistHint": "Tras crear tu cuenta te llevamos a montar tu perfil de artista (incluye un pago).",
+    "fnProductorHint": "Ofrece producciones desde una sede de Only G. Requiere aprobación.",
+    "fnBeatmakerHint": "Publica y vende tus beats en la plataforma. Requiere aprobación.",
+    "convenioSaveFailed": "Tu cuenta se creó, pero no pudimos enviar tu solicitud de convenio. Vuelve a intentarlo en un momento.",
     "forgot": "¿Olvidaste tu contraseña?",
     "submitting": "Un momento…",
     "sendLink": "Enviar enlace",
@@ -94,6 +111,11 @@
     "tooManyRequests": "Demasiados intentos. Inténtalo de nuevo en un momento.",
     "missingEmail": "Escribe tu correo.",
     "unknown": "Algo salió mal. Inténtalo de nuevo."
+  },
+  "convenioEnviado": {
+    "title": "Solicitud enviada",
+    "body": "Tu solicitud de convenio está en revisión. Te avisaremos por la campanita y por el chat cuando el admin responda.",
+    "cta": "Ver mis solicitudes"
   },
   "account": {
     "title": "Mi cuenta",
@@ -265,6 +287,45 @@
     "title": "Eventos",
     "intro": "Aquí vivirán las giras, fechas y experiencias en vivo de Only G."
   },
+  "beats": {
+    "metaTitle": "Beats — Only G Music",
+    "metaDesc": "Explora y compra beats de nuestros productores.",
+    "title": "Beats",
+    "intro": "Explora y compra beats de nuestros productores.",
+    "back": "Inicio",
+    "vacio": "Aún no hay beats publicados.",
+    "filtroGenero": "Género",
+    "filtroBeatmaker": "Beatmaker",
+    "todos": "Todos",
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "comprar": "Comprar",
+    "comprarPronto": "Compra disponible pronto",
+    "por": "por {nombre}",
+    "bpm": "{bpm} BPM",
+    "publicarTitle": "Publicar un beat",
+    "publicarIntro": "Sube tu beat y ponlo en el catálogo público de Only G.",
+    "campoTitulo": "Título",
+    "campoGenero": "Género",
+    "campoAudioPreview": "Audio de preview (público)",
+    "audioPreviewHint": "Sube una versión de preview con tu tag; el archivo completo se entregará tras la compra (próximamente).",
+    "campoPortada": "Portada",
+    "campoBpm": "BPM",
+    "subiendo": "Subiendo…",
+    "publicar": "Publicar",
+    "publicando": "Publicando…",
+    "misBeats": "Mis beats",
+    "sinBeats": "Aún no has publicado beats.",
+    "borrar": "Borrar",
+    "borrarConfirm": "¿Borrar este beat?",
+    "activar": "Activar",
+    "desactivar": "Desactivar",
+    "errorPublicar": "No se pudo publicar el beat. Inténtalo de nuevo.",
+    "errorCargar": "No se pudieron cargar los beats.",
+    "faltaAudio": "Sube el audio del beat.",
+    "faltaTitulo": "Escribe un título.",
+    "faltaGenero": "Elige un género."
+  },
   "adminDashboard": {
     "eyebrow": "Administración",
     "title": "Panel de Control",
@@ -296,6 +357,8 @@
     "quickEstudiosSub": "Salas y disponibilidad",
     "quickPagosSub": "Métodos y datos",
     "quickCotizacionesSub": "Solicitudes y envíos",
+    "quickRolesSub": "Otorga y quita permisos",
+    "quickConveniosSub": "Solicitudes de productor y beatmaker",
     "bookingsActive": "Reservas activas",
     "viewAll": "Ver todas",
     "activityTitle": "Actividad reciente",
@@ -314,9 +377,49 @@
     "estudios": "Estudios",
     "cotizaciones": "Cotizaciones",
     "pagos": "Pagos",
+    "roles": "Roles",
+    "convenios": "Convenios",
     "roleAdmin": "Administrador",
     "helpTitle": "¿Necesitas ayuda?",
     "helpText": "Soporte disponible 24/7 para ti."
+  },
+  "adminRoles": {
+    "title": "Gestión de roles",
+    "intro": "Busca un usuario y ajusta sus permisos.",
+    "search": "Buscar por nombre o correo…",
+    "noResults": "Sin resultados.",
+    "typeToSearch": "Escribe para buscar usuarios.",
+    "editRoles": "Editar roles",
+    "editTitle": "Roles de {nombre}",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "syncNote": "Beatmaker y productor son socios: no pagan membresía y su perfil se sincroniza con estas pestañas.",
+    "errorSelfAdmin": "No puedes quitarte tu propio rol de admin.",
+    "errorGuardar": "No se pudieron guardar los roles.",
+    "errorBuscar": "No se pudo buscar."
+  },
+  "adminConvenios": {
+    "title": "Solicitudes de convenio",
+    "intro": "Revisa y responde las solicitudes de productor y beatmaker.",
+    "pendientes": "Pendientes",
+    "sinPendientes": "No hay solicitudes pendientes.",
+    "resueltas": "Resueltas",
+    "aprobar": "Aprobar",
+    "rechazar": "Rechazar",
+    "elegirSede": "Elige la sede",
+    "sinSedes": "Aún no hay sedes creadas. Crea una para poder aprobar solicitudes de productor.",
+    "crearSede": "Crear sede",
+    "motivo": "Motivo (opcional)",
+    "motivoPlaceholder": "Explica por qué se rechaza…",
+    "confirmar": "Confirmar",
+    "cancelar": "Cancelar",
+    "errorAprobar": "No se pudo aprobar la solicitud. Inténtalo de nuevo.",
+    "errorRechazar": "No se pudo rechazar la solicitud. Inténtalo de nuevo.",
+    "errorCargar": "No se pudieron cargar las solicitudes de convenio.",
+    "estado": {
+      "aprobada": "Aprobada",
+      "rechazada": "Rechazada"
+    }
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -336,9 +439,13 @@
   "adminEstudios": {
     "backToAdmin": "← Panel admin",
     "title": "Estudios",
-    "intro": "Edita tus sedes: ciudad, dirección, horario y a dónde te pagan (si un estudio cobra a su propia cuenta). Crear sedes nuevas y asignar productores llegan después.",
+    "intro": "Edita tus sedes: ciudad, dirección, horario y a dónde te pagan (si un estudio cobra a su propia cuenta). También puedes crear sedes nuevas y asignar productores.",
     "edit": "Editar",
     "editTitle": "Editar sede",
+    "crear": "Crear sede",
+    "crearTitle": "Crear sede nueva",
+    "crearError": "No se pudo crear la sede. Revisa el nombre e inténtalo de nuevo.",
+    "nombre": "Nombre",
     "ciudad": "Ciudad",
     "direccion": "Dirección",
     "horario": "Horario",
@@ -381,7 +488,7 @@
     "fieldInstagram": "Instagram",
     "coverPc": "Portada (computador)",
     "coverPcHint": "Foto horizontal. Se ve en computadores y pantallas grandes. Obligatoria.",
-    "coverMobile": "Portada (móvil)",
+    "coverMobile": "Perfil mobile",
     "coverMobileHint": "Foto vertical para celulares (opcional). Si no la subes, se usa la de computador.",
     "gallery": "Galería",
     "galleryHint": "Fotos del editorial bajo la portada. La primera va grande.",
@@ -456,6 +563,7 @@
     "clientFallback": "Cliente",
     "pnlTitle": "Estado de resultados",
     "manageExpenses": "Gestionar gastos →",
+    "openContabilidad": "Contabilidad completa",
     "pnlRevenue": "Ingresos",
     "pnlExpenses": "Gastos",
     "pnlProfit": "Utilidad",
@@ -489,6 +597,7 @@
     "colBookValue": "En libros",
     "colActions": " ",
     "statusRetired": "De baja",
+    "viewPhoto": "Ver foto",
     "retire": "Dar de baja",
     "noSede": "—",
     "categoria": {
@@ -673,7 +782,8 @@
     "title": "Perfiles",
     "descripcion": "Tu vitrina. Busca, activa o desactiva la membresía, edita y marca los <strong>destacados</strong> (máx. {max}). Usa «Curar escaparate» para ordenar los primeros que se ven. Los perfiles sin membresía activa salen en gris.",
     "buscarPerfil": "Buscar por nombre…",
-    "curarEscaparate": "Curar escaparate",
+    "tabTodos": "Todos",
+    "curarEscaparate": "Ordenar",
     "curarTitle": "Orden del escaparate",
     "curarNota": "Estos son los primeros que se ven en el escaparate; el resto aparece por fecha.",
     "curarVacio": "No hay perfiles visibles todavía.",
@@ -683,6 +793,8 @@
     "sinPerfiles": "Aún no hay perfiles creados.",
     "destacadosContador": "Destacados: {count}/{max}",
     "inactivo": "Inactivo",
+    "socio": "Socio",
+    "socioEstado": "Visible · socio",
     "premiumEstado": {
       "activo": "Premium activo",
       "expirado": "Expirado",
@@ -717,6 +829,17 @@
     "errorDestacado": "No se pudo cambiar el destacado.",
     "errorBorrar": "No se pudo borrar el perfil.",
     "errorMock": "No se pudo crear el perfil.",
+    "membresia": {
+      "activarTitle": "Activar membresía de {nombre}",
+      "activarDescripcion": "Elige cómo activar la membresía por un mes.",
+      "pago": "Confirmar pago · 15.000 COP",
+      "cortesia": "A cortesía · 1 mes",
+      "cortesiaHint": "La cortesía activa el perfil por un mes y no genera ingreso en balances.",
+      "desactivarTitle": "Cerrar membresía",
+      "desactivarMensaje": "¿Seguro que quieres cerrar la membresía de {nombre}? Su perfil dejará de aparecer en la vitrina.",
+      "confirmar": "Cerrar membresía",
+      "cancelar": "Cancelar"
+    },
     "link": {
       "vincularUsuario": "Vincular usuario",
       "title": "Vincular perfil a un usuario",
@@ -983,6 +1106,18 @@
       "hint": "La foto principal se ve en computadores y pantallas grandes. Sube una versión vertical (opcional) para que en celulares no se recorte mal.",
       "setHint": "Foto vertical para móvil añadida. La principal se usa en computadores."
     },
+    "photoSync": {
+      "titleMobile": "Foto para móvil",
+      "titleDesktop": "Foto para escritorio",
+      "bodyMobile": "¿Usar esta misma foto en móviles o subir una versión vertical?",
+      "bodyDesktop": "¿Usar esta misma foto en escritorio o subir una versión horizontal?",
+      "useSame": "Usar esta misma",
+      "uploadVertical": "Subir vertical",
+      "uploadHorizontal": "Subir horizontal",
+      "manageMobile": "Versión móvil",
+      "manageDesktop": "Versión escritorio",
+      "hint": "La foto se adapta a cada pantalla. Puedes usar la misma o una versión por pantalla."
+    },
     "location": {
       "title": "Ubicación",
       "done": "Listo"
@@ -1192,6 +1327,18 @@
       "perfil-por-renovar": {
         "titulo": "Perfil por renovar",
         "cuerpo": "Tu perfil vence en {dias} días."
+      },
+      "convenio-solicitado": {
+        "titulo": "Nueva solicitud de convenio",
+        "cuerpo": "{nombre} solicitó convenio de {tipo}."
+      },
+      "convenio-aprobado": {
+        "titulo": "Convenio aprobado",
+        "cuerpo": "Tu solicitud de convenio de {tipo} fue aprobada."
+      },
+      "convenio-rechazado": {
+        "titulo": "Convenio rechazado",
+        "cuerpo": "Tu solicitud de convenio fue rechazada. {motivo}"
       }
     }
   },
@@ -1204,6 +1351,8 @@
     "balanceTitle": "Balance",
     "profilesTitle": "Perfiles",
     "productoresTitle": "Productores",
+    "rolesTitle": "Roles",
+    "conveniosTitle": "Solicitudes de convenio",
     "paymentsConfigTitle": "Datos de pago",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",

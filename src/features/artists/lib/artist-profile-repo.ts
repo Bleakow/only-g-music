@@ -46,6 +46,7 @@ import {
   compararOrden,
   toSlug,
 } from "@/domain/artist-profile";
+import type { Role } from "@/domain/user";
 
 const COLLECTION = "artistProfiles";
 
@@ -107,6 +108,12 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     featured: data.featured ?? false,
     puntos: data.puntos ?? 0,
     premium: (data.premium as Premium | null) ?? null,
+    // Disciplinas: los perfiles viejos (o con array vacío) se leen como cantante.
+    disciplines:
+      Array.isArray(data.disciplines) && data.disciplines.length
+        ? (data.disciplines as Role[])
+        : ["artista"],
+    socio: data.socio === true,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
     updatedAt: data.updatedAt?.toMillis?.() ?? Date.now(),
   };

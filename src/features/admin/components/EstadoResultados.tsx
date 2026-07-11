@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { DatePicker } from "@/components/ui/DatePicker";
 import type { Transaccion } from "@/domain/transaccion";
 import { formatCOP } from "@/domain/service";
 import {
@@ -17,13 +18,6 @@ import {
 const DAY_MS = 86_400_000;
 type PeriodoKey = "mes" | "anio" | "todo" | "custom";
 const PRESETS: PeriodoKey[] = ["mes", "anio", "todo", "custom"];
-
-/** epoch ms → "YYYY-MM-DD". */
-function toDateInput(ms: number): string {
-  const d = new Date(ms);
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
 
 /**
  * Estado de Resultados (P&L) del periodo: ingresos (transacciones, misma fuente
@@ -93,18 +87,18 @@ export function EstadoResultados({
         ))}
         {periodoKey === "custom" && (
           <div className="flex items-center gap-2">
-            <input
-              type="date"
+            <DatePicker
               value={customDesde}
-              onChange={(e) => setCustomDesde(e.target.value)}
-              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 outline-none ring-inset focus:ring-white/50"
+              onChange={setCustomDesde}
+              max={customHasta || undefined}
+              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 transition ring-inset focus:ring-white/50"
             />
             <span className="text-silver-500">→</span>
-            <input
-              type="date"
+            <DatePicker
               value={customHasta}
-              onChange={(e) => setCustomHasta(e.target.value)}
-              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 outline-none ring-inset focus:ring-white/50"
+              onChange={setCustomHasta}
+              min={customDesde || undefined}
+              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 transition ring-inset focus:ring-white/50"
             />
           </div>
         )}

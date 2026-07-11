@@ -24,6 +24,7 @@ import {
   ArrowRightIcon,
 } from "./admin-icons";
 import { adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -70,6 +71,22 @@ const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
     sub: "quickCotizacionesSub",
     href: "/admin/cotizaciones",
     Icon: QuoteIcon,
+  },
+  {
+    key: "roles",
+    sub: "quickRolesSub",
+    href: "/admin/roles",
+    // Sin icono propio: reutilizamos ArtistIcon (silueta de una persona), ya
+    // que "roles" trata de ajustar los permisos de UN usuario a la vez.
+    Icon: ArtistIcon,
+  },
+  {
+    key: "convenios",
+    sub: "quickConveniosSub",
+    href: "/admin/convenios",
+    // Sin icono propio: reutilizamos ProducersIcon, ya que aprobar un convenio
+    // es justo lo que da de alta a un productor/beatmaker en la plataforma.
+    Icon: ProducersIcon,
   },
 ];
 
@@ -185,9 +202,83 @@ export function AdminDashboard() {
         )}
 
         {loading ? (
-          <p className="text-silver-300 py-16 text-center">
-            {t("common.loading")}
-          </p>
+          <div className="mt-4 flex flex-col gap-4 lg:grid lg:grid-cols-5">
+            {/* Stat cards (skeleton) */}
+            <section className="order-2 grid gap-4 sm:grid-cols-3 lg:order-1 lg:col-span-5">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`${glassSurface} relative overflow-hidden rounded-2xl p-5`}
+                >
+                  <div className="relative flex items-start gap-4">
+                    <Skeleton className="size-12 shrink-0 rounded-xl" />
+                    <div className="min-w-0 flex-1">
+                      <Skeleton className="h-8 w-16" />
+                      <Skeleton className="mt-2 h-4 w-24" />
+                      <Skeleton className="mt-1 h-3 w-20" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            {/* Accesos rápidos (skeleton) */}
+            <section className={`${OUTER} order-1 lg:order-2 lg:col-span-2`}>
+              <Skeleton className="h-5 w-40" />
+              <div className="mt-4 grid grid-cols-2 gap-2.5">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`flex flex-col gap-2 rounded-xl ${INNER} p-3`}
+                  >
+                    <Skeleton className="size-9 rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Actividad reciente (skeleton) */}
+            <section className={`${OUTER} order-4 lg:col-span-2`}>
+              <Skeleton className="h-5 w-32" />
+              <div className="mt-3 flex flex-col gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`${INNER} flex items-center gap-3 rounded-xl p-2.5`}
+                  >
+                    <Skeleton className="size-8 shrink-0 rounded-lg" />
+                    <Skeleton className="h-4 flex-1" />
+                    <Skeleton className="h-3 w-12 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Reservas activas (skeleton) */}
+            <section className={`${OUTER} order-3 lg:col-span-3 lg:row-span-2`}>
+              <div className="flex items-center justify-between gap-3">
+                <Skeleton className="h-5 w-44" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <div className="mt-4 flex flex-col gap-2.5">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`flex items-center gap-3 rounded-xl ${INNER} p-3`}
+                  >
+                    <Skeleton className="size-11 shrink-0 rounded-lg" />
+                    <div className="min-w-0 flex-1">
+                      <Skeleton className="h-4 w-2/3" />
+                      <Skeleton className="mt-2 h-3 w-1/3" />
+                    </div>
+                    <Skeleton className="h-5 w-20 shrink-0 rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
         ) : (
           <>
             {/* Contenedor reordenable: en MÓVIL (flex-col) el orden es accesos →

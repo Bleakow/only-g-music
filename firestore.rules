@@ -68,6 +68,51 @@ service cloud.firestore {
       }
     }
 
+    // ── Solicitudes de convenio (productor/beatmaker) ────────────────
+    // El usuario crea SU propia solicitud (estado inicial 'pendiente') y lee las
+    // suyas; el admin lee todas. La APROBACIÓN otorga un rol → va por Cloud
+    // Function (Admin SDK), nunca desde el cliente: por eso update/delete = false.
+    match /convenioRequests/{id} {
+      allow read: if request.auth != null
+        && (isAdmin() || resource.data.uid == request.auth.uid);
+
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && (request.resource.data.tipo == 'productor'
+          || request.resource.data.tipo == 'beatmaker');
+
+      allow update, delete: if false;
+    }
+
+    // ── Beats (marketplace) ──────────────────────────────────────────
+    // Los beats ACTIVOS son catálogo público; los inactivos solo los ve su dueño
+    // o el admin. Publica/edita/borra el dueño (beatmakerUid propio) con rol
+    // 'beatmaker'; el slug de atribución debe ser el suyo (evita firmar el beat
+    // con el perfil de otro artista). El admin puede todo.
+    match /beats/{id} {
+      allow read: if resource.data.activo == true
+        || isAdmin()
+        || (request.auth != null && resource.data.beatmakerUid == request.auth.uid);
+
+      allow create: if isAdmin()
+        || (request.auth != null
+          && request.resource.data.beatmakerUid == request.auth.uid
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])
+          && (!('beatmakerSlug' in request.resource.data)
+            || request.resource.data.beatmakerSlug == null
+            || request.resource.data.beatmakerSlug == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug));
+
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.beatmakerUid == request.auth.uid
+          && request.resource.data.beatmakerUid == resource.data.beatmakerUid
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker']));
+
+      allow delete: if isAdmin()
+        || (request.auth != null && resource.data.beatmakerUid == request.auth.uid);
+    }
+
     // ── Solicitudes de cotización ────────────────────────────────────
     // El cliente crea SU propia solicitud (estado inicial 'pendiente') y solo
     // puede leer las suyas. El estudio responde/actualiza vía Admin SDK
@@ -139,7 +184,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug == slug
           && request.resource.data.puntos == 0
           && request.resource.data.premium == null
-          && !request.resource.data.keys().hasAny(['orden', 'featured']));
+          && !request.resource.data.keys().hasAny(['orden', 'featured', 'disciplines', 'socio']));
 
       // El dueño edita su contenido, sin tocar campos sensibles ni la curaduría
       // de la vitrina (orden/featured = solo admin).
@@ -147,7 +192,8 @@ service cloud.firestore {
         || (request.auth != null
           && resource.data.uid == request.auth.uid
           && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt', 'orden', 'featured']));
+              .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt', 'orden', 'featured',
+                       'disciplines', 'socio']));
 
       allow delete: if isAdmin();
 

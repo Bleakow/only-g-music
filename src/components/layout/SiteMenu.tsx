@@ -17,7 +17,7 @@ const NAV = [
   { href: "/artistas", key: "artists" },
   { href: "/servicios", key: "services" },
   { href: "/producciones", key: "productions" },
-  { href: "/eventos", key: "events" },
+  { href: "/beats", key: "beats" },
 ] as const;
 
 export function SiteMenu({

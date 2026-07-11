@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { sedes } from "@/features/sedes/data/sedes";
-import type { SedeId } from "@/domain/sede";
+import { sedes as seedSedes } from "@/features/sedes/data/sedes";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
+import type { Sede, SedeId } from "@/domain/sede";
 import {
   plantillaPorDefecto,
   slotsDeVentana,
@@ -30,7 +31,13 @@ const REF_MONDAY = new Date(2026, 0, 5);
 const DEFAULT_VENTANA: VentanaHoraria = { desde: "10:00", hasta: "16:00" };
 
 const emptyPlantilla = (): PlantillaSemanal => ({
-  0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null,
+  0: null,
+  1: null,
+  2: null,
+  3: null,
+  4: null,
+  5: null,
+  6: null,
 });
 
 const ym = (year: number, month: number) =>
@@ -45,7 +52,8 @@ export function AvailabilityEditor() {
   const [mounted, setMounted] = useState(false);
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(0);
-  const [sedeId, setSedeId] = useState<SedeId>(sedes[0].id);
+  const [sedes, setSedes] = useState<Sede[]>(seedSedes);
+  const [sedeId, setSedeId] = useState<SedeId>(seedSedes[0].id);
   const [plantilla, setPlantilla] = useState<PlantillaSemanal>(emptyPlantilla);
   const [excepciones, setExcepciones] = useState<
     Record<string, VentanaHoraria | null>
@@ -60,6 +68,20 @@ export function AvailabilityEditor() {
     setYear(n.getFullYear());
     setMonth(n.getMonth());
     setMounted(true);
+  }, []);
+
+  // Sedes reales (semilla + creadas por el admin); arranca con la semilla
+  // como fallback inmediato para no dejar el selector vacío.
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((data) => {
+        if (active) setSedes(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const mes = ym(year, month);
@@ -211,17 +233,15 @@ export function AvailabilityEditor() {
   const monthName = fmtMonthLong.format(new Date(year, month, 1));
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
+    <main className="mx-auto min-h-dvh max-w-3xl px-6 pt-28 pb-24 sm:px-12">
       <header className="mb-8">
-        <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+        <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
           {t("roles.productor")}
         </p>
-        <h1 className="mt-3 font-narrow text-4xl font-bold uppercase sm:text-6xl">
+        <h1 className="font-narrow mt-3 text-4xl font-bold uppercase sm:text-6xl">
           {t("availability.title")}
         </h1>
-        <p className="mt-3 text-silver-300">
-          {t("availability.intro")}
-        </p>
+        <p className="text-silver-300 mt-3">{t("availability.intro")}</p>
       </header>
 
       {loaded && !defined && (
@@ -242,12 +262,12 @@ export function AvailabilityEditor() {
             type="button"
             onClick={() => setSedeId(s.id)}
             data-active={sedeId === s.id}
-            className="rounded-xl border border-white/10 px-5 py-3 text-left transition hover:border-white/30 data-[active=true]:border-amethyst-400/60 data-[active=true]:bg-amethyst-500/10"
+            className="data-[active=true]:border-amethyst-400/60 data-[active=true]:bg-amethyst-500/10 rounded-xl border border-white/10 px-5 py-3 text-left transition hover:border-white/30"
           >
-            <span className="block font-narrow text-xl font-bold uppercase">
+            <span className="font-narrow block text-xl font-bold uppercase">
               {s.nombre}
             </span>
-            <span className="text-xs text-silver-400">{s.ciudad}</span>
+            <span className="text-silver-400 text-xs">{s.ciudad}</span>
           </button>
         ))}
       </div>
@@ -258,7 +278,7 @@ export function AvailabilityEditor() {
           type="button"
           onClick={() => shift(-1)}
           aria-label={t("availability.prevMonth")}
-          className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
+          className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
         >
           <ArrowLeftIcon className="size-4" />
         </button>
@@ -269,7 +289,7 @@ export function AvailabilityEditor() {
           type="button"
           onClick={() => shift(1)}
           aria-label={t("availability.nextMonth")}
-          className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
+          className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
         >
           <ArrowLeftIcon className="size-4 rotate-180" />
         </button>
@@ -278,7 +298,7 @@ export function AvailabilityEditor() {
       {/* Plantilla semanal */}
       <section className="rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="font-narrow text-xl font-bold uppercase text-white">
+          <h2 className="font-narrow text-xl font-bold text-white uppercase">
             {t("availability.weeklySchedule")}
           </h2>
           <Button
@@ -332,7 +352,7 @@ export function AvailabilityEditor() {
                         }))
                       }
                     />
-                    <span className="text-xs text-silver-400">
+                    <span className="text-silver-400 text-xs">
                       {slotsDeVentana(v).length} slots
                     </span>
                     <Button
@@ -346,7 +366,9 @@ export function AvailabilityEditor() {
                     </Button>
                   </div>
                 ) : (
-                  <span className="text-sm text-silver-500">{t("availability.free")}</span>
+                  <span className="text-silver-500 text-sm">
+                    {t("availability.free")}
+                  </span>
                 )}
               </div>
             );
@@ -356,17 +378,17 @@ export function AvailabilityEditor() {
 
       {/* Excepciones por día */}
       <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-6">
-        <h2 className="mb-1 font-narrow text-xl font-bold uppercase text-white">
+        <h2 className="font-narrow mb-1 text-xl font-bold text-white uppercase">
           {t("availability.monthDays")}
         </h2>
-        <p className="mb-4 text-sm text-silver-400">
+        <p className="text-silver-400 mb-4 text-sm">
           {t("availability.monthDaysHint")}
         </p>
         <div className="grid grid-cols-7 gap-1 text-center">
           {WEEKDAY_INDICES.map((idx) => (
             <span
               key={idx}
-              className="py-2 text-xs uppercase tracking-wide text-silver-500"
+              className="text-silver-500 py-2 text-xs tracking-wide uppercase"
             >
               {weekdayShort(idx)}
             </span>
@@ -382,7 +404,7 @@ export function AvailabilityEditor() {
                 type="button"
                 onClick={() => toggleDia(fecha, weekday)}
                 data-on={trabaja}
-                className="aspect-square rounded-lg border border-transparent text-sm transition data-[on=true]:border-amethyst-400/50 data-[on=true]:bg-amethyst-500/15 data-[on=true]:text-white data-[on=false]:text-silver-500/50 hover:border-white/20"
+                className="data-[on=true]:border-amethyst-400/50 data-[on=true]:bg-amethyst-500/15 data-[on=false]:text-silver-500/50 aspect-square rounded-lg border border-transparent text-sm transition hover:border-white/20 data-[on=true]:text-white"
               >
                 {day}
               </button>
@@ -392,7 +414,7 @@ export function AvailabilityEditor() {
       </section>
 
       {msg && (
-        <p className="mt-6 rounded-lg border border-amethyst-300/30 bg-amethyst-500/10 px-3 py-2 text-sm text-amethyst-100">
+        <p className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-100 mt-6 rounded-lg border px-3 py-2 text-sm">
           {msg}
         </p>
       )}
@@ -402,7 +424,9 @@ export function AvailabilityEditor() {
           {t("availability.save", { month: monthName })}
         </Button>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm text-silver-400">{t("availability.advance")}</span>
+          <span className="text-silver-400 text-sm">
+            {t("availability.advance")}
+          </span>
           <Button
             variant="secondary"
             size="sm"

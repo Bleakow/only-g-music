@@ -28,6 +28,10 @@ const REGION = "southamerica-east1";
 const PRECIO_PERFIL = 80000;
 /** Meses de vigencia del premium — sync con PREMIUM_DURACION_MESES (dominio). */
 const PREMIUM_DURACION_MESES = 2;
+/** Precio de la MEMBRESÍA mensual (toggle admin) en COP — sync con dominio. */
+const PRECIO_MEMBRESIA = 15000;
+/** Meses de vigencia de la membresía del toggle admin (distinta del perfil, 2m). */
+const MEMBRESIA_DURACION_MESES = 1;
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -81,6 +85,8 @@ function textoWhatsAppAdmin(
       return `🎤 *Nuevo perfil de artista*: ${params.nombre ?? ""}.`;
     case "gasto-recurrente-por-confirmar":
       return `📅 *Gasto recurrente por confirmar*: ${params.concepto ?? ""}.`;
+    case "convenio-solicitado":
+      return `🤝 *Nueva solicitud de convenio* (${params.tipo ?? ""}) de ${params.nombre ?? "un usuario"}.`;
     default:
       return "🔔 Nuevo evento en Only G.";
   }
@@ -98,7 +104,9 @@ async function notifyAdmins(
 ): Promise<void> {
   const uids = await adminUids();
   await Promise.all(uids.map((uid) => notify(uid, evento, params, ruta)));
-  await notifyAdminWhatsApp(textoWhatsAppAdmin(evento, params) + deepLink(ruta));
+  await notifyAdminWhatsApp(
+    textoWhatsAppAdmin(evento, params) + deepLink(ruta),
+  );
 }
 
 /** ¿El uid tiene rol admin? (para elegir el deep link admin vs cliente). */
@@ -185,9 +193,7 @@ export const onBookingConfirmed = onDocumentUpdated(
       estado: "programada",
       createdAt: FieldValue.serverTimestamp(),
     });
-    logger.info(
-      `Sesión ${reservaId} creada → productor ${after.productorId}`,
-    );
+    logger.info(`Sesión ${reservaId} creada → productor ${after.productorId}`);
 
     // Notificaciones (la sesión se acaba de crear → disparan una sola vez).
     await notify(
@@ -292,8 +298,7 @@ export const onConversationMessage = onDocumentCreated(
     const seg = tipoSegment(conv.ref?.kind);
     for (const r of recipients) {
       const base = (await isAdminUid(r)) ? "/admin" : "/solicitudes";
-      const ruta =
-        seg && conv.ref?.id ? `${base}/${seg}/${conv.ref.id}` : base;
+      const ruta = seg && conv.ref?.id ? `${base}/${seg}/${conv.ref.id}` : base;
       await notify(r, "mensaje-nuevo", { actor }, ruta);
     }
   },
@@ -571,7 +576,9 @@ function slugify(name: string): string {
 export const adminSearchUsers = onCall({ region: REGION }, async (request) => {
   await assertAdmin(request.auth?.uid);
 
-  const q = String(request.data?.query ?? "").trim().toLowerCase();
+  const q = String(request.data?.query ?? "")
+    .trim()
+    .toLowerCase();
   const snap = await db.collection("users").limit(200).get();
   const users = snap.docs
     .map((d) => {
@@ -638,6 +645,18 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
     slug = `${base}-${n++}`;
   }
 
+  // Deriva disciplines/socio de los roles FINALES (los actuales + 'artista'),
+  // para que un socio (beatmaker/productor) nazca visible sin membresía y en su
+  // pestaña — en vez de forzar socio:false y dejarlo fuera de la vitrina.
+  const currentRoles = Array.isArray(userSnap.data()?.roles)
+    ? (userSnap.data()?.roles as string[])
+    : [];
+  const finalRoles = [...new Set([...currentRoles, "artista"])];
+  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+  const socio =
+    finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+
   const batch = db.batch();
   batch.set(db.doc(`artistProfiles/${slug}`), {
     uid: targetUid,
@@ -653,6 +672,8 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
     trajectoryStartYear: new Date().getFullYear(),
     puntos: 0,
     premium: null,
+    disciplines: disciplines.length ? disciplines : ["artista"],
+    socio,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
   });
@@ -740,33 +761,305 @@ export const adminGetUsersByIds = onCall(
   },
 );
 
+/**
+ * Activa la MEMBRESÍA mensual de un perfil (SOLO admin, toggle desde el panel).
+ * Server-authoritative y atómica: en un único batch activa `premium` con la
+ * vigencia de la membresía (1 mes). Si `cortesia` es true, la regala el admin
+ * sin generar asiento contable; si no, registra el ingreso en `transactions`
+ * (igual que el pago del perfil, pero con concepto/fuente "Membresia").
+ */
+export const activarMembresia = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const slug = request.data?.slug;
+  const cortesia = request.data?.cortesia === true;
+  if (typeof slug !== "string" || !slug) {
+    throw new HttpsError("invalid-argument", "Falta el perfil.");
+  }
+  const profRef = db.doc(`artistProfiles/${slug}`);
+  const profSnap = await profRef.get();
+  if (!profSnap.exists) {
+    throw new HttpsError("not-found", "Perfil inexistente.");
+  }
+  const prof = profSnap.data();
+  const now = Date.now();
+  const expira = new Date(now);
+  expira.setMonth(expira.getMonth() + MEMBRESIA_DURACION_MESES);
+  // Spread condicional: no emitir cortesia:undefined (Firestore lo rechaza anidado).
+  const premium = {
+    activo: true,
+    since: now,
+    expiresAt: expira.getTime(),
+    ...(cortesia ? { cortesia: true } : {}),
+  };
+  const payerUid = prof?.uid as string | undefined;
+  const clientName = payerUid
+    ? ((await db.doc(`users/${payerUid}`).get()).data()?.displayName ?? null)
+    : null;
+  const batch = db.batch();
+  batch.update(profRef, { premium, updatedAt: FieldValue.serverTimestamp() });
+  // Solo el PAGO genera asiento contable; la cortesía no. Id DETERMINISTA
+  // `membresia_{slug}_{YYYY-MM}`: reactivar o reintentar el MISMO mes sobrescribe
+  // el asiento en vez de duplicar el ingreso (idempotencia por periodo).
+  if (!cortesia) {
+    const periodo = new Date(now);
+    const periodKey = `${periodo.getUTCFullYear()}-${String(
+      periodo.getUTCMonth() + 1,
+    ).padStart(2, "0")}`;
+    batch.set(db.doc(`transactions/membresia_${slug}_${periodKey}`), {
+      uid: payerUid ?? "",
+      clientName,
+      concepto: "Membresia",
+      amount: PRECIO_MEMBRESIA,
+      fecha: now,
+      estado: "confirmada",
+      fuente: "membresia",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
+  await batch.commit();
+  logger.info(
+    `Membresia activada: ${slug} (${cortesia ? "cortesia" : "pago"})`,
+  );
+  if (payerUid)
+    await notify(payerUid, "premium-activado", {}, "/artista/perfil");
+  return { ok: true };
+});
+
+/**
+ * Fija los roles de un usuario (SOLO admin, server-authoritative: las reglas
+ * de `users` prohíben tocar `roles` desde el cliente). Sincroniza además el
+ * perfil vinculado (si existe): `disciplines` refleja los roles de talento y
+ * `socio` (beatmaker/productor) exime de la membresía (ver `perfilVisible`,
+ * dominio). Guard anti-lockout: un admin no puede quitarse su propio rol admin.
+ */
+export const adminSetRoles = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const targetUid = request.data?.uid;
+  const rawRoles = request.data?.roles;
+  if (typeof targetUid !== "string" || !targetUid) {
+    throw new HttpsError("invalid-argument", "Falta el usuario.");
+  }
+  if (!Array.isArray(rawRoles)) {
+    throw new HttpsError("invalid-argument", "Roles invalidos.");
+  }
+  const VALID = [
+    "cliente",
+    "productor",
+    "admin",
+    "artista",
+    "beatmaker",
+    "modelo",
+    "bailarin",
+  ];
+  const roles = [
+    ...new Set(
+      rawRoles.filter((r) => typeof r === "string" && VALID.includes(r)),
+    ),
+  ];
+  if (roles.length === 0) roles.push("cliente"); // nunca dejar una cuenta sin rol
+  // Guard anti-lockout: el admin no puede quitarse su propio rol admin.
+  if (targetUid === request.auth?.uid && !roles.includes("admin")) {
+    throw new HttpsError(
+      "failed-precondition",
+      "No puedes quitarte tu propio rol admin.",
+    );
+  }
+  const userRef = db.doc(`users/${targetUid}`);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "Usuario inexistente.");
+  }
+  const user = userSnap.data();
+  const batch = db.batch();
+  batch.update(userRef, { roles });
+  // Sincroniza el perfil vinculado (si existe): disciplines = roles de talento; socio = beatmaker/productor.
+  const slug = user?.artistSlug as string | undefined;
+  if (typeof slug === "string" && slug) {
+    // Solo sincroniza si el perfil EXISTE. Un artistSlug colgante (perfil
+    // borrado, u onboarding sin perfil creado aún) haría fallar el batch entero
+    // por NOT_FOUND y bloquearía el propio cambio de roles.
+    const profRef = db.doc(`artistProfiles/${slug}`);
+    const profSnap = await profRef.get();
+    // Verifica PROPIEDAD del perfil (confused deputy): el cliente puede fijar su
+    // propio users.artistSlug apuntando al perfil de OTRA persona; sin este check,
+    // sincronizar aquí pisaría el perfil de una víctima.
+    if (profSnap.exists && profSnap.data()?.uid === targetUid) {
+      const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+      const disciplines = roles.filter((r) => TALENT.includes(r));
+      const socio = roles.includes("beatmaker") || roles.includes("productor");
+      batch.update(profRef, {
+        disciplines: disciplines.length ? disciplines : ["artista"],
+        socio,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  }
+  await batch.commit();
+  logger.info(`Roles de ${targetUid} = [${roles.join(",")}]`);
+  return { ok: true, roles };
+});
+
+// ── Admin: solicitudes de convenio (productor/beatmaker) ───────────────────────
+
+/**
+ * Aprueba una solicitud de convenio (SOLO admin, server-authoritative: las
+ * reglas de `convenioRequests` prohíben `update` desde el cliente). Otorga el
+ * rol correspondiente —`productor` exige `sedeId` y registra en la sede,
+ * `beatmaker` no— y sincroniza el perfil vinculado (si existe) con la MISMA
+ * lógica que `adminSetRoles`, para que el nuevo socio quede visible sin
+ * membresía en cuanto se aprueba.
+ */
+export const aprobarConvenio = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const requestId = request.data?.requestId;
+  const sedeId = request.data?.sedeId;
+  if (typeof requestId !== "string" || !requestId) {
+    throw new HttpsError("invalid-argument", "Falta la solicitud.");
+  }
+
+  const reqRef = db.doc(`convenioRequests/${requestId}`);
+  const reqSnap = await reqRef.get();
+  const req = reqSnap.data();
+  if (!req) {
+    throw new HttpsError("not-found", "La solicitud no existe.");
+  }
+  if (req.estado !== "pendiente") {
+    throw new HttpsError(
+      "failed-precondition",
+      "La solicitud ya fue resuelta.",
+    );
+  }
+  const targetUid = req.uid as string;
+  const tipo = req.tipo as string;
+
+  const userRef = db.doc(`users/${targetUid}`);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "El usuario no existe.");
+  }
+
+  const batch = db.batch();
+  if (tipo === "productor") {
+    if (typeof sedeId !== "string" || !sedeId) {
+      throw new HttpsError("invalid-argument", "Falta la sede.");
+    }
+    batch.update(userRef, { roles: FieldValue.arrayUnion("productor") });
+    batch.set(
+      db.doc(`sedes/${sedeId}`),
+      { productores: FieldValue.arrayUnion(targetUid) },
+      { merge: true },
+    );
+  } else if (tipo === "beatmaker") {
+    batch.update(userRef, { roles: FieldValue.arrayUnion("beatmaker") });
+  } else {
+    throw new HttpsError("failed-precondition", "Tipo de convenio inválido.");
+  }
+  batch.update(reqRef, { estado: "aprobada", resueltoAt: Date.now() });
+
+  // Sincroniza el perfil vinculado (si existe), igual que adminSetRoles:
+  // disciplines = roles de talento FINALES (actuales + el nuevo); socio =
+  // incluye beatmaker/productor. Se lee el user ANTES del commit para poder
+  // encadenar esta actualización en el MISMO batch (atómico).
+  const slug = userSnap.data()?.artistSlug as string | undefined;
+  if (typeof slug === "string" && slug) {
+    const profRef = db.doc(`artistProfiles/${slug}`);
+    const profSnap = await profRef.get();
+    // Verifica PROPIEDAD del perfil: sin este check, un artistSlug que apunte al
+    // perfil de OTRA persona (el cliente puede escribir su propio users.artistSlug
+    // libremente) haría que la aprobación pisara el perfil de una VÍCTIMA
+    // (confused deputy). Solo se sincroniza si el perfil es del mismo usuario.
+    if (profSnap.exists && profSnap.data()?.uid === targetUid) {
+      const currentRoles = Array.isArray(userSnap.data()?.roles)
+        ? (userSnap.data()?.roles as string[])
+        : [];
+      const finalRoles = [...new Set([...currentRoles, tipo])];
+      const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+      const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+      const socio =
+        finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+      batch.update(profRef, {
+        disciplines: disciplines.length ? disciplines : ["artista"],
+        socio,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
+  await batch.commit();
+  logger.info(`Convenio ${requestId} aprobado: ${targetUid} (+rol ${tipo})`);
+  await notify(targetUid, "convenio-aprobado", { tipo }, "/artista/perfil");
+  return { ok: true };
+});
+
+/**
+ * Rechaza una solicitud de convenio (SOLO admin). No otorga ningún rol; solo
+ * marca la solicitud y avisa al solicitante.
+ */
+export const rechazarConvenio = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const requestId = request.data?.requestId;
+  if (typeof requestId !== "string" || !requestId) {
+    throw new HttpsError("invalid-argument", "Falta la solicitud.");
+  }
+  const motivo =
+    typeof request.data?.motivo === "string" ? request.data.motivo : "";
+
+  const reqRef = db.doc(`convenioRequests/${requestId}`);
+  const reqSnap = await reqRef.get();
+  const req = reqSnap.data();
+  if (!req) {
+    throw new HttpsError("not-found", "La solicitud no existe.");
+  }
+  if (req.estado !== "pendiente") {
+    throw new HttpsError(
+      "failed-precondition",
+      "La solicitud ya fue resuelta.",
+    );
+  }
+
+  await reqRef.update({
+    estado: "rechazada",
+    motivo,
+    resueltoAt: Date.now(),
+  });
+  logger.info(`Convenio ${requestId} rechazado`);
+  await notify(req.uid, "convenio-rechazado", { motivo }, "/solicitudes");
+  return { ok: true };
+});
+
 // ── Notificaciones dirigidas por eventos (seam `notify`) ───────────────────────
 
 /** Nueva solicitud de cotización → avisa a los admin. */
-export const onQuoteCreated = onDocumentCreated("quotes/{id}", async (event) => {
-  const q = event.data?.data();
-  if (!q) return;
-  await notifyAdmins(
-    "cotizacion-nueva",
-    { cliente: q.contactName ?? "Un cliente" },
-    `/admin/cotizacion/${event.params.id}`,
-  );
-});
+export const onQuoteCreated = onDocumentCreated(
+  "quotes/{id}",
+  async (event) => {
+    const q = event.data?.data();
+    if (!q) return;
+    await notifyAdmins(
+      "cotizacion-nueva",
+      { cliente: q.contactName ?? "Un cliente" },
+      `/admin/cotizacion/${event.params.id}`,
+    );
+  },
+);
 
 /** El estudio respondió (pendiente → cotizada) → avisa al cliente dueño. */
-export const onQuoteAnswered = onDocumentUpdated("quotes/{id}", async (event) => {
-  const before = event.data?.before.data();
-  const after = event.data?.after.data();
-  if (!after) return;
-  if (before?.status !== "cotizada" && after.status === "cotizada") {
-    await notify(
-      after.uid,
-      "cotizacion-respondida",
-      {},
-      `/solicitudes/cotizacion/${event.params.id}`,
-    );
-  }
-});
+export const onQuoteAnswered = onDocumentUpdated(
+  "quotes/{id}",
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after) return;
+    if (before?.status !== "cotizada" && after.status === "cotizada") {
+      await notify(
+        after.uid,
+        "cotizacion-respondida",
+        {},
+        `/solicitudes/cotizacion/${event.params.id}`,
+      );
+    }
+  },
+);
 
 /** El cliente subió comprobante (pago en revisión) → avisa a los admin. */
 export const onPaymentUnderReview = onDocumentUpdated(
@@ -817,6 +1110,50 @@ export const onArtistProfileCreated = onDocumentCreated(
   },
 );
 
+/**
+ * Nueva solicitud de convenio (productor/beatmaker) → avisa a los admin
+ * (in-app + push + WhatsApp, vía `notifyAdmins`). Best-effort: `notify` y
+ * `notifyAdminWhatsApp` ya atrapan sus propios errores y nunca lanzan, así
+ * que un fallo de notificación no bloquea la solicitud del usuario.
+ */
+export const onConvenioRequestCreated = onDocumentCreated(
+  "convenioRequests/{id}",
+  async (event) => {
+    const req = event.data?.data();
+    const ref = event.data?.ref;
+    if (!req || !ref) return;
+    const uid = req.uid as string | undefined;
+    if (!uid) return;
+
+    // Identidad AUTORITATIVA: deriva nombre/email del doc de usuario (no de los
+    // campos que trae el cliente, que podrían estar falsificados) y reescríbelos
+    // en la solicitud para que el panel admin muestre datos reales.
+    const userData = (await db.doc(`users/${uid}`).get()).data();
+    const nombre = userData?.displayName ?? userData?.email ?? "Un usuario";
+    await ref.update({
+      displayName: userData?.displayName ?? null,
+      email: userData?.email ?? null,
+    });
+
+    // Dedup anti-flood: solo la PRIMERA solicitud pendiente del usuario avisa a
+    // los admins; así un bucle de creaciones no spamea WhatsApp/campanita.
+    const previas = await db
+      .collection("convenioRequests")
+      .where("uid", "==", uid)
+      .get();
+    const otraPendiente = previas.docs.some(
+      (d) => d.id !== event.params.id && d.data().estado === "pendiente",
+    );
+    if (otraPendiente) return;
+
+    await notifyAdmins(
+      "convenio-solicitado",
+      { tipo: req.tipo ?? "", nombre },
+      "/admin/convenios",
+    );
+  },
+);
+
 // ── Recordatorios programados (crons) ─────────────────────────────────────────
 
 /**
@@ -852,7 +1189,10 @@ export const recordatorioGastosRecurrentes = onSchedule(
       if (last == null) continue;
 
       const key = claveOcurrencia(last, m.recurrencia);
-      const confirmaciones = (m.confirmaciones ?? {}) as Record<string, unknown>;
+      const confirmaciones = (m.confirmaciones ?? {}) as Record<
+        string,
+        unknown
+      >;
       if (confirmaciones[key]) continue; // ya respondida
       const avisado: string[] = Array.isArray(m.avisadoConfirm)
         ? m.avisadoConfirm
@@ -868,7 +1208,9 @@ export const recordatorioGastosRecurrentes = onSchedule(
       avisos++;
     }
     if (avisos) {
-      logger.info(`Recordatorio: ${avisos} gasto(s) recurrente(s) por confirmar`);
+      logger.info(
+        `Recordatorio: ${avisos} gasto(s) recurrente(s) por confirmar`,
+      );
     }
   },
 );

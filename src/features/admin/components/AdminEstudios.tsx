@@ -4,17 +4,23 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { EditIcon, SpinnerIcon } from "@/components/icons";
+import { EditIcon, PlusIcon, SpinnerIcon } from "@/components/icons";
 import type { Sede, SedeId } from "@/domain/sede";
 import type { DestinoPago } from "@/domain/payment-destination";
+import { toSlug } from "@/domain/artist-profile";
 import {
   getAllSedes,
   setSedeOverride,
+  createSede,
   type SedeOverride,
 } from "@/features/sedes/lib/sedes-repo";
 import { DestinoPagoFields } from "./DestinoPagoFields";
 import { SedeProductores } from "./SedeProductores";
 import { AdminPageHeader, adminCard } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
+
+/** Slots por defecto para una sede nueva (mismo set que la semilla). */
+const SLOTS_DEFECTO = ["10:00", "12:00", "14:00", "16:00", "18:00", "20:00"];
 
 function Field({
   label,
@@ -44,9 +50,11 @@ function Field({
 
 /**
  * Gestión de SEDES/estudios (SOLO admin). Edita el override de las sedes de la
- * semilla (ciudad, dirección, horario, destino de pago propio). Preserva los IDs
- * (barranquilla/bogota) → no afecta reservas/disponibilidad existentes. Crear
- * sedes nuevas y asignar productores llegan con la migración completa / E3.
+ * semilla (ciudad, dirección, horario, destino de pago propio) y permite CREAR
+ * sedes nuevas: el id se deriva como slug del nombre y el doc se persiste
+ * completo en Firestore (`sedes/{id}`, ver `createSede`). Preserva los IDs de
+ * la semilla (barranquilla/bogota) → no afecta reservas/disponibilidad
+ * existentes.
  */
 export function AdminEstudios() {
   const t = useTranslations();
@@ -57,6 +65,16 @@ export function AdminEstudios() {
   const [editId, setEditId] = useState<SedeId | null>(null);
   const [form, setForm] = useState<SedeOverride>({});
   const [saving, setSaving] = useState(false);
+
+  const [showCrear, setShowCrear] = useState(false);
+  const [crearForm, setCrearForm] = useState({
+    nombre: "",
+    ciudad: "",
+    direccion: "",
+    horario: "",
+  });
+  const [crearBusy, setCrearBusy] = useState(false);
+  const [crearError, setCrearError] = useState<string | null>(null);
 
   function cargar() {
     return getAllSedes()
@@ -134,6 +152,41 @@ export function AdminEstudios() {
     }
   }
 
+  function abrirCrear() {
+    setCrearForm({ nombre: "", ciudad: "", direccion: "", horario: "" });
+    setCrearError(null);
+    setShowCrear(true);
+  }
+
+  async function crearSedeNueva() {
+    const nombre = crearForm.nombre.trim();
+    if (!nombre || crearBusy) return;
+    setCrearBusy(true);
+    setCrearError(null);
+    try {
+      const id = toSlug(nombre);
+      if (!id) throw new Error("slug vacío");
+      const nueva: Sede = {
+        id,
+        nombre,
+        ciudad: crearForm.ciudad.trim(),
+        direccion: crearForm.direccion.trim(),
+        horario: crearForm.horario.trim(),
+        slots: SLOTS_DEFECTO,
+        productores: [],
+      };
+      await createSede(nueva);
+      await cargar();
+      setShowCrear(false);
+      abrirEditar(nueva);
+    } catch (e) {
+      console.error("[admin-estudios] crear:", e);
+      setCrearError(t("adminEstudios.crearError"));
+    } finally {
+      setCrearBusy(false);
+    }
+  }
+
   return (
     <main className="pb-24">
       <AdminPageHeader
@@ -143,14 +196,35 @@ export function AdminEstudios() {
       />
 
       <div className="px-6 sm:px-10">
-        {error && !editId && (
+        <div className="flex justify-end">
+          <GlassButton onClick={abrirCrear} className="!text-amethyst-200">
+            <PlusIcon className="size-4" />
+            {t("adminEstudios.crear")}
+          </GlassButton>
+        </div>
+
+        {error && !editId && !showCrear && (
           <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+          <ul className="mt-8 flex flex-col gap-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <li
+                key={i}
+                className={`${adminCard} flex items-center justify-between gap-3 p-4`}
+              >
+                <div className="min-w-0 flex-1">
+                  <Skeleton className="h-4 w-40" />
+                  <Skeleton className="mt-2 h-3 w-56" />
+                  <Skeleton className="mt-2 h-3 w-32" />
+                </div>
+                <Skeleton className="size-9 shrink-0" />
+              </li>
+            ))}
+          </ul>
         ) : (
           <ul className="mt-8 flex flex-col gap-3">
             {items.map((s) => (
@@ -248,6 +322,55 @@ export function AdminEstudios() {
           >
             {saving && <SpinnerIcon className="size-4 animate-spin" />}
             {t("adminEstudios.save")}
+          </GlassButton>
+        </div>
+      </GlassModal>
+
+      <GlassModal
+        open={showCrear}
+        onClose={() => !crearBusy && setShowCrear(false)}
+        title={t("adminEstudios.crearTitle")}
+      >
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
+          <Field
+            label={t("adminEstudios.nombre")}
+            value={crearForm.nombre}
+            onChange={(v) => setCrearForm((f) => ({ ...f, nombre: v }))}
+          />
+          <Field
+            label={t("adminEstudios.ciudad")}
+            value={crearForm.ciudad}
+            onChange={(v) => setCrearForm((f) => ({ ...f, ciudad: v }))}
+          />
+          <Field
+            label={t("adminEstudios.direccion")}
+            value={crearForm.direccion}
+            onChange={(v) => setCrearForm((f) => ({ ...f, direccion: v }))}
+          />
+          <Field
+            label={t("adminEstudios.horario")}
+            value={crearForm.horario}
+            onChange={(v) => setCrearForm((f) => ({ ...f, horario: v }))}
+          />
+
+          {crearError && (
+            <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              {crearError}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <GlassButton onClick={() => setShowCrear(false)} disabled={crearBusy}>
+            {t("adminEstudios.cancel")}
+          </GlassButton>
+          <GlassButton
+            onClick={crearSedeNueva}
+            disabled={crearBusy || !crearForm.nombre.trim()}
+            className="!text-amethyst-200"
+          >
+            {crearBusy && <SpinnerIcon className="size-4 animate-spin" />}
+            {t("adminEstudios.crear")}
           </GlassButton>
         </div>
       </GlassModal>

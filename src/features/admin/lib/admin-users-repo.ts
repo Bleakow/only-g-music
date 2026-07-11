@@ -6,6 +6,7 @@
  */
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
+import type { Role } from "@/domain/user";
 
 /** Proyección mínima de un usuario para el buscador del admin. */
 export interface AdminUserHit {
@@ -70,4 +71,38 @@ export async function adminGetUsersByIds(
 ): Promise<AdminUserHit[]> {
   const res = await getUsersByIdsFn({ uids });
   return res.data.users;
+}
+
+const setRolesFn = httpsCallable<
+  { uid: string; roles: Role[] },
+  { ok: boolean; roles: Role[] }
+>(functions, "adminSetRoles");
+
+/**
+ * Fija los roles de un usuario (SOLO admin). Sincroniza `disciplines`/`socio`
+ * del perfil vinculado (si existe) server-side. Lanza `functions/failed-precondition`
+ * si el admin intenta quitarse su propio rol admin.
+ */
+export async function adminSetRoles(
+  uid: string,
+  roles: Role[],
+): Promise<{ ok: boolean; roles: Role[] }> {
+  const res = await setRolesFn({ uid, roles });
+  return res.data;
+}
+
+const activarMembresiaFn = httpsCallable<
+  { slug: string; cortesia: boolean },
+  { ok: boolean }
+>(functions, "activarMembresia");
+
+/**
+ * Activa la membresía mensual de un perfil (SOLO admin). Si `cortesia` es
+ * true, la regala sin generar asiento contable; si no, factura `PRECIO_MEMBRESIA`.
+ */
+export async function activarMembresia(
+  slug: string,
+  cortesia: boolean,
+): Promise<void> {
+  await activarMembresiaFn({ slug, cortesia });
 }

@@ -7,10 +7,31 @@
  * Roles del sistema. Un usuario puede tener VARIOS a la vez (p. ej. el admin
  * también es productor). Regla de oro: comprobar "tiene el rol", nunca "es el rol".
  */
-export type Role = "cliente" | "productor" | "admin" | "artista";
+export type Role =
+  | "cliente"
+  | "productor"
+  | "admin"
+  | "artista"
+  | "beatmaker"
+  | "modelo"
+  | "bailarin";
 
 /** Rol por defecto al crear una cuenta nueva (se registra como cliente/fan). */
 export const DEFAULT_ROLES: Role[] = ["cliente"];
+
+/**
+ * Disciplinas de talento que viven en la "lista de artistas" del panel, cada una
+ * con su propia pestaña. `artista` es, históricamente, la disciplina CANTANTE
+ * (fue el primer rol). `productor` NO va aquí: se gestiona aparte, atado a sedes
+ * y convenios comerciales. Al añadir más disciplinas (p. ej. `modelo`), basta
+ * con listarlas aquí para que aparezca su pestaña.
+ */
+export const TALENT_ROLES: Role[] = [
+  "artista",
+  "beatmaker",
+  "modelo",
+  "bailarin",
+];
 
 export interface UserAccount {
   /** UID de Firebase Auth. */

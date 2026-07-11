@@ -41,6 +41,7 @@ import {
 } from "@/domain/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { AdminPageHeader, adminCard } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Tipo = "cotizacion" | "reserva";
 
@@ -197,8 +198,28 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">{t("common.loading")}</p>
+      <main className="pb-24">
+        <header className="px-6 pt-20 pb-8 sm:px-10 sm:pt-24">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-3 h-9 w-64" />
+        </header>
+
+        <div className="px-6 sm:px-10">
+          <div className="flex justify-end">
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+
+          <section className={`${adminCard} mt-4 p-4`}>
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="mt-3 h-4 w-2/3" />
+            <Skeleton className="mt-3 h-4 w-1/3" />
+          </section>
+
+          <section className={`${adminCard} mt-6 p-4`}>
+            <Skeleton className="mb-3 h-5 w-32" />
+            <Skeleton className="h-9 w-40" />
+          </section>
+        </div>
       </main>
     );
   }
@@ -509,7 +530,11 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               <ConversationView conversationId={convId} />
             </div>
           ) : (
-            <p className="text-silver-400 text-sm">{t("common.loading")}</p>
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-10 w-2/3" />
+              <Skeleton className="ml-auto h-10 w-1/2" />
+              <Skeleton className="h-10 w-3/5" />
+            </div>
           )}
         </section>
       </div>

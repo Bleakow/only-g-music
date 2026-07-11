@@ -27,6 +27,7 @@ import {
 } from "../lib/contabilidad-export";
 import { AddPasivoModal } from "./AddPasivoModal";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export function AdminBalance({
   embedded = false,
@@ -197,7 +198,34 @@ export function AdminBalance({
         )}
 
         {loading ? (
-          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+          <>
+            {/* Hoja de balance (skeleton) */}
+            <div className={`mt-8 ${adminCard} p-5`}>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`rounded-2xl p-5 ${adminInner}`}>
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="mt-2 h-7 w-32" />
+                  </div>
+                ))}
+              </div>
+              <Skeleton className="mx-auto mt-3 h-4 w-64" />
+            </div>
+
+            {/* Pasivos (skeleton) */}
+            <section className={`mt-10 ${adminCard} p-5`}>
+              <Skeleton className="h-6 w-40" />
+              <div className={`mt-4 overflow-hidden rounded-xl ${adminInner}`}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/5" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
           <>
             {/* Hoja de balance: Activos = Pasivos + Patrimonio */}

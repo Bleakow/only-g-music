@@ -46,12 +46,11 @@ function RoleGate({
   const { account, loading } = useAuth();
   const t = useTranslations();
 
+  // Sin texto "Cargando": el vinilo (overlay inicial / loading.tsx) ya cubre la
+  // carga. Un lienzo oscuro mientras resuelve la sesión evita el flash de texto
+  // al desvanecerse el loader.
   if (loading) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">{t("common.loading")}</p>
-      </main>
-    );
+    return <div className="bg-ink min-h-dvh" aria-hidden="true" />;
   }
 
   if (!hasAnyRole(account, roles)) {
@@ -60,12 +59,12 @@ function RoleGate({
         <h1 className="font-narrow text-4xl font-bold uppercase sm:text-5xl">
           {title ?? t("auth.noAccess")}
         </h1>
-        <p className="mt-3 max-w-md text-silver-300">
+        <p className="text-silver-300 mt-3 max-w-md">
           {message ?? t("auth.noAccessDesc")}
         </p>
         <Link
           href="/"
-          className="mt-8 rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+          className="border-silver-300/40 text-silver-100 hover:border-silver-100 mt-8 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
         >
           {t("auth.backHome")}
         </Link>

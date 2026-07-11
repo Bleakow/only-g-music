@@ -17,6 +17,7 @@
 
 import type { SocialPlatform } from "./artist";
 import type { GeoLocation } from "./location";
+import type { Role } from "./user";
 
 // ── Insignia / Nivel (eje 1: reputación ganada) ─────────────────────────────
 
@@ -98,6 +99,9 @@ export interface Premium {
   since: number;
   /** epoch ms en que expira (+2 meses desde la última renovación). */
   expiresAt: number;
+  /** Membresía de CORTESÍA: la regaló el admin, sin pago → no genera asiento
+   *  contable. Solo distingue el origen; la vigencia funciona igual. */
+  cortesia?: boolean;
 }
 
 /** Estado de vigencia (derivado, no se persiste). */
@@ -112,12 +116,20 @@ export function premiumEstado(
   return premium.expiresAt > now ? "activo" : "expirado";
 }
 
-/** ¿El perfil debe mostrarse en la vitrina pública? (premium vigente). */
+/**
+ * ¿El perfil debe mostrarse en la vitrina pública? Visible si el premium está
+ * vigente O si su dueño es SOCIO (beatmaker/productor): los socios no pagan
+ * membresía para tener activo su perfil de cantante. `socio` es un flag
+ * DENORMALIZADO en el perfil (lo pone admin/Functions al cambiar los roles del
+ * usuario), para no tener que leer users/{uid} por cada perfil de la vitrina.
+ */
 export function perfilVisible(
-  profile: Pick<ArtistProfile, "premium">,
+  profile: Pick<ArtistProfile, "premium" | "socio">,
   now: number,
 ): boolean {
-  return premiumEstado(profile.premium, now) === "activo";
+  return (
+    profile.socio === true || premiumEstado(profile.premium, now) === "activo"
+  );
 }
 
 /**
@@ -292,6 +304,19 @@ export interface ArtistProfile {
   // Premium pagado. Lo activa admin al confirmar el pago (o Functions). Tener
   // premium vigente = el perfil es visible en la vitrina (pagar = publicar).
   premium: Premium | null;
+
+  /**
+   * Disciplinas del talento (Cantante/Beatmaker/Modelo/Bailarín): definen en qué
+   * pestaña(s) de la lista de artistas aparece. Un usuario puede tener varias.
+   * Opcional por compat: los perfiles viejos se leen como ["artista"] (cantante).
+   * Server-controlled (lo sincroniza admin/Functions con los roles del usuario).
+   */
+  disciplines?: Role[];
+  /**
+   * SOCIO: su dueño tiene convenio (beatmaker/productor). Flag denormalizado que
+   * exime del pago de membresía (ver perfilVisible). Solo admin/Functions.
+   */
+  socio?: boolean;
 
   /**
    * Curaduría de la vitrina — SOLO admin (las reglas lo blindan):

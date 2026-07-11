@@ -8,6 +8,7 @@ import { resendEmailVerification } from "@/features/auth/lib/auth-actions";
 import { EditProfileModal } from "@/features/auth/components/EditProfileModal";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { EditIcon } from "@/components/icons";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function initials(name: string | null, email: string | null): string {
   const base = name?.trim() || email || "?";
@@ -31,8 +32,20 @@ export default function CuentaPage() {
 
   if (loading || !user) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">{t("common.loading")}</p>
+      <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12">
+        <Skeleton className="h-12 w-64" />
+        <section className="mt-10 flex items-center gap-5">
+          <Skeleton className="size-20 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="mt-2 h-4 w-52" />
+          </div>
+        </section>
+        <Skeleton className="mt-6 h-10 w-32 rounded-full" />
+        <section className="mt-12">
+          <Skeleton className="h-6 w-48" />
+          <Skeleton className="mt-2 h-4 w-64" />
+        </section>
       </main>
     );
   }
@@ -63,14 +76,14 @@ export default function CuentaPage() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-24 pt-28 sm:px-12">
+    <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12">
       <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
         {t("account.title")}
       </h1>
 
       {/* Perfil */}
       <section className="mt-10 flex items-center gap-5">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-amethyst-500/30 text-xl font-bold text-white">
+        <div className="bg-amethyst-500/30 flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 text-xl font-bold text-white">
           {photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={photo} alt="" className="h-full w-full object-cover" />
@@ -80,13 +93,13 @@ export default function CuentaPage() {
         </div>
         <div className="min-w-0">
           <p className="truncate text-2xl font-semibold text-white">{name}</p>
-          <p className="truncate text-silver-300">{email}</p>
+          <p className="text-silver-300 truncate">{email}</p>
           {roles.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {roles.map((r) => (
                 <span
                   key={r}
-                  className="rounded-full border border-amethyst-300/40 bg-amethyst-500/10 px-2.5 py-0.5 text-xs uppercase tracking-wide text-amethyst-200"
+                  className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 rounded-full border px-2.5 py-0.5 text-xs tracking-wide uppercase"
                 >
                   {t(`roles.${r}`)}
                 </span>
@@ -97,7 +110,7 @@ export default function CuentaPage() {
       </section>
 
       {since && (
-        <p className="mt-6 text-sm text-silver-400">
+        <p className="text-silver-400 mt-6 text-sm">
           {t("account.memberSince", { since })}
         </p>
       )}
@@ -131,16 +144,16 @@ export default function CuentaPage() {
 
       {/* Configuración (placeholder de futuras opciones) */}
       <section className="mt-12">
-        <h2 className="font-narrow text-2xl font-bold uppercase tracking-wide text-white">
+        <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase">
           {t("userMenu.settings")}
         </h2>
-        <p className="mt-2 text-silver-400">{t("account.settingsSoon")}</p>
+        <p className="text-silver-400 mt-2">{t("account.settingsSoon")}</p>
       </section>
 
       <button
         type="button"
         onClick={onLogout}
-        className="mt-12 rounded-full border border-red-500/40 bg-red-500/10 px-6 py-3 text-sm font-semibold uppercase tracking-[2px] text-red-200 transition hover:border-red-400 hover:bg-red-500/20 hover:text-white"
+        className="mt-12 rounded-full border border-red-500/40 bg-red-500/10 px-6 py-3 text-sm font-semibold tracking-[2px] text-red-200 uppercase transition hover:border-red-400 hover:bg-red-500/20 hover:text-white"
       >
         {t("userMenu.logout")}
       </button>

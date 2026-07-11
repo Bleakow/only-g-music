@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Link, useRouter } from "@/i18n/navigation";
 import Image from "next/image";
+import type { User } from "firebase/auth";
 import {
   loginWithEmail,
   registerWithEmail,
@@ -13,9 +14,18 @@ import {
   sendPasswordReset,
   authErrorCode,
 } from "@/features/auth/lib/auth-actions";
+import {
+  createConvenioRequest,
+  getMyPendingConvenio,
+} from "@/features/convenios/lib/convenio-repo";
 import { FacebookIcon } from "@/components/icons";
 
 type Mode = "login" | "register" | "reset";
+
+/** Función con la que se une un usuario nuevo. `cantante` es self-serve
+ * (formulario propio); `productor`/`beatmaker` mandan una SOLICITUD DE
+ * CONVENIO que un admin debe aprobar antes de otorgar el rol. */
+type JoinFn = "visitante" | "cantante" | "productor" | "beatmaker";
 
 function GoogleMark({ className = "" }: { className?: string }) {
   return (
@@ -62,7 +72,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [intent, setIntent] = useState<"explorar" | "artista">("explorar");
+  const [intent, setIntent] = useState<JoinFn>("visitante");
 
   const isRegister = mode === "register";
   const isReset = mode === "reset";
@@ -71,6 +81,37 @@ function LoginForm() {
     setMode(m);
     setError(null);
     setResetSent(false);
+  }
+
+  // Tras un alta (email o social): si el usuario eligió productor/beatmaker,
+  // manda la solicitud de convenio (queda `pendiente` hasta que un admin la
+  // apruebe) y lo lleva a la pantalla de confirmación; cantante va a su alta
+  // self-serve; visitante (o un login normal) vuelve a `next`.
+  async function afterAuth(authUser: User) {
+    if (isRegister && (intent === "productor" || intent === "beatmaker")) {
+      try {
+        // Dedup: no crees otra solicitud si ya hay una pendiente (p. ej. un login
+        // social de alguien que ya la mandó — signInWithPopup no distingue cuenta
+        // nueva de existente).
+        const pendiente = await getMyPendingConvenio(authUser.uid);
+        if (!pendiente) {
+          await createConvenioRequest({
+            uid: authUser.uid,
+            displayName: authUser.displayName ?? name ?? null,
+            email: authUser.email ?? email ?? null,
+            tipo: intent,
+          });
+        }
+        router.push("/convenio/enviado");
+      } catch (convErr) {
+        // El auth YA tuvo éxito; un fallo al guardar la solicitud NO es un error
+        // de autenticación. Mensaje dedicado (el usuario ya quedó dentro).
+        console.error("[login] convenio:", convErr);
+        setError(t("login.convenioSaveFailed"));
+      }
+      return;
+    }
+    router.push(isRegister && intent === "cantante" ? "/artista/nuevo" : next);
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -82,8 +123,8 @@ function LoginForm() {
         await sendPasswordReset(email);
         setResetSent(true);
       } else if (isRegister) {
-        await registerWithEmail(email, password, name);
-        router.push(intent === "artista" ? "/artista/nuevo" : next);
+        const authUser = await registerWithEmail(email, password, name);
+        await afterAuth(authUser);
       } else {
         await loginWithEmail(email, password);
         router.push(next);
@@ -95,12 +136,12 @@ function LoginForm() {
     }
   }
 
-  async function social(action: () => Promise<unknown>) {
+  async function social(action: () => Promise<User>) {
     setError(null);
     setBusy(true);
     try {
-      await action();
-      router.push(isRegister && intent === "artista" ? "/artista/nuevo" : next);
+      const authUser = await action();
+      await afterAuth(authUser);
     } catch (err) {
       setError(t(`authErrors.${authErrorCode(err)}`));
     } finally {
@@ -120,7 +161,7 @@ function LoginForm() {
       : t("login.subtitleLogin");
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center overflow-hidden bg-ink px-6 py-16">
+    <main className="bg-ink relative flex min-h-dvh items-center justify-center overflow-hidden px-6 py-16">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-70"
@@ -143,14 +184,14 @@ function LoginForm() {
         </Link>
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-7 backdrop-blur-sm sm:p-8">
-          <h1 className="font-narrow text-3xl font-bold uppercase tracking-wide text-white">
+          <h1 className="font-narrow text-3xl font-bold tracking-wide text-white uppercase">
             {title}
           </h1>
-          <p className="mt-1 text-sm text-silver-300">{subtitle}</p>
+          <p className="text-silver-300 mt-1 text-sm">{subtitle}</p>
 
           {isReset && resetSent ? (
             <div className="mt-6 flex flex-col gap-4">
-              <p className="rounded-lg border border-amethyst-300/30 bg-amethyst-500/10 px-3 py-3 text-sm text-amethyst-100">
+              <p className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-100 rounded-lg border px-3 py-3 text-sm">
                 {t.rich("login.resetSent", {
                   email,
                   strong: (chunks) => <strong>{chunks}</strong>,
@@ -159,7 +200,7 @@ function LoginForm() {
               <button
                 type="button"
                 onClick={() => switchMode("login")}
-                className="rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+                className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
               >
                 {t("login.backToLogin")}
               </button>
@@ -179,36 +220,44 @@ function LoginForm() {
                 )}
                 {isRegister && (
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-xs uppercase tracking-[2px] text-silver-300">
+                    <span className="text-silver-300 text-xs tracking-[2px] uppercase">
                       {t("login.howJoin")}
                     </span>
                     <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setIntent("explorar")}
-                        className={`rounded-lg border px-3 py-2.5 text-sm transition ${
-                          intent === "explorar"
-                            ? "border-amethyst-300 bg-amethyst-500/15 text-white"
-                            : "border-white/15 text-silver-300 hover:border-white/40"
-                        }`}
+                      <JoinFnButton
+                        active={intent === "visitante"}
+                        onClick={() => setIntent("visitante")}
                       >
-                        {t("login.justExplore")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setIntent("artista")}
-                        className={`rounded-lg border px-3 py-2.5 text-sm transition ${
-                          intent === "artista"
-                            ? "border-amethyst-300 bg-amethyst-500/15 text-white"
-                            : "border-white/15 text-silver-300 hover:border-white/40"
-                        }`}
+                        {t("login.fnVisitante")}
+                      </JoinFnButton>
+                      <JoinFnButton
+                        active={intent === "cantante"}
+                        onClick={() => setIntent("cantante")}
                       >
-                        {t("login.iAmArtist")}
-                      </button>
+                        {t("login.fnCantante")}
+                      </JoinFnButton>
+                      <JoinFnButton
+                        active={intent === "productor"}
+                        onClick={() => setIntent("productor")}
+                      >
+                        {t("login.fnProductor")}
+                      </JoinFnButton>
+                      <JoinFnButton
+                        active={intent === "beatmaker"}
+                        onClick={() => setIntent("beatmaker")}
+                      >
+                        {t("login.fnBeatmaker")}
+                      </JoinFnButton>
                     </div>
-                    {intent === "artista" && (
-                      <span className="text-xs text-silver-500">
-                        {t("login.artistHint")}
+                    {intent !== "visitante" && (
+                      <span className="text-silver-500 text-xs">
+                        {t(
+                          intent === "cantante"
+                            ? "login.artistHint"
+                            : intent === "productor"
+                              ? "login.fnProductorHint"
+                              : "login.fnBeatmakerHint",
+                        )}
                       </span>
                     )}
                   </div>
@@ -237,7 +286,7 @@ function LoginForm() {
                       <button
                         type="button"
                         onClick={() => switchMode("reset")}
-                        className="self-end text-xs text-silver-300 underline-offset-4 hover:text-amethyst-200 hover:underline"
+                        className="text-silver-300 hover:text-amethyst-200 self-end text-xs underline-offset-4 hover:underline"
                       >
                         {t("login.forgot")}
                       </button>
@@ -257,7 +306,7 @@ function LoginForm() {
                 <button
                   type="submit"
                   disabled={busy}
-                  className="mt-1 rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-6 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="from-silver-100 to-amethyst-300 text-ink mt-1 rounded-full bg-gradient-to-r px-6 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {busy
                     ? t("login.submitting")
@@ -270,18 +319,18 @@ function LoginForm() {
               </form>
 
               {isReset ? (
-                <p className="mt-6 text-center text-sm text-silver-300">
+                <p className="text-silver-300 mt-6 text-center text-sm">
                   <button
                     type="button"
                     onClick={() => switchMode("login")}
-                    className="font-semibold text-amethyst-300 underline-offset-4 hover:text-amethyst-200 hover:underline"
+                    className="text-amethyst-300 hover:text-amethyst-200 font-semibold underline-offset-4 hover:underline"
                   >
                     {t("login.backToLogin")}
                   </button>
                 </p>
               ) : (
                 <>
-                  <div className="my-5 flex items-center gap-3 text-xs uppercase tracking-[2px] text-silver-400">
+                  <div className="text-silver-400 my-5 flex items-center gap-3 text-xs tracking-[2px] uppercase">
                     <span className="h-px flex-1 bg-white/10" />
                     {t("login.or")}
                     <span className="h-px flex-1 bg-white/10" />
@@ -292,7 +341,7 @@ function LoginForm() {
                       type="button"
                       onClick={() => social(loginWithGoogle)}
                       disabled={busy}
-                      className="flex w-full items-center justify-center gap-3 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-silver-100 transition hover:border-white/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="text-silver-100 flex w-full items-center justify-center gap-3 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium transition hover:border-white/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <GoogleMark className="size-5" />
                       {t("login.google")}
@@ -301,21 +350,25 @@ function LoginForm() {
                       type="button"
                       onClick={() => social(loginWithFacebook)}
                       disabled={busy}
-                      className="flex w-full items-center justify-center gap-3 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium text-silver-100 transition hover:border-white/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      className="text-silver-100 flex w-full items-center justify-center gap-3 rounded-full border border-white/20 bg-white/5 px-6 py-3 text-sm font-medium transition hover:border-white/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       <FacebookIcon className="size-5 text-[#1877F2]" />
                       {t("login.facebook")}
                     </button>
                   </div>
 
-                  <p className="mt-6 text-center text-sm text-silver-300">
+                  <p className="text-silver-300 mt-6 text-center text-sm">
                     {isRegister ? t("login.haveAccount") : t("auth.noAccount")}{" "}
                     <button
                       type="button"
-                      onClick={() => switchMode(isRegister ? "login" : "register")}
-                      className="font-semibold text-amethyst-300 underline-offset-4 hover:text-amethyst-200 hover:underline"
+                      onClick={() =>
+                        switchMode(isRegister ? "login" : "register")
+                      }
+                      className="text-amethyst-300 hover:text-amethyst-200 font-semibold underline-offset-4 hover:underline"
                     >
-                      {isRegister ? t("login.signinShort") : t("login.register")}
+                      {isRegister
+                        ? t("login.signinShort")
+                        : t("login.register")}
                     </button>
                   </p>
                 </>
@@ -330,9 +383,34 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<main className="min-h-dvh bg-ink" />}>
+    <Suspense fallback={<main className="bg-ink min-h-dvh" />}>
       <LoginForm />
     </Suspense>
+  );
+}
+
+/** Botón de opción del selector "¿Cómo te unes?" (grid de 4). */
+function JoinFnButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg border px-3 py-2.5 text-sm transition ${
+        active
+          ? "border-amethyst-300 bg-amethyst-500/15 text-white"
+          : "text-silver-300 border-white/15 hover:border-white/40"
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -353,7 +431,7 @@ function Field({
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-xs uppercase tracking-[2px] text-silver-300">
+      <span className="text-silver-300 text-xs tracking-[2px] uppercase">
         {label}
       </span>
       <input
@@ -362,7 +440,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         autoComplete={autoComplete}
         required={required}
-        className="rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80"
+        className="text-silver-50 focus:border-amethyst-300 focus:ring-amethyst-300/80 rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 transition outline-none focus:ring-1"
       />
     </label>
   );

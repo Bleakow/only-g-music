@@ -10,6 +10,7 @@ import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
 import { formatCOP } from "@/domain/service";
 import { badgeClass, fechaCorta } from "../lib/estados";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function Badge({ estado, label }: { estado: string; label: string }) {
   return (
@@ -40,7 +41,7 @@ function ReservaCard({
       >
         <div className="min-w-0">
           <p className="truncate font-semibold text-white">{r.serviceName}</p>
-          <p className="text-sm text-silver-400">
+          <p className="text-silver-400 text-sm">
             {fechaCorta(fecha, locale)} · {formatCOP(r.amount ?? 0)}
           </p>
         </div>
@@ -89,11 +90,11 @@ export function SolicitudesList() {
   const producciones = reservas.filter((r) => r.tipo !== "sesion" && !!r.tipo);
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
+    <main className="mx-auto min-h-dvh max-w-3xl px-6 pt-28 pb-24 sm:px-12">
       <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
         {t("userMenu.myRequests")}
       </h1>
-      <p className="mt-2 text-silver-300">{t("solicitudes.intro")}</p>
+      <p className="text-silver-300 mt-2">{t("solicitudes.intro")}</p>
 
       {error && (
         <p className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -102,16 +103,29 @@ export function SolicitudesList() {
       )}
 
       {loading ? (
-        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
+        <div className="mt-10 flex flex-col gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="mt-2 h-3 w-1/3" />
+              </div>
+              <Skeleton className="h-5 w-16 shrink-0 rounded-full" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           {/* Mis citas (sesiones agendadas) */}
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("solicitudes.citas")}
             </h2>
             {citas.length === 0 ? (
-              <p className="mt-2 text-silver-400">
+              <p className="text-silver-400 mt-2">
                 {t("solicitudes.noCitas")}{" "}
                 <Link
                   href="/servicios"
@@ -138,7 +152,7 @@ export function SolicitudesList() {
           {/* Producciones y demás reservas */}
           {producciones.length > 0 && (
             <section className="mt-10">
-              <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+              <h2 className="font-narrow text-2xl font-bold text-white uppercase">
                 {t("solicitudes.bookings")}
               </h2>
               <ul className="mt-4 flex flex-col gap-3">
@@ -156,11 +170,11 @@ export function SolicitudesList() {
 
           {/* Cotizaciones */}
           <section className="mt-10">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("solicitudes.quotes")}
             </h2>
             {quotes.length === 0 ? (
-              <p className="mt-2 text-silver-400">
+              <p className="text-silver-400 mt-2">
                 {t("solicitudes.noQuotes")}{" "}
                 <Link
                   href="/cotizar"
@@ -183,11 +197,14 @@ export function SolicitudesList() {
                           {q.items.map((i) => i.serviceName).join(", ") ||
                             t("solicitudes.quoteFallback")}
                         </p>
-                        <p className="text-sm text-silver-400">
+                        <p className="text-silver-400 text-sm">
                           {fechaCorta(q.createdAt, locale)}
                         </p>
                       </div>
-                      <Badge estado={q.status} label={t(`status.${q.status}`)} />
+                      <Badge
+                        estado={q.status}
+                        label={t(`status.${q.status}`)}
+                      />
                     </Link>
                   </li>
                 ))}

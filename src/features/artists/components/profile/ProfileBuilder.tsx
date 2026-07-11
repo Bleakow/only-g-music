@@ -44,9 +44,11 @@ import { GalleryBento } from "./GalleryBento";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { LocationPicker } from "@/features/location/components/LocationPicker";
 import { formatLocation, type GeoLocation } from "@/domain/location";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { MUSIC_GENRES } from "../../data/genres";
 import {
   PlusIcon,
@@ -204,6 +206,15 @@ export function ProfileBuilder({
   const [error, setError] = useState<string | null>(null);
   const [pt, setPt] = useState<PhotoTransform>(DEFAULT_PHOTO_TRANSFORM);
   const [adjusting, setAdjusting] = useState(false);
+  // Detecta la pantalla actual (mismo corte que el perfil público: 640px/sm)
+  // para saber a qué slot va la primera foto subida.
+  const isMobileScreen = useMediaQuery("(max-width: 639.98px)");
+  // Modal de sincronización: pide confirmar/encuadrar la foto para la OTRA
+  // pantalla (la que no se acaba de subir). `target` = esa otra pantalla.
+  const [syncPrompt, setSyncPrompt] = useState<{
+    url: string;
+    target: "desktop" | "mobile";
+  } | null>(null);
   const dragRef = useRef({
     active: false,
     sx: 0,
@@ -388,26 +399,58 @@ export function ProfileBuilder({
     return out;
   }
 
-  async function onPhoto(files: File[]) {
+  // Subida principal, consciente de la pantalla. La foto va al slot de la
+  // pantalla actual; luego se ofrece configurar la OTRA pantalla (reusar la
+  // misma o subir una versión dedicada).
+  async function onPhotoUpload(files: File[]) {
     setUploading("photo");
     setError(null);
     try {
       const [url] = await uploadFiles(files.slice(0, 1));
-      if (url) setPhotoURL(url);
+      if (!url) return;
+      if (isMobileScreen) {
+        setPhotoMobile(url);
+        if (!photoURL) setPhotoURL(url); // la principal (escritorio) es obligatoria
+        setSyncPrompt({ url, target: "desktop" });
+      } else {
+        setPhotoURL(url);
+        setSyncPrompt({ url, target: "mobile" });
+      }
     } finally {
       setUploading(null);
     }
   }
-  // Foto vertical para móvil (opcional). No usa el encuadre (ya viene recortada).
-  async function onPhotoMobile(files: File[]) {
-    setUploading("photoMobile");
+
+  // Subir una foto DISTINTA para la otra pantalla (desde el modal de sync).
+  async function onPhotoOther(files: File[]) {
+    const target = syncPrompt?.target;
+    setUploading("photoOther");
     setError(null);
     try {
       const [url] = await uploadFiles(files.slice(0, 1));
-      if (url) setPhotoMobile(url);
+      if (!url) return;
+      if (target === "desktop") setPhotoURL(url);
+      else setPhotoMobile(url);
     } finally {
       setUploading(null);
+      setSyncPrompt(null);
     }
+  }
+
+  // Reutilizar la misma foto recién subida para la otra pantalla.
+  function reuseForOther() {
+    if (!syncPrompt) return;
+    if (syncPrompt.target === "desktop") setPhotoURL(syncPrompt.url);
+    else setPhotoMobile(""); // móvil reutiliza la principal (fallback centrado)
+    setSyncPrompt(null);
+  }
+
+  // Abrir el modal para gestionar la OTRA pantalla manualmente (sin resubir).
+  function openOtherScreen() {
+    const target: "desktop" | "mobile" = isMobileScreen ? "desktop" : "mobile";
+    const url = target === "desktop" ? photoURL : photoMobile || photoURL;
+    if (!url) return;
+    setSyncPrompt({ url, target });
   }
   // Elegir canción = abrir el recortador con el archivo. La subida real ocurre
   // en onTrimConfirm con SOLO el fragmento recortado.
@@ -592,8 +635,13 @@ export function ProfileBuilder({
 
   if (!ready) {
     return (
-      <main className="text-silver-300 grid min-h-dvh place-items-center">
-        {t("common.loading")}
+      <main className="min-h-dvh pb-24">
+        <Skeleton className="h-dvh w-full rounded-none" />
+        <div className="mx-auto mt-8 max-w-3xl px-6">
+          <Skeleton className="h-10 w-2/3" />
+          <Skeleton className="mt-4 h-20 w-full" />
+          <Skeleton className="mt-3 h-20 w-full" />
+        </div>
       </main>
     );
   }
@@ -729,7 +777,7 @@ export function ProfileBuilder({
           <div className="absolute inset-0 z-10 grid place-items-center">
             <UploadButton
               accept="image/*"
-              onFiles={onPhoto}
+              onFiles={onPhotoUpload}
               disabled={uploading === "photo"}
               className="hover:border-amethyst-300 flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/30 px-10 py-8 text-white/70 transition hover:text-white"
             >
@@ -745,14 +793,16 @@ export function ProfileBuilder({
           </div>
         )}
 
-        {/* Foto puesta: cambiar / ajustar (mismos GlassButton que Atrás/Ajustes) */}
+        {/* Foto puesta: un solo botón para cambiar (screen-aware) + ajustar +
+            gestionar la versión de la otra pantalla (mismos GlassButton que
+            Atrás/Ajustes). */}
         {photoURL && !adjusting && (
           <div className="absolute top-20 right-4 z-20 flex max-w-[min(80vw,22rem)] flex-col items-end gap-2">
             <div className="flex flex-wrap justify-end gap-2">
               <UploadButton
                 glass
                 accept="image/*"
-                onFiles={onPhoto}
+                onFiles={onPhotoUpload}
                 disabled={uploading === "photo"}
               >
                 {uploading === "photo" ? (
@@ -766,31 +816,15 @@ export function ProfileBuilder({
                 <CropIcon className="size-4" />
                 {t("profileBuilder.photo.adjust")}
               </GlassButton>
-              <UploadButton
-                glass
-                accept="image/*"
-                onFiles={onPhotoMobile}
-                disabled={uploading === "photoMobile"}
-              >
-                {uploading === "photoMobile" ? (
-                  <SpinnerIcon className="size-4 animate-spin" />
-                ) : (
-                  <ImageIcon className="size-4" />
-                )}
-                {photoMobile
-                  ? t("profileBuilder.photoMobile.changeShort")
-                  : t("profileBuilder.photoMobile.add")}
-              </UploadButton>
-              {photoMobile && (
-                <GlassButton onClick={() => setPhotoMobile("")}>
-                  {t("profileBuilder.photoMobile.remove")}
-                </GlassButton>
-              )}
+              <GlassButton onClick={openOtherScreen}>
+                <ImageIcon className="size-4" />
+                {isMobileScreen
+                  ? t("profileBuilder.photoSync.manageDesktop")
+                  : t("profileBuilder.photoSync.manageMobile")}
+              </GlassButton>
             </div>
             <p className="max-w-xs rounded-lg bg-black/45 px-2.5 py-1 text-right text-[11px] leading-snug text-white/75 backdrop-blur">
-              {photoMobile
-                ? t("profileBuilder.photoMobile.setHint")
-                : t("profileBuilder.photoMobile.hint")}
+              {t("profileBuilder.photoSync.hint")}
             </p>
           </div>
         )}
@@ -1368,6 +1402,76 @@ export function ProfileBuilder({
             {t("profileBuilder.location.done")}
           </GlassButton>
         </div>
+      </GlassModal>
+
+      {/* Sincronización de foto: tras subir para una pantalla, ofrece reusar
+          la misma imagen en la otra o subir una versión dedicada (vertical
+          para móvil, horizontal para escritorio). */}
+      <GlassModal
+        open={syncPrompt !== null}
+        onClose={() => setSyncPrompt(null)}
+        title={
+          syncPrompt?.target === "mobile"
+            ? t("profileBuilder.photoSync.titleMobile")
+            : t("profileBuilder.photoSync.titleDesktop")
+        }
+      >
+        {syncPrompt && (
+          <>
+            <div className="flex justify-center">
+              {syncPrompt.target === "mobile" ? (
+                <div className="relative aspect-[3/4] w-56 overflow-hidden rounded-xl">
+                  <Image
+                    src={syncPrompt.url}
+                    alt={t("profileBuilder.photo.alt")}
+                    fill
+                    sizes="14rem"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="relative aspect-video w-full overflow-hidden rounded-xl">
+                  <Image
+                    src={syncPrompt.url}
+                    alt={t("profileBuilder.photo.alt")}
+                    fill
+                    sizes="(min-width: 640px) 28rem, 90vw"
+                    className="object-cover"
+                  />
+                </div>
+              )}
+            </div>
+            <p className="text-silver-300 mt-4 text-sm">
+              {syncPrompt.target === "mobile"
+                ? t("profileBuilder.photoSync.bodyMobile")
+                : t("profileBuilder.photoSync.bodyDesktop")}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+              <GlassButton
+                onClick={reuseForOther}
+                className="!text-amethyst-200"
+              >
+                <CheckIcon className="size-4" />
+                {t("profileBuilder.photoSync.useSame")}
+              </GlassButton>
+              <UploadButton
+                glass
+                accept="image/*"
+                onFiles={onPhotoOther}
+                disabled={uploading === "photoOther"}
+              >
+                {uploading === "photoOther" ? (
+                  <SpinnerIcon className="size-4 animate-spin" />
+                ) : (
+                  <ImageIcon className="size-4" />
+                )}
+                {syncPrompt.target === "mobile"
+                  ? t("profileBuilder.photoSync.uploadVertical")
+                  : t("profileBuilder.photoSync.uploadHorizontal")}
+              </UploadButton>
+            </div>
+          </>
+        )}
       </GlassModal>
     </article>
   );

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SpinnerIcon, CheckIcon, ImageIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
@@ -12,14 +15,14 @@ import {
   type ActivoCategoria,
   ACTIVO_CATEGORIAS,
 } from "@/domain/contabilidad";
-import type { SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@/domain/sede";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addActivo } from "../lib/activos-repo";
 import { adminInput, adminLabel } from "./admin-ui";
 
-const SEDES: SedeId[] = ["barranquilla", "bogota"];
-
 const inputCls = adminInput;
 const labelCls = adminLabel;
+const selectCls = `flex w-full items-center justify-between gap-2 ${inputCls}`;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {
@@ -56,6 +59,17 @@ export function AddActivoModal({
   const [foto, setFoto] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((list) => active && setSedes(list))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const valorNum = Number(valor);
   const valido = nombre.trim() !== "" && valorNum > 0 && fecha !== "" && !!user;
@@ -123,34 +137,29 @@ export function AddActivoModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t("adminBienes.add.category")}</label>
-            <select
+            <SearchableSelect
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value as ActivoCategoria)}
-              className={inputCls}
-            >
-              {ACTIVO_CATEGORIAS.map((c) => (
-                <option key={c} value={c} className="bg-ink text-white">
-                  {t(`adminBienes.categoria.${c}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCategoria(v as ActivoCategoria)}
+              options={ACTIVO_CATEGORIAS.map((c) => ({
+                value: c,
+                label: t(`adminBienes.categoria.${c}`),
+              }))}
+              ariaLabel={t("adminBienes.add.category")}
+              className={selectCls}
+            />
           </div>
           <div>
             <label className={labelCls}>{t("adminBienes.add.sede")}</label>
-            <select
+            <SearchableSelect
               value={sede}
-              onChange={(e) => setSede(e.target.value as SedeId | "")}
-              className={inputCls}
-            >
-              <option value="" className="bg-ink text-white">
-                {t("adminBienes.add.sedeNone")}
-              </option>
-              {SEDES.map((s) => (
-                <option key={s} value={s} className="bg-ink text-white">
-                  {t(`adminBienes.sedes.${s}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSede(v as SedeId | "")}
+              options={[
+                { value: "", label: t("adminBienes.add.sedeNone") },
+                ...sedes.map((s) => ({ value: s.id, label: s.nombre })),
+              ]}
+              ariaLabel={t("adminBienes.add.sede")}
+              className={selectCls}
+            />
           </div>
         </div>
 
@@ -159,12 +168,9 @@ export function AddActivoModal({
             <label className={labelCls}>
               {t("adminBienes.add.acquisitionValue")}
             </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
+            <MoneyInput
               value={valor}
-              onChange={(e) => setValor(e.target.value)}
+              onChange={setValor}
               placeholder="0"
               className={inputCls}
             />
@@ -173,10 +179,9 @@ export function AddActivoModal({
             <label className={labelCls}>
               {t("adminBienes.add.acquisitionDate")}
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              onChange={setFecha}
               className={inputCls}
             />
           </div>
@@ -201,12 +206,9 @@ export function AddActivoModal({
             <label className={labelCls}>
               {t("adminBienes.add.residualValue")}
             </label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
+            <MoneyInput
               value={residual}
-              onChange={(e) => setResidual(e.target.value)}
+              onChange={setResidual}
               placeholder={t("adminBienes.add.optional")}
               className={inputCls}
             />

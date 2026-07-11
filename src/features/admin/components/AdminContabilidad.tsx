@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { ShareIcon, SpinnerIcon } from "@/components/icons";
+import {
+  ShareIcon,
+  SpinnerIcon,
+  FilePdfIcon,
+  FileSheetIcon,
+} from "@/components/icons";
 import { formatCOP } from "@/domain/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
@@ -192,26 +196,34 @@ export function AdminContabilidad() {
         title={t("adminContabilidad.title")}
         subtitle={t("adminContabilidad.intro")}
       >
-        <div className="mt-6 flex flex-wrap gap-2">
-          <GlassButton onClick={compartir} disabled={!data || busy !== null}>
-            {busy === "share" ? (
-              <SpinnerIcon className="size-4 animate-spin" />
-            ) : (
-              <ShareIcon className="size-4" />
-            )}
-            {t("adminContabilidad.share")}
-          </GlassButton>
-          <GlassButton onClick={descargarPDF} disabled={!data || busy !== null}>
-            {busy === "pdf" && <SpinnerIcon className="size-4 animate-spin" />}
-            {t("adminContabilidad.downloadPdf")}
-          </GlassButton>
-          <GlassButton
+        <div className="mt-6 flex flex-wrap items-center gap-2.5">
+          <ExportButton
+            onClick={compartir}
+            disabled={!data || busy !== null}
+            busy={busy === "share"}
+            accent="amethyst"
+            label={t("adminContabilidad.share")}
+          >
+            <ShareIcon className="size-5" />
+          </ExportButton>
+          <ExportButton
+            onClick={descargarPDF}
+            disabled={!data || busy !== null}
+            busy={busy === "pdf"}
+            accent="red"
+            label={t("adminContabilidad.downloadPdf")}
+          >
+            <FilePdfIcon className="size-5" />
+          </ExportButton>
+          <ExportButton
             onClick={descargarExcel}
             disabled={!data || busy !== null}
+            busy={busy === "xlsx"}
+            accent="emerald"
+            label={t("adminContabilidad.downloadExcel")}
           >
-            {busy === "xlsx" && <SpinnerIcon className="size-4 animate-spin" />}
-            {t("adminContabilidad.downloadExcel")}
-          </GlassButton>
+            <FileSheetIcon className="size-5" />
+          </ExportButton>
         </div>
       </AdminPageHeader>
 
@@ -251,5 +263,44 @@ export function AdminContabilidad() {
         </div>
       </div>
     </main>
+  );
+}
+
+const EXPORT_ACCENTS = {
+  amethyst:
+    "[&_svg]:text-amethyst-300 hover:border-amethyst-300/50 hover:bg-amethyst-500/15",
+  red: "[&_svg]:text-red-300 hover:border-red-400/50 hover:bg-red-500/15",
+  emerald:
+    "[&_svg]:text-emerald-300 hover:border-emerald-400/50 hover:bg-emerald-500/15",
+} as const;
+
+/** Botón de exportación compacto: icono con color de marca (PDF rojo, Excel
+ *  verde, compartir amatista) + etiqueta, con leve elevación al hover. Sustituye
+ *  al GlassButton genérico grande. */
+function ExportButton({
+  onClick,
+  disabled,
+  busy,
+  accent,
+  label,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  busy?: boolean;
+  accent: keyof typeof EXPORT_ACCENTS;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={`group text-silver-100 flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-3.5 py-2.5 text-sm font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] backdrop-blur-md transition hover:-translate-y-0.5 hover:text-white disabled:pointer-events-none disabled:opacity-40 ${EXPORT_ACCENTS[accent]}`}
+    >
+      {busy ? <SpinnerIcon className="size-5 animate-spin" /> : children}
+      <span>{label}</span>
+    </button>
   );
 }

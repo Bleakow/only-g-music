@@ -14,9 +14,12 @@ import {
   valorEnLibros,
   valorPorCategoria,
 } from "@/domain/contabilidad";
+import type { Sede } from "@/domain/sede";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { listActivos, darDeBajaActivo } from "../lib/activos-repo";
 import { AddActivoModal } from "./AddActivoModal";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useTranslations();
@@ -25,6 +28,7 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
   const [now] = useState(() => Date.now());
 
   const [activos, setActivos] = useState<Activo[]>([]);
+  const [sedes, setSedes] = useState<Sede[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -33,6 +37,9 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
   const [bajaTarget, setBajaTarget] = useState<Activo | null>(null);
   const [bajaMotivo, setBajaMotivo] = useState("");
   const [bajaBusy, setBajaBusy] = useState(false);
+
+  // Foto del bien vista en grande (lightbox).
+  const [photoView, setPhotoView] = useState<Activo | null>(null);
 
   function recargar() {
     setLoading(true);
@@ -62,6 +69,16 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
       active = false;
     };
   }, [t]);
+
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((list) => active && setSedes(list))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const totales = totalesInventario(activos, now);
   const porCategoria = valorPorCategoria(activos, now);
@@ -133,7 +150,51 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
         )}
 
         {loading ? (
-          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+          <>
+            {/* Resumen (skeleton) */}
+            <div
+              className={`${adminCard} mt-8 grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4`}
+            >
+              <div className="border-amethyst-300/30 bg-amethyst-500/10 rounded-xl border p-4 sm:col-span-2 lg:col-span-1">
+                <Skeleton className="h-3 w-28" />
+                <Skeleton className="mt-2 h-8 w-36" />
+              </div>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className={`${adminInner} rounded-xl p-4`}>
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="mt-2 h-6 w-16" />
+                </div>
+              ))}
+            </div>
+
+            {/* Desglose por categoría (skeleton) */}
+            <section className={`${adminCard} mt-10 p-5`}>
+              <Skeleton className="h-6 w-48" />
+              <div className="mt-4 flex flex-col gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-40 shrink-0" />
+                    <Skeleton className="h-6 flex-1" />
+                    <Skeleton className="h-4 w-24 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Inventario (skeleton) */}
+            <section className={`${adminCard} mt-10 p-5`}>
+              <Skeleton className="h-6 w-40" />
+              <div className={`${adminInner} mt-4 overflow-hidden rounded-xl`}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/5" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
           <>
             {/* Resumen */}
@@ -239,12 +300,19 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
                             <td className="px-4 py-3">
                               <span className="text-silver-100 flex items-center gap-2">
                                 {a.fotoUrl && (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img
-                                    src={a.fotoUrl}
-                                    alt=""
-                                    className="size-8 shrink-0 rounded object-cover"
-                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setPhotoView(a)}
+                                    aria-label={t("adminBienes.viewPhoto")}
+                                    className="hover:ring-amethyst-300/70 shrink-0 rounded transition hover:ring-2"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={a.fotoUrl}
+                                      alt=""
+                                      className="size-8 rounded object-cover"
+                                    />
+                                  </button>
                                 )}
                                 <span className="truncate">{a.nombre}</span>
                                 {!vigente && (
@@ -259,7 +327,8 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
                             </td>
                             <td className="text-silver-400 px-4 py-3">
                               {a.sede
-                                ? t(`adminBienes.sedes.${a.sede}`)
+                                ? (sedes.find((s) => s.id === a.sede)?.nombre ??
+                                  a.sede)
                                 : t("adminBienes.noSede")}
                             </td>
                             <td className="text-silver-400 px-4 py-3">
@@ -342,6 +411,23 @@ export function AdminBienes({ embedded = false }: { embedded?: boolean } = {}) {
             {t("adminBienes.retireModal.confirm")}
           </GlassButton>
         </div>
+      </GlassModal>
+
+      {/* Lightbox de la foto del bien */}
+      <GlassModal
+        open={photoView !== null}
+        onClose={() => setPhotoView(null)}
+        title={photoView?.nombre}
+        className="max-w-xl"
+      >
+        {photoView?.fotoUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photoView.fotoUrl}
+            alt={photoView.nombre}
+            className="max-h-[70vh] w-full rounded-xl object-contain"
+          />
+        )}
       </GlassModal>
     </div>
   );

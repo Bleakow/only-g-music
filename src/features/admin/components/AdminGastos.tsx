@@ -34,6 +34,7 @@ import {
 } from "../lib/movimientos-repo";
 import { AddMovimientoModal } from "./AddMovimientoModal";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type PeriodoKey = "mes" | "anio" | "todo";
 const PERIODOS: PeriodoKey[] = ["mes", "anio", "todo"];
@@ -179,7 +180,42 @@ export function AdminGastos({ embedded = false }: { embedded?: boolean } = {}) {
         )}
 
         {loading ? (
-          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+          <>
+            {/* Selector de periodo (skeleton) */}
+            <div className="mt-8 flex flex-wrap items-center gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-8 w-20" />
+              ))}
+            </div>
+
+            {/* Resumen (skeleton) */}
+            <div className={`${adminCard} mt-4 grid gap-4 p-5 sm:grid-cols-3`}>
+              <div className="border-amethyst-300/30 bg-amethyst-500/10 rounded-xl border p-4">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-2 h-8 w-32" />
+              </div>
+              {Array.from({ length: 2 }).map((_, i) => (
+                <div key={i} className={`${adminInner} rounded-xl p-4`}>
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="mt-2 h-6 w-12" />
+                </div>
+              ))}
+            </div>
+
+            {/* Egresos del periodo (skeleton) */}
+            <section className={`${adminCard} mt-10 p-5`}>
+              <Skeleton className="h-6 w-56" />
+              <div className={`${adminInner} mt-4 overflow-hidden rounded-xl`}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
           <>
             {/* Cola: por confirmar */}

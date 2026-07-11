@@ -26,7 +26,10 @@ export type NotifEvento =
   | "gasto-recurrente-por-confirmar"
   | "perfil-artista-creado"
   | "premium-activado"
-  | "perfil-por-renovar";
+  | "perfil-por-renovar"
+  | "convenio-solicitado"
+  | "convenio-aprobado"
+  | "convenio-rechazado";
 
 /**
  * Crea una notificación para `uid`. `getFirestore()` se resuelve en runtime (no

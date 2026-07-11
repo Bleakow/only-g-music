@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SpinnerIcon, CheckIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
@@ -11,14 +14,14 @@ import {
   type PasivoCategoria,
   PASIVO_CATEGORIAS,
 } from "@/domain/contabilidad";
-import type { SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@/domain/sede";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addPasivo } from "../lib/pasivos-repo";
 import { adminInput, adminLabel } from "./admin-ui";
 
-const SEDES: SedeId[] = ["barranquilla", "bogota"];
-
 const inputCls = adminInput;
 const labelCls = adminLabel;
+const selectCls = `flex w-full items-center justify-between gap-2 ${inputCls}`;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {
@@ -49,6 +52,17 @@ export function AddPasivoModal({
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((list) => active && setSedes(list))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const montoNum = Number(monto);
   const valido = nombre.trim() !== "" && montoNum > 0 && fecha !== "" && !!user;
@@ -111,26 +125,22 @@ export function AddPasivoModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t("adminBalance.add.category")}</label>
-            <select
+            <SearchableSelect
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value as PasivoCategoria)}
-              className={inputCls}
-            >
-              {PASIVO_CATEGORIAS.map((c) => (
-                <option key={c} value={c} className="bg-ink text-white">
-                  {t(`adminBalance.categoria.${c}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCategoria(v as PasivoCategoria)}
+              options={PASIVO_CATEGORIAS.map((c) => ({
+                value: c,
+                label: t(`adminBalance.categoria.${c}`),
+              }))}
+              ariaLabel={t("adminBalance.add.category")}
+              className={selectCls}
+            />
           </div>
           <div>
             <label className={labelCls}>{t("adminBalance.add.amount")}</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
+            <MoneyInput
               value={monto}
-              onChange={(e) => setMonto(e.target.value)}
+              onChange={setMonto}
               placeholder="0"
               className={inputCls}
             />
@@ -140,19 +150,18 @@ export function AddPasivoModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t("adminBalance.add.date")}</label>
-            <input
-              type="date"
+            <DatePicker
               value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              onChange={setFecha}
               className={inputCls}
             />
           </div>
           <div>
             <label className={labelCls}>{t("adminBalance.add.dueDate")}</label>
-            <input
-              type="date"
+            <DatePicker
               value={vencimiento}
-              onChange={(e) => setVencimiento(e.target.value)}
+              onChange={setVencimiento}
+              min={fecha || undefined}
               className={inputCls}
             />
           </div>
@@ -170,20 +179,16 @@ export function AddPasivoModal({
           </div>
           <div>
             <label className={labelCls}>{t("adminBalance.add.sede")}</label>
-            <select
+            <SearchableSelect
               value={sede}
-              onChange={(e) => setSede(e.target.value as SedeId | "")}
-              className={inputCls}
-            >
-              <option value="" className="bg-ink text-white">
-                {t("adminBalance.add.sedeNone")}
-              </option>
-              {SEDES.map((s) => (
-                <option key={s} value={s} className="bg-ink text-white">
-                  {t(`adminBienes.sedes.${s}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setSede(v as SedeId | "")}
+              options={[
+                { value: "", label: t("adminBalance.add.sedeNone") },
+                ...sedes.map((s) => ({ value: s.id, label: s.nombre })),
+              ]}
+              ariaLabel={t("adminBalance.add.sede")}
+              className={selectCls}
+            />
           </div>
         </div>
 

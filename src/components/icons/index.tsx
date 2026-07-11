@@ -444,6 +444,26 @@ export function CropIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+export function FilePdfIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+      <path d="M9 13h6M9 17h4" />
+    </svg>
+  );
+}
+
+export function FileSheetIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+      <path d="M14 3v5h5" />
+      <path d="M8 13h8M8 17h8M12 12v6" />
+    </svg>
+  );
+}
+
 export function EditIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...strokeProps(props)}>

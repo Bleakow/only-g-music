@@ -25,8 +25,9 @@ import {
   type QuoteItem,
   type QuoteCollaborator,
 } from "@/domain/quote";
-import type { SedeId } from "@/domain/sede";
-import { sedes } from "@/features/sedes/data/sedes";
+import type { Sede, SedeId } from "@/domain/sede";
+import { sedes as seedSedes } from "@/features/sedes/data/sedes";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 
 const TOTAL = 3;
@@ -101,7 +102,22 @@ export function QuoteWizard() {
       active = false;
     };
   }, [params]);
-  const [sede, setSede] = useState<SedeId>("barranquilla");
+  const [sedes, setSedes] = useState<Sede[]>(seedSedes);
+  const [sede, setSede] = useState<SedeId>(seedSedes[0].id);
+
+  // Sedes reales (semilla + creadas por el admin); arranca con la semilla
+  // como fallback inmediato para no dejar el selector vacío.
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((data) => {
+        if (active) setSedes(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
   const [budget, setBudget] = useState("");
   const [contactName, setContactName] = useState(
     account?.displayName ?? user?.displayName ?? "",

@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { sedes } from "@/features/sedes/data/sedes";
-import type { SedeId } from "@/domain/sede";
+import { sedes as seedSedes } from "@/features/sedes/data/sedes";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
+import type { Sede, SedeId } from "@/domain/sede";
 import { services } from "@/features/services/data/services";
 import { isQuoteOnly, hasVariants, formatCOP } from "@/domain/service";
 import {
@@ -28,8 +29,7 @@ import { Button } from "@/components/ui/Button";
 // o "a cotizar" pasan por el wizard de cotizacion).
 const AGENDABLES = services.filter((s) => !hasVariants(s) && !isQuoteOnly(s));
 
-const ym = (y: number, m: number) =>
-  `${y}-${String(m + 1).padStart(2, "0")}`;
+const ym = (y: number, m: number) => `${y}-${String(m + 1).padStart(2, "0")}`;
 const fechaStr = (y: number, m: number, d: number) =>
   `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 
@@ -47,7 +47,8 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
   const [mounted, setMounted] = useState(false);
   const [year, setYear] = useState(2026);
   const [month, setMonth] = useState(0);
-  const [sede, setSede] = useState<SedeId>(sedes[0].id);
+  const [sedes, setSedes] = useState<Sede[]>(seedSedes);
+  const [sede, setSede] = useState<SedeId>(seedSedes[0].id);
   const [serviceSlug, setServiceSlug] = useState<string>(
     AGENDABLES.some((s) => s.slug === servicioSlug)
       ? servicioSlug!
@@ -68,6 +69,20 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
     setYear(n.getFullYear());
     setMonth(n.getMonth());
     setMounted(true);
+  }, []);
+
+  // Sedes reales (semilla + creadas por el admin); arranca con la semilla
+  // como fallback inmediato para no dejar el selector vacío.
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((data) => {
+        if (active) setSedes(data);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
   }, []);
 
   const mes = ym(year, month);
@@ -200,7 +215,9 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           ? t("bookingCalendar.error.slotTaken")
           : t("bookingCalendar.error.bookingFailed"),
       );
-      getDaySlots(sede, mes).then(setDaySlots).catch(() => {});
+      getDaySlots(sede, mes)
+        .then(setDaySlots)
+        .catch(() => {});
     } finally {
       setBusy(false);
     }
@@ -210,13 +227,13 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
   if (doneId) {
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center py-16 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full border border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200">
+        <div className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 flex size-16 items-center justify-center rounded-full border">
           <ClockIcon className="size-8" />
         </div>
-        <h2 className="mt-6 font-narrow text-3xl font-bold uppercase sm:text-4xl">
+        <h2 className="font-narrow mt-6 text-3xl font-bold uppercase sm:text-4xl">
           {t("bookingCalendar.success.title")}
         </h2>
-        <p className="mt-3 text-silver-300">
+        <p className="text-silver-300 mt-3">
           {t.rich("bookingCalendar.success.description", {
             strong: (c) => <strong>{c}</strong>,
           })}
@@ -224,13 +241,13 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/cuenta"
-            className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+            className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
           >
             {t("bookingCalendar.success.goToAccount")}
           </Link>
           <Link
             href="/servicios"
-            className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+            className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
           >
             {t("bookingCalendar.success.viewServices")}
           </Link>
@@ -256,7 +273,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       {/* Servicio */}
       {AGENDABLES.length > 0 && (
         <div className="mb-6">
-          <p className="mb-2 text-xs uppercase tracking-[2px] text-silver-300">
+          <p className="text-silver-300 mb-2 text-xs tracking-[2px] uppercase">
             {t("bookingCalendar.serviceLabel")}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -269,7 +286,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                   setHours(1);
                 }}
                 data-active={s.slug === serviceSlug}
-                className="rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-white/40 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 data-[active=true]:text-white"
+                className="data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-white/40 data-[active=true]:text-white"
               >
                 {s.name}
               </button>
@@ -286,12 +303,12 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
             type="button"
             onClick={() => setSede(s.id)}
             data-active={sede === s.id}
-            className="rounded-xl border border-white/10 px-5 py-4 text-left transition hover:border-white/30 data-[active=true]:border-amethyst-400/60 data-[active=true]:bg-amethyst-500/10"
+            className="data-[active=true]:border-amethyst-400/60 data-[active=true]:bg-amethyst-500/10 rounded-xl border border-white/10 px-5 py-4 text-left transition hover:border-white/30"
           >
-            <span className="block font-narrow text-2xl font-bold uppercase">
+            <span className="font-narrow block text-2xl font-bold uppercase">
               {s.nombre}
             </span>
-            <span className="text-sm text-silver-400">{s.ciudad}</span>
+            <span className="text-silver-400 text-sm">{s.ciudad}</span>
           </button>
         ))}
       </div>
@@ -303,7 +320,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
             type="button"
             onClick={() => shift(-1)}
             aria-label={t("bookingCalendar.prevMonth")}
-            className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
+            className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
           >
             <ArrowLeftIcon className="size-4" />
           </button>
@@ -314,7 +331,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
             type="button"
             onClick={() => shift(1)}
             aria-label={t("bookingCalendar.nextMonth")}
-            className="flex size-10 items-center justify-center rounded-full border border-white/15 text-silver-200 transition hover:border-amethyst-300 hover:text-white"
+            className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
           >
             <ArrowLeftIcon className="size-4 rotate-180" />
           </button>
@@ -330,7 +347,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           {weekdayHeaders.map((w) => (
             <span
               key={w}
-              className="py-2 text-xs uppercase tracking-wide text-silver-500"
+              className="text-silver-500 py-2 text-xs tracking-wide uppercase"
             >
               {w}
             </span>
@@ -368,7 +385,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                         ? t("bookingCalendar.dayTitle.partial")
                         : t("bookingCalendar.dayTitle.free")
                 }
-                className={`aspect-square rounded-lg text-sm transition disabled:cursor-not-allowed enabled:hover:bg-white/5 data-[selected=true]:bg-gradient-to-br data-[selected=true]:from-silver-100 data-[selected=true]:to-amethyst-300 data-[selected=true]:font-bold data-[selected=true]:text-ink ${cls}`}
+                className={`data-[selected=true]:from-silver-100 data-[selected=true]:to-amethyst-300 data-[selected=true]:text-ink aspect-square rounded-lg text-sm transition enabled:hover:bg-white/5 disabled:cursor-not-allowed data-[selected=true]:bg-gradient-to-br data-[selected=true]:font-bold ${cls}`}
               >
                 {day}
               </button>
@@ -377,15 +394,18 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
         </div>
 
         {/* Leyenda */}
-        <div className="mt-4 flex flex-wrap gap-4 text-xs text-silver-400">
+        <div className="text-silver-400 mt-4 flex flex-wrap gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-white/15" /> {t("bookingCalendar.legend.free")}
+            <span className="size-3 rounded bg-white/15" />{" "}
+            {t("bookingCalendar.legend.free")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-amber-500/40" /> {t("bookingCalendar.legend.partial")}
+            <span className="size-3 rounded bg-amber-500/40" />{" "}
+            {t("bookingCalendar.legend.partial")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="size-3 rounded bg-red-500/30" /> {t("bookingCalendar.legend.full")}
+            <span className="size-3 rounded bg-red-500/30" />{" "}
+            {t("bookingCalendar.legend.full")}
           </span>
         </div>
       </div>
@@ -393,7 +413,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       {/* Horarios del dia */}
       {selectedDay && (
         <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 sm:p-8">
-          <p className="mb-4 text-sm uppercase tracking-[2px] text-silver-300">
+          <p className="text-silver-300 mb-4 text-sm tracking-[2px] uppercase">
             {t("bookingCalendar.slotsHeading", {
               day: selectedDay,
               month: monthName,
@@ -412,7 +432,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                     setHours(1);
                   }}
                   data-active={startSlot === slot}
-                  className="rounded-lg border border-white/15 py-3 text-sm tabular-nums transition enabled:hover:border-amethyst-300 disabled:cursor-not-allowed disabled:bg-red-500/10 disabled:text-red-300/40 disabled:line-through data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 data-[active=true]:text-white"
+                  className="enabled:hover:border-amethyst-300 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 rounded-lg border border-white/15 py-3 text-sm tabular-nums transition disabled:cursor-not-allowed disabled:bg-red-500/10 disabled:text-red-300/40 disabled:line-through data-[active=true]:text-white"
                 >
                   {to12h(slot)}
                 </button>
@@ -423,7 +443,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           {/* Duracion (servicios por hora) */}
           {startSlot && esPorHora && hMax > 1 && (
             <div className="mt-5">
-              <p className="mb-2 text-xs uppercase tracking-[2px] text-silver-300">
+              <p className="text-silver-300 mb-2 text-xs tracking-[2px] uppercase">
                 {t("bookingCalendar.durationLabel")}
               </p>
               <div className="flex flex-wrap gap-2">
@@ -433,7 +453,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                     type="button"
                     onClick={() => setHours(h)}
                     data-active={hours === h}
-                    className="rounded-full border border-white/15 px-4 py-2 text-sm transition hover:border-amethyst-300 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 data-[active=true]:text-white"
+                    className="hover:border-amethyst-300 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 rounded-full border border-white/15 px-4 py-2 text-sm transition data-[active=true]:text-white"
                   >
                     {t("bookingCalendar.durationOption", { hours: h })}
                   </button>
@@ -459,9 +479,13 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
           <div className="mb-4 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
             <span className="text-silver-300">
               {service.name} · {selectedDay} {monthName} · {to12h(startSlot)}
-              {esPorHora ? ` · ${t("bookingCalendar.durationOption", { hours })}` : ""}
+              {esPorHora
+                ? ` · ${t("bookingCalendar.durationOption", { hours })}`
+                : ""}
             </span>
-            <span className="font-semibold text-white">{formatCOP(amount)}</span>
+            <span className="font-semibold text-white">
+              {formatCOP(amount)}
+            </span>
           </div>
         )}
         <Button

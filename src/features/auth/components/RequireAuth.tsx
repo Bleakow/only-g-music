@@ -45,12 +45,11 @@ export function RequireAuth({
   const heading = title ?? t("auth.loginRequired");
   const desc = message ?? t("auth.loginRequiredDesc");
 
+  // Sin texto "Cargando": el vinilo (overlay inicial / loading.tsx) ya cubre la
+  // carga. Un lienzo oscuro mientras resuelve la sesión evita el flash de texto
+  // al desvanecerse el loader.
   if (loading) {
-    return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">{t("common.loading")}</p>
-      </main>
-    );
+    return <div className="bg-ink min-h-dvh" aria-hidden="true" />;
   }
 
   if (!user) {
@@ -74,36 +73,36 @@ export function RequireAuth({
         />
 
         <div className="relative max-w-md">
-          <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-200">
+          <div className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-200 mx-auto flex size-16 items-center justify-center rounded-full border">
             <LockIcon className="size-8" />
           </div>
 
-          <h1 className="mt-6 font-narrow text-4xl font-bold uppercase sm:text-5xl">
+          <h1 className="font-narrow mt-6 text-4xl font-bold uppercase sm:text-5xl">
             {heading}
           </h1>
-          <p className="mt-3 text-silver-300">{desc}</p>
+          <p className="text-silver-300 mt-3">{desc}</p>
 
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               href={`/login?next=${encodeURIComponent(pathname)}`}
-              className="rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-8 py-3 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+              className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
             >
               {t("auth.login")}
             </Link>
             <button
               type="button"
               onClick={goBack}
-              className="rounded-full border border-silver-300/40 px-8 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+              className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
             >
               {t("auth.goBack")}
             </button>
           </div>
 
-          <p className="mt-6 text-sm text-silver-400">
+          <p className="text-silver-400 mt-6 text-sm">
             {t("auth.noAccount")}{" "}
             <Link
               href={`/login?mode=register&next=${encodeURIComponent(pathname)}`}
-              className="font-semibold text-amethyst-300 underline-offset-4 hover:text-amethyst-200 hover:underline"
+              className="text-amethyst-300 hover:text-amethyst-200 font-semibold underline-offset-4 hover:underline"
             >
               {t("auth.createAccount")}
             </Link>

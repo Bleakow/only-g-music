@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { DatePicker } from "@/components/ui/DatePicker";
+import { SearchableSelect } from "@/components/ui/SearchableSelect";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SpinnerIcon, CheckIcon, ImageIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { uploadUserFile } from "@/features/uploads/lib/uploads-repo";
@@ -14,14 +17,16 @@ import {
   GASTO_CATEGORIAS,
   RECURRENCIAS,
 } from "@/domain/contabilidad";
-import type { SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@/domain/sede";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addMovimiento } from "../lib/movimientos-repo";
 import { adminInput, adminLabel } from "./admin-ui";
 
-const SEDES: SedeId[] = ["barranquilla", "bogota"];
-
 const inputCls = adminInput;
 const labelCls = adminLabel;
+// Disparador del select con la misma pinta de campo (adminInput) + layout flex
+// para el texto y la flecha (SearchableSelect sustituye por completo su clase).
+const selectCls = `flex w-full items-center justify-between gap-2 ${inputCls}`;
 
 /** epoch ms → "YYYY-MM-DD" para <input type="date">. */
 function toDateInput(ms: number): string {
@@ -56,6 +61,17 @@ export function AddMovimientoModal({
   const [comprobante, setComprobante] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [sedes, setSedes] = useState<Sede[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    getAllSedes()
+      .then((list) => active && setSedes(list))
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const montoNum = Number(monto);
   const valido =
@@ -127,45 +143,40 @@ export function AddMovimientoModal({
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t("adminGastos.add.category")}</label>
-            <select
+            <SearchableSelect
               value={categoria}
-              onChange={(e) => setCategoria(e.target.value as GastoCategoria)}
-              className={inputCls}
-            >
-              {GASTO_CATEGORIAS.map((c) => (
-                <option key={c} value={c} className="bg-ink text-white">
-                  {t(`adminGastos.categoria.${c}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setCategoria(v as GastoCategoria)}
+              options={GASTO_CATEGORIAS.map((c) => ({
+                value: c,
+                label: t(`adminGastos.categoria.${c}`),
+              }))}
+              ariaLabel={t("adminGastos.add.category")}
+              className={selectCls}
+            />
           </div>
           <div>
             <label className={labelCls}>
               {t("adminGastos.add.recurrence")}
             </label>
-            <select
+            <SearchableSelect
               value={recurrencia}
-              onChange={(e) => setRecurrencia(e.target.value as Recurrencia)}
-              className={inputCls}
-            >
-              {RECURRENCIAS.map((r) => (
-                <option key={r} value={r} className="bg-ink text-white">
-                  {t(`adminGastos.recurrencia.${r}`)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) => setRecurrencia(v as Recurrencia)}
+              options={RECURRENCIAS.map((r) => ({
+                value: r,
+                label: t(`adminGastos.recurrencia.${r}`),
+              }))}
+              ariaLabel={t("adminGastos.add.recurrence")}
+              className={selectCls}
+            />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>{t("adminGastos.add.amount")}</label>
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
+            <MoneyInput
               value={monto}
-              onChange={(e) => setMonto(e.target.value)}
+              onChange={setMonto}
               placeholder="0"
               className={inputCls}
             />
@@ -176,10 +187,9 @@ export function AddMovimientoModal({
                 ? t("adminGastos.add.date")
                 : t("adminGastos.add.firstCharge")}
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={fecha}
-              onChange={(e) => setFecha(e.target.value)}
+              onChange={setFecha}
               className={inputCls}
             />
           </div>
@@ -190,10 +200,10 @@ export function AddMovimientoModal({
             <label className={labelCls}>
               {t("adminGastos.add.recurUntil")}
             </label>
-            <input
-              type="date"
+            <DatePicker
               value={hasta}
-              onChange={(e) => setHasta(e.target.value)}
+              onChange={setHasta}
+              min={fecha || undefined}
               className={inputCls}
             />
             <p className="text-silver-400 mt-2 text-xs">
@@ -204,20 +214,16 @@ export function AddMovimientoModal({
 
         <div>
           <label className={labelCls}>{t("adminGastos.add.sede")}</label>
-          <select
+          <SearchableSelect
             value={sede}
-            onChange={(e) => setSede(e.target.value as SedeId | "")}
-            className={inputCls}
-          >
-            <option value="" className="bg-ink text-white">
-              {t("adminGastos.add.sedeNone")}
-            </option>
-            {SEDES.map((s) => (
-              <option key={s} value={s} className="bg-ink text-white">
-                {t(`adminBienes.sedes.${s}`)}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => setSede(v as SedeId | "")}
+            options={[
+              { value: "", label: t("adminGastos.add.sedeNone") },
+              ...sedes.map((s) => ({ value: s.id, label: s.nombre })),
+            ]}
+            ariaLabel={t("adminGastos.add.sede")}
+            className={selectCls}
+          />
         </div>
 
         <div>

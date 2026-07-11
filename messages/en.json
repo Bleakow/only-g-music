@@ -5,6 +5,7 @@
     "services": "Services",
     "productions": "Productions",
     "events": "Events",
+    "beats": "Beats",
     "home": "Home",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
@@ -27,6 +28,13 @@
     "saving": "Saving…",
     "cancel": "Cancel"
   },
+  "datePicker": {
+    "today": "Today",
+    "placeholder": "Select date",
+    "open": "Open calendar",
+    "prev": "Previous",
+    "next": "Next"
+  },
   "auth": {
     "login": "Sign in",
     "createAccount": "Create account",
@@ -42,7 +50,10 @@
     "cliente": "Client",
     "productor": "Producer",
     "admin": "Admin",
-    "artista": "Artist"
+    "artista": "Singer",
+    "beatmaker": "Beatmaker",
+    "modelo": "Model",
+    "bailarin": "Dancer"
   },
   "userMenu": {
     "account": "Account menu",
@@ -53,6 +64,7 @@
     "becomeArtist": "Become an artist",
     "adminPanel": "Admin panel",
     "console": "Console",
+    "myBeats": "My beats",
     "availability": "Availability",
     "settings": "Settings",
     "logout": "Log out"
@@ -68,9 +80,14 @@
     "email": "Email",
     "password": "Password",
     "howJoin": "How are you joining?",
-    "justExplore": "Just exploring",
-    "iAmArtist": "I'm an artist",
+    "fnVisitante": "Just exploring",
+    "fnCantante": "I'm a singer",
+    "fnProductor": "I'm a producer",
+    "fnBeatmaker": "I'm a beatmaker",
     "artistHint": "After creating your account we'll take you to set up your artist profile (includes a payment).",
+    "fnProductorHint": "Offer productions from an Only G venue. Requires approval.",
+    "fnBeatmakerHint": "Publish and sell your beats on the platform. Requires approval.",
+    "convenioSaveFailed": "Your account was created, but we couldn't send your partnership request. Please try again in a moment.",
     "forgot": "Forgot your password?",
     "submitting": "One moment…",
     "sendLink": "Send link",
@@ -94,6 +111,11 @@
     "tooManyRequests": "Too many attempts. Try again in a moment.",
     "missingEmail": "Enter your email.",
     "unknown": "Something went wrong. Try again."
+  },
+  "convenioEnviado": {
+    "title": "Request sent",
+    "body": "Your agreement request is under review. We'll let you know via the notification bell and in chat once the admin responds.",
+    "cta": "View my requests"
   },
   "account": {
     "title": "My account",
@@ -265,6 +287,45 @@
     "title": "Events",
     "intro": "Here will live Only G's tours, dates and live experiences."
   },
+  "beats": {
+    "metaTitle": "Beats — Only G Music",
+    "metaDesc": "Explore and buy beats from our producers.",
+    "title": "Beats",
+    "intro": "Explore and buy beats from our producers.",
+    "back": "Home",
+    "vacio": "No beats published yet.",
+    "filtroGenero": "Genre",
+    "filtroBeatmaker": "Beatmaker",
+    "todos": "All",
+    "play": "Play",
+    "pause": "Pause",
+    "comprar": "Buy",
+    "comprarPronto": "Purchase available soon",
+    "por": "by {nombre}",
+    "bpm": "{bpm} BPM",
+    "publicarTitle": "Publish a beat",
+    "publicarIntro": "Upload your beat and put it in Only G's public catalog.",
+    "campoTitulo": "Title",
+    "campoGenero": "Genre",
+    "campoAudioPreview": "Preview audio (public)",
+    "audioPreviewHint": "Upload a tagged preview; the full file will be delivered after purchase (coming soon).",
+    "campoPortada": "Cover",
+    "campoBpm": "BPM",
+    "subiendo": "Uploading…",
+    "publicar": "Publish",
+    "publicando": "Publishing…",
+    "misBeats": "My beats",
+    "sinBeats": "You haven't published any beats yet.",
+    "borrar": "Delete",
+    "borrarConfirm": "Delete this beat?",
+    "activar": "Activate",
+    "desactivar": "Deactivate",
+    "errorPublicar": "Couldn't publish the beat. Please try again.",
+    "errorCargar": "Couldn't load the beats.",
+    "faltaAudio": "Upload the beat's audio.",
+    "faltaTitulo": "Write a title.",
+    "faltaGenero": "Choose a genre."
+  },
   "adminDashboard": {
     "eyebrow": "Administration",
     "title": "Control Panel",
@@ -296,6 +357,8 @@
     "quickEstudiosSub": "Rooms and availability",
     "quickPagosSub": "Methods and details",
     "quickCotizacionesSub": "Requests and quotes",
+    "quickRolesSub": "Grant and revoke permissions",
+    "quickConveniosSub": "Producer and beatmaker requests",
     "bookingsActive": "Active bookings",
     "viewAll": "View all",
     "activityTitle": "Recent activity",
@@ -314,9 +377,49 @@
     "estudios": "Studios",
     "cotizaciones": "Quotes",
     "pagos": "Payments",
+    "roles": "Roles",
+    "convenios": "Agreements",
     "roleAdmin": "Administrator",
     "helpTitle": "Need help?",
     "helpText": "Support available 24/7."
+  },
+  "adminRoles": {
+    "title": "Role management",
+    "intro": "Find a user and adjust their permissions.",
+    "search": "Search by name or email…",
+    "noResults": "No results.",
+    "typeToSearch": "Type to search users.",
+    "editRoles": "Edit roles",
+    "editTitle": "{nombre}'s roles",
+    "save": "Save",
+    "cancel": "Cancel",
+    "syncNote": "Beatmaker and producer are partners: no membership fee, and their profile syncs with these tabs.",
+    "errorSelfAdmin": "You can't remove your own admin role.",
+    "errorGuardar": "Couldn't save the roles.",
+    "errorBuscar": "Search failed."
+  },
+  "adminConvenios": {
+    "title": "Agreement requests",
+    "intro": "Review and respond to producer and beatmaker requests.",
+    "pendientes": "Pending",
+    "sinPendientes": "No pending requests.",
+    "resueltas": "Resolved",
+    "aprobar": "Approve",
+    "rechazar": "Reject",
+    "elegirSede": "Choose the venue",
+    "sinSedes": "No venues created yet. Create one to be able to approve producer requests.",
+    "crearSede": "Create venue",
+    "motivo": "Reason (optional)",
+    "motivoPlaceholder": "Explain why it's being rejected…",
+    "confirmar": "Confirm",
+    "cancelar": "Cancel",
+    "errorAprobar": "Couldn't approve the request. Try again.",
+    "errorRechazar": "Couldn't reject the request. Try again.",
+    "errorCargar": "Couldn't load the agreement requests.",
+    "estado": {
+      "aprobada": "Approved",
+      "rechazada": "Rejected"
+    }
   },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
@@ -336,9 +439,13 @@
   "adminEstudios": {
     "backToAdmin": "← Admin panel",
     "title": "Studios",
-    "intro": "Edit your venues: city, address, schedule and where clients pay you (if a studio collects to its own account). Creating new venues and assigning producers come later.",
+    "intro": "Edit your venues: city, address, schedule and where clients pay you (if a studio collects to its own account). You can also create new venues and assign producers.",
     "edit": "Edit",
     "editTitle": "Edit venue",
+    "crear": "Create venue",
+    "crearTitle": "Create new venue",
+    "crearError": "Could not create the venue. Check the name and try again.",
+    "nombre": "Name",
     "ciudad": "City",
     "direccion": "Address",
     "horario": "Schedule",
@@ -381,7 +488,7 @@
     "fieldInstagram": "Instagram",
     "coverPc": "Cover (desktop)",
     "coverPcHint": "Landscape photo. Shown on desktops and large screens. Required.",
-    "coverMobile": "Cover (mobile)",
+    "coverMobile": "Mobile profile",
     "coverMobileHint": "Portrait photo for phones (optional). If omitted, the desktop one is used.",
     "gallery": "Gallery",
     "galleryHint": "Editorial photos below the cover. The first one is shown large.",
@@ -456,6 +563,7 @@
     "clientFallback": "Client",
     "pnlTitle": "Income statement",
     "manageExpenses": "Manage expenses →",
+    "openContabilidad": "Full accounting",
     "pnlRevenue": "Revenue",
     "pnlExpenses": "Expenses",
     "pnlProfit": "Profit",
@@ -489,6 +597,7 @@
     "colBookValue": "Book value",
     "colActions": " ",
     "statusRetired": "Retired",
+    "viewPhoto": "View photo",
     "retire": "Retire",
     "noSede": "—",
     "categoria": {
@@ -673,7 +782,8 @@
     "title": "Profiles",
     "descripcion": "Your showcase. Search, activate or deactivate membership, edit and mark the <strong>featured</strong> ones (max. {max}). Use “Curate showcase” to order the ones shown first. Profiles without active membership show in gray.",
     "buscarPerfil": "Search by name…",
-    "curarEscaparate": "Curate showcase",
+    "tabTodos": "All",
+    "curarEscaparate": "Order",
     "curarTitle": "Showcase order",
     "curarNota": "These are the ones shown first in the showcase; the rest appear by date.",
     "curarVacio": "No visible profiles yet.",
@@ -683,6 +793,8 @@
     "sinPerfiles": "No profiles created yet.",
     "destacadosContador": "Featured: {count}/{max}",
     "inactivo": "Inactive",
+    "socio": "Partner",
+    "socioEstado": "Visible · partner",
     "premiumEstado": {
       "activo": "Premium active",
       "expirado": "Expired",
@@ -717,6 +829,17 @@
     "errorDestacado": "Could not change featured status.",
     "errorBorrar": "Could not delete the profile.",
     "errorMock": "Could not create the profile.",
+    "membresia": {
+      "activarTitle": "Activate {nombre}'s membership",
+      "activarDescripcion": "Choose how to activate the membership for a month.",
+      "pago": "Confirm payment · 15,000 COP",
+      "cortesia": "Complimentary · 1 month",
+      "cortesiaHint": "Complimentary activates the profile for a month and records no revenue.",
+      "desactivarTitle": "Close membership",
+      "desactivarMensaje": "Close {nombre}'s membership? Their profile will stop appearing in the showcase.",
+      "confirmar": "Close membership",
+      "cancelar": "Cancel"
+    },
     "link": {
       "vincularUsuario": "Link user",
       "title": "Link a profile to a user",
@@ -983,6 +1106,18 @@
       "hint": "The main photo is shown on desktops and large screens. Upload a vertical version (optional) so it isn't badly cropped on phones.",
       "setHint": "Mobile portrait photo added. The main one is used on desktops."
     },
+    "photoSync": {
+      "titleMobile": "Mobile photo",
+      "titleDesktop": "Desktop photo",
+      "bodyMobile": "Use this same photo on mobile, or upload a vertical version?",
+      "bodyDesktop": "Use this same photo on desktop, or upload a horizontal version?",
+      "useSame": "Use this one",
+      "uploadVertical": "Upload vertical",
+      "uploadHorizontal": "Upload horizontal",
+      "manageMobile": "Mobile version",
+      "manageDesktop": "Desktop version",
+      "hint": "The photo adapts to each screen. Reuse the same one or set a version per screen."
+    },
     "location": {
       "title": "Location",
       "done": "Done"
@@ -1192,6 +1327,18 @@
       "perfil-por-renovar": {
         "titulo": "Profile expiring",
         "cuerpo": "Your profile expires in {dias} days."
+      },
+      "convenio-solicitado": {
+        "titulo": "New partnership request",
+        "cuerpo": "{nombre} requested a {tipo} partnership."
+      },
+      "convenio-aprobado": {
+        "titulo": "Partnership approved",
+        "cuerpo": "Your {tipo} partnership request was approved."
+      },
+      "convenio-rechazado": {
+        "titulo": "Partnership rejected",
+        "cuerpo": "Your partnership request was rejected. {motivo}"
       }
     }
   },
@@ -1204,6 +1351,8 @@
     "balanceTitle": "Balance",
     "profilesTitle": "Profiles",
     "productoresTitle": "Producers",
+    "rolesTitle": "Roles",
+    "conveniosTitle": "Agreement requests",
     "paymentsConfigTitle": "Payment details",
     "estudiosTitle": "Studios",
     "consoleTitle": "Producer console",

@@ -11,6 +11,7 @@ import {
 } from "@/features/conversations/lib/payment-config-repo";
 import { DestinoPagoFields } from "./DestinoPagoFields";
 import { AdminPageHeader, adminCard } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /**
  * Datos de pago por DEFECTO de la compañía (SOLO admin) — el destino que ve el
@@ -79,7 +80,31 @@ export function AdminConfigPagos() {
 
       <div className="px-6 sm:px-10">
         {loading ? (
-          <p className="text-silver-300">{t("common.loading")}</p>
+          <div className={`${adminCard} max-w-2xl p-5 sm:p-6`}>
+            <div className="space-y-4">
+              <div>
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-1 h-10 w-full" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-1 h-10 w-full" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="mt-1 h-10 w-full" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="mt-1 h-16 w-full" />
+              </div>
+              <div>
+                <Skeleton className="h-3 w-12" />
+                <Skeleton className="mt-1 aspect-square w-full max-w-48" />
+              </div>
+            </div>
+            <Skeleton className="mt-4 h-10 w-32" />
+          </div>
         ) : (
           <div className={`${adminCard} max-w-2xl p-5 sm:p-6`}>
             <DestinoPagoFields

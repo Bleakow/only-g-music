@@ -6,6 +6,8 @@ import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import { listTransactions } from "../lib/transactions-repo";
 import type { Transaccion } from "@/domain/transaccion";
 import { formatCOP } from "@/domain/service";
+import { GlassButton } from "@/components/ui/GlassButton";
+import { ArrowRightIcon } from "./admin-icons";
 import {
   ingresoTotal,
   ingresosPorMes,
@@ -18,6 +20,7 @@ import { listMovimientos } from "../lib/movimientos-repo";
 import type { Movimiento } from "@/domain/contabilidad";
 import { EstadoResultados } from "./EstadoResultados";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function mesLabel(mes: string, locale: string): string {
   const [y, m] = mes.split("-").map(Number);
@@ -72,7 +75,17 @@ export function AdminFinanzas() {
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminFinanzas.title")}
         subtitle={t("adminFinanzas.intro")}
-      />
+      >
+        {/* Finanzas es la vista rápida; el acceso a la gestión contable completa
+            (activos, pasivos, balance, export) ya no cabía en el dashboard, así
+            que vive aquí. */}
+        <div className="mt-6">
+          <GlassButton href="/admin/contabilidad">
+            {t("adminFinanzas.openContabilidad")}
+            <ArrowRightIcon className="size-4" />
+          </GlassButton>
+        </div>
+      </AdminPageHeader>
 
       <div className="px-6 sm:px-10">
         {error && (
@@ -82,7 +95,55 @@ export function AdminFinanzas() {
         )}
 
         {loading ? (
-          <p className="text-silver-300 mt-10">{t("common.loading")}</p>
+          <>
+            {/* Total (skeleton) */}
+            <div className={`${adminCard} p-6`}>
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="mt-2 h-10 w-48" />
+              <Skeleton className="mt-2 h-4 w-40" />
+            </div>
+
+            {/* Estado de resultados (skeleton) */}
+            <div className={`mt-10 ${adminCard} p-5`}>
+              <Skeleton className="h-6 w-56" />
+              <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className={`rounded-xl p-4 ${adminInner}`}>
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="mt-2 h-6 w-24" />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Ingresos por mes (skeleton) */}
+            <section className={`mt-10 ${adminCard} p-5`}>
+              <Skeleton className="h-6 w-48" />
+              <div className="mt-4 flex flex-col gap-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-20 shrink-0" />
+                    <Skeleton className="h-6 flex-1" />
+                    <Skeleton className="h-4 w-24 shrink-0" />
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Tabla de transacciones (skeleton) */}
+            <section className={`mt-10 ${adminCard} p-5`}>
+              <Skeleton className="h-6 w-44" />
+              <div className={`mt-4 overflow-hidden rounded-xl ${adminInner}`}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 px-4 py-3">
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="h-4 w-1/4" />
+                    <Skeleton className="ml-auto h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
           <>
             {/* Total */}

@@ -1,15 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import Image from "next/image";
-import {
-  SpotifyIcon,
-  InstagramIcon,
-  YouTubeIcon,
-} from "@/components/icons";
+import { SpotifyIcon, InstagramIcon, YouTubeIcon } from "@/components/icons";
 
 const NAV = [
   { href: "/artistas", key: "nav.artists" },
-  { href: "/eventos", key: "nav.events" },
+  { href: "/beats", key: "nav.beats" },
   { href: "/producciones", key: "nav.productions" },
 ] as const;
 
@@ -41,7 +37,7 @@ export async function SiteFooter() {
             <Link
               key={item.href}
               href={item.href}
-              className="text-sm uppercase tracking-[2px] text-white/60 transition-colors hover:text-white"
+              className="text-sm tracking-[2px] text-white/60 uppercase transition-colors hover:text-white"
             >
               {t(item.key)}
             </Link>

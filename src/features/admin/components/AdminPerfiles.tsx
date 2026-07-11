@@ -6,7 +6,7 @@ import Image from "next/image";
 import { Link, useRouter } from "@/i18n/navigation";
 import {
   getProfilesPage,
-  searchProfilesByName,
+  getAllProfiles,
   countFeatured,
   getVisibleProfiles,
   setPremium,
@@ -17,10 +17,11 @@ import {
 } from "@/features/artists/lib/artist-profile-repo";
 import {
   type ArtistProfile,
-  activarPremium,
   MAX_DESTACADOS,
   premiumEstado,
 } from "@/domain/artist-profile";
+import { TALENT_ROLES, type Role } from "@/domain/user";
+import { activarMembresia } from "@/features/admin/lib/admin-users-repo";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
@@ -37,9 +38,17 @@ import {
 } from "@/components/icons";
 import { LinkUserModal } from "./LinkUserModal";
 import { AdminPageHeader, adminCard, adminInner, adminInput } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 const PAGE_SIZE = 24;
 const inputCls = adminInput;
+
+// Normaliza para búsqueda difusa: minúsculas + sin acentos.
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
 
 /**
  * Gestión de la vitrina (SOLO admin), pensada para ESCALAR:
@@ -69,7 +78,8 @@ export function AdminPerfiles() {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<ArtistProfile[] | null>(null);
   const [searching, setSearching] = useState(false);
-  const debRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Cache de TODOS los perfiles (se llena solo al buscar) para el filtro difuso.
+  const allRef = useRef<ArtistProfile[] | null>(null);
 
   // Acciones / modales
   const [savingSlug, setSavingSlug] = useState<string | null>(null);
@@ -79,6 +89,13 @@ export function AdminPerfiles() {
   const [mockBusy, setMockBusy] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [curarOpen, setCurarOpen] = useState(false);
+  const [membershipTarget, setMembershipTarget] = useState<{
+    profile: ArtistProfile;
+    action: "activar" | "desactivar";
+  } | null>(null);
+
+  // Pestaña de disciplina activa (filtra la lista renderizada).
+  const [tab, setTab] = useState<Role | "todos">("todos");
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -106,28 +123,36 @@ export function AdminPerfiles() {
     };
   }, [t]);
 
-  // Búsqueda con debounce (server-side por prefijo).
+  // Búsqueda DIFUSA en cliente: sin importar mayúsculas/minúsculas ni acentos, y
+  // por SUBCADENA (coincidencia de letras en cualquier posición). Firestore no
+  // hace búsqueda por subcadena, así que al buscar cargamos TODOS los perfiles una
+  // vez (cache en `allRef`) y filtramos en memoria. El navegado normal sigue
+  // paginado (sin carga masiva); esto solo ocurre cuando el admin busca.
   useEffect(() => {
-    const q = search.trim();
-    if (debRef.current) clearTimeout(debRef.current);
+    const q = norm(search.trim());
     if (!q) {
       setResults(null);
       setSearching(false);
       return;
     }
+    let cancelled = false;
     setSearching(true);
-    debRef.current = setTimeout(async () => {
+    (async () => {
       try {
-        setResults(await searchProfilesByName(q, 30));
+        if (!allRef.current) allRef.current = await getAllProfiles();
+        if (cancelled) return;
+        setResults(
+          allRef.current.filter((p) => norm(p.artisticName || "").includes(q)),
+        );
       } catch (e) {
         console.error("[admin-perfiles] buscar:", e);
         setError(t("adminPerfiles.errorCarga"));
       } finally {
-        setSearching(false);
+        if (!cancelled) setSearching(false);
       }
-    }, 300);
+    })();
     return () => {
-      if (debRef.current) clearTimeout(debRef.current);
+      cancelled = true;
     };
   }, [search, t]);
 
@@ -171,17 +196,37 @@ export function AdminPerfiles() {
       arr.map((p) => (p.slug === slug ? { ...p, ...patch } : p));
     setPerfiles(map);
     setResults((prev) => (prev ? map(prev) : prev));
+    if (allRef.current) allRef.current = map(allRef.current);
   };
 
-  const lista = results ?? perfiles;
+  // NOTA: el scroll infinito (`loadMore`) pagina SIN filtrar por disciplina —
+  // Firestore pagina sobre la colección completa. Una pestaña puede mostrar
+  // pocos resultados hasta que se cargan más páginas. La búsqueda difusa sí
+  // carga todos los perfiles (`allRef`), así que en modo búsqueda el filtro
+  // de pestaña ve el conjunto completo. Aceptable para el volumen actual.
+  const base = results ?? perfiles;
+  const lista =
+    tab === "todos"
+      ? base
+      : base.filter((p) => (p.disciplines ?? ["artista"]).includes(tab));
 
-  async function activar(slug: string) {
+  async function activar(slug: string, cortesia: boolean) {
     setSavingSlug(slug);
     setError(null);
     try {
-      const premium = activarPremium(Date.now());
-      await setPremium(slug, premium);
-      patchOne(slug, { premium });
+      await activarMembresia(slug, cortesia);
+      const now = Date.now();
+      const exp = new Date(now);
+      exp.setMonth(exp.getMonth() + 1); // membresía = 1 mes (espejo del server)
+      patchOne(slug, {
+        premium: {
+          activo: true,
+          since: now,
+          expiresAt: exp.getTime(),
+          ...(cortesia ? { cortesia: true } : {}),
+        },
+      });
+      setMembershipTarget(null);
     } catch (e) {
       console.error("[admin-perfiles] activar:", e);
       setError(t("adminPerfiles.errorActivar"));
@@ -200,6 +245,7 @@ export function AdminPerfiles() {
         : null;
       await setPremium(slug, premium);
       patchOne(slug, { premium });
+      setMembershipTarget(null);
     } catch (e) {
       console.error("[admin-perfiles] desactivar:", e);
       setError(t("adminPerfiles.errorDesactivar"));
@@ -236,6 +282,8 @@ export function AdminPerfiles() {
       await deleteProfile(slug);
       setPerfiles((prev) => prev.filter((p) => p.slug !== slug));
       setResults((prev) => (prev ? prev.filter((p) => p.slug !== slug) : prev));
+      if (allRef.current)
+        allRef.current = allRef.current.filter((p) => p.slug !== slug);
       setDeleteTarget(null);
     } catch (e) {
       console.error("[admin-perfiles] borrar:", e);
@@ -305,8 +353,44 @@ export function AdminPerfiles() {
           className={`mb-4 ${inputCls}`}
         />
 
+        {/* Pestañas por disciplina */}
+        <div className="mb-4 flex flex-wrap gap-2">
+          {(["todos", ...TALENT_ROLES] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setTab(k)}
+              aria-pressed={tab === k}
+              className={`rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
+                tab === k
+                  ? "bg-amethyst-500/20 ring-amethyst-300/50 text-white ring-1 ring-inset"
+                  : "text-silver-300 hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              {k === "todos" ? t("adminPerfiles.tabTodos") : t(`roles.${k}`)}
+            </button>
+          ))}
+        </div>
+
         {loading ? (
-          <p className="text-silver-300">{t("common.loading")}</p>
+          <div className={`${adminCard} p-4`}>
+            <Skeleton className="h-3 w-48" />
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`overflow-hidden rounded-xl ${adminInner}`}
+                >
+                  <Skeleton className="aspect-[3/4] w-full" />
+                  <div className="flex items-center justify-end gap-1 p-2">
+                    <Skeleton className="size-9" />
+                    <Skeleton className="size-9" />
+                    <Skeleton className="size-9" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <div className={`${adminCard} p-4`}>
             <div className="flex items-center justify-between gap-3">
@@ -336,6 +420,10 @@ export function AdminPerfiles() {
                   {lista.map((p) => {
                     const estado = premiumEstado(p.premium, Date.now());
                     const activo = estado === "activo";
+                    const esSocio = p.socio === true;
+                    // Visible en la vitrina = premium vigente O socio (waiver):
+                    // el socio no paga membresía. Refleja perfilVisible/getVisibleProfiles.
+                    const visible = activo || esSocio;
                     const busy = savingSlug === p.slug;
                     return (
                       <li
@@ -350,14 +438,14 @@ export function AdminPerfiles() {
                               alt={p.artisticName}
                               fill
                               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                              className={`object-cover ${activo ? "" : "grayscale"}`}
+                              className={`object-cover ${visible ? "" : "grayscale"}`}
                             />
                           ) : (
                             <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
 
-                          {!activo && (
+                          {!visible && (
                             <div className="absolute inset-0 flex items-start justify-center bg-black/55">
                               <span className="text-silver-200 mt-3 rounded-full border border-white/25 bg-black/60 px-3 py-1 text-[10px] font-semibold tracking-[2px] uppercase">
                                 {estado === "expirado"
@@ -365,6 +453,11 @@ export function AdminPerfiles() {
                                   : t("adminPerfiles.inactivo")}
                               </span>
                             </div>
+                          )}
+                          {esSocio && (
+                            <span className="border-amethyst-300/40 bg-amethyst-500/25 text-amethyst-100 absolute top-1.5 left-1.5 rounded-full border px-2 py-0.5 text-[9px] font-semibold tracking-[1.5px] uppercase backdrop-blur">
+                              {t("adminPerfiles.socio")}
+                            </span>
                           )}
 
                           {/* Destacado (arriba-der) */}
@@ -397,7 +490,9 @@ export function AdminPerfiles() {
                                       locale,
                                     ),
                                   })
-                                : t(`adminPerfiles.premiumEstado.${estado}`)}
+                                : esSocio
+                                  ? t("adminPerfiles.socioEstado")
+                                  : t(`adminPerfiles.premiumEstado.${estado}`)}
                             </p>
                           </div>
                         </div>
@@ -413,36 +508,43 @@ export function AdminPerfiles() {
                             <EditIcon className="size-4" />
                           </Link>
 
-                          <button
-                            type="button"
-                            onClick={() =>
-                              activo ? desactivar(p.slug) : activar(p.slug)
-                            }
-                            disabled={busy}
-                            aria-label={
-                              activo
-                                ? t("adminPerfiles.ariaDesactivar")
-                                : t("adminPerfiles.ariaActivar")
-                            }
-                            title={
-                              activo
-                                ? t("adminPerfiles.ariaDesactivar")
-                                : t("adminPerfiles.ariaActivar")
-                            }
-                            className={`flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 disabled:opacity-40 ${
-                              activo
-                                ? "text-silver-300 hover:text-white"
-                                : "text-emerald-300"
-                            }`}
-                          >
-                            {busy ? (
-                              <SpinnerIcon className="size-4 animate-spin" />
-                            ) : activo ? (
-                              <EyeOffIcon className="size-4" />
-                            ) : (
-                              <EyeIcon className="size-4" />
-                            )}
-                          </button>
+                          {/* Los SOCIOS (beatmaker/productor) están exentos de
+                              membresía: no se ofrece activar un pago. */}
+                          {!esSocio && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setMembershipTarget({
+                                  profile: p,
+                                  action: activo ? "desactivar" : "activar",
+                                })
+                              }
+                              disabled={busy}
+                              aria-label={
+                                activo
+                                  ? t("adminPerfiles.ariaDesactivar")
+                                  : t("adminPerfiles.ariaActivar")
+                              }
+                              title={
+                                activo
+                                  ? t("adminPerfiles.ariaDesactivar")
+                                  : t("adminPerfiles.ariaActivar")
+                              }
+                              className={`flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 disabled:opacity-40 ${
+                                activo
+                                  ? "text-silver-300 hover:text-white"
+                                  : "text-emerald-300"
+                              }`}
+                            >
+                              {busy ? (
+                                <SpinnerIcon className="size-4 animate-spin" />
+                              ) : activo ? (
+                                <EyeOffIcon className="size-4" />
+                              ) : (
+                                <EyeIcon className="size-4" />
+                              )}
+                            </button>
+                          )}
 
                           <button
                             type="button"
@@ -554,6 +656,82 @@ export function AdminPerfiles() {
           </GlassButton>
         </div>
       </GlassModal>
+
+      {/* Activar membresía: pago o cortesía */}
+      <GlassModal
+        open={membershipTarget?.action === "activar"}
+        onClose={() => setMembershipTarget(null)}
+        title={t("adminPerfiles.membresia.activarTitle", {
+          nombre: membershipTarget?.profile.artisticName ?? "",
+        })}
+      >
+        <p className="text-silver-300 text-sm">
+          {t("adminPerfiles.membresia.activarDescripcion")}
+        </p>
+        <div className="mt-6 flex flex-col gap-3">
+          <GlassButton
+            onClick={() =>
+              membershipTarget && activar(membershipTarget.profile.slug, false)
+            }
+            disabled={savingSlug === membershipTarget?.profile.slug}
+            className="!text-amethyst-200"
+          >
+            {savingSlug === membershipTarget?.profile.slug ? (
+              <SpinnerIcon className="size-4 animate-spin" />
+            ) : null}
+            {t("adminPerfiles.membresia.pago")}
+          </GlassButton>
+          <div>
+            <GlassButton
+              onClick={() =>
+                membershipTarget && activar(membershipTarget.profile.slug, true)
+              }
+              disabled={savingSlug === membershipTarget?.profile.slug}
+            >
+              {savingSlug === membershipTarget?.profile.slug ? (
+                <SpinnerIcon className="size-4 animate-spin" />
+              ) : null}
+              {t("adminPerfiles.membresia.cortesia")}
+            </GlassButton>
+            <p className="text-silver-400 mt-2 text-xs">
+              {t("adminPerfiles.membresia.cortesiaHint")}
+            </p>
+          </div>
+        </div>
+      </GlassModal>
+
+      {/* Desactivar membresía */}
+      <GlassModal
+        open={membershipTarget?.action === "desactivar"}
+        onClose={() => setMembershipTarget(null)}
+        title={t("adminPerfiles.membresia.desactivarTitle")}
+      >
+        <p className="text-silver-300 text-sm">
+          {t("adminPerfiles.membresia.desactivarMensaje", {
+            nombre: membershipTarget?.profile.artisticName ?? "",
+          })}
+        </p>
+        <div className="mt-6 flex items-center justify-end gap-3">
+          <GlassButton
+            onClick={() => setMembershipTarget(null)}
+            disabled={savingSlug === membershipTarget?.profile.slug}
+          >
+            {t("adminPerfiles.membresia.cancelar")}
+          </GlassButton>
+          <GlassButton
+            onClick={() =>
+              membershipTarget && desactivar(membershipTarget.profile.slug)
+            }
+            disabled={savingSlug === membershipTarget?.profile.slug}
+            className="!text-red-200"
+          >
+            {savingSlug === membershipTarget?.profile.slug ? (
+              <SpinnerIcon className="size-4 animate-spin" />
+            ) : null}
+            {t("adminPerfiles.membresia.confirmar")}
+          </GlassButton>
+        </div>
+      </GlassModal>
     </main>
   );
 }
@@ -637,9 +815,21 @@ function CurarEscaparateModal({
 
       <div className="mt-4 max-h-[55vh] overflow-y-auto">
         {loading ? (
-          <p className="text-silver-400 py-8 text-center text-sm">
-            {t("common.loading")}
-          </p>
+          <ul className="flex flex-col gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <li
+                key={i}
+                className={`flex items-center gap-3 rounded-lg p-2.5 ${adminInner}`}
+              >
+                <Skeleton className="size-6 shrink-0" />
+                <Skeleton className="h-4 flex-1" />
+                <div className="flex shrink-0 items-center gap-1">
+                  <Skeleton className="size-8" />
+                  <Skeleton className="size-8" />
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : items.length === 0 ? (
           <p className="text-silver-400 py-8 text-center text-sm">
             {t("adminPerfiles.curarVacio")}

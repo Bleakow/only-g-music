@@ -8,6 +8,7 @@ import type { QuoteRequest } from "@/domain/quote";
 import { formatCOP } from "@/domain/service";
 import { badgeClass, fechaCorta } from "@/features/solicitudes/lib/estados";
 import { glassSurface, GlassSheen } from "@/components/ui/glass";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /** Lista de solicitudes de cotización para el admin (dentro del shell del panel). */
 export function AdminCotizaciones() {
@@ -40,9 +41,20 @@ export function AdminCotizaciones() {
       </h1>
 
       {loading ? (
-        <p className="text-silver-300 py-16 text-center">
-          {t("common.loading")}
-        </p>
+        <ul className="mt-8 flex flex-col gap-2.5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <li
+              key={i}
+              className={`${glassSurface} relative flex items-center gap-3 overflow-hidden rounded-xl p-4`}
+            >
+              <span className="relative min-w-0 flex-1">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="mt-2 h-3 w-1/3" />
+              </span>
+              <Skeleton className="h-5 w-20 shrink-0 rounded-full" />
+            </li>
+          ))}
+        </ul>
       ) : quotes.length === 0 ? (
         <p className="text-silver-400 mt-8">{t("adminDashboard.noQuotes")}</p>
       ) : (

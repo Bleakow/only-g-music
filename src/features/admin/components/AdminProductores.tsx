@@ -28,6 +28,7 @@ import {
   setOrden,
 } from "@/features/producers/lib/producers-repo";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 function Field({
   label,
@@ -237,14 +238,29 @@ export function AdminProductores() {
       </AdminPageHeader>
 
       <div className="px-6 sm:px-10">
-        {error && (
+        {error && !editOpen && (
           <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
             {error}
           </p>
         )}
 
         {loading ? (
-          <p className="text-silver-300">{t("common.loading")}</p>
+          <div className={`${adminCard} p-5`}>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <li
+                  key={i}
+                  className={`overflow-hidden rounded-xl ${adminInner}`}
+                >
+                  <Skeleton className="aspect-[3/4] w-full" />
+                  <div className="flex items-center justify-end gap-1 p-2">
+                    <Skeleton className="size-9" />
+                    <Skeleton className="size-9" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : items.length === 0 ? (
           <p className="text-silver-400">{t("adminProductores.empty")}</p>
         ) : (
@@ -470,6 +486,12 @@ export function AdminProductores() {
             </div>
           </div>
         </div>
+
+        {error && (
+          <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            {error}
+          </p>
+        )}
 
         <div className="mt-6 flex items-center justify-end gap-3">
           <GlassButton onClick={() => setEditOpen(false)} disabled={saving}>

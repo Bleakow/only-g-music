@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
-import { hasAnyRole } from "@/domain/user";
+import { hasAnyRole, hasRole } from "@/domain/user";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
 
 function initials(name: string | null, email: string | null): string {
@@ -210,6 +210,15 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
                       className={ITEM}
                     >
                       {t("userMenu.console")}
+                    </Link>
+                  )}
+                  {hasRole(account, "beatmaker") && (
+                    <Link
+                      href="/beats/publicar"
+                      onClick={() => setOpen(false)}
+                      className={ITEM}
+                    >
+                      {t("userMenu.myBeats")}
                     </Link>
                   )}
                   {hasAnyRole(account, ["productor", "admin"]) && (

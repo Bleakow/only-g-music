@@ -30,7 +30,11 @@ export type NotifEvento =
   // Perfiles de artista
   | "perfil-artista-creado" // alta de perfil → admin
   | "premium-activado" // membresía activada → artista
-  | "perfil-por-renovar"; // premium por vencer → artista
+  | "perfil-por-renovar" // premium por vencer → artista
+  // Convenios (productor/beatmaker)
+  | "convenio-solicitado" // nueva solicitud → admin
+  | "convenio-aprobado" // el admin aprobó → se avisa al solicitante
+  | "convenio-rechazado"; // el admin rechazó → se avisa al solicitante
 
 export const NOTIF_EVENTOS: NotifEvento[] = [
   "mensaje-nuevo",
@@ -44,6 +48,9 @@ export const NOTIF_EVENTOS: NotifEvento[] = [
   "perfil-artista-creado",
   "premium-activado",
   "perfil-por-renovar",
+  "convenio-solicitado",
+  "convenio-aprobado",
+  "convenio-rechazado",
 ];
 
 /**
@@ -116,6 +123,18 @@ export const NOTIF_META: Record<NotifEvento, NotifEventoMeta> = {
   "perfil-por-renovar": {
     redirectBase: "/artista/perfil",
     descripcion: "Tu perfil premium está por vencer",
+  },
+  "convenio-solicitado": {
+    redirectBase: "/admin/convenios",
+    descripcion: "Nueva solicitud de convenio (productor/beatmaker)",
+  },
+  "convenio-aprobado": {
+    redirectBase: "/artista/perfil",
+    descripcion: "Tu solicitud de convenio fue aprobada",
+  },
+  "convenio-rechazado": {
+    redirectBase: "/solicitudes",
+    descripcion: "Tu solicitud de convenio fue rechazada",
   },
 };
 

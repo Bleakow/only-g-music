@@ -4,9 +4,10 @@
  */
 import type { DestinoPago } from "./payment-destination";
 
-// NOTA: `SedeId` es un union fijo solo mientras las sedes son data estática.
-// Al migrar a Firestore (módulo de Estudios) pasará a `string`.
-export type SedeId = "barranquilla" | "bogota";
+// `SedeId` es el id de CUALQUIER sede: las de la semilla estática y las que
+// el admin crea desde el panel (persistidas en Firestore, `sedes/{id}`). Ya
+// no es un union fijo — es el id (slug) de una sede dinámica.
+export type SedeId = string;
 
 export interface Sede {
   id: SedeId;
@@ -28,3 +29,6 @@ export interface Sede {
   /** Productores asignados a la sede (1–2 ids; se llenará en fases de roles). */
   productores: string[];
 }
+
+/** Forma para CREAR una sede nueva: `productores` arranca vacío si se omite. */
+export type NuevaSede = Omit<Sede, "productores"> & { productores?: string[] };

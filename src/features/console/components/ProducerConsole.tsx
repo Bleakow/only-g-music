@@ -15,6 +15,7 @@ import {
 } from "@/domain/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 /** Formatea una duración en ms a `H:MM:SS` (o `M:SS` si < 1h). */
 function fmtDur(ms: number): string {
@@ -79,33 +80,47 @@ export function ProducerConsole() {
   );
 
   return (
-    <main className="mx-auto min-h-dvh max-w-3xl px-6 pb-24 pt-28 sm:px-12">
-      <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
+    <main className="mx-auto min-h-dvh max-w-3xl px-6 pt-28 pb-24 sm:px-12">
+      <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
         {t("roles.productor")}
       </p>
-      <h1 className="mt-2 font-narrow text-5xl font-bold uppercase sm:text-6xl">
+      <h1 className="font-narrow mt-2 text-5xl font-bold uppercase sm:text-6xl">
         {t("userMenu.console")}
       </h1>
-      <p className="mt-3 text-silver-300">
+      <p className="text-silver-300 mt-3">
         {t("producerConsole.description", {
           graceMins: GRACIA_AUTO_INICIO_MIN,
         })}
       </p>
 
       {loading ? (
-        <p className="mt-10 text-silver-300">{t("common.loading")}</p>
+        <div className="mt-10 flex flex-col gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4"
+            >
+              <div className="min-w-0 flex-1">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="mt-2 h-3 w-1/3" />
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-8 w-20 rounded-full" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : sesiones.length === 0 ? (
-        <p className="mt-10 text-silver-400">
-          {t("producerConsole.empty")}
-        </p>
+        <p className="text-silver-400 mt-10">{t("producerConsole.empty")}</p>
       ) : (
         <>
           <section className="mt-8">
-            <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
               {t("producerConsole.activeSection")}
             </h2>
             {activas.length === 0 ? (
-              <p className="mt-2 text-silver-400">
+              <p className="text-silver-400 mt-2">
                 {t("producerConsole.nothingInQueue")}
               </p>
             ) : (
@@ -119,7 +134,7 @@ export function ProducerConsole() {
 
           {historial.length > 0 && (
             <section className="mt-10">
-              <h2 className="font-narrow text-2xl font-bold uppercase text-white">
+              <h2 className="font-narrow text-2xl font-bold text-white uppercase">
                 {t("producerConsole.historySection")}
               </h2>
               <ul className="mt-4 flex flex-col gap-2">
@@ -128,11 +143,11 @@ export function ProducerConsole() {
                     key={s.id}
                     className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/[0.02] px-4 py-3 text-sm opacity-70"
                   >
-                    <span className="min-w-0 truncate text-silver-200">
+                    <span className="text-silver-200 min-w-0 truncate">
                       {s.serviceName}
                       {s.clientName ? ` · ${s.clientName}` : ""}
                     </span>
-                    <span className="shrink-0 text-silver-400">
+                    <span className="text-silver-400 shrink-0">
                       {s.estado === "finalizada" && s.startedAt && s.endedAt
                         ? fmtDur(s.endedAt - s.startedAt)
                         : t(`status.${s.estado}`)}
@@ -200,7 +215,7 @@ function SesionCard({ sesion, now }: { sesion: Sesion; now: number }) {
           ) : null}
         </p>
         <p
-          className={`text-sm ${enCurso ? "font-semibold tabular-nums text-emerald-300" : "text-silver-400"}`}
+          className={`text-sm ${enCurso ? "font-semibold text-emerald-300 tabular-nums" : "text-silver-400"}`}
         >
           {aviso}
         </p>

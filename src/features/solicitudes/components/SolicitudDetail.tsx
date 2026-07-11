@@ -25,6 +25,7 @@ import type { MetodoPago } from "@/domain/payment-method";
 import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
 import { badgeClass } from "../lib/estados";
+import { Skeleton } from "@/components/ui/Skeleton";
 
 type Tipo = "cotizacion" | "reserva";
 
@@ -60,8 +61,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   useEffect(() => {
     let active = true;
     setLoading(true);
-    const load =
-      tipo === "cotizacion" ? getQuoteById(id) : getReservaById(id);
+    const load = tipo === "cotizacion" ? getQuoteById(id) : getReservaById(id);
     load
       .then((e) => {
         if (!active) return;
@@ -133,8 +133,21 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
-        <p className="text-silver-300">{t("common.loading")}</p>
+      <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12">
+        <Skeleton className="h-4 w-32" />
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+        </div>
+        <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <Skeleton className="h-4 w-1/2" />
+          <Skeleton className="mt-3 h-4 w-1/3" />
+          <Skeleton className="mt-3 h-6 w-24" />
+        </section>
+        <section className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="mt-3 h-4 w-1/2" />
+        </section>
       </main>
     );
   }
@@ -148,7 +161,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </h1>
         <Link
           href="/solicitudes"
-          className="mt-6 rounded-full border border-silver-300/40 px-6 py-3 text-sm uppercase tracking-[2px] text-silver-100 transition hover:border-silver-100 hover:bg-white/5"
+          className="border-silver-300/40 text-silver-100 hover:border-silver-100 mt-6 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
         >
           {t("solicitudDetail.backToRequests")}
         </Link>
@@ -161,10 +174,10 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const sede = reserva ? sedes.find((s) => s.id === reserva.sede) : undefined;
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl px-6 pb-24 pt-28 sm:px-12">
+    <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-24 sm:px-12">
       <Link
         href="/solicitudes"
-        className="text-sm text-silver-300 underline-offset-4 hover:text-white hover:underline"
+        className="text-silver-300 text-sm underline-offset-4 hover:text-white hover:underline"
       >
         ← {t("userMenu.myRequests")}
       </Link>
@@ -211,7 +224,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
           <div className="flex flex-col gap-2">
             <ul className="flex flex-col gap-1">
               {quote.items.map((i, idx) => (
-                <li key={idx} className="flex justify-between text-silver-100">
+                <li key={idx} className="text-silver-100 flex justify-between">
                   <span>
                     {i.serviceName}{" "}
                     <span className="text-silver-400">× {i.quantity}</span>
@@ -224,7 +237,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
                 </li>
               ))}
             </ul>
-            <p className="border-t border-white/10 pt-2 text-silver-300">
+            <p className="text-silver-300 border-t border-white/10 pt-2">
               {t("solicitudDetail.estimated", {
                 amount: formatCOP(quote.estimatedTotal ?? 0),
               })}
@@ -238,27 +251,30 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
 
       {/* Acción: aceptar/rechazar la propuesta del estudio */}
       {quote && quote.status === "cotizada" && (
-        <section className="mt-6 rounded-xl border border-amethyst-300/30 bg-amethyst-500/10 p-4">
-          <h2 className="font-narrow text-xl font-bold uppercase text-white">
+        <section className="border-amethyst-300/30 bg-amethyst-500/10 mt-6 rounded-xl border p-4">
+          <h2 className="font-narrow text-xl font-bold text-white uppercase">
             {t("solicitudDetail.proposalTitle")}
           </h2>
           {quote.proposedPrice != null && (
-            <p className="mt-1 font-narrow text-3xl font-bold text-white">
+            <p className="font-narrow mt-1 text-3xl font-bold text-white">
               {formatCOP(quote.proposedPrice)}
             </p>
           )}
-          <p className="mt-1 text-sm text-silver-300">
+          <p className="text-silver-300 mt-1 text-sm">
             {t("solicitudDetail.proposalHint")}
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
-            <Button onClick={() => responderCotizacion("aceptada")} loading={busy}>
+            <Button
+              onClick={() => responderCotizacion("aceptada")}
+              loading={busy}
+            >
               {t("solicitudDetail.acceptProposal")}
             </Button>
             <button
               type="button"
               onClick={() => responderCotizacion("rechazada")}
               disabled={busy}
-              className="rounded-full border border-white/20 px-5 py-2.5 text-sm text-silver-200 transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
+              className="text-silver-200 rounded-full border border-white/20 px-5 py-2.5 text-sm transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
             >
               {t("solicitudDetail.rejectProposal")}
             </button>
@@ -275,10 +291,10 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       {/* Acción: pago de la reserva → abre un chat de pago propio */}
       {reserva && reserva.estado === "pendiente_pago" && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
-          <h2 className="font-narrow text-xl font-bold uppercase text-white">
+          <h2 className="font-narrow text-xl font-bold text-white uppercase">
             {t("solicitudDetail.payment")}
           </h2>
-          <p className="mt-2 text-sm text-silver-300">
+          <p className="text-silver-300 mt-2 text-sm">
             {t("solicitudDetail.paymentStartHint")}
           </p>
           <Button className="mt-3" onClick={() => setShowPicker(true)}>
@@ -303,7 +319,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
 
       {/* Hilo de soporte */}
       <section className="mt-8">
-        <h2 className="mb-3 font-narrow text-xl font-bold uppercase text-white">
+        <h2 className="font-narrow mb-3 text-xl font-bold text-white uppercase">
           {t("solicitudDetail.conversation")}
         </h2>
         {convId ? (
@@ -311,7 +327,11 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
             <ConversationView conversationId={convId} />
           </div>
         ) : (
-          <p className="text-sm text-silver-400">{t("common.loading")}</p>
+          <div className="flex h-[28rem] flex-col gap-2 rounded-xl border border-white/10 bg-black/20 p-4">
+            <Skeleton className="h-12 w-2/3" />
+            <Skeleton className="ml-auto h-12 w-1/2" />
+            <Skeleton className="h-12 w-3/5" />
+          </div>
         )}
       </section>
     </main>

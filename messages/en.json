@@ -131,6 +131,60 @@
     "saveError": "Couldn't save. Try again.",
     "settingsSoon": "Soon you'll be able to adjust your preferences here."
   },
+  "datosPago": {
+    "title": "Payout details",
+    "description": "Where does Only G pay you? These details are private: only you and the studio can see them.",
+    "method": "Payout method",
+    "metodo": {
+      "banco": "Bank",
+      "nequi": "Nequi",
+      "efectivo": "Cash"
+    },
+    "banco": {
+      "entidad": "Bank",
+      "entidadPlaceholder": "Bancolombia, Davivienda…",
+      "tipoCuenta": "Account type",
+      "numeroCuenta": "Account number",
+      "numeroCuentaPlaceholder": "000-000000-00",
+      "titular": "Account holder",
+      "titularPlaceholder": "Full name",
+      "tipoDoc": "Document type",
+      "numeroDoc": "Document number",
+      "numeroDocPlaceholder": "ID / tax ID"
+    },
+    "tipoCuenta": {
+      "ahorros": "Savings",
+      "corriente": "Checking"
+    },
+    "tipoDoc": {
+      "CC": "Citizen ID",
+      "CE": "Foreigner ID",
+      "NIT": "Tax ID (NIT)",
+      "PAS": "Passport"
+    },
+    "nequi": {
+      "telefono": "Nequi number",
+      "telefonoPlaceholder": "300 000 0000",
+      "titular": "Account holder",
+      "titularPlaceholder": "Full name"
+    },
+    "efectivo": {
+      "nota": "Note (optional)",
+      "notaPlaceholder": "How you'd prefer to receive the cash",
+      "hint": "We'll arrange the cash payment with you directly."
+    },
+    "save": "Save payout details",
+    "saving": "Saving…",
+    "saved": "Payout details saved.",
+    "error": "Couldn't save. Try again.",
+    "incomplete": "Fill in the fields for the chosen method.",
+    "prompt": {
+      "title": "Want to set up your payout details?",
+      "optional": "Optional",
+      "description": "Tell us where you'd like Only G to pay you. You can do it now or later from your account.",
+      "add": "Add payout details"
+    }
+  },
   "status": {
     "pendiente": "Pending",
     "cotizada": "Quoted",

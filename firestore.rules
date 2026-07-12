@@ -78,6 +78,22 @@ service cloud.firestore {
       }
     }
 
+    // ── Datos de pago del socio (a dónde le paga Only G) ─────────────
+    // Doc PRIVADO y dedicado `datosPago/{uid}` (id = uid). Frontera clave: el
+    // admin LEE para poder pagar; el DUEÑO ESCRIBE sus propios datos (banco /
+    // Nequi / efectivo). Va en doc aparte —no inline en users— porque el admin
+    // no puede leer el `users` de otro; este doc sí permite "dueño escribe,
+    // admin lee". NO gatea por rol: un usuario aún 'cliente' con convenio
+    // pendiente puede dejarlos listos. `hasOnly` = allowlist de campos top-level
+    // (el rol CEO futuro heredará el gate de isAdmin(); no hace falta tocarlo).
+    match /datosPago/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.metodo in ['banco', 'nequi', 'efectivo']
+        && request.resource.data.keys().hasOnly(['metodo', 'banco', 'nequi', 'efectivo', 'updatedAt']);
+    }
+
     // ── Solicitudes de convenio (productor/beatmaker) ────────────────
     // El usuario crea SU propia solicitud (estado inicial 'pendiente') y lee las
     // suyas; el admin lee todas. La APROBACIÓN otorga un rol → va por Cloud

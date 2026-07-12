@@ -6,9 +6,11 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { resendEmailVerification } from "@/features/auth/lib/auth-actions";
 import { EditProfileModal } from "@/features/auth/components/EditProfileModal";
+import { DatosPagoForm } from "@/features/socios/components/DatosPagoForm";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { EditIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { hasAnyRole } from "@/domain/user";
 
 function initials(name: string | null, email: string | null): string {
   const base = name?.trim() || email || "?";
@@ -140,6 +142,19 @@ export default function CuentaPage() {
             </>
           )}
         </div>
+      )}
+
+      {/* Datos de pago — solo socios (beatmaker/productor). A dónde le paga Only G. */}
+      {hasAnyRole(account, ["beatmaker", "productor"]) && (
+        <section id="datos-pago" className="mt-12 scroll-mt-28">
+          <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase">
+            {t("datosPago.title")}
+          </h2>
+          <p className="text-silver-400 mt-2">{t("datosPago.description")}</p>
+          <div className="mt-5">
+            <DatosPagoForm />
+          </div>
+        </section>
       )}
 
       {/* Configuración (placeholder de futuras opciones) */}

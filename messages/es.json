@@ -131,6 +131,60 @@
     "saveError": "No se pudo guardar. Inténtalo de nuevo.",
     "settingsSoon": "Pronto podrás ajustar tus preferencias aquí."
   },
+  "datosPago": {
+    "title": "Datos de pago",
+    "description": "¿A dónde te paga Only G? Estos datos son privados: solo tú y el estudio los ven.",
+    "method": "Método de pago",
+    "metodo": {
+      "banco": "Banco",
+      "nequi": "Nequi",
+      "efectivo": "Efectivo"
+    },
+    "banco": {
+      "entidad": "Entidad bancaria",
+      "entidadPlaceholder": "Bancolombia, Davivienda…",
+      "tipoCuenta": "Tipo de cuenta",
+      "numeroCuenta": "Número de cuenta",
+      "numeroCuentaPlaceholder": "000-000000-00",
+      "titular": "Titular de la cuenta",
+      "titularPlaceholder": "Nombre completo",
+      "tipoDoc": "Tipo de documento",
+      "numeroDoc": "Número de documento",
+      "numeroDocPlaceholder": "Cédula / NIT"
+    },
+    "tipoCuenta": {
+      "ahorros": "Ahorros",
+      "corriente": "Corriente"
+    },
+    "tipoDoc": {
+      "CC": "Cédula de ciudadanía",
+      "CE": "Cédula de extranjería",
+      "NIT": "NIT",
+      "PAS": "Pasaporte"
+    },
+    "nequi": {
+      "telefono": "Número de Nequi",
+      "telefonoPlaceholder": "300 000 0000",
+      "titular": "Titular",
+      "titularPlaceholder": "Nombre completo"
+    },
+    "efectivo": {
+      "nota": "Nota (opcional)",
+      "notaPlaceholder": "Cómo prefieres recibir el efectivo",
+      "hint": "Coordinamos el pago en efectivo contigo directamente."
+    },
+    "save": "Guardar datos de pago",
+    "saving": "Guardando…",
+    "saved": "Datos de pago guardados.",
+    "error": "No se pudieron guardar. Inténtalo de nuevo.",
+    "incomplete": "Completa los campos del método elegido.",
+    "prompt": {
+      "title": "¿Dejamos listos tus datos de pago?",
+      "optional": "Opcional",
+      "description": "Dinos a dónde quieres que Only G te pague. Puedes hacerlo ahora o luego desde tu cuenta.",
+      "add": "Añadir datos de pago"
+    }
+  },
   "status": {
     "pendiente": "Pendiente",
     "cotizada": "Cotizada",

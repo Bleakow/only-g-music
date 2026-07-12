@@ -9,6 +9,7 @@ import { formatCOP } from "@/domain/service";
 import type { MetodoPago } from "@/domain/payment-method";
 import { listBeats } from "@/features/beats/lib/beats-repo";
 import { comprarBeat } from "@/features/beats/lib/beat-sales-repo";
+import { ContactBeatmakerButton } from "@/features/beats/components/ContactBeatmakerButton";
 import { MUSIC_GENRES } from "@/features/artists/data/genres";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
@@ -328,6 +329,15 @@ function BeatCard({
 
         {error && (
           <p className="mt-2 text-xs text-red-300">{t("beats.errorComprar")}</p>
+        )}
+
+        {!esPropio && (
+          <ContactBeatmakerButton
+            beatmakerUid={beat.beatmakerUid}
+            beatmakerNombre={beat.beatmakerNombre || t("roles.beatmaker")}
+            beatTitulo={beat.titulo}
+            className="mt-2"
+          />
         )}
       </div>
 

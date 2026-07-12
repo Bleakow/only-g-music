@@ -1468,7 +1468,14 @@
       "efectivo": "Efectivo",
       "tarjeta": "Tarjeta"
     },
-    "proposal": "Propuesta"
+    "proposal": "Propuesta",
+    "contactar": "Chat",
+    "contactarTitulo": "Escríbele a {nombre}",
+    "contactarError": "No se pudo abrir el chat. Inténtalo de nuevo.",
+    "presets": {
+      "cotizarBeat": "Hola, me interesa este beat: «{titulo}». ¿Podemos hablar?",
+      "crearIdea": "Hola, ¿podrías crear un beat a partir de mi idea?"
+    }
   },
   "pago": {
     "chooseMethod": "Elige cómo pagar",

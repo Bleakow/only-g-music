@@ -1468,7 +1468,14 @@
       "efectivo": "Cash",
       "tarjeta": "Card"
     },
-    "proposal": "Proposal"
+    "proposal": "Proposal",
+    "contactar": "Chat",
+    "contactarTitulo": "Message {nombre}",
+    "contactarError": "Couldn't open the chat. Please try again.",
+    "presets": {
+      "cotizarBeat": "Hi, I'm interested in this beat: \"{titulo}\". Can we talk?",
+      "crearIdea": "Hi, could you make a beat from my idea?"
+    }
   },
   "pago": {
     "chooseMethod": "Choose how to pay",

@@ -261,7 +261,11 @@
     "back": "Home",
     "createProfile": "Are you an artist? Create your profile",
     "editProfile": "Edit your profile",
-    "viewProfile": "View profile"
+    "viewProfile": "View profile",
+    "tabTodos": "All",
+    "tabCantantes": "Singers",
+    "tabBeatmakers": "Beatmakers",
+    "segmentLabel": "Filter by discipline"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",
@@ -308,6 +312,7 @@
     "bpm": "{bpm} BPM",
     "publicarTitle": "Publish a beat",
     "publicarIntro": "Upload your beat and put it in Only G's public catalog.",
+    "crearPerfilCta": "Create your beatmaker profile",
     "campoTitulo": "Title",
     "campoGenero": "Genre",
     "campoAudioPreview": "Preview audio (public)",
@@ -1086,6 +1091,37 @@
       "submitFailed": "Could not submit your request. Please try again."
     }
   },
+  "beatmakerOnboarding": {
+    "alreadyRegistered": {
+      "title": "You already have a profile",
+      "body": "Your beatmaker profile is already created. Open it whenever you want.",
+      "goToProfile": "View my profile"
+    },
+    "eyebrow": "Beatmaker profile",
+    "heroTitle": "Show your sound",
+    "heroParagraph": "Create your public beatmaker profile with a photo, name, and city. No cost: clients will find you and can message you to order a beat.",
+    "fields": {
+      "artisticName": {
+        "label": "Artist name",
+        "hint": "This will be your public name and your URL.",
+        "placeholder": "e.g. Nova Beats"
+      },
+      "city": {
+        "label": "City",
+        "placeholder": "e.g. Barranquilla"
+      },
+      "photo": {
+        "label": "Profile photo (required)"
+      }
+    },
+    "submit": "Create my profile",
+    "errors": {
+      "missingName": "Enter your artist name.",
+      "photoRequired": "A profile photo is required.",
+      "invalidName": "Your artist name does not generate a valid URL.",
+      "submitFailed": "Could not create your profile. Please try again."
+    }
+  },
   "producers": {
     "expandPhoto": "Expand photo of {name}",
     "facebookOf": "{name} on Facebook",
@@ -1474,7 +1510,8 @@
     "contactarError": "Couldn't open the chat. Please try again.",
     "presets": {
       "cotizarBeat": "Hi, I'm interested in this beat: \"{titulo}\". Can we talk?",
-      "crearIdea": "Hi, could you make a beat from my idea?"
+      "crearIdea": "Hi, could you make a beat from my idea?",
+      "interesaTrabajo": "Hi, I'm interested in your work. Can we talk about a beat?"
     }
   },
   "pago": {

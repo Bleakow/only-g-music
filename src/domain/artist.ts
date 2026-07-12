@@ -3,6 +3,8 @@
  * futura app nativa). No importar nada de UI ni de Firebase aquí.
  */
 
+import type { Role } from "./user";
+
 export type SocialPlatform =
   | "spotify"
   | "instagram"
@@ -48,6 +50,12 @@ export interface Artist {
   role?: string;
   /** Si está destacado en el menú "Destacados" / sello. */
   featured?: boolean;
+  /**
+   * Disciplinas del talento (artista/beatmaker/…), para segmentar la vitrina por
+   * pestaña. Se conserva desde `ArtistProfile.disciplines`; ausente en la semilla
+   * legacy (se trata como cantante).
+   */
+  disciplines?: Role[];
   socials: Partial<Record<SocialPlatform, string>>;
   topTracks: Track[];
 }

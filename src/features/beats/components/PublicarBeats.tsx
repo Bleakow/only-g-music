@@ -222,6 +222,11 @@ export function PublicarBeats() {
       </h1>
       <p className="text-silver-300 mt-3">{t("beats.publicarIntro")}</p>
 
+      {/* Alta del perfil público del beatmaker (foto/nombre/ciudad, sin cobro). */}
+      <GlassButton href="/beats/perfil" className="mt-5">
+        {t("beats.crearPerfilCta")}
+      </GlassButton>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();

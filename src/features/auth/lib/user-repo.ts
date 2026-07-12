@@ -56,6 +56,18 @@ export async function updateArtistPrivateData(
 }
 
 /**
+ * Vincula el slug del perfil público al usuario (`users/{uid}.artistSlug`). Alta
+ * self-serve del BEATMAKER: a diferencia de `updateArtistPrivateData`, NO exige
+ * nombre real ni fecha de nacimiento (datos propios del cantante). NO toca
+ * `roles`, así que las reglas (que exigen `roles` inmutable) dejan pasar el
+ * update. DEBE commitearse ANTES de crear el perfil: la regla `create` de
+ * `artistProfiles` valida `get(users/{uid}).artistSlug == slug`.
+ */
+export async function setArtistSlug(uid: string, slug: string): Promise<void> {
+  await updateDoc(doc(db, COLLECTION, uid), { artistSlug: slug });
+}
+
+/**
  * Actualiza los campos editables de la cuenta (nombre y foto). NO toca `roles`
  * (las reglas exigen que queden igual que el doc actual), así que el update pasa.
  */

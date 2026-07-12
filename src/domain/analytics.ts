@@ -18,7 +18,9 @@ export type AnalyticsEvent =
   | "premium_pay_started" // inicia el pago de membresía
   // Artista
   | "artist_signup_started" // entra a "soy artista"
-  | "artist_profile_submitted"; // crea/paga el perfil
+  | "artist_profile_submitted" // crea/paga el perfil
+  // Beatmaker
+  | "beatmaker_profile_created"; // alta self-serve del perfil de beatmaker (sin pago)
 
 export const ANALYTICS_EVENTS: AnalyticsEvent[] = [
   "cta_cotizar_clicked",
@@ -30,4 +32,5 @@ export const ANALYTICS_EVENTS: AnalyticsEvent[] = [
   "premium_pay_started",
   "artist_signup_started",
   "artist_profile_submitted",
+  "beatmaker_profile_created",
 ];

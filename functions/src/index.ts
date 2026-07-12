@@ -1272,11 +1272,55 @@ export const onPaymentUnderReview = onDocumentUpdated(
 );
 
 /** Nuevo perfil de artista creado → avisa a los admin. */
+/**
+ * Deriva `disciplines`/`socio` de un conjunto de roles. `disciplines` = roles de
+ * talento (default `['artista']` si no hay ninguno); `socio` = beatmaker/productor
+ * (exentos de membresía). Mismo criterio que `adminLinkProfile`/`adminSetRoles`;
+ * extraído para el alta self-serve (los 3 sitios previos podrían adoptarlo luego).
+ */
+function deriveDisciplinesSocio(roles: unknown): {
+  disciplines: string[];
+  socio: boolean;
+} {
+  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+  const finalRoles = Array.isArray(roles) ? (roles as string[]) : [];
+  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+  return {
+    disciplines: disciplines.length ? disciplines : ["artista"],
+    socio: finalRoles.includes("beatmaker") || finalRoles.includes("productor"),
+  };
+}
+
 export const onArtistProfileCreated = onDocumentCreated(
   "artistProfiles/{slug}",
   async (event) => {
     const p = event.data?.data();
     if (!p) return;
+
+    // Deriva disciplines/socio de los roles del DUEÑO y los escribe en el perfil:
+    // el cliente NO puede setearlos (las reglas los bloquean en create y update,
+    // son server-authoritative), así que un perfil AUTOGESTIONADO (p. ej. de un
+    // beatmaker) nacería con socio:false y quedaría invisible
+    // (perfilVisible = socio || premium) hasta esta derivación. `adminLinkProfile`
+    // ya los pone al crear; aquí cubrimos el alta SELF-SERVE. El uid del perfil
+    // está fijado a su dueño por la regla de create (uid == auth.uid), así que
+    // derivar de SUS roles es seguro (no hay confused-deputy). Solo escribe si
+    // difiere de lo ya guardado (evita una escritura redundante en el path admin).
+    const ownerUid = typeof p.uid === "string" ? p.uid : null;
+    if (ownerUid) {
+      const roles = (await db.doc(`users/${ownerUid}`).get()).data()?.roles;
+      const derived = deriveDisciplinesSocio(roles);
+      const currentDisc = Array.isArray(p.disciplines)
+        ? (p.disciplines as string[])
+        : [];
+      const sameDisc =
+        currentDisc.length === derived.disciplines.length &&
+        derived.disciplines.every((d) => currentDisc.includes(d));
+      if (!sameDisc || p.socio !== derived.socio) {
+        await event.data?.ref.update(derived);
+      }
+    }
+
     await notifyAdmins(
       "perfil-artista-creado",
       { nombre: p.artisticName ?? event.params.slug },

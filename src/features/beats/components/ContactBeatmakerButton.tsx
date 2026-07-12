@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { usePathname, useRouter } from "@/i18n/navigation";
 import { ChatIcon, CloseIcon, SpinnerIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import {
@@ -15,11 +15,13 @@ const TRIGGER =
   "flex w-full items-center justify-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-xs tracking-[1px] text-white/70 uppercase transition hover:border-amethyst-300/60 hover:text-amethyst-200 disabled:cursor-not-allowed disabled:opacity-50";
 
 /**
- * Botón "Chat" autocontenido para contactar a un beatmaker desde el catálogo.
- * Al elegir un mensaje preset: asegura el hilo directo (idempotente por par) →
- * siembra el preset como mensaje del cliente → abre la burbuja global. Se
- * auto-oculta si el usuario ES el propio beatmaker (chatear consigo mismo no
- * tiene sentido). Sin sesión → redirige a login, igual que el botón "Comprar".
+ * Botón "Chat" autocontenido para contactar a un beatmaker. Reutilizable en dos
+ * contextos: desde el catálogo (con un beat concreto → preset "cotizar este
+ * beat") y desde el perfil del beatmaker (sin beat → preset "me interesa tu
+ * trabajo"). Al elegir un mensaje preset: asegura el hilo directo (idempotente
+ * por par) → siembra el preset como mensaje del cliente → abre la burbuja global.
+ * Se auto-oculta si el usuario ES el propio beatmaker (chatear consigo mismo no
+ * tiene sentido). Sin sesión → redirige a login volviendo a la página actual.
  * Todo cliente: reutiliza el chat existente sin tocar backend ni reglas.
  */
 export function ContactBeatmakerButton({
@@ -30,22 +32,34 @@ export function ContactBeatmakerButton({
 }: {
   beatmakerUid: string;
   beatmakerNombre: string;
-  beatTitulo: string;
+  /** Beat concreto para el preset "cotizar este beat". Ausente en el perfil. */
+  beatTitulo?: string;
   className?: string;
 }) {
   const t = useTranslations();
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [showPicker, setShowPicker] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+
+  // Cerrar el modal de presets con Escape (además del backdrop y la X).
+  useEffect(() => {
+    if (!showPicker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowPicker(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showPicker]);
 
   // Chatear consigo mismo no tiene sentido: el propio beatmaker no se contacta.
   if (user && user.uid === beatmakerUid) return null;
 
   function onClick() {
     if (!user) {
-      router.push(`/login?next=${encodeURIComponent("/beats")}`);
+      router.push(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
     setError(false);
@@ -73,10 +87,14 @@ export function ContactBeatmakerButton({
     }
   }
 
-  const presets = [
-    t("chat.presets.cotizarBeat", { titulo: beatTitulo }),
-    t("chat.presets.crearIdea"),
-  ];
+  // Con beat concreto → "cotizar este beat"; sin beat (perfil) → "me interesa tu
+  // trabajo". La opción "crear a partir de mi idea" aplica en ambos contextos.
+  const presets = beatTitulo
+    ? [
+        t("chat.presets.cotizarBeat", { titulo: beatTitulo }),
+        t("chat.presets.crearIdea"),
+      ]
+    : [t("chat.presets.interesaTrabajo"), t("chat.presets.crearIdea")];
 
   return (
     <>

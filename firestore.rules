@@ -101,16 +101,85 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])
           && (!('beatmakerSlug' in request.resource.data)
             || request.resource.data.beatmakerSlug == null
-            || request.resource.data.beatmakerSlug == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug));
+            || request.resource.data.beatmakerSlug == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug)
+          // `masterPath`, si viene, debe vivir en la carpeta PRIVADA del propio
+          // beatmaker (defensa en profundidad: confirmarPagoBeat firma esta
+          // ruta server-side; sin esto, un beatmaker podría apuntar al máster
+          // de otro y hacer que el servidor se lo firme — IDOR).
+          && (!('masterPath' in request.resource.data)
+            || request.resource.data.masterPath == null
+            || request.resource.data.masterPath.matches('beats/masters/' + request.auth.uid + '/.*')));
 
       allow update: if isAdmin()
         || (request.auth != null
           && resource.data.beatmakerUid == request.auth.uid
           && request.resource.data.beatmakerUid == resource.data.beatmakerUid
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker']));
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])
+          && (!('masterPath' in request.resource.data)
+            || request.resource.data.masterPath == null
+            || request.resource.data.masterPath.matches('beats/masters/' + request.auth.uid + '/.*')));
 
       allow delete: if isAdmin()
         || (request.auth != null && resource.data.beatmakerUid == request.auth.uid);
+    }
+
+    // ── Ventas de beats ──────────────────────────────────────────────
+    // Las CREA el servidor (confirmPayment) vía Admin SDK. El comprador lee las
+    // suyas; el beatmaker las suyas; el admin todas. Nadie escribe desde cliente.
+    match /beatSales/{id} {
+      allow read: if request.auth != null
+        && (isAdmin()
+          || resource.data.buyerUid == request.auth.uid
+          || resource.data.beatmakerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ── Peticiones de beat a medida ──────────────────────────────────
+    // El cliente crea SU petición (estado 'abierta'); la ven él, cualquier
+    // beatmaker (para tomarla) y el admin. Un beatmaker con rol la TOMA
+    // (abierta→tomada, tomadaPor propio) sin cambiar dueño ni descripción.
+    match /beatRequests/{id} {
+      // Lectura: admin, el dueño y el beatmaker que la tomó siempre. Las
+      // peticiones ABIERTAS las ve cualquier BEATMAKER (para tomarlas) — NO
+      // cualquier autenticado: el doc contiene PII del cliente (nombre, idea y
+      // URL de referencia con token), así que el listado abierto se gatea por rol.
+      allow read: if request.auth != null
+        && (isAdmin()
+          || resource.data.uid == request.auth.uid
+          || resource.data.tomadaPor == request.auth.uid
+          || (resource.data.estado == 'abierta'
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])));
+
+      // Crear: el cliente crea SU propia petición (estado inicial 'abierta').
+      // Allowlist de campos + createdAt forzado a request.time: así nadie falsea
+      // el orden de la cola ni pre-asigna 'tomadaPor' (fuera del allowlist).
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'abierta'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly(
+          ['uid', 'clientName', 'descripcion', 'genero', 'ejemploUrl', 'estado', 'createdAt']);
+
+      // Tomar: un beatmaker pasa abierta → tomada fijándose como tomadaPor.
+      // hasOnly congela el resto del documento (es un doc de OTRO usuario): solo
+      // puede tocar estado y tomadaPor, no la URL de referencia ni los metadatos.
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.estado == 'abierta'
+          && request.resource.data.estado == 'tomada'
+          && request.resource.data.tomadaPor == request.auth.uid
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.descripcion == resource.data.descripcion
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'tomadaPor'])
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker']));
+
+      // Borrar: admin siempre; el dueño solo mientras siga ABIERTA (no puede
+      // destruir una petición ya TOMADA por un beatmaker). No hay ruta de borrado
+      // en la app: esto solo cierra el vector de vandalismo vía SDK crudo.
+      allow delete: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && resource.data.estado == 'abierta');
     }
 
     // ── Solicitudes de cotización ────────────────────────────────────
@@ -273,12 +342,23 @@ service cloud.firestore {
 
       allow create: if isAdmin()
         || (request.auth != null
-          && request.resource.data.participants.hasAny([request.auth.uid])
           && request.resource.data.status == 'abierto'
           // Un chat de pago no puede nacer ya 'confirmado' (el premium solo lo
-          // activa la Cloud Function confirmPayment).
-          && (request.resource.data.type != 'pago'
-            || request.resource.data.pago.estado in ['metodo_pendiente', 'comprobante_pendiente']));
+          // activa la Cloud Function confirmPayment). Además, el creador debe
+          // ser el ÚNICO participante (no basta con `hasAny`): así
+          // `confirmPayment` puede confiar en `participants[0]` como el
+          // pagador REAL y no un uid ajeno metido por el cliente (spoofing).
+          && (request.resource.data.type == 'pago'
+            ? (request.resource.data.participants == [request.auth.uid]
+              && request.resource.data.pago.estado in ['metodo_pendiente', 'comprobante_pendiente'])
+            // No-pago (soporte/directo): el creador debe ir en participants, y el
+            // hilo se limita a 2 como MÁXIMO. Ningún hilo creado por el cliente
+            // supera 2 (soporte nace con [dueño]; directo con [cliente, otro]); el
+            // admin/estudio se añade por Admin SDK (ignora reglas). El tope evita
+            // que un solo create+mensaje abanique notificaciones/push a N uids
+            // arbitrarios (el trigger onConversationMessage avisa a cada participante).
+            : (request.resource.data.participants.hasAny([request.auth.uid])
+              && request.resource.data.participants.size() <= 2)));
 
       // El admin (vía Function) hace cualquier transición. El participante solo
       // puede mover el pago de comprobante_pendiente → en_revision (al subir el

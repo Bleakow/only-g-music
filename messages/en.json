@@ -261,7 +261,11 @@
     "back": "Home",
     "createProfile": "Are you an artist? Create your profile",
     "editProfile": "Edit your profile",
-    "viewProfile": "View profile"
+    "viewProfile": "View profile",
+    "tabTodos": "All",
+    "tabCantantes": "Singers",
+    "tabBeatmakers": "Beatmakers",
+    "segmentLabel": "Filter by discipline"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",
@@ -301,14 +305,22 @@
     "pause": "Pause",
     "comprar": "Buy",
     "comprarPronto": "Purchase available soon",
+    "errorComprar": "Couldn't start the purchase.",
+    "esTuyo": "Your beat",
+    "elegirMetodo": "How will you pay?",
     "por": "by {nombre}",
     "bpm": "{bpm} BPM",
     "publicarTitle": "Publish a beat",
     "publicarIntro": "Upload your beat and put it in Only G's public catalog.",
+    "crearPerfilCta": "Create your beatmaker profile",
     "campoTitulo": "Title",
     "campoGenero": "Genre",
     "campoAudioPreview": "Preview audio (public)",
     "audioPreviewHint": "Upload a tagged preview; the full file will be delivered after purchase (coming soon).",
+    "campoMaster": "Master / full file (private)",
+    "masterHint": "Delivered to the buyer after purchase; not downloadable from the catalog. Optional for now.",
+    "conMaster": "Has master",
+    "sinMaster": "No master",
     "campoPortada": "Cover",
     "campoBpm": "BPM",
     "subiendo": "Uploading…",
@@ -324,7 +336,34 @@
     "errorCargar": "Couldn't load the beats.",
     "faltaAudio": "Upload the beat's audio.",
     "faltaTitulo": "Write a title.",
-    "faltaGenero": "Choose a genre."
+    "faltaGenero": "Choose a genre.",
+    "pedirAMedida": "Request a custom beat",
+    "peticionesTitle": "Beat requests",
+    "peticionesIntro": "Request a custom beat: upload an example or tell us your idea and a beatmaker will get to work.",
+    "solicitar": "Request a beat",
+    "campoDescripcion": "Describe your idea",
+    "campoEjemplo": "Example/reference (optional)",
+    "campoGeneroOpcional": "Genre (optional)",
+    "cualquiera": "Any",
+    "enviarPeticion": "Send request",
+    "enviando": "Sending…",
+    "misPeticiones": "My requests",
+    "sinMisPeticiones": "You haven't requested any beats yet.",
+    "abiertas": "Open requests",
+    "sinAbiertas": "No open requests right now.",
+    "tomar": "Take",
+    "tomando": "Taking…",
+    "tomadaAviso": "A beatmaker took it; they'll contact you.",
+    "tomarAviso": "When you take a request, coordinate delivery with the client via chat.",
+    "tomarError": "Couldn't take the request. Please try again.",
+    "peticionError": "Couldn't send the request.",
+    "peticionCargarError": "Couldn't load the requests.",
+    "peticionEstado": {
+      "abierta": "Open",
+      "tomada": "Taken",
+      "entregada": "Delivered",
+      "cerrada": "Closed"
+    }
   },
   "adminDashboard": {
     "eyebrow": "Administration",
@@ -359,6 +398,7 @@
     "quickCotizacionesSub": "Requests and quotes",
     "quickRolesSub": "Grant and revoke permissions",
     "quickConveniosSub": "Producer and beatmaker requests",
+    "quickBeatsSub": "Beatmaker sales & payouts",
     "bookingsActive": "Active bookings",
     "viewAll": "View all",
     "activityTitle": "Recent activity",
@@ -379,6 +419,7 @@
     "pagos": "Payments",
     "roles": "Roles",
     "convenios": "Agreements",
+    "beats": "Beats",
     "roleAdmin": "Administrator",
     "helpTitle": "Need help?",
     "helpText": "Support available 24/7."
@@ -420,6 +461,22 @@
       "aprobada": "Approved",
       "rechazada": "Rejected"
     }
+  },
+  "adminBeats": {
+    "title": "Beat sales & payouts",
+    "intro": "Review beat sales and mark pending payouts to beatmakers.",
+    "pendientes": "Owed to beatmakers",
+    "pagadas": "Paid out",
+    "sinVentas": "No sales yet.",
+    "marcarPagado": "Mark as paid",
+    "totalPendiente": "Total owed: {monto}",
+    "comprador": "Buyer",
+    "beatmaker": "Beatmaker",
+    "precio": "Price",
+    "comision": "Commission",
+    "neto": "Beatmaker net",
+    "errorPagar": "Couldn't mark it as paid. Try again.",
+    "errorCargar": "Couldn't load the beat sales."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
@@ -1034,6 +1091,37 @@
       "submitFailed": "Could not submit your request. Please try again."
     }
   },
+  "beatmakerOnboarding": {
+    "alreadyRegistered": {
+      "title": "You already have a profile",
+      "body": "Your beatmaker profile is already created. Open it whenever you want.",
+      "goToProfile": "View my profile"
+    },
+    "eyebrow": "Beatmaker profile",
+    "heroTitle": "Show your sound",
+    "heroParagraph": "Create your public beatmaker profile with a photo, name, and city. No cost: clients will find you and can message you to order a beat.",
+    "fields": {
+      "artisticName": {
+        "label": "Artist name",
+        "hint": "This will be your public name and your URL.",
+        "placeholder": "e.g. Nova Beats"
+      },
+      "city": {
+        "label": "City",
+        "placeholder": "e.g. Barranquilla"
+      },
+      "photo": {
+        "label": "Profile photo (required)"
+      }
+    },
+    "submit": "Create my profile",
+    "errors": {
+      "missingName": "Enter your artist name.",
+      "photoRequired": "A profile photo is required.",
+      "invalidName": "Your artist name does not generate a valid URL.",
+      "submitFailed": "Could not create your profile. Please try again."
+    }
+  },
   "producers": {
     "expandPhoto": "Expand photo of {name}",
     "facebookOf": "{name} on Facebook",
@@ -1339,6 +1427,10 @@
       "convenio-rechazado": {
         "titulo": "Partnership rejected",
         "cuerpo": "Your partnership request was rejected. {motivo}"
+      },
+      "beat-vendido": {
+        "titulo": "Beat sold",
+        "cuerpo": "Your beat \"{titulo}\" was sold."
       }
     }
   },
@@ -1353,6 +1445,7 @@
     "productoresTitle": "Producers",
     "rolesTitle": "Roles",
     "conveniosTitle": "Agreement requests",
+    "beatsTitle": "Beat sales & payouts",
     "paymentsConfigTitle": "Payment details",
     "estudiosTitle": "Studios",
     "consoleTitle": "Producer console",
@@ -1411,7 +1504,15 @@
       "efectivo": "Cash",
       "tarjeta": "Card"
     },
-    "proposal": "Proposal"
+    "proposal": "Proposal",
+    "contactar": "Chat",
+    "contactarTitulo": "Message {nombre}",
+    "contactarError": "Couldn't open the chat. Please try again.",
+    "presets": {
+      "cotizarBeat": "Hi, I'm interested in this beat: \"{titulo}\". Can we talk?",
+      "crearIdea": "Hi, could you make a beat from my idea?",
+      "interesaTrabajo": "Hi, I'm interested in your work. Can we talk about a beat?"
+    }
   },
   "pago": {
     "chooseMethod": "Choose how to pay",

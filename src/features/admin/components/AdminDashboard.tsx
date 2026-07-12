@@ -88,6 +88,12 @@ const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
     // es justo lo que da de alta a un productor/beatmaker en la plataforma.
     Icon: ProducersIcon,
   },
+  {
+    key: "beats",
+    sub: "quickBeatsSub",
+    href: "/admin/beats",
+    Icon: MusicIcon,
+  },
 ];
 
 function StatCard({

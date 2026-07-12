@@ -261,7 +261,11 @@
     "back": "Inicio",
     "createProfile": "¿Eres artista? Crea tu perfil",
     "editProfile": "Edita tu perfil",
-    "viewProfile": "Ver perfil"
+    "viewProfile": "Ver perfil",
+    "tabTodos": "Todos",
+    "tabCantantes": "Cantantes",
+    "tabBeatmakers": "Beatmakers",
+    "segmentLabel": "Filtrar por disciplina"
   },
   "servicesPage": {
     "metaTitle": "Servicios — Only G Music",
@@ -301,14 +305,22 @@
     "pause": "Pausar",
     "comprar": "Comprar",
     "comprarPronto": "Compra disponible pronto",
+    "errorComprar": "No se pudo iniciar la compra.",
+    "esTuyo": "Tu beat",
+    "elegirMetodo": "¿Cómo vas a pagar?",
     "por": "por {nombre}",
     "bpm": "{bpm} BPM",
     "publicarTitle": "Publicar un beat",
     "publicarIntro": "Sube tu beat y ponlo en el catálogo público de Only G.",
+    "crearPerfilCta": "Crea tu perfil de beatmaker",
     "campoTitulo": "Título",
     "campoGenero": "Género",
     "campoAudioPreview": "Audio de preview (público)",
     "audioPreviewHint": "Sube una versión de preview con tu tag; el archivo completo se entregará tras la compra (próximamente).",
+    "campoMaster": "Máster / archivo completo (privado)",
+    "masterHint": "Se entrega al comprador tras la compra; no se descarga desde el catálogo. Opcional por ahora.",
+    "conMaster": "Con máster",
+    "sinMaster": "Sin máster",
     "campoPortada": "Portada",
     "campoBpm": "BPM",
     "subiendo": "Subiendo…",
@@ -324,7 +336,34 @@
     "errorCargar": "No se pudieron cargar los beats.",
     "faltaAudio": "Sube el audio del beat.",
     "faltaTitulo": "Escribe un título.",
-    "faltaGenero": "Elige un género."
+    "faltaGenero": "Elige un género.",
+    "pedirAMedida": "Pedir un beat a medida",
+    "peticionesTitle": "Peticiones de beats",
+    "peticionesIntro": "Pide un beat a medida: sube un ejemplo o cuéntanos tu idea y un beatmaker se pondrá manos a la obra.",
+    "solicitar": "Solicitar un beat",
+    "campoDescripcion": "Describe tu idea",
+    "campoEjemplo": "Ejemplo/referencia (opcional)",
+    "campoGeneroOpcional": "Género (opcional)",
+    "cualquiera": "Cualquiera",
+    "enviarPeticion": "Enviar petición",
+    "enviando": "Enviando…",
+    "misPeticiones": "Mis peticiones",
+    "sinMisPeticiones": "Aún no has pedido ningún beat.",
+    "abiertas": "Peticiones abiertas",
+    "sinAbiertas": "No hay peticiones abiertas ahora mismo.",
+    "tomar": "Tomar",
+    "tomando": "Tomando…",
+    "tomadaAviso": "Ya la tomó un beatmaker; te contactará.",
+    "tomarAviso": "Al tomar una petición, coordina la entrega con el cliente por chat.",
+    "tomarError": "No se pudo tomar la petición. Inténtalo de nuevo.",
+    "peticionError": "No se pudo enviar la petición.",
+    "peticionCargarError": "No se pudieron cargar las peticiones.",
+    "peticionEstado": {
+      "abierta": "Abierta",
+      "tomada": "Tomada",
+      "entregada": "Entregada",
+      "cerrada": "Cerrada"
+    }
   },
   "adminDashboard": {
     "eyebrow": "Administración",
@@ -359,6 +398,7 @@
     "quickCotizacionesSub": "Solicitudes y envíos",
     "quickRolesSub": "Otorga y quita permisos",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
+    "quickBeatsSub": "Ventas y pagos de beatmakers",
     "bookingsActive": "Reservas activas",
     "viewAll": "Ver todas",
     "activityTitle": "Actividad reciente",
@@ -379,6 +419,7 @@
     "pagos": "Pagos",
     "roles": "Roles",
     "convenios": "Convenios",
+    "beats": "Beats",
     "roleAdmin": "Administrador",
     "helpTitle": "¿Necesitas ayuda?",
     "helpText": "Soporte disponible 24/7 para ti."
@@ -420,6 +461,22 @@
       "aprobada": "Aprobada",
       "rechazada": "Rechazada"
     }
+  },
+  "adminBeats": {
+    "title": "Ventas y pagos de beats",
+    "intro": "Revisa las ventas de beats y marca los pagos pendientes a los beatmakers.",
+    "pendientes": "Por pagar a beatmakers",
+    "pagadas": "Pagadas",
+    "sinVentas": "Aún no hay ventas.",
+    "marcarPagado": "Marcar pagado",
+    "totalPendiente": "Total por pagar: {monto}",
+    "comprador": "Comprador",
+    "beatmaker": "Beatmaker",
+    "precio": "Precio",
+    "comision": "Comisión",
+    "neto": "Neto beatmaker",
+    "errorPagar": "No se pudo marcar el pago. Inténtalo de nuevo.",
+    "errorCargar": "No se pudieron cargar las ventas de beats."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -1034,6 +1091,37 @@
       "submitFailed": "No se pudo crear tu solicitud. Inténtalo de nuevo."
     }
   },
+  "beatmakerOnboarding": {
+    "alreadyRegistered": {
+      "title": "Ya tienes tu perfil",
+      "body": "Tu perfil de beatmaker ya está creado. Ábrelo cuando quieras.",
+      "goToProfile": "Ver mi perfil"
+    },
+    "eyebrow": "Perfil de beatmaker",
+    "heroTitle": "Muestra tu sonido",
+    "heroParagraph": "Crea tu perfil público de beatmaker con foto, nombre y ciudad. Sin costo: los clientes te encontrarán y podrán escribirte para encargar un beat.",
+    "fields": {
+      "artisticName": {
+        "label": "Nombre artístico",
+        "hint": "Será tu nombre público y tu URL.",
+        "placeholder": "p. ej. Nova Beats"
+      },
+      "city": {
+        "label": "Ciudad",
+        "placeholder": "p. ej. Barranquilla"
+      },
+      "photo": {
+        "label": "Foto de perfil (obligatoria)"
+      }
+    },
+    "submit": "Crear mi perfil",
+    "errors": {
+      "missingName": "Escribe tu nombre artístico.",
+      "photoRequired": "La foto de perfil es obligatoria.",
+      "invalidName": "El nombre artístico no genera una URL válida.",
+      "submitFailed": "No se pudo crear tu perfil. Inténtalo de nuevo."
+    }
+  },
   "producers": {
     "expandPhoto": "Ampliar foto de {name}",
     "facebookOf": "Facebook de {name}",
@@ -1339,6 +1427,10 @@
       "convenio-rechazado": {
         "titulo": "Convenio rechazado",
         "cuerpo": "Tu solicitud de convenio fue rechazada. {motivo}"
+      },
+      "beat-vendido": {
+        "titulo": "Beat vendido",
+        "cuerpo": "Se vendió tu beat \"{titulo}\"."
       }
     }
   },
@@ -1353,6 +1445,7 @@
     "productoresTitle": "Productores",
     "rolesTitle": "Roles",
     "conveniosTitle": "Solicitudes de convenio",
+    "beatsTitle": "Ventas y pagos de beats",
     "paymentsConfigTitle": "Datos de pago",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",
@@ -1411,7 +1504,15 @@
       "efectivo": "Efectivo",
       "tarjeta": "Tarjeta"
     },
-    "proposal": "Propuesta"
+    "proposal": "Propuesta",
+    "contactar": "Chat",
+    "contactarTitulo": "Escríbele a {nombre}",
+    "contactarError": "No se pudo abrir el chat. Inténtalo de nuevo.",
+    "presets": {
+      "cotizarBeat": "Hola, me interesa este beat: «{titulo}». ¿Podemos hablar?",
+      "crearIdea": "Hola, ¿podrías crear un beat a partir de mi idea?",
+      "interesaTrabajo": "Hola, me interesa tu trabajo. ¿Podemos hablar de un beat?"
+    }
   },
   "pago": {
     "chooseMethod": "Elige cómo pagar",

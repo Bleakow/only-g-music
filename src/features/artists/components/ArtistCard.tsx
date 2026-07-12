@@ -41,6 +41,15 @@ export function ArtistCard({ artist }: { artist: Artist }) {
     }
   }, [active]);
 
+  // Etiqueta meta: el género del cantante o, si no hay (beatmaker puro, que nace
+  // sin género), su disciplina — para no pintar un span de acento vacío.
+  const disc = artist.disciplines ?? [];
+  const metaLabel =
+    artist.genre ||
+    (disc.includes("beatmaker") && !disc.includes("artista")
+      ? t("roles.beatmaker")
+      : "");
+
   return (
     <Link
       ref={cardRef}
@@ -84,7 +93,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 p-4">
         {/* Meta: género (teñido con su acento) · ciudad. */}
         <p className="flex items-center gap-1.5 text-[0.62rem] font-medium tracking-[2.5px] uppercase">
-          <span style={{ color: artist.accent }}>{artist.genre}</span>
+          <span style={{ color: artist.accent }}>{metaLabel}</span>
           {artist.city && (
             <>
               <span className="text-white/30">·</span>

@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { ArtistProfile } from "@/domain/artist-profile";
 import { getProfileBySlug } from "../../lib/artist-profile-repo";
 import { ArtistProfileView } from "./ArtistProfileView";
+import { BeatmakerProfileView } from "./BeatmakerProfileView";
 
 /**
  * Carga el perfil real desde Firestore con fallback al artista semilla (que el
@@ -41,13 +42,20 @@ export function ArtistProfileLoader({
     };
   }, [slug]);
 
-  if (profile)
+  if (profile) {
+    // "Beatmaker puro" → vista minimal dedicada. Un usuario cantante+beatmaker
+    // (disciplines incluye 'artista') conserva la vista de cantante completa.
+    const disc = profile.disciplines ?? [];
+    const esBeatmakerPuro =
+      disc.includes("beatmaker") && !disc.includes("artista");
+    if (esBeatmakerPuro) return <BeatmakerProfileView profile={profile} />;
     return (
       <ArtistProfileView
         profile={profile}
         isOwner={!!user && !!profile.uid && user.uid === profile.uid}
       />
     );
+  }
   // Sin texto "Cargando": el vinilo de la ruta (loading.tsx) ya cubrió la
   // transición y este fetch cliente es rápido; un lienzo oscuro evita el flash de
   // texto entre el loader y el contenido.

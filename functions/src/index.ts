@@ -16,6 +16,7 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
 
@@ -32,6 +33,10 @@ const PREMIUM_DURACION_MESES = 2;
 const PRECIO_MEMBRESIA = 15000;
 /** Meses de vigencia de la membresía del toggle admin (distinta del perfil, 2m). */
 const MEMBRESIA_DURACION_MESES = 1;
+/** Precio de catálogo de un BEAT en COP — sync con PRECIO_BEAT (src/domain/beat.ts). */
+const PRECIO_BEAT = 40000;
+/** Comisión FIJA de la plataforma por venta de beat — sync con COMISION_BEAT (dominio). */
+const COMISION_BEAT = 0.2;
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -342,6 +347,10 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   if (refKind === "booking") {
     return await confirmarPagoReserva(convRef, conv, refId);
   }
+  // Pago de BEAT: entrega el máster, registra la venta y cierra el hilo.
+  if (refKind === "beat") {
+    return await confirmarPagoBeat(convRef, conv, refId);
+  }
   if (refKind !== "premium") {
     throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
   }
@@ -443,6 +452,172 @@ async function confirmarPagoReserva(
   // La notificación al cliente ("pago-confirmado") la dispara onBookingConfirmed.
   return { ok: true };
 }
+
+/**
+ * Confirma el pago de un BEAT (SOLO admin, vía confirmPayment). Server-authoritative
+ * y atómico: cierra el chat de pago (o lo deja abierto para entrega manual),
+ * intenta entregar el máster (URL FIRMADA de 7 días) y registra la venta en
+ * `beatSales` (fuente de verdad del payout pendiente al beatmaker) más el
+ * asiento de la COMISIÓN en `transactions` — el `neto` del beatmaker se
+ * transfiere aparte, manual, y se marca vía `marcarBeatPayout` (no genera
+ * asiento aquí; ver `beatSales.paidOut`).
+ *
+ * Seguridad (IDOR): `masterPath` SOLO se firma si empieza por
+ * `beats/masters/{beatmakerUid}/`, la carpeta privada del PROPIO beatmaker del
+ * beat. `firestore.rules` ya lo constriñe al guardar, pero esta función no
+ * confía ciegamente en datos históricos: si apunta a otra carpeta, se trata
+ * como entrega manual y se loggea (evita firmar/exfiltrar el máster de otro
+ * beatmaker).
+ *
+ * Resiliencia: `getSignedUrl` NUNCA debe abortar el pago — va en try/catch y,
+ * si falla, la entrega cae a manual. El batch (abrir/cerrar el hilo,
+ * `beatSales`, el asiento de comisión y los avisos) se ejecuta SIEMPRE.
+ * NOTA PRODUCCIÓN: `getSignedUrl` V4 requiere que la Service Account de
+ * runtime de esta Function (2ª gen) tenga el rol
+ * `roles/iam.serviceAccountTokenCreator` sobre sí misma; sin ese rol la firma
+ * falla y la entrega cae a manual (no rompe la venta).
+ *
+ * Idempotencia: `beatSales` y `transactions` usan un id DETERMINISTA keyed
+ * por `conversationId` (como `activarMembresia`), así dos confirmaciones
+ * concurrentes/retry del MISMO chat sobrescriben en vez de duplicar (evita
+ * doble comisión + doble payout).
+ */
+async function confirmarPagoBeat(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+  beatId: string,
+): Promise<{ ok: true }> {
+  const beatSnap = await db.doc(`beats/${beatId}`).get();
+  const beat = beatSnap.data();
+  if (!beat) throw new HttpsError("not-found", "Beat inexistente.");
+
+  const conversationId = convRef.id;
+  const buyerUid = Array.isArray(conv.participants)
+    ? (conv.participants[0] as string | undefined)
+    : undefined;
+  const buyerNombre = buyerUid
+    ? ((await db.doc(`users/${buyerUid}`).get()).data()?.displayName ?? null)
+    : null;
+  const beatmakerUid = (beat.beatmakerUid as string | undefined) ?? "";
+  const beatmakerNombre = (beat.beatmakerNombre as string | undefined) ?? null;
+  const beatTitulo = (beat.titulo as string | undefined) ?? "";
+
+  const precio = PRECIO_BEAT;
+  const comision = Math.round(precio * COMISION_BEAT);
+  const neto = precio - comision;
+
+  // Entrega: URL firmada del máster (7 días), SOLO si `masterPath` pertenece a
+  // la carpeta privada del PROPIO beatmaker del beat (defensa IDOR — ver JSDoc).
+  const masterPath = beat.masterPath as string | undefined;
+  const masterOk =
+    typeof masterPath === "string" &&
+    masterPath.startsWith(`beats/masters/${beatmakerUid}/`);
+  if (masterPath && !masterOk) {
+    logger.warn(
+      `beat ${beatId}: masterPath fuera de la carpeta del beatmaker (${beatmakerUid}) — entrega manual: ${masterPath}`,
+    );
+  }
+
+  let signedUrl: string | null = null;
+  if (masterOk && masterPath) {
+    try {
+      const [url] = await getStorage()
+        .bucket()
+        .file(masterPath)
+        .getSignedUrl({
+          action: "read",
+          expires: Date.now() + 7 * 24 * 3600 * 1000,
+        });
+      signedUrl = url;
+    } catch (e) {
+      logger.error("beat master signUrl:", e);
+      signedUrl = null;
+    }
+  }
+  const texto = signedUrl
+    ? "Pago confirmado. Descarga tu beat aquí (el enlace expira en 7 días)."
+    : "Pago confirmado. El beatmaker te entregará el archivo por este chat.";
+
+  const batch = db.batch();
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    // Con máster entregado, el hilo se cierra. Sin él, queda abierto (y se
+    // suma al beatmaker como participante) para que la entrega por chat sea
+    // una promesa cumplible, no un callejón sin salida.
+    status: signedUrl ? "cerrado" : "abierto",
+    ...(signedUrl ? {} : { participants: FieldValue.arrayUnion(beatmakerUid) }),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    texto,
+    ...(signedUrl ? { attachmentUrl: signedUrl } : {}),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Ids DETERMINISTAS (keyed por conversationId): un retry/confirmación
+  // concurrente del MISMO chat sobrescribe en vez de duplicar la venta.
+  batch.set(db.doc(`beatSales/${conversationId}`), {
+    beatId,
+    beatTitulo,
+    beatmakerUid,
+    beatmakerNombre,
+    buyerUid: buyerUid ?? "",
+    buyerNombre,
+    precio,
+    comision,
+    neto,
+    paidOut: false,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Asiento contable de la COMISIÓN (el neto del beatmaker no es ingreso de Only
+  // G; se paga aparte y se marca en `beatSales.paidOut`, sin asiento).
+  batch.set(db.doc(`transactions/beat_${conversationId}`), {
+    uid: buyerUid ?? "",
+    clientName: buyerNombre,
+    concepto: "Comisión beat",
+    amount: comision,
+    fecha: Date.now(),
+    estado: "confirmada",
+    fuente: "beat",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(`Pago de beat confirmado: ${conversationId} → beat ${beatId}`);
+  await notify(buyerUid, "pago-confirmado", { concepto: beatTitulo }, "/beats");
+  // El beatmaker SIEMPRE se entera de la venta, entregue el servidor el
+  // máster o le toque entregarlo manualmente por el chat.
+  await notify(
+    beatmakerUid,
+    "beat-vendido",
+    { titulo: beatTitulo },
+    "/beats/publicar",
+  );
+  return { ok: true };
+}
+
+/**
+ * Marca el payout de una venta de beat como pagado (SOLO admin): la transferencia
+ * del `neto` al beatmaker es MANUAL (fuera de la app, como el resto de pagos);
+ * esto solo deja constancia. Server-authoritative: `beatSales` no admite
+ * escritura desde el cliente (regla `write: false`), así que el toggle pasa por
+ * esta Cloud Function callable, no por un `updateDoc` directo.
+ */
+export const marcarBeatPayout = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const saleId = request.data?.saleId;
+  if (typeof saleId !== "string" || !saleId) {
+    throw new HttpsError("invalid-argument", "Falta la venta.");
+  }
+  const saleRef = db.doc(`beatSales/${saleId}`);
+  if (!(await saleRef.get()).exists) {
+    throw new HttpsError("not-found", "Venta inexistente.");
+  }
+  await saleRef.update({ paidOut: true, paidOutAt: Date.now() });
+  logger.info(`Payout de beat marcado como pagado: ${saleId}`);
+  return { ok: true };
+});
 
 /**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
@@ -1097,11 +1272,55 @@ export const onPaymentUnderReview = onDocumentUpdated(
 );
 
 /** Nuevo perfil de artista creado → avisa a los admin. */
+/**
+ * Deriva `disciplines`/`socio` de un conjunto de roles. `disciplines` = roles de
+ * talento (default `['artista']` si no hay ninguno); `socio` = beatmaker/productor
+ * (exentos de membresía). Mismo criterio que `adminLinkProfile`/`adminSetRoles`;
+ * extraído para el alta self-serve (los 3 sitios previos podrían adoptarlo luego).
+ */
+function deriveDisciplinesSocio(roles: unknown): {
+  disciplines: string[];
+  socio: boolean;
+} {
+  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+  const finalRoles = Array.isArray(roles) ? (roles as string[]) : [];
+  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+  return {
+    disciplines: disciplines.length ? disciplines : ["artista"],
+    socio: finalRoles.includes("beatmaker") || finalRoles.includes("productor"),
+  };
+}
+
 export const onArtistProfileCreated = onDocumentCreated(
   "artistProfiles/{slug}",
   async (event) => {
     const p = event.data?.data();
     if (!p) return;
+
+    // Deriva disciplines/socio de los roles del DUEÑO y los escribe en el perfil:
+    // el cliente NO puede setearlos (las reglas los bloquean en create y update,
+    // son server-authoritative), así que un perfil AUTOGESTIONADO (p. ej. de un
+    // beatmaker) nacería con socio:false y quedaría invisible
+    // (perfilVisible = socio || premium) hasta esta derivación. `adminLinkProfile`
+    // ya los pone al crear; aquí cubrimos el alta SELF-SERVE. El uid del perfil
+    // está fijado a su dueño por la regla de create (uid == auth.uid), así que
+    // derivar de SUS roles es seguro (no hay confused-deputy). Solo escribe si
+    // difiere de lo ya guardado (evita una escritura redundante en el path admin).
+    const ownerUid = typeof p.uid === "string" ? p.uid : null;
+    if (ownerUid) {
+      const roles = (await db.doc(`users/${ownerUid}`).get()).data()?.roles;
+      const derived = deriveDisciplinesSocio(roles);
+      const currentDisc = Array.isArray(p.disciplines)
+        ? (p.disciplines as string[])
+        : [];
+      const sameDisc =
+        currentDisc.length === derived.disciplines.length &&
+        derived.disciplines.every((d) => currentDisc.includes(d));
+      if (!sameDisc || p.socio !== derived.socio) {
+        await event.data?.ref.update(derived);
+      }
+    }
+
     await notifyAdmins(
       "perfil-artista-creado",
       { nombre: p.artisticName ?? event.params.slug },

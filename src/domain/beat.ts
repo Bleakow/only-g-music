@@ -34,8 +34,18 @@ export interface Beat {
   titulo: string;
   /** Género (de MUSIC_GENRES; string para no acoplar el dominio). */
   genero: string;
-  /** Audio del beat en Storage (preview/completo). */
+  /**
+   * PREVIEW público del beat en Storage (lo que suena en el catálogo, con
+   * marca de agua o recorte — decisión de UI/subida). URL pública.
+   */
   audioUrl: string;
+  /**
+   * Ruta (NO url) del MÁSTER en Storage, bajo una carpeta PRIVADA
+   * (`beats/masters/{uid}/...`): nadie lo descarga directo. Se entrega al
+   * comprador mediante una URL FIRMADA generada por el servidor
+   * (`confirmPayment`) tras confirmar el pago.
+   */
+  masterPath?: string;
   /** Portada opcional. */
   coverUrl?: string;
   bpm?: number;
@@ -75,6 +85,7 @@ export type NuevoBeat = Pick<
   | "titulo"
   | "genero"
   | "audioUrl"
+  | "masterPath"
   | "coverUrl"
   | "bpm"
   | "tags"

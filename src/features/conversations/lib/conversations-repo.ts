@@ -256,3 +256,35 @@ export async function ensureSupportConversation(
   }
   return conversationId;
 }
+
+// ── Directo (chat usuario ↔ usuario: p. ej. cliente ↔ beatmaker) ────────────
+
+/**
+ * Crea (si no existe) el chat DIRECTO entre dos usuarios y devuelve su id
+ * determinístico `directo_{uidA}_{uidB}` con los uids ORDENADOS: así abrir el
+ * hilo desde cualquiera de los dos —o dos veces— reúsa el MISMO y no duplica.
+ * Idempotente. Nace `abierto` con ambos como participantes (el creador debe ser
+ * uno de ellos: lo exige la regla de create). NO lleva `ref`: es un hilo por
+ * PAR, no por entidad — el contexto (qué beat, etc.) va en el propio mensaje.
+ */
+export async function ensureDirectConversation(
+  uidA: string,
+  uidB: string,
+): Promise<string> {
+  const [a, b] = [uidA, uidB].sort();
+  const conversationId = `directo_${a}_${b}`;
+  const ref = doc(db, COL, conversationId);
+  if (!(await getDoc(ref)).exists()) {
+    await setDoc(
+      ref,
+      stripUndefined({
+        type: "directo",
+        participants: [uidA, uidB],
+        status: "abierto",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }),
+    );
+  }
+  return conversationId;
+}

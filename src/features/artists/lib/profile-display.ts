@@ -18,6 +18,8 @@ export function profileToArtist(p: ArtistProfile): Artist {
     city: p.city,
     role: "Artista",
     featured: p.featured ?? false,
+    // Se conservan para segmentar la vitrina (pestaña Cantantes / Beatmakers).
+    disciplines: p.disciplines,
     socials: p.socials,
     topTracks: p.tracks.map((t) => ({ title: t.title })),
   };

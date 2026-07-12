@@ -13,6 +13,7 @@ import {
   listBeatsByBeatmaker,
   updateBeat,
 } from "@/features/beats/lib/beats-repo";
+import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 import type { Beat } from "@/domain/beat";
 import { MUSIC_GENRES } from "@/features/artists/data/genres";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
@@ -166,9 +167,19 @@ export function PublicarBeats() {
       const n = Number(bpm);
       const bpmValido =
         Number.isFinite(n) && n >= 1 && n <= 999 ? n : undefined;
+      // Solo atribuimos el beat a un perfil si ese perfil EXISTE y es del propio
+      // beatmaker: la regla valida PROPIEDAD (artistProfiles/{slug}.uid), no el
+      // puntero users.artistSlug —que puede quedar huérfano si el alta falló a
+      // medias o el admin borró el perfil—. Si no hay perfil vivo, se publica sin
+      // atribución (el beat no enlaza a un perfil) en vez de bloquear la publicación.
+      let beatmakerSlug: string | undefined;
+      if (account?.artistSlug) {
+        const perfil = await getProfileBySlug(account.artistSlug);
+        if (perfil && perfil.uid === user.uid) beatmakerSlug = account.artistSlug;
+      }
       await createBeat({
         beatmakerUid: user.uid,
-        beatmakerSlug: account?.artistSlug,
+        beatmakerSlug,
         beatmakerNombre: account?.displayName ?? undefined,
         titulo: titulo.trim(),
         genero,

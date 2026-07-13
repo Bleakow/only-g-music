@@ -30,6 +30,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── Config comercial (precios/comisiones INTERNAS) ───────────────
+    // Server-only (Admin SDK). A DIFERENCIA de config/{doc} (legible por
+    // cualquier autenticado), aquí viven precio y COMISIÓN de beat, que son
+    // internas: nadie las lee ni escribe desde el cliente. El servidor las lee
+    // con FALLBACK a las constantes del dominio (`getComercial` en functions),
+    // así que NO hace falta sembrar el doc `comercialConfig/actual`. El futuro
+    // rol `ceo` heredará aquí el gate de escritura (isCeo()); no se añade ahora
+    // porque el rol todavía no existe.
+    match /comercialConfig/{doc} {
+      allow read: if false;
+      allow write: if false;
+    }
+
     // ── Sedes/estudios (override editable: dirección, horario, pago) ──
     // Lectura para autenticados; el admin edita el override. La semilla base
     // vive en código; aquí solo se guardan los campos que el admin cambia.
@@ -160,10 +173,26 @@ service cloud.firestore {
     // Las CREA el servidor (confirmPayment) vía Admin SDK. El comprador lee las
     // suyas; el beatmaker las suyas; el admin todas. Nadie escribe desde cliente.
     match /beatSales/{id} {
+      // Lee el admin y el BEATMAKER (su venta). El COMPRADOR NO: el doc congela
+      // `comision`/`neto` (la comisión INTERNA de Only G y lo que gana el
+      // beatmaker), que el comprador no debe ver. Su historial de compra, cuando
+      // se construya, saldrá de una fuente buyer-safe (el chat de pago en el que
+      // ya participa), no de aquí. (listMisCompras no está cableado a UI aún.)
       allow read: if request.auth != null
         && (isAdmin()
-          || resource.data.buyerUid == request.auth.uid
           || resource.data.beatmakerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ── Payouts (cuentas por pagar a socios: NETO por venta) ─────────
+    // PASIVO por persona: lo que Only G le debe a un socio (beatmaker/productor)
+    // por el neto de una venta. Los CREA el servidor (confirmarPagoBeat /
+    // backfillPayouts) vía Admin SDK. El admin los lee TODOS (panel + balance);
+    // el ACREEDOR lee solo los SUYOS. Nadie escribe desde el cliente: la
+    // liquidación (Fase 3) pasará por Cloud Function.
+    match /payouts/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.acreedorUid == request.auth.uid);
       allow write: if false;
     }
 

@@ -454,13 +454,44 @@ async function confirmarPagoReserva(
 }
 
 /**
+ * Config comercial server-authoritative: precio/comisión de beat leídos de
+ * `comercialConfig/actual` (colección server-only — ver firestore.rules) con
+ * FALLBACK a las constantes del dominio. NO hace falta sembrar el doc: si no
+ * existe (o el campo no es número), rige la constante. Así el negocio puede
+ * ajustar la comisión sin desplegar, sin exponerla al cliente (a diferencia de
+ * `config/{doc}`, legible por cualquier autenticado).
+ */
+async function getComercial(): Promise<{
+  precioBeat: number;
+  comisionBeat: number;
+}> {
+  const c = (await db.doc("comercialConfig/actual").get()).data() ?? {};
+  // Validación de DOMINIO (última línea de defensa server-side; el futuro panel
+  // CEO escribirá aquí): el precio debe ser un ENTERO > 0 y la comisión estar en
+  // [0,1]. Un config malformado NO puede producir un neto negativo (comisión>1)
+  // ni montos fraccionarios. Fuera de rango → se ignora y rige la constante.
+  const precioBeat =
+    typeof c.precioBeat === "number" && c.precioBeat > 0
+      ? Math.round(c.precioBeat)
+      : PRECIO_BEAT;
+  const comisionBeat =
+    typeof c.comisionBeat === "number" &&
+    c.comisionBeat >= 0 &&
+    c.comisionBeat <= 1
+      ? c.comisionBeat
+      : COMISION_BEAT;
+  return { precioBeat, comisionBeat };
+}
+
+/**
  * Confirma el pago de un BEAT (SOLO admin, vía confirmPayment). Server-authoritative
  * y atómico: cierra el chat de pago (o lo deja abierto para entrega manual),
- * intenta entregar el máster (URL FIRMADA de 7 días) y registra la venta en
- * `beatSales` (fuente de verdad del payout pendiente al beatmaker) más el
- * asiento de la COMISIÓN en `transactions` — el `neto` del beatmaker se
- * transfiere aparte, manual, y se marca vía `marcarBeatPayout` (no genera
- * asiento aquí; ver `beatSales.paidOut`).
+ * intenta entregar el máster (URL FIRMADA de 7 días) y registra: la venta en
+ * `beatSales`, el asiento de la COMISIÓN en `transactions` (único INGRESO de
+ * Only G — el neto NO lo es) y la DEUDA del `neto` al beatmaker en `payouts`
+ * (cuenta por pagar por persona, ahora VISIBLE en el Balance). El neto se
+ * transfiere aparte, manual, y se marca vía `marcarBeatPayout`
+ * (`beatSales.paidOut`, que la Fase 3 migrará a `payouts.estado`).
  *
  * Seguridad (IDOR): `masterPath` SOLO se firma si empieza por
  * `beats/masters/{beatmakerUid}/`, la carpeta privada del PROPIO beatmaker del
@@ -477,10 +508,10 @@ async function confirmarPagoReserva(
  * `roles/iam.serviceAccountTokenCreator` sobre sí misma; sin ese rol la firma
  * falla y la entrega cae a manual (no rompe la venta).
  *
- * Idempotencia: `beatSales` y `transactions` usan un id DETERMINISTA keyed
- * por `conversationId` (como `activarMembresia`), así dos confirmaciones
+ * Idempotencia: `beatSales`, `transactions` y `payouts` usan un id DETERMINISTA
+ * keyed por `conversationId` (como `activarMembresia`), así dos confirmaciones
  * concurrentes/retry del MISMO chat sobrescriben en vez de duplicar (evita
- * doble comisión + doble payout).
+ * doble comisión + doble payout/deuda).
  */
 async function confirmarPagoBeat(
   convRef: ReturnType<typeof db.doc>,
@@ -502,8 +533,12 @@ async function confirmarPagoBeat(
   const beatmakerNombre = (beat.beatmakerNombre as string | undefined) ?? null;
   const beatTitulo = (beat.titulo as string | undefined) ?? "";
 
-  const precio = PRECIO_BEAT;
-  const comision = Math.round(precio * COMISION_BEAT);
+  // Config-driven: precio/comisión de `comercialConfig/actual` con fallback a las
+  // constantes. El histórico no muta (precio/comision/neto quedan congelados en
+  // beatSales/payouts con el valor vigente AL confirmar).
+  const { precioBeat, comisionBeat } = await getComercial();
+  const precio = precioBeat;
+  const comision = Math.round(precio * comisionBeat);
   const neto = precio - comision;
 
   // Entrega: URL firmada del máster (7 días), SOLO si `masterPath` pertenece a
@@ -545,7 +580,11 @@ async function confirmarPagoBeat(
     // suma al beatmaker como participante) para que la entrega por chat sea
     // una promesa cumplible, no un callejón sin salida.
     status: signedUrl ? "cerrado" : "abierto",
-    ...(signedUrl ? {} : { participants: FieldValue.arrayUnion(beatmakerUid) }),
+    // Suma al beatmaker como participante SOLO si existe (un beat malformado sin
+    // beatmakerUid no debe meter '' en participants).
+    ...(signedUrl || !beatmakerUid
+      ? {}
+      : { participants: FieldValue.arrayUnion(beatmakerUid) }),
     updatedAt: FieldValue.serverTimestamp(),
   });
   batch.set(convRef.collection("messages").doc(), {
@@ -582,6 +621,30 @@ async function confirmarPagoBeat(
     fuente: "beat",
     createdAt: FieldValue.serverTimestamp(),
   });
+  // PASIVO por persona: el NETO adeudado al beatmaker, ahora VISIBLE como payout
+  // pendiente (lo suma el Balance General). Id DETERMINISTA `beat_{conversationId}`
+  // (mismo patrón que beatSales/transactions) → idempotente: un retry/confirmación
+  // concurrente del MISMO chat sobrescribe en vez de duplicar la deuda. MISMO batch
+  // (atómico con beatSales+transactions). `beatSales.paidOut` NO cambia su
+  // semántica (compat Fase 3, que migrará la liquidación a estos payouts).
+  // Solo si el beat tiene beatmaker: un beat malformado (sin beatmakerUid) NO
+  // debe generar un payout a acreedorUid='' (deuda "a nadie" que inflaría el
+  // Balance y nadie podría leer/liquidar). La venta y el asiento igual se registran.
+  if (beatmakerUid) {
+    batch.set(db.doc(`payouts/beat_${conversationId}`), {
+      acreedorUid: beatmakerUid,
+      acreedorNombre: beatmakerNombre,
+      origen: "beat",
+      refId: beatId,
+      monto: neto,
+      estado: "pendiente",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } else {
+    logger.warn(
+      `beat ${beatId}: venta ${conversationId} sin beatmakerUid — no se crea payout.`,
+    );
+  }
   await batch.commit();
 
   logger.info(`Pago de beat confirmado: ${conversationId} → beat ${beatId}`);
@@ -614,9 +677,76 @@ export const marcarBeatPayout = onCall({ region: REGION }, async (request) => {
   if (!(await saleRef.get()).exists) {
     throw new HttpsError("not-found", "Venta inexistente.");
   }
-  await saleRef.update({ paidOut: true, paidOutAt: Date.now() });
+  const now = Date.now();
+  const batch = db.batch();
+  batch.update(saleRef, { paidOut: true, paidOutAt: now });
+  // Mantén SINCRONIZADO el payout equivalente (mismo id determinista
+  // `beat_{saleId}`, con saleId === conversationId): si existe, márcalo pagado
+  // para que el Balance deje de contarlo como pendiente. Sin esto, pagar por el
+  // botón viejo dejaría el payout en 'pendiente' y el balance SOBREESTIMARÍA la
+  // deuda. Puede no existir si la venta es pre-Fase 2 y aún no se hizo backfill:
+  // en ese caso no hay nada que sincronizar (el balance tampoco lo cuenta).
+  const payoutRef = db.doc(`payouts/beat_${saleId}`);
+  if ((await payoutRef.get()).exists) {
+    batch.update(payoutRef, { estado: "pagado", pagadoAt: now });
+  }
+  await batch.commit();
   logger.info(`Payout de beat marcado como pagado: ${saleId}`);
   return { ok: true };
+});
+
+/**
+ * Backfill (SOLO admin): genera los `payouts` faltantes desde las `beatSales`
+ * históricas aún NO pagadas (`paidOut == false`) — las que se vendieron antes de
+ * la Fase 2, cuando el neto solo vivía en `beatSales`. Server-authoritative.
+ *
+ * Idempotente y NO destructivo: solo CREA los payouts FALTANTES (salta las ventas
+ * que ya tienen payout), así nunca pisa ni "resucita a pendiente" uno ya liquidado
+ * —incluso si una fase futura desincroniza `beatSales.paidOut` de `payouts.estado`—.
+ * Salta también ventas sin `beatmakerUid` (no crea deuda a ''). NO borra ni toca
+ * `beatSales`. Escribe en tandas (< 500) por el límite de un batch. Devuelve cuántos
+ * creó.
+ */
+export const backfillPayouts = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const [salesSnap, payoutsSnap] = await Promise.all([
+    db.collection("beatSales").where("paidOut", "==", false).get(),
+    db.collection("payouts").get(),
+  ]);
+  const yaExiste = new Set(payoutsSnap.docs.map((d) => d.id));
+  // Solo ventas NO pagadas, CON beatmaker, y SIN payout previo: nunca sobrescribimos
+  // un payout existente (evita resucitar uno liquidado) ni creamos deuda a ''.
+  const docs = salesSnap.docs.filter((d) => {
+    const s = d.data();
+    return (
+      typeof s.beatmakerUid === "string" &&
+      s.beatmakerUid !== "" &&
+      !yaExiste.has(`beat_${d.id}`)
+    );
+  });
+
+  let count = 0;
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch();
+    for (const doc of docs.slice(i, i + 400)) {
+      const s = doc.data();
+      batch.set(db.doc(`payouts/beat_${doc.id}`), {
+        acreedorUid: s.beatmakerUid as string,
+        acreedorNombre: (s.beatmakerNombre as string | undefined) ?? null,
+        origen: "beat",
+        refId: (s.beatId as string | undefined) ?? "",
+        monto: typeof s.neto === "number" ? s.neto : 0,
+        estado: "pendiente",
+        // Conserva la fecha ORIGINAL de la venta (mejor para el libro) si existe.
+        createdAt: s.createdAt ?? FieldValue.serverTimestamp(),
+      });
+      count++;
+    }
+    await batch.commit();
+  }
+
+  logger.info(`Backfill de payouts: ${count} payout(s) creados`);
+  return { count };
 });
 
 /**

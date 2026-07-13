@@ -530,7 +530,10 @@
     "comision": "Comisión",
     "neto": "Neto beatmaker",
     "errorPagar": "No se pudo marcar el pago. Inténtalo de nuevo.",
-    "errorCargar": "No se pudieron cargar las ventas de beats."
+    "errorCargar": "No se pudieron cargar las ventas de beats.",
+    "backfill": "Sincronizar payouts",
+    "backfillDone": "{count} payout(s) sincronizados.",
+    "backfillError": "No se pudo sincronizar. Inténtalo de nuevo."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -886,6 +889,21 @@
       "reasonPlaceholder": "Motivo (pagado, refinanciado…)",
       "cancel": "Cancelar",
       "confirm": "Saldar"
+    },
+    "payouts": {
+      "title": "Payouts a socios (pendientes)",
+      "intro": "Neto que Only G le debe a beatmakers/productores por ventas confirmadas. Ya está sumado a los pasivos de arriba. Se liquida en «Ventas y pagos de beats».",
+      "category": "Payout a socio",
+      "colOrigin": "Origen",
+      "colDate": "Fecha",
+      "total": "Total pendiente: {monto}",
+      "sinSincronizar": "{n} venta(s) impaga(s) sin payout materializado (ya incluidas en el total). Sincroniza para verlas por persona y poder liquidarlas.",
+      "sincronizar": "Sincronizar",
+      "syncError": "No se pudieron sincronizar los payouts. Inténtalo de nuevo.",
+      "origen": {
+        "beat": "Beat",
+        "produccion": "Producción"
+      }
     }
   },
   "adminPerfiles": {

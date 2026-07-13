@@ -530,7 +530,10 @@
     "comision": "Commission",
     "neto": "Beatmaker net",
     "errorPagar": "Couldn't mark it as paid. Try again.",
-    "errorCargar": "Couldn't load the beat sales."
+    "errorCargar": "Couldn't load the beat sales.",
+    "backfill": "Sync payouts",
+    "backfillDone": "{count} payout(s) synced.",
+    "backfillError": "Couldn't sync. Try again."
   },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
@@ -886,6 +889,21 @@
       "reasonPlaceholder": "Reason (paid, refinanced…)",
       "cancel": "Cancel",
       "confirm": "Settle"
+    },
+    "payouts": {
+      "title": "Partner payouts (pending)",
+      "intro": "Net amount Only G owes beatmakers/producers for confirmed sales. Already added to the liabilities above. Settled in “Beat sales & payouts”.",
+      "category": "Partner payout",
+      "colOrigin": "Source",
+      "colDate": "Date",
+      "total": "Pending total: {monto}",
+      "sinSincronizar": "{n} unpaid sale(s) without a materialized payout (already included in the total). Sync to see them per person and settle them.",
+      "sincronizar": "Sync",
+      "syncError": "Couldn't sync the payouts. Please try again.",
+      "origen": {
+        "beat": "Beat",
+        "produccion": "Production"
+      }
     }
   },
   "adminPerfiles": {

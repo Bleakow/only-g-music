@@ -17,6 +17,7 @@ import {
   updatePrecios,
 } from "../lib/comercial-config-repo";
 import { AdminPageHeader, adminCard, adminInput, adminLabel } from "@/features/admin/components/admin-ui";
+import { CeoAnalitica } from "./CeoAnalitica";
 
 /** Fracción 0..1 → texto de porcentaje sin ruido flotante (0.2 → "20", 0.205 → "20.5"). */
 function pctText(fraction: number): string {
@@ -275,6 +276,9 @@ export function CeoConfig() {
             </section>
           </>
         )}
+
+        {/* ── Analítica (GA4): enlaces + guía, carga independiente ── */}
+        <CeoAnalitica />
       </div>
     </main>
   );

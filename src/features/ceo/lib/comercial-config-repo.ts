@@ -14,9 +14,12 @@ import { db } from "@/lib/firebase";
 import {
   DEFAULTS,
   esComisionValida,
+  esGa4PropertyId,
   esPrecioValido,
+  parseAnalitica,
   parseComisiones,
   parsePrecios,
+  type AnaliticaConfig,
   type ComercialConfig,
   type Comisiones,
   type Precios,
@@ -24,6 +27,7 @@ import {
 
 const COMISIONES_REF = () => doc(db, "comercialConfig", "comisiones");
 const PRECIOS_REF = () => doc(db, "comercialConfig", "precios");
+const ANALITICA_REF = () => doc(db, "comercialConfig", "analitica");
 
 /**
  * Config completa para el panel CEO: comisiones (internas) + precios, cada una
@@ -83,6 +87,28 @@ export async function updatePrecios(data: Precios): Promise<void> {
       precioPerfil: data.precioPerfil,
       updatedAt: serverTimestamp(),
     },
+    { merge: true },
+  );
+}
+
+/** ID de propiedad GA4 configurado (o `{}` si no se ha puesto). SOLO CEO. */
+export async function getAnalitica(): Promise<AnaliticaConfig> {
+  const snap = await getDoc(ANALITICA_REF());
+  return parseAnalitica(snap.exists() ? snap.data() : undefined);
+}
+
+/**
+ * Guarda el ID de propiedad GA4 (SOLO CEO). Valida que sea numérico. Cadena vacía
+ * = lo limpia (vuelve a enlazar a la home de GA4).
+ */
+export async function updateAnalitica(ga4PropertyId: string): Promise<void> {
+  const id = ga4PropertyId.trim();
+  if (id !== "" && !esGa4PropertyId(id)) {
+    throw new Error("El ID de propiedad GA4 debe ser numérico.");
+  }
+  await setDoc(
+    ANALITICA_REF(),
+    { ga4PropertyId: id, updatedAt: serverTimestamp() },
     { merge: true },
   );
 }

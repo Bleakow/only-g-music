@@ -639,6 +639,46 @@
       "perfil": "Artist profile price"
     }
   },
+  "ceoAnalitica": {
+    "title": "Analytics",
+    "intro": "Google Analytics (GA4) already collects everything automatically —visits, countries, devices, pages, time and events—. Open the reports here; there's no duplicate dashboard inside the app.",
+    "propertyIdLabel": "GA4 property ID",
+    "propertyIdPlaceholder": "123456789",
+    "propertyIdHint": "In GA4 → Admin → Property Settings. It's a number; used to deep-link to your property.",
+    "save": "Save ID",
+    "saved": "Saved.",
+    "openGa4": "Open Google Analytics",
+    "guia": {
+      "title": "Which report answers each question",
+      "visitas": {
+        "q": "Visits and countries",
+        "r": "Reports › Acquisition, and User › Demographics (country)."
+      },
+      "dispositivos": {
+        "q": "Devices",
+        "r": "User › Tech (device, browser, OS)."
+      },
+      "paginas": {
+        "q": "Pages and time on page",
+        "r": "Engagement › Pages and screens (average engagement time)."
+      },
+      "eventos": {
+        "q": "Clicks and events",
+        "r": "Engagement › Events (each event with its count)."
+      },
+      "abandono": {
+        "q": "Exit points",
+        "r": "Explore › Funnel exploration or Paths; and the Retention report."
+      }
+    },
+    "eventos": {
+      "title": "The app's own events",
+      "desc": "Only G sends these funnel events; they appear in GA4's Events report:"
+    },
+    "errors": {
+      "save": "Couldn't save. Check the ID (numbers only)."
+    }
+  },
   "adminEstudios": {
     "backToAdmin": "← Admin panel",
     "title": "Studios",

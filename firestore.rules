@@ -60,6 +60,11 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow write: if isCeo();
     }
+    // Analítica: solo el ID de propiedad GA4 (para enlazar a los informes). Interno.
+    match /comercialConfig/analitica {
+      allow read: if isCeo();
+      allow write: if isCeo();
+    }
 
     // ── Sedes/estudios (override editable: dirección, horario, pago) ──
     // Lectura para autenticados; el admin edita el override. La semilla base

@@ -79,6 +79,26 @@ export function parsePrecios(raw: Record<string, unknown> | undefined): Precios 
   };
 }
 
+/** Config de ANALÍTICA editable por el CEO: el ID de propiedad GA4 (para enlazar
+ *  a los informes de Google Analytics). INTERNA: solo CEO. */
+export interface AnaliticaConfig {
+  /** ID numérico de la propiedad GA4 (p. ej. "123456789"), para el deep-link. */
+  ga4PropertyId?: string;
+}
+
+/** ¿ID de propiedad GA4 válido? Solo dígitos (GA4 usa un id numérico). */
+export function esGa4PropertyId(v: unknown): v is string {
+  return typeof v === "string" && /^[0-9]{4,20}$/.test(v.trim());
+}
+
+/** Normaliza un doc `comercialConfig/analitica` crudo. Solo acepta id numérico. */
+export function parseAnalitica(
+  raw: Record<string, unknown> | undefined,
+): AnaliticaConfig {
+  const id = raw?.ga4PropertyId;
+  return esGa4PropertyId(id) ? { ga4PropertyId: (id as string).trim() } : {};
+}
+
 /**
  * Normaliza un doc `comercialConfig/comisiones` crudo a `Comisiones`.
  * `comisionBeat` cae al default si es inválida; `comisionProductor` solo se

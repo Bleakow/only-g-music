@@ -639,6 +639,46 @@
       "perfil": "Precio del perfil de artista"
     }
   },
+  "ceoAnalitica": {
+    "title": "Analítica",
+    "intro": "Google Analytics (GA4) ya recolecta todo automáticamente —visitas, países, dispositivos, páginas, tiempo y eventos—. Aquí abres los informes; no se duplica un panel dentro de la app.",
+    "propertyIdLabel": "ID de propiedad GA4",
+    "propertyIdPlaceholder": "123456789",
+    "propertyIdHint": "En GA4 → Administrar → Configuración de la propiedad. Es un número; sirve para enlazar directo a tu propiedad.",
+    "save": "Guardar ID",
+    "saved": "Guardado.",
+    "openGa4": "Abrir Google Analytics",
+    "guia": {
+      "title": "Qué informe responde cada pregunta",
+      "visitas": {
+        "q": "Visitas y países",
+        "r": "Informes › Adquisición, y Usuario › Datos demográficos (país)."
+      },
+      "dispositivos": {
+        "q": "Dispositivos",
+        "r": "Usuario › Tecnología (dispositivo, navegador, sistema)."
+      },
+      "paginas": {
+        "q": "Páginas y tiempo de permanencia",
+        "r": "Interacción › Páginas y pantallas (tiempo de interacción medio)."
+      },
+      "eventos": {
+        "q": "Clics y eventos",
+        "r": "Interacción › Eventos (cada evento con su recuento)."
+      },
+      "abandono": {
+        "q": "Puntos de abandono",
+        "r": "Explorar › Exploración de embudo o Rutas; y el informe de Retención."
+      }
+    },
+    "eventos": {
+      "title": "Eventos propios de la app",
+      "desc": "Estos eventos de embudo los envía Only G y aparecen en el informe Eventos de GA4:"
+    },
+    "errors": {
+      "save": "No se pudo guardar. Revisa el ID (solo números)."
+    }
+  },
   "adminEstudios": {
     "backToAdmin": "← Panel admin",
     "title": "Estudios",

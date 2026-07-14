@@ -67,8 +67,21 @@
     "console": "Console",
     "myBeats": "My beats",
     "availability": "Availability",
+    "myPayouts": "My payouts",
     "settings": "Settings",
     "logout": "Log out"
+  },
+  "misPagos": {
+    "eyebrow": "Your money",
+    "title": "My payouts",
+    "intro": "What Only G owes you for your sales and work. The transfer is done manually by the team; here you see the status of each payment.",
+    "totalPendiente": "Pending payout",
+    "totalHint": "Total not yet transferred to you.",
+    "pendientes": "Pending",
+    "sinPendientes": "You have no pending payouts right now.",
+    "historial": "History",
+    "error": "Couldn't load your payouts. Please try again.",
+    "pagadoEl": "Paid on {fecha} · {metodo}"
   },
   "login": {
     "resetTitle": "Reset password",

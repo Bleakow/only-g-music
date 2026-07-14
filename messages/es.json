@@ -67,8 +67,21 @@
     "console": "Consola",
     "myBeats": "Mis beats",
     "availability": "Disponibilidad",
+    "myPayouts": "Mis pagos",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
+  },
+  "misPagos": {
+    "eyebrow": "Tu dinero",
+    "title": "Mis pagos",
+    "intro": "Lo que Only G te debe por tus ventas y trabajos. La transferencia la hace el equipo manualmente; aquí ves el estado de cada pago.",
+    "totalPendiente": "Pendiente de cobro",
+    "totalHint": "Suma de lo que aún no se te ha transferido.",
+    "pendientes": "Pendientes",
+    "sinPendientes": "No tienes pagos pendientes ahora mismo.",
+    "historial": "Historial",
+    "error": "No se pudieron cargar tus pagos. Inténtalo de nuevo.",
+    "pagadoEl": "Pagado el {fecha} · {metodo}"
   },
   "login": {
     "resetTitle": "Recuperar contraseña",

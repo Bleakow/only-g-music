@@ -27,9 +27,9 @@ import {
   photoTransformCss,
   premiumEstado,
 } from "@/domain/artist-profile";
-import { PRECIO_PERFIL } from "@/domain/profile-order";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
 import type { MetodoPago } from "@/domain/payment-method";
 import {
@@ -160,6 +160,7 @@ export function ProfileBuilder({
 } = {}) {
   const t = useTranslations();
   const { user, account, refreshAccount } = useAuth();
+  const { precioPerfil } = usePrecios();
   const slug = adminMode ? (slugOverride ?? "") : (account?.artistSlug ?? "");
 
   const [showPagoPicker, setShowPagoPicker] = useState(false);
@@ -605,7 +606,7 @@ export function ProfileBuilder({
         concepto: "premium",
         ref: { kind: "premium", id: slug },
         metodo,
-        monto: PRECIO_PERFIL,
+        monto: precioPerfil,
       });
       openConversation(id);
     } catch (e) {

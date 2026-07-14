@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { Beat } from "@/domain/beat";
-import { PRECIO_BEAT } from "@/domain/beat";
 import { formatCOP } from "@/domain/service";
 import type { MetodoPago } from "@/domain/payment-method";
+import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { listBeats } from "@/features/beats/lib/beats-repo";
 import { comprarBeat } from "@/features/beats/lib/beat-sales-repo";
 import { ContactBeatmakerButton } from "@/features/beats/components/ContactBeatmakerButton";
@@ -199,6 +199,7 @@ function BeatCard({
 }) {
   const t = useTranslations();
   const { user } = useAuth();
+  const { precioBeat } = usePrecios();
   const router = useRouter();
   const [showPicker, setShowPicker] = useState(false);
   const [comprando, setComprando] = useState(false);
@@ -221,7 +222,7 @@ function BeatCard({
     setComprando(true);
     setError(false);
     try {
-      const conversationId = await comprarBeat(user.uid, beat, metodo);
+      const conversationId = await comprarBeat(user.uid, beat, metodo, precioBeat);
       openConversation(conversationId);
     } catch (err) {
       console.error("[beats-catalog] comprar:", err);
@@ -303,7 +304,7 @@ function BeatCard({
 
         <div className="mt-3 flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-white">
-            {formatCOP(PRECIO_BEAT)}
+            {formatCOP(precioBeat)}
           </span>
           {esPropio ? (
             <span

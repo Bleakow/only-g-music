@@ -9,6 +9,8 @@ import type { QuoteRequest } from "@/domain/quote";
 import type { Reserva } from "@/domain/booking";
 import { isReservaActiva } from "@/domain/booking";
 import { formatCOP } from "@/domain/service";
+import { esCeo } from "@/domain/user";
+import { useAuth } from "@/features/auth/components/AuthProvider";
 import { badgeClass, fechaCorta } from "@/features/solicitudes/lib/estados";
 import { glassSurface, GlassSheen } from "@/components/ui/glass";
 import {
@@ -96,6 +98,18 @@ const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
   },
 ];
 
+/**
+ * Acceso EXCLUSIVO del CEO (config comercial: comisiones + precios). No va en
+ * `QUICK` porque solo se muestra si la cuenta tiene rol `ceo`. Reutiliza
+ * FinanceIcon (es dinero/config), como el resto del panel reutiliza iconos.
+ */
+const QUICK_CEO = {
+  key: "ceo",
+  sub: "quickCeoSub",
+  href: "/admin/ceo",
+  Icon: FinanceIcon as Icon,
+};
+
 function StatCard({
   Icon,
   value,
@@ -133,6 +147,10 @@ function StatCard({
 export function AdminDashboard() {
   const t = useTranslations();
   const locale = useLocale();
+  const { account } = useAuth();
+
+  // El acceso a la herramienta del CEO solo aparece para cuentas con rol `ceo`.
+  const quickItems = esCeo(account) ? [...QUICK, QUICK_CEO] : QUICK;
 
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [reservas, setReservas] = useState<Reserva[]>([]);
@@ -323,7 +341,7 @@ export function AdminDashboard() {
                     {t("adminDashboard.quickTitle")}
                   </h2>
                   <div className="mt-4 grid grid-cols-2 gap-2.5">
-                    {QUICK.map(({ key, sub, href, Icon }) => (
+                    {quickItems.map(({ key, sub, href, Icon }) => (
                       <Link
                         key={key}
                         href={href}

@@ -50,6 +50,7 @@
     "cliente": "Client",
     "productor": "Producer",
     "admin": "Admin",
+    "ceo": "CEO",
     "artista": "Singer",
     "beatmaker": "Beatmaker",
     "modelo": "Model",
@@ -453,6 +454,7 @@
     "quickRolesSub": "Grant and revoke permissions",
     "quickConveniosSub": "Producer and beatmaker requests",
     "quickBeatsSub": "Beatmaker sales & payouts",
+    "quickCeoSub": "Commissions & prices",
     "bookingsActive": "Active bookings",
     "viewAll": "View all",
     "activityTitle": "Recent activity",
@@ -474,6 +476,7 @@
     "roles": "Roles",
     "convenios": "Agreements",
     "beats": "Beats",
+    "ceo": "CEO",
     "roleAdmin": "Administrator",
     "helpTitle": "Need help?",
     "helpText": "Support available 24/7."
@@ -605,6 +608,36 @@
     "save": "Save",
     "saved": "Saved ✓",
     "errorSave": "Could not save. Please try again."
+  },
+  "ceoConfig": {
+    "eyebrow": "CEO only",
+    "title": "Commercial settings",
+    "intro": "Platform commissions and prices. Both the server and the client read these values.",
+    "warning": "Changes only affect NEW sales and charges. Anything already charged stays frozen at the price in effect at that time.",
+    "save": "Save",
+    "saved": "Saved ✓",
+    "errors": {
+      "load": "Couldn't load the settings.",
+      "save": "Couldn't save. Please try again.",
+      "comisionRango": "The commission must be between 0% and 100%.",
+      "precioRango": "The price must be a whole number greater than 0."
+    },
+    "comisiones": {
+      "title": "Commissions",
+      "desc": "Internal: only you (CEO) can see them. This is the margin Only G keeps.",
+      "beat": "Beat commission",
+      "beatHint": "Percentage the platform keeps from each beat sale.",
+      "productor": "Producer commission",
+      "productorHint": "Not set yet. It will be used once producer payouts are automated.",
+      "sinDefinir": "Not set"
+    },
+    "precios": {
+      "title": "Prices",
+      "desc": "The buyer sees these. They must match what is charged.",
+      "beat": "Beat price",
+      "membresia": "Membership price (monthly)",
+      "perfil": "Artist profile price"
+    }
   },
   "adminEstudios": {
     "backToAdmin": "← Admin panel",
@@ -1580,6 +1613,8 @@
     "beatsTitle": "Beat sales & payouts",
     "payoutsTitle": "Payables",
     "paymentsConfigTitle": "Payment details",
+    "ceoTitle": "Commercial settings",
+    "ceoMessage": "This tool is for the CEO only.",
     "estudiosTitle": "Studios",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

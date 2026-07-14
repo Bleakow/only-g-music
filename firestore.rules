@@ -6,10 +6,21 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ¿El usuario actual tiene rol admin? (lee su doc de usuario).
+    // ¿El usuario actual tiene rol admin? (lee su doc de usuario). El rol `ceo`
+    // HEREDA admin: es la super-cuenta del negocio (⊇ admin), así que pasa todos
+    // los gates de admin. Por convención un CEO se aprovisiona con ['admin','ceo'],
+    // pero incluir 'ceo' aquí lo hace robusto aunque el doc solo trajera 'ceo'.
     function isAdmin() {
       return request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'ceo']);
+    }
+
+    // ¿El usuario actual es CEO? Gatea la config comercial INTERNA (comisiones) y
+    // la escritura de precios. El rol `ceo` NO se otorga desde el cliente ni desde
+    // el panel admin (adminSetRoles lo excluye): solo se asigna en consola.
+    function isCeo() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['ceo']);
     }
 
     // ¿El slug de perfil dado EXISTE y pertenece al usuario actual? Para atribuir
@@ -30,17 +41,24 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ── Config comercial (precios/comisiones INTERNAS) ───────────────
-    // Server-only (Admin SDK). A DIFERENCIA de config/{doc} (legible por
-    // cualquier autenticado), aquí viven precio y COMISIÓN de beat, que son
-    // internas: nadie las lee ni escribe desde el cliente. El servidor las lee
-    // con FALLBACK a las constantes del dominio (`getComercial` en functions),
-    // así que NO hace falta sembrar el doc `comercialConfig/actual`. El futuro
-    // rol `ceo` heredará aquí el gate de escritura (isCeo()); no se añade ahora
-    // porque el rol todavía no existe.
-    match /comercialConfig/{doc} {
-      allow read: if false;
-      allow write: if false;
+    // ── Config comercial (partida por VISIBILIDAD de lectura) ────────
+    // Firestore gatea la lectura a nivel de DOC, así que el config vive en dos
+    // documentos separados, no en uno solo:
+    //   - `comercialConfig/comisiones` → INTERNAS (comisionBeat, comisionProductor).
+    //     Solo el CEO lee/escribe: son el margen de la empresa, no las ve nadie más.
+    //   - `comercialConfig/precios` → precioBeat/precioMembresia/precioPerfil.
+    //     Legibles por cualquier AUTENTICADO (el comprador debe VER lo que se le
+    //     cobrará, para que display == cobro), pero solo el CEO los escribe.
+    // El SERVIDOR (Cloud Functions, Admin SDK) lee AMBOS ignorando estas reglas,
+    // con FALLBACK a las constantes del dominio (`getComercial`), así que NO hace
+    // falta sembrar los docs: si no existen, rige el default.
+    match /comercialConfig/comisiones {
+      allow read: if isCeo();
+      allow write: if isCeo();
+    }
+    match /comercialConfig/precios {
+      allow read: if request.auth != null;
+      allow write: if isCeo();
     }
 
     // ── Sedes/estudios (override editable: dirección, horario, pago) ──

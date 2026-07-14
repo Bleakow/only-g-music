@@ -5,7 +5,7 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
-import { PRECIO_PERFIL } from "@/domain/profile-order";
+import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { insigniaDePuntos } from "@/domain/artist-profile";
 import type { MetodoPago } from "@/domain/payment-method";
 
@@ -30,6 +30,7 @@ export function MembershipPayButton({
   className?: string;
 }) {
   const [showPicker, setShowPicker] = useState(false);
+  const { precioPerfil } = usePrecios();
 
   async function iniciarPago(metodo: MetodoPago) {
     setShowPicker(false);
@@ -39,7 +40,7 @@ export function MembershipPayButton({
         concepto: "premium",
         ref: { kind: "premium", id: slug },
         metodo,
-        monto: PRECIO_PERFIL,
+        monto: precioPerfil,
       });
       openConversation(id);
     } catch (e) {

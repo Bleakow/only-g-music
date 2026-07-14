@@ -356,6 +356,19 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   }
   const slug = refId;
 
+  // El ingreso se factura por lo que el comprador VIO y TRANSFIRIÓ (conv.pago.monto,
+  // congelado al crear el chat), NO por el `precioPerfil` de config vigente al
+  // confirmar: si el CEO lo cambió con el pago EN VUELO, el asiento debe reflejar
+  // el dinero REALMENTE ingresado (y así el asiento coincide con el mensaje de
+  // confirmación, que ya usa conv.pago.monto). Config solo como fallback.
+  const { precioPerfil } = await getComercial();
+  const montoIngresado =
+    typeof conv.pago?.monto === "number" &&
+    Number.isInteger(conv.pago.monto) &&
+    conv.pago.monto > 0
+      ? conv.pago.monto
+      : precioPerfil;
+
   const now = Date.now();
   const expira = new Date(now);
   expira.setMonth(expira.getMonth() + PREMIUM_DURACION_MESES);
@@ -382,7 +395,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   batch.set(convRef.collection("messages").doc(), {
     from: "sistema",
     tipo: "pago_confirmado",
-    monto: conv.pago?.monto ?? PRECIO_PERFIL,
+    monto: montoIngresado,
     createdAt: FieldValue.serverTimestamp(),
   });
   // Asiento contable del ingreso (lo lee /admin/finanzas vía `transactions`).
@@ -390,7 +403,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
     uid: payerUid ?? "",
     clientName,
     concepto: "Premium",
-    amount: PRECIO_PERFIL,
+    amount: montoIngresado,
     fecha: now,
     estado: "confirmada",
     fuente: "premium",
@@ -454,33 +467,51 @@ async function confirmarPagoReserva(
 }
 
 /**
- * Config comercial server-authoritative: precio/comisión de beat leídos de
- * `comercialConfig/actual` (colección server-only — ver firestore.rules) con
- * FALLBACK a las constantes del dominio. NO hace falta sembrar el doc: si no
- * existe (o el campo no es número), rige la constante. Así el negocio puede
- * ajustar la comisión sin desplegar, sin exponerla al cliente (a diferencia de
- * `config/{doc}`, legible por cualquier autenticado).
+ * Config comercial server-authoritative: precios y comisiones leídos de DOS docs
+ * (`comercialConfig/comisiones` + `comercialConfig/precios`, partidos por
+ * visibilidad de lectura — ver firestore.rules) con FALLBACK a las constantes del
+ * dominio. NO hace falta sembrar los docs: si no existen (o un campo no es
+ * número válido), rige la constante. Así el CEO ajusta comisión/precio sin
+ * desplegar, y el server sigue siendo la última palabra sobre el dinero.
+ *
+ * Validación de DOMINIO (última línea de defensa; el panel CEO ya valida en
+ * cliente): precio ENTERO > 0; comisión en [0,1]. Un config malformado NO puede
+ * producir un neto negativo (comisión > 1) ni montos fraccionarios: fuera de
+ * rango se ignora y rige el default. `comisionProductor` no tiene default (el
+ * dueño la definirá): si no es válida, se devuelve `null` (aún no la usa nadie).
  */
 async function getComercial(): Promise<{
   precioBeat: number;
   comisionBeat: number;
+  precioMembresia: number;
+  precioPerfil: number;
+  comisionProductor: number | null;
 }> {
-  const c = (await db.doc("comercialConfig/actual").get()).data() ?? {};
-  // Validación de DOMINIO (última línea de defensa server-side; el futuro panel
-  // CEO escribirá aquí): el precio debe ser un ENTERO > 0 y la comisión estar en
-  // [0,1]. Un config malformado NO puede producir un neto negativo (comisión>1)
-  // ni montos fraccionarios. Fuera de rango → se ignora y rige la constante.
-  const precioBeat =
-    typeof c.precioBeat === "number" && c.precioBeat > 0
-      ? Math.round(c.precioBeat)
-      : PRECIO_BEAT;
-  const comisionBeat =
-    typeof c.comisionBeat === "number" &&
-    c.comisionBeat >= 0 &&
-    c.comisionBeat <= 1
-      ? c.comisionBeat
-      : COMISION_BEAT;
-  return { precioBeat, comisionBeat };
+  const [comSnap, preSnap] = await Promise.all([
+    db.doc("comercialConfig/comisiones").get(),
+    db.doc("comercialConfig/precios").get(),
+  ]);
+  const com = comSnap.data() ?? {};
+  const pre = preSnap.data() ?? {};
+
+  const precio = (v: unknown, def: number): number =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : def;
+  const comision = (v: unknown, def: number): number =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : def;
+
+  return {
+    precioBeat: precio(pre.precioBeat, PRECIO_BEAT),
+    comisionBeat: comision(com.comisionBeat, COMISION_BEAT),
+    precioMembresia: precio(pre.precioMembresia, PRECIO_MEMBRESIA),
+    precioPerfil: precio(pre.precioPerfil, PRECIO_PERFIL),
+    comisionProductor:
+      typeof com.comisionProductor === "number" &&
+      Number.isFinite(com.comisionProductor) &&
+      com.comisionProductor >= 0 &&
+      com.comisionProductor <= 1
+        ? com.comisionProductor
+        : null,
+  };
 }
 
 /**
@@ -533,11 +564,20 @@ async function confirmarPagoBeat(
   const beatmakerNombre = (beat.beatmakerNombre as string | undefined) ?? null;
   const beatTitulo = (beat.titulo as string | undefined) ?? "";
 
-  // Config-driven: precio/comisión de `comercialConfig/actual` con fallback a las
-  // constantes. El histórico no muta (precio/comision/neto quedan congelados en
-  // beatSales/payouts con el valor vigente AL confirmar).
+  // El precio autoritativo es lo que el comprador VIO y TRANSFIRIÓ (conv.pago.monto,
+  // congelado al crear el chat), NO el precio de config vigente al confirmar: si el
+  // CEO cambió `precioBeat` con la venta EN VUELO, la comisión y el neto deben
+  // calcularse sobre el dinero REALMENTE recibido (si no, se le pagaría al beatmaker
+  // un neto que no cuadra con lo ingresado). El config solo rige como fallback si el
+  // monto del chat no es válido. La comisión % sí sale de config (el reparto vigente).
   const { precioBeat, comisionBeat } = await getComercial();
-  const precio = precioBeat;
+  const montoPagado = conv.pago?.monto;
+  const precio =
+    typeof montoPagado === "number" &&
+    Number.isInteger(montoPagado) &&
+    montoPagado > 0
+      ? montoPagado
+      : precioBeat;
   const comision = Math.round(precio * comisionBeat);
   const neto = precio - comision;
 
@@ -1043,11 +1083,18 @@ export const onBookingCreatedAmountGuard = onDocumentCreated(
     const data = event.data?.data();
     if (!data) return;
 
-    if (data.tipo === "perfil_artista" && data.amount !== PRECIO_PERFIL) {
-      logger.warn(
-        `Monto de perfil corregido en ${event.params.id}: ${data.amount} → ${PRECIO_PERFIL}`,
-      );
-      await event.data!.ref.update({ amount: PRECIO_PERFIL });
+    // Config-driven y server-authoritative: el monto del perfil lo fija el
+    // servidor al `precioPerfil` vigente (fallback a la constante). Si el cliente
+    // creó la reserva con otro valor, se corrige. Solo se lee el config para
+    // reservas de perfil (no en cada reserva de estudio).
+    if (data.tipo === "perfil_artista") {
+      const { precioPerfil } = await getComercial();
+      if (data.amount !== precioPerfil) {
+        logger.warn(
+          `Monto de perfil corregido en ${event.params.id}: ${data.amount} → ${precioPerfil}`,
+        );
+        await event.data!.ref.update({ amount: precioPerfil });
+      }
     }
   },
 );
@@ -1138,7 +1185,10 @@ export const autoStartSessions = onSchedule(
 async function assertAdmin(uid: string | undefined): Promise<void> {
   if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
   const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
-  if (!Array.isArray(roles) || !roles.includes("admin")) {
+  // El CEO ⊇ admin también server-side (consistente con `isAdmin()` de las reglas,
+  // que usa hasAny(['admin','ceo'])): así un CEO pasa los gates admin aunque un
+  // admin le hubiera quitado el rol 'admin' explícito, y puede autorrecuperarse.
+  if (!Array.isArray(roles) || !(roles.includes("admin") || roles.includes("ceo"))) {
     throw new HttpsError("permission-denied", "Solo administradores.");
   }
 }
@@ -1368,6 +1418,9 @@ export const activarMembresia = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("not-found", "Perfil inexistente.");
   }
   const prof = profSnap.data();
+  // Config-driven: la membresía se factura al `precioMembresia` vigente (fallback
+  // a la constante). Solo aplica al asiento del PAGO (la cortesía no factura).
+  const { precioMembresia } = await getComercial();
   const now = Date.now();
   const expira = new Date(now);
   expira.setMonth(expira.getMonth() + MEMBRESIA_DURACION_MESES);
@@ -1396,7 +1449,7 @@ export const activarMembresia = onCall({ region: REGION }, async (request) => {
       uid: payerUid ?? "",
       clientName,
       concepto: "Membresia",
-      amount: PRECIO_MEMBRESIA,
+      amount: precioMembresia,
       fecha: now,
       estado: "confirmada",
       fuente: "membresia",
@@ -1429,6 +1482,10 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
   if (!Array.isArray(rawRoles)) {
     throw new HttpsError("invalid-argument", "Roles invalidos.");
   }
+  // INVARIANTE de seguridad: `ceo` NO está en la whitelist → un admin NO puede
+  // OTORGARLO desde este panel (se asigna solo en consola/Admin SDK). El rol
+  // `ceo` es la super-cuenta (⊇ admin) que edita comisiones/precios; dejar que un
+  // admin lo concediera sería una escalada de privilegios.
   const VALID = [
     "cliente",
     "productor",
@@ -1457,6 +1514,17 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("not-found", "Usuario inexistente.");
   }
   const user = userSnap.data();
+  // PRESERVA `ceo` Y `admin` si el destinatario ya era CEO: el CEO es la super-cuenta
+  // (⊇ admin) y NO se le puede degradar desde el panel (solo consola). Sin re-inyectar
+  // `admin`, un admin podría dejar al CEO en ['ceo'] y —como el panel /admin se gatea
+  // por 'admin' en el cliente— dejarlo FUERA de su propia herramienta (un subordinado
+  // degradando al superior). `ceo` no está en la whitelist, así que el filtro lo
+  // habría descartado; lo re-inyectamos junto con `admin`.
+  const prevRoles = Array.isArray(user?.roles) ? (user!.roles as string[]) : [];
+  if (prevRoles.includes("ceo")) {
+    if (!roles.includes("ceo")) roles.push("ceo");
+    if (!roles.includes("admin")) roles.push("admin");
+  }
   const batch = db.batch();
   batch.update(userRef, { roles });
   // Sincroniza el perfil vinculado (si existe): disciplines = roles de talento; socio = beatmaker/productor.

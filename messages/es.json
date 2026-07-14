@@ -50,6 +50,7 @@
     "cliente": "Cliente",
     "productor": "Productor",
     "admin": "Admin",
+    "ceo": "CEO",
     "artista": "Cantante",
     "beatmaker": "Beatmaker",
     "modelo": "Modelo",
@@ -453,6 +454,7 @@
     "quickRolesSub": "Otorga y quita permisos",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
     "quickBeatsSub": "Ventas y pagos de beatmakers",
+    "quickCeoSub": "Comisiones y precios",
     "bookingsActive": "Reservas activas",
     "viewAll": "Ver todas",
     "activityTitle": "Actividad reciente",
@@ -474,6 +476,7 @@
     "roles": "Roles",
     "convenios": "Convenios",
     "beats": "Beats",
+    "ceo": "CEO",
     "roleAdmin": "Administrador",
     "helpTitle": "¿Necesitas ayuda?",
     "helpText": "Soporte disponible 24/7 para ti."
@@ -605,6 +608,36 @@
     "save": "Guardar",
     "saved": "Guardado ✓",
     "errorSave": "No se pudo guardar. Inténtalo de nuevo."
+  },
+  "ceoConfig": {
+    "eyebrow": "Solo CEO",
+    "title": "Configuración comercial",
+    "intro": "Comisiones y precios de la plataforma. El servidor y el cliente leen estos valores.",
+    "warning": "Los cambios solo afectan a las ventas y cobros NUEVOS. Lo ya cobrado queda congelado con el precio vigente en ese momento.",
+    "save": "Guardar",
+    "saved": "Guardado ✓",
+    "errors": {
+      "load": "No se pudo cargar la configuración.",
+      "save": "No se pudo guardar. Inténtalo de nuevo.",
+      "comisionRango": "La comisión debe estar entre 0 % y 100 %.",
+      "precioRango": "El precio debe ser un número entero mayor que 0."
+    },
+    "comisiones": {
+      "title": "Comisiones",
+      "desc": "Internas: solo tú (CEO) las ves. Es el margen que retiene Only G.",
+      "beat": "Comisión por beat",
+      "beatHint": "Porcentaje que se queda la plataforma de cada venta de beat.",
+      "productor": "Comisión de productor",
+      "productorHint": "Aún sin definir. Se usará cuando se automatice el pago a productores.",
+      "sinDefinir": "Sin definir"
+    },
+    "precios": {
+      "title": "Precios",
+      "desc": "Los ve el comprador. Deben coincidir con lo que se cobra.",
+      "beat": "Precio por beat",
+      "membresia": "Precio de membresía (mensual)",
+      "perfil": "Precio del perfil de artista"
+    }
   },
   "adminEstudios": {
     "backToAdmin": "← Panel admin",
@@ -1580,6 +1613,8 @@
     "beatsTitle": "Ventas y pagos de beats",
     "payoutsTitle": "Cuentas por pagar",
     "paymentsConfigTitle": "Datos de pago",
+    "ceoTitle": "Configuración comercial",
+    "ceoMessage": "Esta herramienta es solo para el CEO.",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

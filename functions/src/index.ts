@@ -749,6 +749,208 @@ export const backfillPayouts = onCall({ region: REGION }, async (request) => {
   return { count };
 });
 
+/** Métodos con los que Only G le paga a un socio (sync con `MetodoPagoSocio`). */
+type MetodoLiquidacion = "banco" | "nequi" | "efectivo";
+
+/** Valida el método de liquidación (viene del cliente, no confiar). */
+function esMetodoLiquidacion(v: unknown): v is MetodoLiquidacion {
+  return v === "banco" || v === "nequi" || v === "efectivo";
+}
+
+/**
+ * Deriva el id de la VENTA (`beatSales/{convId}`) de un payout de beat, cuyo id es
+ * `beat_{convId}`. `refId` NO sirve aquí: guarda el `beatId`, no el `convId`. Solo
+ * los payouts de origen 'beat' tienen venta gemela; `null` en cualquier otro caso.
+ */
+function beatSaleIdDePayout(payoutId: string, origen: unknown): string | null {
+  return origen === "beat" && payoutId.startsWith("beat_")
+    ? payoutId.slice("beat_".length)
+    : null;
+}
+
+/** Campos de LIQUIDACIÓN que se estampan sobre un payout al marcarlo pagado. */
+function camposLiquidacion(
+  metodo: MetodoLiquidacion,
+  comprobanteUrl: string | undefined,
+  adminUid: string,
+  now: number,
+): Record<string, unknown> {
+  return {
+    estado: "pagado",
+    pagadoAt: now,
+    metodo,
+    ...(comprobanteUrl ? { comprobanteUrl } : {}),
+    registradoPor: adminUid,
+  };
+}
+
+/**
+ * Registra la LIQUIDACIÓN de UN payout (SOLO admin): marca `payouts/{id}` como
+ * pagado con método + comprobante opcional, y —si es un payout de beat— sincroniza
+ * `beatSales.paidOut=true` para no desincronizar las DOS representaciones ni la
+ * reconciliación del Balance (Fase 2 suma el neto de ventas impagas SIN payout; si
+ * el payout quedara pagado pero la venta impaga, el panel viejo mentiría).
+ * Server-authoritative: `payouts` no admite escritura desde el cliente.
+ *
+ * Idempotente: no-op (`{ ok: true }`) si el payout ya está pagado — un doble clic o
+ * un retry no re-notifican ni re-escriben. Casos borde: payout inexistente →
+ * `not-found`; método inválido/comprobante no-string → `invalid-argument`.
+ * La transferencia del dinero es MANUAL (fuera de la app); esto deja constancia.
+ * Datos de pago SENSIBLES: nunca se loguean.
+ */
+export const registrarPagoPayout = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const adminUid = request.auth!.uid;
+  const { payoutId, metodo, comprobanteUrl } = request.data ?? {};
+
+  if (typeof payoutId !== "string" || !payoutId) {
+    throw new HttpsError("invalid-argument", "Falta el payout.");
+  }
+  if (!esMetodoLiquidacion(metodo)) {
+    throw new HttpsError("invalid-argument", "Método de pago inválido.");
+  }
+  if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
+    throw new HttpsError("invalid-argument", "Comprobante inválido.");
+  }
+
+  const payoutRef = db.doc(`payouts/${payoutId}`);
+  const now = Date.now();
+
+  // El flip pendiente→pagado va en TRANSACCIÓN: bajo concurrencia (dos pestañas
+  // del admin, dos admins, o un retry solapado) solo UNA invocación gana el flip;
+  // las demás releen 'pagado' dentro de la txn y salen sin re-escribir ni
+  // re-notificar (evita avisos 'payout-pagado' DUPLICADOS al socio). Devuelve los
+  // datos para notificar SOLO si realmente liquidó (null = no-op idempotente).
+  const res = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(payoutRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Payout inexistente.");
+    const payout = snap.data() as FirebaseFirestore.DocumentData;
+    if (payout.estado === "pagado") return null; // ya liquidado → no-op
+
+    // Representación GEMELA (solo beats): marca la venta como pagada. Lectura
+    // ANTES de cualquier escritura (requisito de las transacciones).
+    const saleId = beatSaleIdDePayout(payoutId, payout.origen);
+    const saleRef = saleId ? db.doc(`beatSales/${saleId}`) : null;
+    const saleExists = saleRef ? (await tx.get(saleRef)).exists : false;
+
+    tx.update(payoutRef, camposLiquidacion(metodo, comprobanteUrl, adminUid, now));
+    if (saleRef && saleExists) {
+      tx.update(saleRef, { paidOut: true, paidOutAt: now });
+    }
+    return {
+      acreedorUid: payout.acreedorUid as string | undefined,
+      monto: typeof payout.monto === "number" ? payout.monto : 0,
+      origen: String(payout.origen),
+    };
+  });
+
+  if (!res) return { ok: true }; // no-op idempotente (ya estaba pagado)
+  logger.info(`Payout liquidado: ${payoutId} (${res.origen})`);
+  // Aviso al ACREEDOR ("te pagamos"). Best-effort; nunca loguear datos de pago.
+  await notify(res.acreedorUid, "payout-pagado", { monto: fmtCOP(res.monto) }, "/cuenta");
+  return { ok: true };
+});
+
+/**
+ * "Pagar todo": liquida en LOTE todos los payouts de una persona (SOLO admin) con
+ * el MISMO método + comprobante. Idempotente por elemento (ignora inexistentes y
+ * los ya pagados), atómico (un solo batch) y con la MISMA sincronización de
+ * `beatSales.paidOut` que la versión unitaria. Un único batch basta: "pagar todo"
+ * de UNA persona está muy por debajo del límite de 500 ops. Notifica UNA vez por
+ * acreedor con el TOTAL liquidado. Devuelve cuántos payouts se liquidaron.
+ */
+export const registrarPagosPayout = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const adminUid = request.auth!.uid;
+    const { payoutIds, metodo, comprobanteUrl } = request.data ?? {};
+
+    if (
+      !Array.isArray(payoutIds) ||
+      payoutIds.length === 0 ||
+      !payoutIds.every((id) => typeof id === "string" && id)
+    ) {
+      throw new HttpsError("invalid-argument", "Falta la lista de payouts.");
+    }
+    if (!esMetodoLiquidacion(metodo)) {
+      throw new HttpsError("invalid-argument", "Método de pago inválido.");
+    }
+    if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
+      throw new HttpsError("invalid-argument", "Comprobante inválido.");
+    }
+
+    // Dedup por si el cliente repite ids.
+    const ids = Array.from(new Set(payoutIds as string[]));
+    const now = Date.now();
+
+    // TRANSACCIÓN: el flip de cada payout es atómico. Bajo "pagar todo"
+    // concurrente (dos pestañas/admins) solo una invocación liquida los
+    // pendientes; la otra los relee 'pagado' y no vuelve a notificar el total
+    // (evita el aviso duplicado al socio). Reads (payouts + beatSales gemelas)
+    // ANTES de writes, como exige Firestore. Notifica UNA vez por acreedor con
+    // el total que ESTA invocación liquidó realmente.
+    const { count, totals } = await db.runTransaction(async (tx) => {
+      const payoutRefs = ids.map((id) => db.doc(`payouts/${id}`));
+      const snaps = await tx.getAll(...payoutRefs);
+      const pend = snaps
+        .map((snap, i) => ({ id: ids[i], ref: payoutRefs[i], snap }))
+        .filter(
+          (x) =>
+            x.snap.exists &&
+            (x.snap.data() as FirebaseFirestore.DocumentData).estado !==
+              "pagado",
+        )
+        .map((x) => ({
+          id: x.id,
+          ref: x.ref,
+          payout: x.snap.data() as FirebaseFirestore.DocumentData,
+        }));
+
+      // beatSales gemelas (solo beats) — leer ANTES de escribir.
+      const saleRefs = pend.map((x) => {
+        const sid = beatSaleIdDePayout(x.id, x.payout.origen);
+        return sid ? db.doc(`beatSales/${sid}`) : null;
+      });
+      const nonNull = saleRefs.filter(
+        (r): r is FirebaseFirestore.DocumentReference => r !== null,
+      );
+      const saleSnaps = nonNull.length ? await tx.getAll(...nonNull) : [];
+      const saleExiste = new Map(saleSnaps.map((s) => [s.ref.path, s.exists]));
+
+      const totalPorAcreedor = new Map<string, number>();
+      pend.forEach((x, i) => {
+        tx.update(
+          x.ref,
+          camposLiquidacion(metodo, comprobanteUrl, adminUid, now),
+        );
+        const sr = saleRefs[i];
+        if (sr && saleExiste.get(sr.path)) {
+          tx.update(sr, { paidOut: true, paidOutAt: now });
+        }
+        const acreedor =
+          typeof x.payout.acreedorUid === "string" ? x.payout.acreedorUid : "";
+        const monto = typeof x.payout.monto === "number" ? x.payout.monto : 0;
+        if (acreedor) {
+          totalPorAcreedor.set(
+            acreedor,
+            (totalPorAcreedor.get(acreedor) ?? 0) + monto,
+          );
+        }
+      });
+      return { count: pend.length, totals: Array.from(totalPorAcreedor) };
+    });
+
+    logger.info(`Payouts liquidados en lote: ${count}`);
+    await Promise.all(
+      totals.map(([uid, total]) =>
+        notify(uid, "payout-pagado", { monto: fmtCOP(total) }, "/cuenta"),
+      ),
+    );
+    return { count };
+  },
+);
+
 /**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
  * cliente lo creó con otro valor, lo corrige server-side. Para reservas de

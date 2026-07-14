@@ -535,6 +535,43 @@
     "backfillDone": "{count} payout(s) sincronizados.",
     "backfillError": "No se pudo sincronizar. Inténtalo de nuevo."
   },
+  "adminPayouts": {
+    "title": "Cuentas por pagar",
+    "intro": "Liquida lo que Only G le debe a cada socio. Aquí ves sus datos de pago y registras el pago con su comprobante.",
+    "pendientes": "Por pagar",
+    "sinPendientes": "No hay nada pendiente por pagar.",
+    "sinPayouts": "Aún no hay cuentas por pagar.",
+    "totalPendiente": "Total por pagar: {monto}",
+    "deudaPersona": "Por pagar: {monto}",
+    "datosTitulo": "Datos de pago",
+    "sinDatos": "Este socio aún no registró sus datos de pago.",
+    "marcarPagado": "Marcar pagado",
+    "pagarTodo": "Pagar todo",
+    "verPagados": "Ver liquidados ({count})",
+    "ocultarPagados": "Ocultar liquidados",
+    "verComprobante": "Ver comprobante",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "origen": {
+      "beat": "Beat",
+      "produccion": "Producción"
+    },
+    "errorCargar": "No se pudieron cargar las cuentas por pagar.",
+    "backfill": "Sincronizar payouts",
+    "backfillDone": "{count} payout(s) sincronizados.",
+    "backfillError": "No se pudo sincronizar. Inténtalo de nuevo.",
+    "modal": {
+      "title": "Registrar pago",
+      "para": "Vas a registrar el pago a {nombre} de",
+      "comprobante": "Comprobante (opcional)",
+      "comprobanteHint": "Adjunta la captura o el PDF de la transferencia.",
+      "confirmar": "Confirmar pago",
+      "confirmando": "Registrando…",
+      "subiendo": "Subiendo…",
+      "cancelar": "Cancelar",
+      "error": "No se pudo registrar el pago. Inténtalo de nuevo."
+    }
+  },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
     "title": "Datos de pago",
@@ -1503,6 +1540,10 @@
       "beat-vendido": {
         "titulo": "Beat vendido",
         "cuerpo": "Se vendió tu beat \"{titulo}\"."
+      },
+      "payout-pagado": {
+        "titulo": "Pago recibido",
+        "cuerpo": "Only G te pagó {monto}."
       }
     }
   },
@@ -1518,6 +1559,7 @@
     "rolesTitle": "Roles",
     "conveniosTitle": "Solicitudes de convenio",
     "beatsTitle": "Ventas y pagos de beats",
+    "payoutsTitle": "Cuentas por pagar",
     "paymentsConfigTitle": "Datos de pago",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",

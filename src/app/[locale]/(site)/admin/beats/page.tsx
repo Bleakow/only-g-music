@@ -1,16 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import { RequireRole } from "@/features/auth/components/RequireRole";
-import { AdminBeatsPayouts } from "@/features/admin/components/AdminBeatsPayouts";
+import { AdminPayouts } from "@/features/admin/components/AdminPayouts";
 
 export default async function AdminBeatsPage() {
   const t = await getTranslations("guards");
   return (
     <RequireRole
       roles={["admin"]}
-      title={t("beatsTitle")}
+      title={t("payoutsTitle")}
       message={t("adminMessage")}
     >
-      <AdminBeatsPayouts />
+      <AdminPayouts />
     </RequireRole>
   );
 }

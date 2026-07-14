@@ -535,6 +535,43 @@
     "backfillDone": "{count} payout(s) synced.",
     "backfillError": "Couldn't sync. Try again."
   },
+  "adminPayouts": {
+    "title": "Payables",
+    "intro": "Settle what Only G owes each partner. See their payout details and record the payment with its receipt.",
+    "pendientes": "To pay",
+    "sinPendientes": "Nothing pending to pay.",
+    "sinPayouts": "No payables yet.",
+    "totalPendiente": "Total owed: {monto}",
+    "deudaPersona": "Owed: {monto}",
+    "datosTitulo": "Payout details",
+    "sinDatos": "This partner hasn't set up their payout details yet.",
+    "marcarPagado": "Mark as paid",
+    "pagarTodo": "Pay all",
+    "verPagados": "Show settled ({count})",
+    "ocultarPagados": "Hide settled",
+    "verComprobante": "View receipt",
+    "copy": "Copy",
+    "copied": "Copied",
+    "origen": {
+      "beat": "Beat",
+      "produccion": "Production"
+    },
+    "errorCargar": "Couldn't load the payables.",
+    "backfill": "Sync payouts",
+    "backfillDone": "{count} payout(s) synced.",
+    "backfillError": "Couldn't sync. Try again.",
+    "modal": {
+      "title": "Record payment",
+      "para": "You're recording the payment to {nombre} of",
+      "comprobante": "Receipt (optional)",
+      "comprobanteHint": "Attach the screenshot or PDF of the transfer.",
+      "confirmar": "Confirm payment",
+      "confirmando": "Recording…",
+      "subiendo": "Uploading…",
+      "cancelar": "Cancel",
+      "error": "Couldn't record the payment. Try again."
+    }
+  },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
     "title": "Payment details",
@@ -1503,6 +1540,10 @@
       "beat-vendido": {
         "titulo": "Beat sold",
         "cuerpo": "Your beat \"{titulo}\" was sold."
+      },
+      "payout-pagado": {
+        "titulo": "Payment received",
+        "cuerpo": "Only G paid you {monto}."
       }
     }
   },
@@ -1518,6 +1559,7 @@
     "rolesTitle": "Roles",
     "conveniosTitle": "Agreement requests",
     "beatsTitle": "Beat sales & payouts",
+    "payoutsTitle": "Payables",
     "paymentsConfigTitle": "Payment details",
     "estudiosTitle": "Studios",
     "consoleTitle": "Producer console",

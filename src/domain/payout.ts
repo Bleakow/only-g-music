@@ -57,3 +57,45 @@ export function totalPayoutsPendientes(payouts: Payout[]): number {
     .filter((p) => p.estado === "pendiente")
     .reduce((s, p) => s + p.monto, 0);
 }
+
+/** Cuenta por pagar de UNA persona: sus payouts pendientes + el total adeudado. */
+export interface PayoutsPorAcreedor {
+  acreedorUid: string;
+  acreedorNombre: string | null;
+  /** Solo los payouts PENDIENTES de esta persona. */
+  payouts: Payout[];
+  /** Suma del neto pendiente que se le debe. */
+  total: number;
+}
+
+/**
+ * Agrupa los payouts PENDIENTES por persona (acreedor) con su total adeudado, para
+ * el panel de liquidación por-persona. Ordena por total DESC (a quién se le debe
+ * más, primero — el orden natural para liquidar). Ignora los ya pagados (no son
+ * cuenta por pagar). Puro: la UI inyecta la lista.
+ */
+export function agruparPayoutsPendientes(
+  payouts: Payout[],
+): PayoutsPorAcreedor[] {
+  const map = new Map<string, PayoutsPorAcreedor>();
+  for (const p of payouts) {
+    if (p.estado !== "pendiente") continue;
+    const g = map.get(p.acreedorUid);
+    if (g) {
+      g.payouts.push(p);
+      g.total += p.monto;
+      // Conserva un nombre no-nulo si aparece en alguno de sus payouts.
+      if (!g.acreedorNombre && p.acreedorNombre) {
+        g.acreedorNombre = p.acreedorNombre;
+      }
+    } else {
+      map.set(p.acreedorUid, {
+        acreedorUid: p.acreedorUid,
+        acreedorNombre: p.acreedorNombre,
+        payouts: [p],
+        total: p.monto,
+      });
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.total - a.total);
+}

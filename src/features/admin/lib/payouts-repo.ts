@@ -85,3 +85,41 @@ export async function backfillPayouts(): Promise<number> {
   const res = await backfillPayoutsFn({});
   return res.data.count;
 }
+
+/** Método con el que Only G liquida a un socio (sub-conjunto de `MetodoPagoSocio`). */
+export type MetodoLiquidacion = "banco" | "nequi" | "efectivo";
+
+/**
+ * Registra la LIQUIDACIÓN de un payout (SOLO admin): lo marca pagado con método y
+ * comprobante opcional. Cambia dinero/estado server-authoritative (`payouts` no
+ * admite escritura desde el cliente): pasa por la Cloud Function `registrarPagoPayout`,
+ * que además sincroniza `beatSales.paidOut` en los payouts de beat. Idempotente.
+ */
+const registrarPagoPayoutFn = httpsCallable<
+  { payoutId: string; metodo: MetodoLiquidacion; comprobanteUrl?: string },
+  { ok: boolean }
+>(functions, "registrarPagoPayout");
+export async function registrarPagoPayout(
+  payoutId: string,
+  metodo: MetodoLiquidacion,
+  comprobanteUrl?: string,
+): Promise<void> {
+  await registrarPagoPayoutFn({ payoutId, metodo, comprobanteUrl });
+}
+
+/**
+ * "Pagar todo": liquida en LOTE todos los payouts de una persona (SOLO admin) con el
+ * mismo método + comprobante. Idempotente por elemento. Devuelve cuántos se liquidaron.
+ */
+const registrarPagosPayoutFn = httpsCallable<
+  { payoutIds: string[]; metodo: MetodoLiquidacion; comprobanteUrl?: string },
+  { count: number }
+>(functions, "registrarPagosPayout");
+export async function registrarPagosPayout(
+  payoutIds: string[],
+  metodo: MetodoLiquidacion,
+  comprobanteUrl?: string,
+): Promise<number> {
+  const res = await registrarPagosPayoutFn({ payoutIds, metodo, comprobanteUrl });
+  return res.data.count;
+}

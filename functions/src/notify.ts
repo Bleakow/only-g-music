@@ -30,7 +30,8 @@ export type NotifEvento =
   | "convenio-solicitado"
   | "convenio-aprobado"
   | "convenio-rechazado"
-  | "beat-vendido";
+  | "beat-vendido"
+  | "payout-pagado";
 
 /**
  * Crea una notificación para `uid`. `getFirestore()` se resuelve en runtime (no

@@ -86,17 +86,33 @@ export interface AnaliticaConfig {
   ga4PropertyId?: string;
 }
 
+/**
+ * Property ID de GA4 de Only G por DEFECTO (propiedad `only-g-music-745ca`, la que
+ * recibe los eventos de la app). Es el FALLBACK: el enlace a los informes funciona
+ * sin configurar nada, y el CEO puede sobrescribirlo desde el panel si cambia. No
+ * es secreto (es un id que igual se expone en el deep-link).
+ */
+export const DEFAULT_GA4_PROPERTY_ID = "541531599";
+
 /** ¿ID de propiedad GA4 válido? Solo dígitos (GA4 usa un id numérico). */
 export function esGa4PropertyId(v: unknown): v is string {
   return typeof v === "string" && /^[0-9]{4,20}$/.test(v.trim());
 }
 
-/** Normaliza un doc `comercialConfig/analitica` crudo. Solo acepta id numérico. */
+/**
+ * Normaliza un doc `comercialConfig/analitica` crudo. Si el CEO configuró un id
+ * válido, rige ese; si no (doc ausente o vacío), cae al `DEFAULT_GA4_PROPERTY_ID`
+ * para que el enlace a GA4 funcione de fábrica.
+ */
 export function parseAnalitica(
   raw: Record<string, unknown> | undefined,
 ): AnaliticaConfig {
   const id = raw?.ga4PropertyId;
-  return esGa4PropertyId(id) ? { ga4PropertyId: (id as string).trim() } : {};
+  return {
+    ga4PropertyId: esGa4PropertyId(id)
+      ? (id as string).trim()
+      : DEFAULT_GA4_PROPERTY_ID,
+  };
 }
 
 /**

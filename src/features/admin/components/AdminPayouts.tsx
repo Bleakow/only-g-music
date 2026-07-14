@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { SpinnerIcon, CopyIcon, CheckIcon } from "@/components/icons";
+import { SpinnerIcon, CopyIcon, CheckIcon, PlusIcon } from "@/components/icons";
 import { formatCOP } from "@/domain/service";
 import {
   type Payout,
@@ -21,6 +21,7 @@ import {
   type MetodoLiquidacion,
 } from "@/features/admin/lib/payouts-repo";
 import { PayoutPagoModal } from "./PayoutPagoModal";
+import { PayoutProduccionModal } from "./PayoutProduccionModal";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 
 /**
@@ -59,6 +60,7 @@ export function AdminPayouts() {
   const [backfilling, setBackfilling] = useState(false);
   const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
   const [showPagados, setShowPagados] = useState(false);
+  const [showRegistrar, setShowRegistrar] = useState(false);
 
   const cargar = useCallback(async () => {
     const list = await listPayouts();
@@ -162,6 +164,13 @@ export function AdminPayouts() {
         subtitle={t("adminPayouts.intro")}
       >
         <div className="mt-6 flex flex-wrap items-center gap-3">
+          <GlassButton
+            onClick={() => setShowRegistrar(true)}
+            className="!text-amethyst-200"
+          >
+            <PlusIcon className="size-4" />
+            {t("adminPayouts.produccion.registrar")}
+          </GlassButton>
           <GlassButton onClick={sincronizar} disabled={backfilling}>
             {backfilling && <SpinnerIcon className="size-4 animate-spin" />}
             {t("adminPayouts.backfill")}
@@ -275,6 +284,11 @@ export function AdminPayouts() {
                                 <p className="mt-1 text-sm font-semibold text-white">
                                   {formatCOP(p.monto)}
                                 </p>
+                                {p.nota && (
+                                  <p className="text-silver-400 mt-0.5 truncate text-xs">
+                                    {p.nota}
+                                  </p>
+                                )}
                               </div>
                               <GlassButton
                                 onClick={() =>
@@ -366,6 +380,15 @@ export function AdminPayouts() {
         monto={target?.monto ?? 0}
         defaultMetodo={target?.metodo ?? "banco"}
         onConfirm={confirmar}
+      />
+
+      <PayoutProduccionModal
+        open={showRegistrar}
+        onClose={() => setShowRegistrar(false)}
+        onCreated={async () => {
+          setShowRegistrar(false);
+          await cargar();
+        }}
       />
     </main>
   );

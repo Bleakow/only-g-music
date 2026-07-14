@@ -30,6 +30,12 @@ export interface Payout {
   refId: string;
   /** Sede (solo producción; los beats no tienen sede). */
   sede?: string;
+  /**
+   * Nota libre del admin (SOLO payouts MANUALES de producción, Fase 4): un texto
+   * corto que describe por qué se le debe (p. ej. "mezcla EP de X"). Los payouts
+   * automáticos de beat no la usan.
+   */
+  nota?: string;
   /** El NETO adeudado en COP (parte del socio). */
   monto: number;
   estado: PayoutEstado;
@@ -45,7 +51,7 @@ export interface Payout {
 /** Datos para generar un payout (sin id/estado/timestamps: los pone el servidor). */
 export type NuevoPayout = Pick<
   Payout,
-  "acreedorUid" | "acreedorNombre" | "origen" | "refId" | "sede" | "monto"
+  "acreedorUid" | "acreedorNombre" | "origen" | "refId" | "sede" | "nota" | "monto"
 >;
 
 /**

@@ -39,6 +39,7 @@ function toPayout(id: string, data: DocumentData): Payout {
     origen: data.origen === "produccion" ? "produccion" : "beat",
     refId: data.refId ?? "",
     sede: data.sede ?? undefined,
+    nota: data.nota ?? undefined,
     monto: typeof data.monto === "number" ? data.monto : 0,
     estado: data.estado === "pagado" ? "pagado" : "pendiente",
     createdAt: toMillis(data.createdAt) ?? Date.now(),
@@ -122,4 +123,25 @@ export async function registrarPagosPayout(
 ): Promise<number> {
   const res = await registrarPagosPayoutFn({ payoutIds, metodo, comprobanteUrl });
   return res.data.count;
+}
+
+/**
+ * Registra a mano una cuenta por pagar a un PRODUCTOR (SOLO admin, Fase 4): el
+ * admin declara el NETO directo que Only G le debe por su trabajo (sin comisión
+ * automática). Server-authoritative (`payouts` no admite escritura desde el
+ * cliente): pasa por la Cloud Function `registrarPayoutProduccion`, que valida el
+ * rol `productor` del destinatario y genera un id `prod_*`. Devuelve el id creado.
+ */
+const registrarPayoutProduccionFn = httpsCallable<
+  { acreedorUid: string; monto: number; sede?: string; nota?: string },
+  { ok: boolean; id: string }
+>(functions, "registrarPayoutProduccion");
+export async function registrarPayoutProduccion(data: {
+  acreedorUid: string;
+  monto: number;
+  sede?: string;
+  nota?: string;
+}): Promise<string> {
+  const res = await registrarPayoutProduccionFn(data);
+  return res.data.id;
 }

@@ -952,6 +952,86 @@ export const registrarPagosPayout = onCall(
 );
 
 /**
+ * Registra a mano una CUENTA POR PAGAR a un PRODUCTOR (SOLO admin, Fase 4). El
+ * admin declara lo que Only G le debe al productor por su trabajo: entra el NETO
+ * DIRECTO (sin comisión automática — diferida a la Fase 5). Server-authoritative:
+ * `payouts` no admite escritura desde el cliente, así que el alta pasa por aquí.
+ *
+ * Valida que el destinatario EXISTA y tenga el rol `productor` (no se puede crear
+ * deuda a cualquiera; el nombre se toma server-side de `users/{uid}`). El `monto`
+ * es un ENTERO de COP > 0 (COP no usa centavos). `sede`/`nota` son opcionales.
+ *
+ * NO es idempotente por diseño (es un registro manual deliberado; el admin puede
+ * declarar dos deudas iguales legítimamente): usa un id SERVER-GENERADO con
+ * prefijo `prod_` para no colisionar nunca con otros payouts. El modal cliente
+ * lleva su propio guard anti-doble-submit. No loguea datos sensibles.
+ */
+export const registrarPayoutProduccion = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const { acreedorUid, monto, sede, nota } = request.data ?? {};
+
+    if (typeof acreedorUid !== "string" || !acreedorUid) {
+      throw new HttpsError("invalid-argument", "Falta el productor.");
+    }
+    if (
+      typeof monto !== "number" ||
+      !Number.isInteger(monto) ||
+      monto <= 0
+    ) {
+      throw new HttpsError("invalid-argument", "El monto debe ser un entero mayor que cero.");
+    }
+    if (sede !== undefined && typeof sede !== "string") {
+      throw new HttpsError("invalid-argument", "Sede inválida.");
+    }
+    if (nota !== undefined && typeof nota !== "string") {
+      throw new HttpsError("invalid-argument", "Nota inválida.");
+    }
+
+    // El destinatario DEBE existir y ser productor: no se crea deuda a cualquiera.
+    const userSnap = await db.doc(`users/${acreedorUid}`).get();
+    if (!userSnap.exists) {
+      throw new HttpsError("not-found", "El usuario no existe.");
+    }
+    const roles = userSnap.data()?.roles;
+    if (!Array.isArray(roles) || !roles.includes("productor")) {
+      throw new HttpsError("failed-precondition", "El destinatario no es un productor.");
+    }
+    // Fallback a email como en el selector del panel (listProductores), para que
+    // un productor sin displayName no se muestre como UID crudo tras registrarlo.
+    const uData = userSnap.data() ?? {};
+    const acreedorNombre =
+      (uData.displayName as string | null) ||
+      (uData.email as string | null) ||
+      null;
+
+    // Limpieza: no persistir '' ni undefined (Firestore/consistencia). Recorta la
+    // nota; sede queda tal cual (es un id/slug de sede).
+    const sedeLimpia = typeof sede === "string" ? sede.trim() : "";
+    const notaLimpia = typeof nota === "string" ? nota.trim() : "";
+
+    // Id SERVER-GENERADO con prefijo `prod_` (registro manual, no idempotente).
+    const ref = db.collection("payouts").doc();
+    const id = `prod_${ref.id}`;
+    await db.doc(`payouts/${id}`).set({
+      acreedorUid,
+      acreedorNombre,
+      origen: "produccion",
+      refId: "",
+      ...(sedeLimpia ? { sede: sedeLimpia } : {}),
+      ...(notaLimpia ? { nota: notaLimpia } : {}),
+      monto,
+      estado: "pendiente",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`Payout de producción registrado: ${id} → ${acreedorUid}`);
+    return { ok: true, id };
+  },
+);
+
+/**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
  * cliente lo creó con otro valor, lo corrige server-side. Para reservas de
  * estudio el precio aún no es validable aquí (los servicios no viven en

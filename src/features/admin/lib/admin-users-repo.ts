@@ -7,6 +7,8 @@
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type { Role } from "@/domain/user";
+import type { SedeId } from "@/domain/sede";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 
 /** Proyección mínima de un usuario para el buscador del admin. */
 export interface AdminUserHit {
@@ -71,6 +73,49 @@ export async function adminGetUsersByIds(
 ): Promise<AdminUserHit[]> {
   const res = await getUsersByIdsFn({ uids });
   return res.data.users;
+}
+
+/** Un productor pagable: uid + nombre visible + su sede (si está asignado a una). */
+export interface ProductorLite {
+  uid: string;
+  nombre: string;
+  /** Id de la 1ª sede donde figura (para prefijar la sede en el payout), o null. */
+  sedeId: SedeId | null;
+  /** Nombre de esa sede (para mostrar), o null. */
+  sedeNombre: string | null;
+}
+
+/**
+ * Lista los PRODUCTORES pagables (SOLO admin) derivándolos de las SEDES: la fuente
+ * canónica de quién es productor es `sede.productores` (uids), que `adminAssignProductor`
+ * mantiene junto con el rol. Une esos uids con su nombre vía `adminGetUsersByIds`
+ * (el cliente no puede leer otros `users/{uid}`). Si un uid figura en varias sedes,
+ * se queda con la primera. Ordena por nombre. Nota: `adminGetUsersByIds` topa en 50
+ * — más que suficiente para el nº de productores del sello.
+ */
+export async function listProductores(): Promise<ProductorLite[]> {
+  const sedes = await getAllSedes();
+  const sedeDeUid = new Map<string, { id: SedeId; nombre: string }>();
+  for (const s of sedes) {
+    for (const uid of s.productores) {
+      if (!sedeDeUid.has(uid)) sedeDeUid.set(uid, { id: s.id, nombre: s.nombre });
+    }
+  }
+  const uids = Array.from(sedeDeUid.keys());
+  if (uids.length === 0) return [];
+
+  const users = await adminGetUsersByIds(uids);
+  return users
+    .map((u) => {
+      const sede = sedeDeUid.get(u.uid) ?? null;
+      return {
+        uid: u.uid,
+        nombre: u.displayName || u.email || u.uid,
+        sedeId: sede?.id ?? null,
+        sedeNombre: sede?.nombre ?? null,
+      };
+    })
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
 const setRolesFn = httpsCallable<

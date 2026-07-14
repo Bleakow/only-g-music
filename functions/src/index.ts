@@ -356,6 +356,19 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   }
   const slug = refId;
 
+  // El ingreso se factura por lo que el comprador VIO y TRANSFIRIÓ (conv.pago.monto,
+  // congelado al crear el chat), NO por el `precioPerfil` de config vigente al
+  // confirmar: si el CEO lo cambió con el pago EN VUELO, el asiento debe reflejar
+  // el dinero REALMENTE ingresado (y así el asiento coincide con el mensaje de
+  // confirmación, que ya usa conv.pago.monto). Config solo como fallback.
+  const { precioPerfil } = await getComercial();
+  const montoIngresado =
+    typeof conv.pago?.monto === "number" &&
+    Number.isInteger(conv.pago.monto) &&
+    conv.pago.monto > 0
+      ? conv.pago.monto
+      : precioPerfil;
+
   const now = Date.now();
   const expira = new Date(now);
   expira.setMonth(expira.getMonth() + PREMIUM_DURACION_MESES);
@@ -382,7 +395,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   batch.set(convRef.collection("messages").doc(), {
     from: "sistema",
     tipo: "pago_confirmado",
-    monto: conv.pago?.monto ?? PRECIO_PERFIL,
+    monto: montoIngresado,
     createdAt: FieldValue.serverTimestamp(),
   });
   // Asiento contable del ingreso (lo lee /admin/finanzas vía `transactions`).
@@ -390,7 +403,7 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
     uid: payerUid ?? "",
     clientName,
     concepto: "Premium",
-    amount: PRECIO_PERFIL,
+    amount: montoIngresado,
     fecha: now,
     estado: "confirmada",
     fuente: "premium",
@@ -454,13 +467,62 @@ async function confirmarPagoReserva(
 }
 
 /**
+ * Config comercial server-authoritative: precios y comisiones leídos de DOS docs
+ * (`comercialConfig/comisiones` + `comercialConfig/precios`, partidos por
+ * visibilidad de lectura — ver firestore.rules) con FALLBACK a las constantes del
+ * dominio. NO hace falta sembrar los docs: si no existen (o un campo no es
+ * número válido), rige la constante. Así el CEO ajusta comisión/precio sin
+ * desplegar, y el server sigue siendo la última palabra sobre el dinero.
+ *
+ * Validación de DOMINIO (última línea de defensa; el panel CEO ya valida en
+ * cliente): precio ENTERO > 0; comisión en [0,1]. Un config malformado NO puede
+ * producir un neto negativo (comisión > 1) ni montos fraccionarios: fuera de
+ * rango se ignora y rige el default. `comisionProductor` no tiene default (el
+ * dueño la definirá): si no es válida, se devuelve `null` (aún no la usa nadie).
+ */
+async function getComercial(): Promise<{
+  precioBeat: number;
+  comisionBeat: number;
+  precioMembresia: number;
+  precioPerfil: number;
+  comisionProductor: number | null;
+}> {
+  const [comSnap, preSnap] = await Promise.all([
+    db.doc("comercialConfig/comisiones").get(),
+    db.doc("comercialConfig/precios").get(),
+  ]);
+  const com = comSnap.data() ?? {};
+  const pre = preSnap.data() ?? {};
+
+  const precio = (v: unknown, def: number): number =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : def;
+  const comision = (v: unknown, def: number): number =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : def;
+
+  return {
+    precioBeat: precio(pre.precioBeat, PRECIO_BEAT),
+    comisionBeat: comision(com.comisionBeat, COMISION_BEAT),
+    precioMembresia: precio(pre.precioMembresia, PRECIO_MEMBRESIA),
+    precioPerfil: precio(pre.precioPerfil, PRECIO_PERFIL),
+    comisionProductor:
+      typeof com.comisionProductor === "number" &&
+      Number.isFinite(com.comisionProductor) &&
+      com.comisionProductor >= 0 &&
+      com.comisionProductor <= 1
+        ? com.comisionProductor
+        : null,
+  };
+}
+
+/**
  * Confirma el pago de un BEAT (SOLO admin, vía confirmPayment). Server-authoritative
  * y atómico: cierra el chat de pago (o lo deja abierto para entrega manual),
- * intenta entregar el máster (URL FIRMADA de 7 días) y registra la venta en
- * `beatSales` (fuente de verdad del payout pendiente al beatmaker) más el
- * asiento de la COMISIÓN en `transactions` — el `neto` del beatmaker se
- * transfiere aparte, manual, y se marca vía `marcarBeatPayout` (no genera
- * asiento aquí; ver `beatSales.paidOut`).
+ * intenta entregar el máster (URL FIRMADA de 7 días) y registra: la venta en
+ * `beatSales`, el asiento de la COMISIÓN en `transactions` (único INGRESO de
+ * Only G — el neto NO lo es) y la DEUDA del `neto` al beatmaker en `payouts`
+ * (cuenta por pagar por persona, ahora VISIBLE en el Balance). El neto se
+ * transfiere aparte, manual, y se marca vía `marcarBeatPayout`
+ * (`beatSales.paidOut`, que la Fase 3 migrará a `payouts.estado`).
  *
  * Seguridad (IDOR): `masterPath` SOLO se firma si empieza por
  * `beats/masters/{beatmakerUid}/`, la carpeta privada del PROPIO beatmaker del
@@ -477,10 +539,10 @@ async function confirmarPagoReserva(
  * `roles/iam.serviceAccountTokenCreator` sobre sí misma; sin ese rol la firma
  * falla y la entrega cae a manual (no rompe la venta).
  *
- * Idempotencia: `beatSales` y `transactions` usan un id DETERMINISTA keyed
- * por `conversationId` (como `activarMembresia`), así dos confirmaciones
+ * Idempotencia: `beatSales`, `transactions` y `payouts` usan un id DETERMINISTA
+ * keyed por `conversationId` (como `activarMembresia`), así dos confirmaciones
  * concurrentes/retry del MISMO chat sobrescriben en vez de duplicar (evita
- * doble comisión + doble payout).
+ * doble comisión + doble payout/deuda).
  */
 async function confirmarPagoBeat(
   convRef: ReturnType<typeof db.doc>,
@@ -502,8 +564,21 @@ async function confirmarPagoBeat(
   const beatmakerNombre = (beat.beatmakerNombre as string | undefined) ?? null;
   const beatTitulo = (beat.titulo as string | undefined) ?? "";
 
-  const precio = PRECIO_BEAT;
-  const comision = Math.round(precio * COMISION_BEAT);
+  // El precio autoritativo es lo que el comprador VIO y TRANSFIRIÓ (conv.pago.monto,
+  // congelado al crear el chat), NO el precio de config vigente al confirmar: si el
+  // CEO cambió `precioBeat` con la venta EN VUELO, la comisión y el neto deben
+  // calcularse sobre el dinero REALMENTE recibido (si no, se le pagaría al beatmaker
+  // un neto que no cuadra con lo ingresado). El config solo rige como fallback si el
+  // monto del chat no es válido. La comisión % sí sale de config (el reparto vigente).
+  const { precioBeat, comisionBeat } = await getComercial();
+  const montoPagado = conv.pago?.monto;
+  const precio =
+    typeof montoPagado === "number" &&
+    Number.isInteger(montoPagado) &&
+    montoPagado > 0
+      ? montoPagado
+      : precioBeat;
+  const comision = Math.round(precio * comisionBeat);
   const neto = precio - comision;
 
   // Entrega: URL firmada del máster (7 días), SOLO si `masterPath` pertenece a
@@ -545,7 +620,11 @@ async function confirmarPagoBeat(
     // suma al beatmaker como participante) para que la entrega por chat sea
     // una promesa cumplible, no un callejón sin salida.
     status: signedUrl ? "cerrado" : "abierto",
-    ...(signedUrl ? {} : { participants: FieldValue.arrayUnion(beatmakerUid) }),
+    // Suma al beatmaker como participante SOLO si existe (un beat malformado sin
+    // beatmakerUid no debe meter '' en participants).
+    ...(signedUrl || !beatmakerUid
+      ? {}
+      : { participants: FieldValue.arrayUnion(beatmakerUid) }),
     updatedAt: FieldValue.serverTimestamp(),
   });
   batch.set(convRef.collection("messages").doc(), {
@@ -582,6 +661,30 @@ async function confirmarPagoBeat(
     fuente: "beat",
     createdAt: FieldValue.serverTimestamp(),
   });
+  // PASIVO por persona: el NETO adeudado al beatmaker, ahora VISIBLE como payout
+  // pendiente (lo suma el Balance General). Id DETERMINISTA `beat_{conversationId}`
+  // (mismo patrón que beatSales/transactions) → idempotente: un retry/confirmación
+  // concurrente del MISMO chat sobrescribe en vez de duplicar la deuda. MISMO batch
+  // (atómico con beatSales+transactions). `beatSales.paidOut` NO cambia su
+  // semántica (compat Fase 3, que migrará la liquidación a estos payouts).
+  // Solo si el beat tiene beatmaker: un beat malformado (sin beatmakerUid) NO
+  // debe generar un payout a acreedorUid='' (deuda "a nadie" que inflaría el
+  // Balance y nadie podría leer/liquidar). La venta y el asiento igual se registran.
+  if (beatmakerUid) {
+    batch.set(db.doc(`payouts/beat_${conversationId}`), {
+      acreedorUid: beatmakerUid,
+      acreedorNombre: beatmakerNombre,
+      origen: "beat",
+      refId: beatId,
+      monto: neto,
+      estado: "pendiente",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  } else {
+    logger.warn(
+      `beat ${beatId}: venta ${conversationId} sin beatmakerUid — no se crea payout.`,
+    );
+  }
   await batch.commit();
 
   logger.info(`Pago de beat confirmado: ${conversationId} → beat ${beatId}`);
@@ -614,10 +717,359 @@ export const marcarBeatPayout = onCall({ region: REGION }, async (request) => {
   if (!(await saleRef.get()).exists) {
     throw new HttpsError("not-found", "Venta inexistente.");
   }
-  await saleRef.update({ paidOut: true, paidOutAt: Date.now() });
+  const now = Date.now();
+  const batch = db.batch();
+  batch.update(saleRef, { paidOut: true, paidOutAt: now });
+  // Mantén SINCRONIZADO el payout equivalente (mismo id determinista
+  // `beat_{saleId}`, con saleId === conversationId): si existe, márcalo pagado
+  // para que el Balance deje de contarlo como pendiente. Sin esto, pagar por el
+  // botón viejo dejaría el payout en 'pendiente' y el balance SOBREESTIMARÍA la
+  // deuda. Puede no existir si la venta es pre-Fase 2 y aún no se hizo backfill:
+  // en ese caso no hay nada que sincronizar (el balance tampoco lo cuenta).
+  const payoutRef = db.doc(`payouts/beat_${saleId}`);
+  if ((await payoutRef.get()).exists) {
+    batch.update(payoutRef, { estado: "pagado", pagadoAt: now });
+  }
+  await batch.commit();
   logger.info(`Payout de beat marcado como pagado: ${saleId}`);
   return { ok: true };
 });
+
+/**
+ * Backfill (SOLO admin): genera los `payouts` faltantes desde las `beatSales`
+ * históricas aún NO pagadas (`paidOut == false`) — las que se vendieron antes de
+ * la Fase 2, cuando el neto solo vivía en `beatSales`. Server-authoritative.
+ *
+ * Idempotente y NO destructivo: solo CREA los payouts FALTANTES (salta las ventas
+ * que ya tienen payout), así nunca pisa ni "resucita a pendiente" uno ya liquidado
+ * —incluso si una fase futura desincroniza `beatSales.paidOut` de `payouts.estado`—.
+ * Salta también ventas sin `beatmakerUid` (no crea deuda a ''). NO borra ni toca
+ * `beatSales`. Escribe en tandas (< 500) por el límite de un batch. Devuelve cuántos
+ * creó.
+ */
+export const backfillPayouts = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const [salesSnap, payoutsSnap] = await Promise.all([
+    db.collection("beatSales").where("paidOut", "==", false).get(),
+    db.collection("payouts").get(),
+  ]);
+  const yaExiste = new Set(payoutsSnap.docs.map((d) => d.id));
+  // Solo ventas NO pagadas, CON beatmaker, y SIN payout previo: nunca sobrescribimos
+  // un payout existente (evita resucitar uno liquidado) ni creamos deuda a ''.
+  const docs = salesSnap.docs.filter((d) => {
+    const s = d.data();
+    return (
+      typeof s.beatmakerUid === "string" &&
+      s.beatmakerUid !== "" &&
+      !yaExiste.has(`beat_${d.id}`)
+    );
+  });
+
+  let count = 0;
+  for (let i = 0; i < docs.length; i += 400) {
+    const batch = db.batch();
+    for (const doc of docs.slice(i, i + 400)) {
+      const s = doc.data();
+      batch.set(db.doc(`payouts/beat_${doc.id}`), {
+        acreedorUid: s.beatmakerUid as string,
+        acreedorNombre: (s.beatmakerNombre as string | undefined) ?? null,
+        origen: "beat",
+        refId: (s.beatId as string | undefined) ?? "",
+        monto: typeof s.neto === "number" ? s.neto : 0,
+        estado: "pendiente",
+        // Conserva la fecha ORIGINAL de la venta (mejor para el libro) si existe.
+        createdAt: s.createdAt ?? FieldValue.serverTimestamp(),
+      });
+      count++;
+    }
+    await batch.commit();
+  }
+
+  logger.info(`Backfill de payouts: ${count} payout(s) creados`);
+  return { count };
+});
+
+/** Métodos con los que Only G le paga a un socio (sync con `MetodoPagoSocio`). */
+type MetodoLiquidacion = "banco" | "nequi" | "efectivo";
+
+/** Valida el método de liquidación (viene del cliente, no confiar). */
+function esMetodoLiquidacion(v: unknown): v is MetodoLiquidacion {
+  return v === "banco" || v === "nequi" || v === "efectivo";
+}
+
+/**
+ * Deriva el id de la VENTA (`beatSales/{convId}`) de un payout de beat, cuyo id es
+ * `beat_{convId}`. `refId` NO sirve aquí: guarda el `beatId`, no el `convId`. Solo
+ * los payouts de origen 'beat' tienen venta gemela; `null` en cualquier otro caso.
+ */
+function beatSaleIdDePayout(payoutId: string, origen: unknown): string | null {
+  return origen === "beat" && payoutId.startsWith("beat_")
+    ? payoutId.slice("beat_".length)
+    : null;
+}
+
+/** Campos de LIQUIDACIÓN que se estampan sobre un payout al marcarlo pagado. */
+function camposLiquidacion(
+  metodo: MetodoLiquidacion,
+  comprobanteUrl: string | undefined,
+  adminUid: string,
+  now: number,
+): Record<string, unknown> {
+  return {
+    estado: "pagado",
+    pagadoAt: now,
+    metodo,
+    ...(comprobanteUrl ? { comprobanteUrl } : {}),
+    registradoPor: adminUid,
+  };
+}
+
+/**
+ * Registra la LIQUIDACIÓN de UN payout (SOLO admin): marca `payouts/{id}` como
+ * pagado con método + comprobante opcional, y —si es un payout de beat— sincroniza
+ * `beatSales.paidOut=true` para no desincronizar las DOS representaciones ni la
+ * reconciliación del Balance (Fase 2 suma el neto de ventas impagas SIN payout; si
+ * el payout quedara pagado pero la venta impaga, el panel viejo mentiría).
+ * Server-authoritative: `payouts` no admite escritura desde el cliente.
+ *
+ * Idempotente: no-op (`{ ok: true }`) si el payout ya está pagado — un doble clic o
+ * un retry no re-notifican ni re-escriben. Casos borde: payout inexistente →
+ * `not-found`; método inválido/comprobante no-string → `invalid-argument`.
+ * La transferencia del dinero es MANUAL (fuera de la app); esto deja constancia.
+ * Datos de pago SENSIBLES: nunca se loguean.
+ */
+export const registrarPagoPayout = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+  const adminUid = request.auth!.uid;
+  const { payoutId, metodo, comprobanteUrl } = request.data ?? {};
+
+  if (typeof payoutId !== "string" || !payoutId) {
+    throw new HttpsError("invalid-argument", "Falta el payout.");
+  }
+  if (!esMetodoLiquidacion(metodo)) {
+    throw new HttpsError("invalid-argument", "Método de pago inválido.");
+  }
+  if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
+    throw new HttpsError("invalid-argument", "Comprobante inválido.");
+  }
+
+  const payoutRef = db.doc(`payouts/${payoutId}`);
+  const now = Date.now();
+
+  // El flip pendiente→pagado va en TRANSACCIÓN: bajo concurrencia (dos pestañas
+  // del admin, dos admins, o un retry solapado) solo UNA invocación gana el flip;
+  // las demás releen 'pagado' dentro de la txn y salen sin re-escribir ni
+  // re-notificar (evita avisos 'payout-pagado' DUPLICADOS al socio). Devuelve los
+  // datos para notificar SOLO si realmente liquidó (null = no-op idempotente).
+  const res = await db.runTransaction(async (tx) => {
+    const snap = await tx.get(payoutRef);
+    if (!snap.exists) throw new HttpsError("not-found", "Payout inexistente.");
+    const payout = snap.data() as FirebaseFirestore.DocumentData;
+    if (payout.estado === "pagado") return null; // ya liquidado → no-op
+
+    // Representación GEMELA (solo beats): marca la venta como pagada. Lectura
+    // ANTES de cualquier escritura (requisito de las transacciones).
+    const saleId = beatSaleIdDePayout(payoutId, payout.origen);
+    const saleRef = saleId ? db.doc(`beatSales/${saleId}`) : null;
+    const saleExists = saleRef ? (await tx.get(saleRef)).exists : false;
+
+    tx.update(payoutRef, camposLiquidacion(metodo, comprobanteUrl, adminUid, now));
+    if (saleRef && saleExists) {
+      tx.update(saleRef, { paidOut: true, paidOutAt: now });
+    }
+    return {
+      acreedorUid: payout.acreedorUid as string | undefined,
+      monto: typeof payout.monto === "number" ? payout.monto : 0,
+      origen: String(payout.origen),
+    };
+  });
+
+  if (!res) return { ok: true }; // no-op idempotente (ya estaba pagado)
+  logger.info(`Payout liquidado: ${payoutId} (${res.origen})`);
+  // Aviso al ACREEDOR ("te pagamos"). Best-effort; nunca loguear datos de pago.
+  await notify(res.acreedorUid, "payout-pagado", { monto: fmtCOP(res.monto) }, "/cuenta");
+  return { ok: true };
+});
+
+/**
+ * "Pagar todo": liquida en LOTE todos los payouts de una persona (SOLO admin) con
+ * el MISMO método + comprobante. Idempotente por elemento (ignora inexistentes y
+ * los ya pagados), atómico (un solo batch) y con la MISMA sincronización de
+ * `beatSales.paidOut` que la versión unitaria. Un único batch basta: "pagar todo"
+ * de UNA persona está muy por debajo del límite de 500 ops. Notifica UNA vez por
+ * acreedor con el TOTAL liquidado. Devuelve cuántos payouts se liquidaron.
+ */
+export const registrarPagosPayout = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const adminUid = request.auth!.uid;
+    const { payoutIds, metodo, comprobanteUrl } = request.data ?? {};
+
+    if (
+      !Array.isArray(payoutIds) ||
+      payoutIds.length === 0 ||
+      !payoutIds.every((id) => typeof id === "string" && id)
+    ) {
+      throw new HttpsError("invalid-argument", "Falta la lista de payouts.");
+    }
+    if (!esMetodoLiquidacion(metodo)) {
+      throw new HttpsError("invalid-argument", "Método de pago inválido.");
+    }
+    if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
+      throw new HttpsError("invalid-argument", "Comprobante inválido.");
+    }
+
+    // Dedup por si el cliente repite ids.
+    const ids = Array.from(new Set(payoutIds as string[]));
+    const now = Date.now();
+
+    // TRANSACCIÓN: el flip de cada payout es atómico. Bajo "pagar todo"
+    // concurrente (dos pestañas/admins) solo una invocación liquida los
+    // pendientes; la otra los relee 'pagado' y no vuelve a notificar el total
+    // (evita el aviso duplicado al socio). Reads (payouts + beatSales gemelas)
+    // ANTES de writes, como exige Firestore. Notifica UNA vez por acreedor con
+    // el total que ESTA invocación liquidó realmente.
+    const { count, totals } = await db.runTransaction(async (tx) => {
+      const payoutRefs = ids.map((id) => db.doc(`payouts/${id}`));
+      const snaps = await tx.getAll(...payoutRefs);
+      const pend = snaps
+        .map((snap, i) => ({ id: ids[i], ref: payoutRefs[i], snap }))
+        .filter(
+          (x) =>
+            x.snap.exists &&
+            (x.snap.data() as FirebaseFirestore.DocumentData).estado !==
+              "pagado",
+        )
+        .map((x) => ({
+          id: x.id,
+          ref: x.ref,
+          payout: x.snap.data() as FirebaseFirestore.DocumentData,
+        }));
+
+      // beatSales gemelas (solo beats) — leer ANTES de escribir.
+      const saleRefs = pend.map((x) => {
+        const sid = beatSaleIdDePayout(x.id, x.payout.origen);
+        return sid ? db.doc(`beatSales/${sid}`) : null;
+      });
+      const nonNull = saleRefs.filter(
+        (r): r is FirebaseFirestore.DocumentReference => r !== null,
+      );
+      const saleSnaps = nonNull.length ? await tx.getAll(...nonNull) : [];
+      const saleExiste = new Map(saleSnaps.map((s) => [s.ref.path, s.exists]));
+
+      const totalPorAcreedor = new Map<string, number>();
+      pend.forEach((x, i) => {
+        tx.update(
+          x.ref,
+          camposLiquidacion(metodo, comprobanteUrl, adminUid, now),
+        );
+        const sr = saleRefs[i];
+        if (sr && saleExiste.get(sr.path)) {
+          tx.update(sr, { paidOut: true, paidOutAt: now });
+        }
+        const acreedor =
+          typeof x.payout.acreedorUid === "string" ? x.payout.acreedorUid : "";
+        const monto = typeof x.payout.monto === "number" ? x.payout.monto : 0;
+        if (acreedor) {
+          totalPorAcreedor.set(
+            acreedor,
+            (totalPorAcreedor.get(acreedor) ?? 0) + monto,
+          );
+        }
+      });
+      return { count: pend.length, totals: Array.from(totalPorAcreedor) };
+    });
+
+    logger.info(`Payouts liquidados en lote: ${count}`);
+    await Promise.all(
+      totals.map(([uid, total]) =>
+        notify(uid, "payout-pagado", { monto: fmtCOP(total) }, "/cuenta"),
+      ),
+    );
+    return { count };
+  },
+);
+
+/**
+ * Registra a mano una CUENTA POR PAGAR a un PRODUCTOR (SOLO admin, Fase 4). El
+ * admin declara lo que Only G le debe al productor por su trabajo: entra el NETO
+ * DIRECTO (sin comisión automática — diferida a la Fase 5). Server-authoritative:
+ * `payouts` no admite escritura desde el cliente, así que el alta pasa por aquí.
+ *
+ * Valida que el destinatario EXISTA y tenga el rol `productor` (no se puede crear
+ * deuda a cualquiera; el nombre se toma server-side de `users/{uid}`). El `monto`
+ * es un ENTERO de COP > 0 (COP no usa centavos). `sede`/`nota` son opcionales.
+ *
+ * NO es idempotente por diseño (es un registro manual deliberado; el admin puede
+ * declarar dos deudas iguales legítimamente): usa un id SERVER-GENERADO con
+ * prefijo `prod_` para no colisionar nunca con otros payouts. El modal cliente
+ * lleva su propio guard anti-doble-submit. No loguea datos sensibles.
+ */
+export const registrarPayoutProduccion = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const { acreedorUid, monto, sede, nota } = request.data ?? {};
+
+    if (typeof acreedorUid !== "string" || !acreedorUid) {
+      throw new HttpsError("invalid-argument", "Falta el productor.");
+    }
+    if (
+      typeof monto !== "number" ||
+      !Number.isInteger(monto) ||
+      monto <= 0
+    ) {
+      throw new HttpsError("invalid-argument", "El monto debe ser un entero mayor que cero.");
+    }
+    if (sede !== undefined && typeof sede !== "string") {
+      throw new HttpsError("invalid-argument", "Sede inválida.");
+    }
+    if (nota !== undefined && typeof nota !== "string") {
+      throw new HttpsError("invalid-argument", "Nota inválida.");
+    }
+
+    // El destinatario DEBE existir y ser productor: no se crea deuda a cualquiera.
+    const userSnap = await db.doc(`users/${acreedorUid}`).get();
+    if (!userSnap.exists) {
+      throw new HttpsError("not-found", "El usuario no existe.");
+    }
+    const roles = userSnap.data()?.roles;
+    if (!Array.isArray(roles) || !roles.includes("productor")) {
+      throw new HttpsError("failed-precondition", "El destinatario no es un productor.");
+    }
+    // Fallback a email como en el selector del panel (listProductores), para que
+    // un productor sin displayName no se muestre como UID crudo tras registrarlo.
+    const uData = userSnap.data() ?? {};
+    const acreedorNombre =
+      (uData.displayName as string | null) ||
+      (uData.email as string | null) ||
+      null;
+
+    // Limpieza: no persistir '' ni undefined (Firestore/consistencia). Recorta la
+    // nota; sede queda tal cual (es un id/slug de sede).
+    const sedeLimpia = typeof sede === "string" ? sede.trim() : "";
+    const notaLimpia = typeof nota === "string" ? nota.trim() : "";
+
+    // Id SERVER-GENERADO con prefijo `prod_` (registro manual, no idempotente).
+    const ref = db.collection("payouts").doc();
+    const id = `prod_${ref.id}`;
+    await db.doc(`payouts/${id}`).set({
+      acreedorUid,
+      acreedorNombre,
+      origen: "produccion",
+      refId: "",
+      ...(sedeLimpia ? { sede: sedeLimpia } : {}),
+      ...(notaLimpia ? { nota: notaLimpia } : {}),
+      monto,
+      estado: "pendiente",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    logger.info(`Payout de producción registrado: ${id} → ${acreedorUid}`);
+    return { ok: true, id };
+  },
+);
 
 /**
  * El `amount` de un pedido de perfil lo conoce el servidor (precio fijo). Si el
@@ -631,11 +1083,18 @@ export const onBookingCreatedAmountGuard = onDocumentCreated(
     const data = event.data?.data();
     if (!data) return;
 
-    if (data.tipo === "perfil_artista" && data.amount !== PRECIO_PERFIL) {
-      logger.warn(
-        `Monto de perfil corregido en ${event.params.id}: ${data.amount} → ${PRECIO_PERFIL}`,
-      );
-      await event.data!.ref.update({ amount: PRECIO_PERFIL });
+    // Config-driven y server-authoritative: el monto del perfil lo fija el
+    // servidor al `precioPerfil` vigente (fallback a la constante). Si el cliente
+    // creó la reserva con otro valor, se corrige. Solo se lee el config para
+    // reservas de perfil (no en cada reserva de estudio).
+    if (data.tipo === "perfil_artista") {
+      const { precioPerfil } = await getComercial();
+      if (data.amount !== precioPerfil) {
+        logger.warn(
+          `Monto de perfil corregido en ${event.params.id}: ${data.amount} → ${precioPerfil}`,
+        );
+        await event.data!.ref.update({ amount: precioPerfil });
+      }
     }
   },
 );
@@ -726,7 +1185,10 @@ export const autoStartSessions = onSchedule(
 async function assertAdmin(uid: string | undefined): Promise<void> {
   if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
   const roles = (await db.doc(`users/${uid}`).get()).data()?.roles ?? [];
-  if (!Array.isArray(roles) || !roles.includes("admin")) {
+  // El CEO ⊇ admin también server-side (consistente con `isAdmin()` de las reglas,
+  // que usa hasAny(['admin','ceo'])): así un CEO pasa los gates admin aunque un
+  // admin le hubiera quitado el rol 'admin' explícito, y puede autorrecuperarse.
+  if (!Array.isArray(roles) || !(roles.includes("admin") || roles.includes("ceo"))) {
     throw new HttpsError("permission-denied", "Solo administradores.");
   }
 }
@@ -956,6 +1418,9 @@ export const activarMembresia = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("not-found", "Perfil inexistente.");
   }
   const prof = profSnap.data();
+  // Config-driven: la membresía se factura al `precioMembresia` vigente (fallback
+  // a la constante). Solo aplica al asiento del PAGO (la cortesía no factura).
+  const { precioMembresia } = await getComercial();
   const now = Date.now();
   const expira = new Date(now);
   expira.setMonth(expira.getMonth() + MEMBRESIA_DURACION_MESES);
@@ -984,7 +1449,7 @@ export const activarMembresia = onCall({ region: REGION }, async (request) => {
       uid: payerUid ?? "",
       clientName,
       concepto: "Membresia",
-      amount: PRECIO_MEMBRESIA,
+      amount: precioMembresia,
       fecha: now,
       estado: "confirmada",
       fuente: "membresia",
@@ -1017,6 +1482,10 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
   if (!Array.isArray(rawRoles)) {
     throw new HttpsError("invalid-argument", "Roles invalidos.");
   }
+  // INVARIANTE de seguridad: `ceo` NO está en la whitelist → un admin NO puede
+  // OTORGARLO desde este panel (se asigna solo en consola/Admin SDK). El rol
+  // `ceo` es la super-cuenta (⊇ admin) que edita comisiones/precios; dejar que un
+  // admin lo concediera sería una escalada de privilegios.
   const VALID = [
     "cliente",
     "productor",
@@ -1045,6 +1514,17 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("not-found", "Usuario inexistente.");
   }
   const user = userSnap.data();
+  // PRESERVA `ceo` Y `admin` si el destinatario ya era CEO: el CEO es la super-cuenta
+  // (⊇ admin) y NO se le puede degradar desde el panel (solo consola). Sin re-inyectar
+  // `admin`, un admin podría dejar al CEO en ['ceo'] y —como el panel /admin se gatea
+  // por 'admin' en el cliente— dejarlo FUERA de su propia herramienta (un subordinado
+  // degradando al superior). `ceo` no está en la whitelist, así que el filtro lo
+  // habría descartado; lo re-inyectamos junto con `admin`.
+  const prevRoles = Array.isArray(user?.roles) ? (user!.roles as string[]) : [];
+  if (prevRoles.includes("ceo")) {
+    if (!roles.includes("ceo")) roles.push("ceo");
+    if (!roles.includes("admin")) roles.push("admin");
+  }
   const batch = db.batch();
   batch.update(userRef, { roles });
   // Sincroniza el perfil vinculado (si existe): disciplines = roles de talento; socio = beatmaker/productor.

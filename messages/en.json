@@ -50,6 +50,7 @@
     "cliente": "Client",
     "productor": "Producer",
     "admin": "Admin",
+    "ceo": "CEO",
     "artista": "Singer",
     "beatmaker": "Beatmaker",
     "modelo": "Model",
@@ -66,8 +67,21 @@
     "console": "Console",
     "myBeats": "My beats",
     "availability": "Availability",
+    "myPayouts": "My payouts",
     "settings": "Settings",
     "logout": "Log out"
+  },
+  "misPagos": {
+    "eyebrow": "Your money",
+    "title": "My payouts",
+    "intro": "What Only G owes you for your sales and work. The transfer is done manually by the team; here you see the status of each payment.",
+    "totalPendiente": "Pending payout",
+    "totalHint": "Total not yet transferred to you.",
+    "pendientes": "Pending",
+    "sinPendientes": "You have no pending payouts right now.",
+    "historial": "History",
+    "error": "Couldn't load your payouts. Please try again.",
+    "pagadoEl": "Paid on {fecha} · {metodo}"
   },
   "login": {
     "resetTitle": "Reset password",
@@ -130,6 +144,60 @@
     "nameRequired": "Enter your name.",
     "saveError": "Couldn't save. Try again.",
     "settingsSoon": "Soon you'll be able to adjust your preferences here."
+  },
+  "datosPago": {
+    "title": "Payout details",
+    "description": "Where does Only G pay you? These details are private: only you and the studio can see them.",
+    "method": "Payout method",
+    "metodo": {
+      "banco": "Bank",
+      "nequi": "Nequi",
+      "efectivo": "Cash"
+    },
+    "banco": {
+      "entidad": "Bank",
+      "entidadPlaceholder": "Bancolombia, Davivienda…",
+      "tipoCuenta": "Account type",
+      "numeroCuenta": "Account number",
+      "numeroCuentaPlaceholder": "000-000000-00",
+      "titular": "Account holder",
+      "titularPlaceholder": "Full name",
+      "tipoDoc": "Document type",
+      "numeroDoc": "Document number",
+      "numeroDocPlaceholder": "ID / tax ID"
+    },
+    "tipoCuenta": {
+      "ahorros": "Savings",
+      "corriente": "Checking"
+    },
+    "tipoDoc": {
+      "CC": "Citizen ID",
+      "CE": "Foreigner ID",
+      "NIT": "Tax ID (NIT)",
+      "PAS": "Passport"
+    },
+    "nequi": {
+      "telefono": "Nequi number",
+      "telefonoPlaceholder": "300 000 0000",
+      "titular": "Account holder",
+      "titularPlaceholder": "Full name"
+    },
+    "efectivo": {
+      "nota": "Note (optional)",
+      "notaPlaceholder": "How you'd prefer to receive the cash",
+      "hint": "We'll arrange the cash payment with you directly."
+    },
+    "save": "Save payout details",
+    "saving": "Saving…",
+    "saved": "Payout details saved.",
+    "error": "Couldn't save. Try again.",
+    "incomplete": "Fill in the fields for the chosen method.",
+    "prompt": {
+      "title": "Want to set up your payout details?",
+      "optional": "Optional",
+      "description": "Tell us where you'd like Only G to pay you. You can do it now or later from your account.",
+      "add": "Add payout details"
+    }
   },
   "status": {
     "pendiente": "Pending",
@@ -399,6 +467,7 @@
     "quickRolesSub": "Grant and revoke permissions",
     "quickConveniosSub": "Producer and beatmaker requests",
     "quickBeatsSub": "Beatmaker sales & payouts",
+    "quickCeoSub": "Commissions & prices",
     "bookingsActive": "Active bookings",
     "viewAll": "View all",
     "activityTitle": "Recent activity",
@@ -420,6 +489,7 @@
     "roles": "Roles",
     "convenios": "Agreements",
     "beats": "Beats",
+    "ceo": "CEO",
     "roleAdmin": "Administrator",
     "helpTitle": "Need help?",
     "helpText": "Support available 24/7."
@@ -476,7 +546,66 @@
     "comision": "Commission",
     "neto": "Beatmaker net",
     "errorPagar": "Couldn't mark it as paid. Try again.",
-    "errorCargar": "Couldn't load the beat sales."
+    "errorCargar": "Couldn't load the beat sales.",
+    "backfill": "Sync payouts",
+    "backfillDone": "{count} payout(s) synced.",
+    "backfillError": "Couldn't sync. Try again."
+  },
+  "adminPayouts": {
+    "title": "Payables",
+    "intro": "Settle what Only G owes each partner. See their payout details and record the payment with its receipt.",
+    "pendientes": "To pay",
+    "sinPendientes": "Nothing pending to pay.",
+    "sinPayouts": "No payables yet.",
+    "totalPendiente": "Total owed: {monto}",
+    "deudaPersona": "Owed: {monto}",
+    "datosTitulo": "Payout details",
+    "sinDatos": "This partner hasn't set up their payout details yet.",
+    "marcarPagado": "Mark as paid",
+    "pagarTodo": "Pay all",
+    "verPagados": "Show settled ({count})",
+    "ocultarPagados": "Hide settled",
+    "verComprobante": "View receipt",
+    "copy": "Copy",
+    "copied": "Copied",
+    "origen": {
+      "beat": "Beat",
+      "produccion": "Production"
+    },
+    "errorCargar": "Couldn't load the payables.",
+    "backfill": "Sync payouts",
+    "backfillDone": "{count} payout(s) synced.",
+    "backfillError": "Couldn't sync. Try again.",
+    "produccion": {
+      "registrar": "Record producer payment",
+      "title": "Record producer payment",
+      "intro": "Manually record what Only G owes a producer for their work. You enter the net amount directly (no commission).",
+      "productor": "Producer",
+      "productorPlaceholder": "Choose a producer",
+      "productorBuscar": "Search producer…",
+      "sinProductores": "No producers registered.",
+      "monto": "Net amount",
+      "sede": "Studio (optional)",
+      "sedeNone": "No studio",
+      "nota": "Note (optional)",
+      "notaPlaceholder": "Optional",
+      "cancelar": "Cancel",
+      "confirmar": "Record",
+      "registrando": "Recording…",
+      "error": "Couldn't record the payment. Try again.",
+      "errorNoProductor": "The recipient is not a producer."
+    },
+    "modal": {
+      "title": "Record payment",
+      "para": "You're recording the payment to {nombre} of",
+      "comprobante": "Receipt (optional)",
+      "comprobanteHint": "Attach the screenshot or PDF of the transfer.",
+      "confirmar": "Confirm payment",
+      "confirmando": "Recording…",
+      "subiendo": "Uploading…",
+      "cancelar": "Cancel",
+      "error": "Couldn't record the payment. Try again."
+    }
   },
   "adminConfigPagos": {
     "backToAdmin": "← Admin panel",
@@ -492,6 +621,76 @@
     "save": "Save",
     "saved": "Saved ✓",
     "errorSave": "Could not save. Please try again."
+  },
+  "ceoConfig": {
+    "eyebrow": "CEO only",
+    "title": "Commercial settings",
+    "intro": "Platform commissions and prices. Both the server and the client read these values.",
+    "warning": "Changes only affect NEW sales and charges. Anything already charged stays frozen at the price in effect at that time.",
+    "save": "Save",
+    "saved": "Saved ✓",
+    "errors": {
+      "load": "Couldn't load the settings.",
+      "save": "Couldn't save. Please try again.",
+      "comisionRango": "The commission must be between 0% and 100%.",
+      "precioRango": "The price must be a whole number greater than 0."
+    },
+    "comisiones": {
+      "title": "Commissions",
+      "desc": "Internal: only you (CEO) can see them. This is the margin Only G keeps.",
+      "beat": "Beat commission",
+      "beatHint": "Percentage the platform keeps from each beat sale.",
+      "productor": "Producer commission",
+      "productorHint": "Not set yet. It will be used once producer payouts are automated.",
+      "sinDefinir": "Not set"
+    },
+    "precios": {
+      "title": "Prices",
+      "desc": "The buyer sees these. They must match what is charged.",
+      "beat": "Beat price",
+      "membresia": "Membership price (monthly)",
+      "perfil": "Artist profile price"
+    }
+  },
+  "ceoAnalitica": {
+    "title": "Analytics",
+    "intro": "Google Analytics (GA4) already collects everything automatically —visits, countries, devices, pages, time and events—. Open the reports here; there's no duplicate dashboard inside the app.",
+    "propertyIdLabel": "GA4 property ID",
+    "propertyIdPlaceholder": "123456789",
+    "propertyIdHint": "In GA4 → Admin → Property Settings. It's a number; used to deep-link to your property.",
+    "save": "Save ID",
+    "saved": "Saved.",
+    "openGa4": "Open Google Analytics",
+    "guia": {
+      "title": "Which report answers each question",
+      "visitas": {
+        "q": "Visits and countries",
+        "r": "Reports › Acquisition, and User › Demographics (country)."
+      },
+      "dispositivos": {
+        "q": "Devices",
+        "r": "User › Tech (device, browser, OS)."
+      },
+      "paginas": {
+        "q": "Pages and time on page",
+        "r": "Engagement › Pages and screens (average engagement time)."
+      },
+      "eventos": {
+        "q": "Clicks and events",
+        "r": "Engagement › Events (each event with its count)."
+      },
+      "abandono": {
+        "q": "Exit points",
+        "r": "Explore › Funnel exploration or Paths; and the Retention report."
+      }
+    },
+    "eventos": {
+      "title": "The app's own events",
+      "desc": "Only G sends these funnel events; they appear in GA4's Events report:"
+    },
+    "errors": {
+      "save": "Couldn't save. Check the ID (numbers only)."
+    }
   },
   "adminEstudios": {
     "backToAdmin": "← Admin panel",
@@ -832,6 +1031,21 @@
       "reasonPlaceholder": "Reason (paid, refinanced…)",
       "cancel": "Cancel",
       "confirm": "Settle"
+    },
+    "payouts": {
+      "title": "Partner payouts (pending)",
+      "intro": "Net amount Only G owes beatmakers/producers for confirmed sales. Already added to the liabilities above. Settled in “Beat sales & payouts”.",
+      "category": "Partner payout",
+      "colOrigin": "Source",
+      "colDate": "Date",
+      "total": "Pending total: {monto}",
+      "sinSincronizar": "{n} unpaid sale(s) without a materialized payout (already included in the total). Sync to see them per person and settle them.",
+      "sincronizar": "Sync",
+      "syncError": "Couldn't sync the payouts. Please try again.",
+      "origen": {
+        "beat": "Beat",
+        "produccion": "Production"
+      }
     }
   },
   "adminPerfiles": {
@@ -1431,6 +1645,10 @@
       "beat-vendido": {
         "titulo": "Beat sold",
         "cuerpo": "Your beat \"{titulo}\" was sold."
+      },
+      "payout-pagado": {
+        "titulo": "Payment received",
+        "cuerpo": "Only G paid you {monto}."
       }
     }
   },
@@ -1446,7 +1664,10 @@
     "rolesTitle": "Roles",
     "conveniosTitle": "Agreement requests",
     "beatsTitle": "Beat sales & payouts",
+    "payoutsTitle": "Payables",
     "paymentsConfigTitle": "Payment details",
+    "ceoTitle": "Commercial settings",
+    "ceoMessage": "This tool is for the CEO only.",
     "estudiosTitle": "Studios",
     "consoleTitle": "Producer console",
     "consoleMessage": "This section is for producers only.",

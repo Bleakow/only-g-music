@@ -36,7 +36,9 @@ export type NotifEvento =
   | "convenio-aprobado" // el admin aprobó → se avisa al solicitante
   | "convenio-rechazado" // el admin rechazó → se avisa al solicitante
   // Beats (marketplace)
-  | "beat-vendido"; // se confirmó la venta → avisa al beatmaker
+  | "beat-vendido" // se confirmó la venta → avisa al beatmaker
+  // Payouts (liquidación de cuentas por pagar)
+  | "payout-pagado"; // el admin liquidó lo adeudado → avisa al socio acreedor
 
 export const NOTIF_EVENTOS: NotifEvento[] = [
   "mensaje-nuevo",
@@ -54,6 +56,7 @@ export const NOTIF_EVENTOS: NotifEvento[] = [
   "convenio-aprobado",
   "convenio-rechazado",
   "beat-vendido",
+  "payout-pagado",
 ];
 
 /**
@@ -142,6 +145,10 @@ export const NOTIF_META: Record<NotifEvento, NotifEventoMeta> = {
   "beat-vendido": {
     redirectBase: "/beats/publicar",
     descripcion: "Se vendió uno de tus beats",
+  },
+  "payout-pagado": {
+    redirectBase: "/cuenta",
+    descripcion: "Only G te liquidó lo que se te debía",
   },
 };
 

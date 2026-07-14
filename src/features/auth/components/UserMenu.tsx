@@ -230,6 +230,15 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
                       {t("userMenu.availability")}
                     </Link>
                   )}
+                  {hasAnyRole(account, ["beatmaker", "productor"]) && (
+                    <Link
+                      href="/mis-pagos"
+                      onClick={() => setOpen(false)}
+                      className={ITEM}
+                    >
+                      {t("userMenu.myPayouts")}
+                    </Link>
+                  )}
                   <Link
                     href="/cuenta"
                     onClick={() => setOpen(false)}

@@ -16,7 +16,10 @@ export const PERFIL_SEDE: SedeId = "barranquilla";
 
 /**
  * Construye el pedido de perfil (Reserva `perfil_artista`). `start = now` (no es
- * una cita: sirve para agrupar el ingreso por mes en finanzas), sin slot.
+ * una cita: sirve para agrupar el ingreso por mes en finanzas), sin slot. El
+ * `precio` es opcional y por defecto la constante: el componente pasa el valor
+ * vigente de `usePrecios()` para que el monto mostrado == el que se cobrará. El
+ * server es autoritativo (onBookingCreatedAmountGuard corrige contra el config).
  */
 export function nuevoPedidoPerfil(params: {
   uid: string;
@@ -24,6 +27,7 @@ export function nuevoPedidoPerfil(params: {
   artistSlug: string;
   clientName?: string;
   clientEmail?: string;
+  precio?: number;
 }): NewReserva {
   return {
     uid: params.uid,
@@ -32,7 +36,7 @@ export function nuevoPedidoPerfil(params: {
     sede: PERFIL_SEDE,
     start: params.now,
     durationMin: 0,
-    amount: PRECIO_PERFIL,
+    amount: params.precio ?? PRECIO_PERFIL,
     clientName: params.clientName,
     clientEmail: params.clientEmail,
     tipo: "perfil_artista",

@@ -9,7 +9,8 @@ import { DatePicker } from "@/components/ui/DatePicker";
 import { hasAnyRole } from "@/domain/user";
 import { toSlug } from "@/domain/artist-profile";
 import { formatCOP } from "@/domain/service";
-import { PRECIO_PERFIL, nuevoPedidoPerfil } from "@/domain/profile-order";
+import { nuevoPedidoPerfil } from "@/domain/profile-order";
+import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { createReserva } from "@/features/booking/lib/booking-repo";
 import { track } from "@/lib/firebase/analytics";
 import { updateArtistPrivateData } from "@/features/auth/lib/user-repo";
@@ -44,6 +45,7 @@ const INPUT =
 
 export function ArtistOnboarding() {
   const { user, account, refreshAccount } = useAuth();
+  const { precioPerfil } = usePrecios();
   const router = useRouter();
   const t = useTranslations();
 
@@ -136,6 +138,7 @@ export function ArtistOnboarding() {
           artistSlug: slug,
           clientName: account?.displayName ?? user.displayName ?? undefined,
           clientEmail: account?.email ?? user.email ?? undefined,
+          precio: precioPerfil,
         }),
       );
       track("artist_profile_submitted");
@@ -166,7 +169,7 @@ export function ArtistOnboarding() {
           {t("artistOnboarding.pricingLabel")}
         </p>
         <p className="font-narrow mt-1 text-3xl font-bold text-white">
-          {formatCOP(PRECIO_PERFIL)}
+          {formatCOP(precioPerfil)}
         </p>
         <p className="text-silver-400 mt-1 text-sm">
           {t("artistOnboarding.pricingNote")}

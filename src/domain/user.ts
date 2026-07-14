@@ -11,6 +11,7 @@ export type Role =
   | "cliente"
   | "productor"
   | "admin"
+  | "ceo"
   | "artista"
   | "beatmaker"
   | "modelo"
@@ -78,4 +79,19 @@ export function hasAnyRole(
   roles: Role[],
 ): boolean {
   return !!account && account.roles.some((r) => roles.includes(r));
+}
+
+/**
+ * ¿La cuenta es CEO? El rol `ceo` es la super-cuenta del negocio: hereda TODOS
+ * los permisos de admin y, además, ve/edita la config comercial (comisiones y
+ * precios). INVARIANTE de seguridad: `ceo` NO se otorga desde el cliente ni
+ * desde el panel de admin (`adminSetRoles` lo excluye de su whitelist) — solo se
+ * asigna directamente en consola/Admin SDK. Por convención un CEO se aprovisiona
+ * con AMBOS roles `['admin','ceo']` (así hereda todos los gates de admin del
+ * cliente sin tocarlos); `esCeo` gatea únicamente la superficie exclusiva de CEO.
+ */
+export function esCeo(
+  account: Pick<UserAccount, "roles"> | null | undefined,
+): boolean {
+  return hasRole(account, "ceo");
 }

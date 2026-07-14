@@ -11,6 +11,7 @@ import {
   listBeatSales,
   marcarPayoutPagado,
 } from "@/features/beats/lib/beat-sales-repo";
+import { backfillPayouts } from "@/features/admin/lib/payouts-repo";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 
@@ -30,6 +31,8 @@ export function AdminBeatsPayouts() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +63,23 @@ export function AdminBeatsPayouts() {
     [sales],
   );
 
+  // Backfill (one-shot): siembra `payouts` desde las ventas históricas aún no
+  // pagadas. Idempotente en el servidor → se puede pulsar sin miedo a duplicar.
+  async function sincronizarPayouts() {
+    if (backfilling) return;
+    setBackfilling(true);
+    setBackfillMsg(null);
+    try {
+      const count = await backfillPayouts();
+      setBackfillMsg(t("adminBeats.backfillDone", { count }));
+    } catch (e) {
+      console.error("[admin-beats-payouts] backfill:", e);
+      setBackfillMsg(t("adminBeats.backfillError"));
+    } finally {
+      setBackfilling(false);
+    }
+  }
+
   async function marcarPagado(sale: BeatSale) {
     if (payingId) return;
     setPayingId(sale.id);
@@ -85,7 +105,17 @@ export function AdminBeatsPayouts() {
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminBeats.title")}
         subtitle={t("adminBeats.intro")}
-      />
+      >
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <GlassButton onClick={sincronizarPayouts} disabled={backfilling}>
+            {backfilling && <SpinnerIcon className="size-4 animate-spin" />}
+            {t("adminBeats.backfill")}
+          </GlassButton>
+          {backfillMsg && (
+            <span className="text-silver-300 text-sm">{backfillMsg}</span>
+          )}
+        </div>
+      </AdminPageHeader>
 
       <div className="px-6 sm:px-10">
         {error && (

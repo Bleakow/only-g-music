@@ -43,12 +43,16 @@ export function FileUpload({
   accept,
   maxSizeMB = 25,
   children,
+  onBusyChange,
 }: {
   value: UploadedFile[];
   onChange: (files: UploadedFile[]) => void;
   accept?: string;
   maxSizeMB?: number;
   children?: ReactNode;
+  /** Notifica cuando hay una subida en curso (para que el padre bloquee acciones
+   *  que dependen de la URL resuelta, p. ej. un botón "Confirmar"). Opcional. */
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const { user } = useAuth();
   const t = useTranslations();
@@ -66,6 +70,7 @@ export function FileUpload({
     }
     setError(null);
     setBusy(true);
+    onBusyChange?.(true);
     try {
       const uploaded: UploadedFile[] = [];
       for (const file of files) {
@@ -81,6 +86,7 @@ export function FileUpload({
       setError(t("fileUpload.uploadError"));
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
 

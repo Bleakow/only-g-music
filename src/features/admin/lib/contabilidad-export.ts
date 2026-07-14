@@ -32,7 +32,19 @@ export interface BalanceExportLabels {
   colValor: string;
   activoCat: (c: ActivoCategoria) => string;
   pasivoCat: (c: PasivoCategoria) => string;
+  /** Etiqueta de categoría para las filas de payout ("Payout a socio"). */
+  payoutCat: string;
   money: (n: number) => string;
+}
+
+/**
+ * Fila de payout pendiente para el export. Es una cuenta por pagar DERIVADA (no
+ * vive en la colección `pasivos`): se lista dentro de la sección de pasivos para
+ * que las líneas cuadren con el total (`balance.pasivos`, que ya la incluye).
+ */
+export interface PayoutExportRow {
+  concepto: string;
+  monto: number;
 }
 
 function csvCell(v: string | number): string {
@@ -49,6 +61,7 @@ export function balanceToCSV(
   balance: BalanceGeneral,
   ahora: number,
   L: BalanceExportLabels,
+  payouts: PayoutExportRow[] = [],
 ): string {
   const lines: string[] = [];
   lines.push(csvRow([L.title]));
@@ -69,6 +82,9 @@ export function balanceToCSV(
   lines.push(csvRow([L.colConcepto, L.colCategoria, L.colValor]));
   for (const p of pasivos.filter((x) => pasivoVigente(x, ahora))) {
     lines.push(csvRow([p.nombre, L.pasivoCat(p.categoria), Math.round(p.monto)]));
+  }
+  for (const p of payouts) {
+    lines.push(csvRow([p.concepto, L.payoutCat, Math.round(p.monto)]));
   }
   lines.push(csvRow([L.totalPasivos, "", Math.round(balance.pasivos)]));
   lines.push("");
@@ -91,6 +107,7 @@ export function balanceToHTML(
   balance: BalanceGeneral,
   ahora: number,
   L: BalanceExportLabels,
+  payouts: PayoutExportRow[] = [],
 ): string {
   const row = (nombre: string, cat: string, valor: number) =>
     `<tr><td>${esc(nombre)}</td><td>${esc(cat)}</td><td class="n">${esc(
@@ -101,10 +118,12 @@ export function balanceToHTML(
     .filter((a) => activoVigente(a, ahora))
     .map((a) => row(a.nombre, L.activoCat(a.categoria), valorEnLibros(a, ahora)))
     .join("");
-  const pasivosRows = pasivos
-    .filter((p) => pasivoVigente(p, ahora))
-    .map((p) => row(p.nombre, L.pasivoCat(p.categoria), p.monto))
-    .join("");
+  const pasivosRows =
+    pasivos
+      .filter((p) => pasivoVigente(p, ahora))
+      .map((p) => row(p.nombre, L.pasivoCat(p.categoria), p.monto))
+      .join("") +
+    payouts.map((p) => row(p.concepto, L.payoutCat, p.monto)).join("");
 
   const totalRow = (label: string, valor: number) =>
     `<tr class="tot"><td colspan="2">${esc(label)}</td><td class="n">${esc(

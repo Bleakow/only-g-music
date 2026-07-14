@@ -11,6 +11,7 @@ import { routing } from "@/i18n/routing";
 import { SITE_URL } from "@/lib/seo";
 import "../globals.css";
 import { AuthProvider } from "@/features/auth/components/AuthProvider";
+import { PreciosProvider } from "@/features/pricing/components/PreciosProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
 import { InitialLoader } from "@/components/loaders/InitialLoader";
 
@@ -66,9 +67,11 @@ export default async function LocaleLayout({
       <body>
         <NextIntlClientProvider messages={messages}>
           <AuthProvider>
-            <GlobalErrorListener />
-            <InitialLoader />
-            {children}
+            <PreciosProvider>
+              <GlobalErrorListener />
+              <InitialLoader />
+              {children}
+            </PreciosProvider>
           </AuthProvider>
         </NextIntlClientProvider>
       </body>

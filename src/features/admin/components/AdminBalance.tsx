@@ -18,10 +18,15 @@ import {
   balanceGeneral,
   pasivoVigente,
 } from "@/domain/contabilidad";
+import { type Payout, totalPayoutsPendientes } from "@/domain/payout";
+import type { BeatSale } from "@/domain/beat-sale";
 import { listActivos } from "../lib/activos-repo";
 import { listPasivos, saldarPasivo } from "../lib/pasivos-repo";
+import { listPayouts, backfillPayouts } from "../lib/payouts-repo";
+import { listBeatSales } from "@/features/beats/lib/beat-sales-repo";
 import {
   type BalanceExportLabels,
+  type PayoutExportRow,
   balanceToCSV,
   balanceToHTML,
 } from "../lib/contabilidad-export";
@@ -38,9 +43,12 @@ export function AdminBalance({
 
   const [activos, setActivos] = useState<Activo[]>([]);
   const [pasivos, setPasivos] = useState<Pasivo[]>([]);
+  const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [beatSales, setBeatSales] = useState<BeatSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   // Liquidación de pasivo
   const [saldarTarget, setSaldarTarget] = useState<Pasivo | null>(null);
@@ -49,10 +57,17 @@ export function AdminBalance({
 
   function cargar(initial = false) {
     if (!initial) setLoading(true);
-    return Promise.all([listActivos(), listPasivos()])
-      .then(([a, p]) => {
+    return Promise.all([
+      listActivos(),
+      listPasivos(),
+      listPayouts(),
+      listBeatSales(),
+    ])
+      .then(([a, p, po, bs]) => {
         setActivos(a);
         setPasivos(p);
+        setPayouts(po);
+        setBeatSales(bs);
         setError(null);
       })
       .catch((e) => {
@@ -64,11 +79,13 @@ export function AdminBalance({
 
   useEffect(() => {
     let active = true;
-    Promise.all([listActivos(), listPasivos()])
-      .then(([a, p]) => {
+    Promise.all([listActivos(), listPasivos(), listPayouts(), listBeatSales()])
+      .then(([a, p, po, bs]) => {
         if (!active) return;
         setActivos(a);
         setPasivos(p);
+        setPayouts(po);
+        setBeatSales(bs);
       })
       .catch((e) => {
         if (!active) return;
@@ -81,7 +98,33 @@ export function AdminBalance({
     };
   }, [t]);
 
-  const balance = balanceGeneral(activos, pasivos, now);
+  // Deuda a socios = payouts pendientes + ventas de beat impagas que AÚN no
+  // tienen payout (histórico anterior a la Fase 2, sin materializar). RECONCILIAR
+  // así hace que el Balance sea correcto de inmediato: sin esto subestimaría la
+  // deuda y sobreestimaría el patrimonio hasta correr el backfill, y discreparía
+  // del panel de payouts de beats. El backfill solo MATERIALIZA esos payouts para
+  // que aparezcan por-persona (no cambia el total, que ya está reconciliado).
+  const payoutIds = new Set(payouts.map((p) => p.id));
+  const ventasSinPayout = beatSales.filter(
+    (bs) => !bs.paidOut && bs.beatmakerUid && !payoutIds.has(`beat_${bs.id}`),
+  );
+  const netosHuerfanos = ventasSinPayout.reduce((s, bs) => s + bs.neto, 0);
+  const payoutsPendientes = payouts.filter((p) => p.estado === "pendiente");
+  const totalPayouts = totalPayoutsPendientes(payouts) + netosHuerfanos;
+  const balance = balanceGeneral(activos, pasivos, now, totalPayouts);
+
+  async function sincronizar() {
+    setSyncing(true);
+    try {
+      await backfillPayouts();
+      await cargar();
+    } catch (e) {
+      console.error("[balance] sync:", e);
+      setError(t("adminBalance.payouts.syncError"));
+    } finally {
+      setSyncing(false);
+    }
+  }
   const positivo = balance.patrimonio >= 0;
   const pasivosOrdenados = [...pasivos].sort((a, b) => {
     const va = pasivoVigente(a, now);
@@ -107,12 +150,28 @@ export function AdminBalance({
       colValor: t("adminBalance.colValue"),
       activoCat: (c) => t(`adminBienes.categoria.${c}`),
       pasivoCat: (c) => t(`adminBalance.categoria.${c}`),
+      payoutCat: t("adminBalance.payouts.category"),
       money: (n) => formatCOP(n),
     };
   }
 
+  /** Payouts pendientes como filas de export (dentro de la sección de pasivos). */
+  function payoutExportRows(): PayoutExportRow[] {
+    return payoutsPendientes.map((p) => ({
+      concepto: p.acreedorNombre ?? p.acreedorUid,
+      monto: p.monto,
+    }));
+  }
+
   function descargarCSV() {
-    const csv = balanceToCSV(activos, pasivos, balance, now, exportLabels());
+    const csv = balanceToCSV(
+      activos,
+      pasivos,
+      balance,
+      now,
+      exportLabels(),
+      payoutExportRows(),
+    );
     // BOM para que Excel respete los acentos (UTF-8).
     const blob = new Blob(["﻿" + csv], {
       type: "text/csv;charset=utf-8",
@@ -126,7 +185,14 @@ export function AdminBalance({
   }
 
   function imprimirPDF() {
-    const html = balanceToHTML(activos, pasivos, balance, now, exportLabels());
+    const html = balanceToHTML(
+      activos,
+      pasivos,
+      balance,
+      now,
+      exportLabels(),
+      payoutExportRows(),
+    );
     const w = window.open("", "_blank");
     if (!w) return;
     w.document.write(html);
@@ -362,6 +428,89 @@ export function AdminBalance({
                 </div>
               )}
             </section>
+
+            {/* Payouts a socios (pendientes): cuenta por pagar VISIBLE, ya
+                sumada al total de pasivos de arriba. Solo lectura: la
+                liquidación vive en «Ventas y pagos de beats». */}
+            {(payoutsPendientes.length > 0 || ventasSinPayout.length > 0) && (
+              <section className={`mt-10 ${adminCard} p-5`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-narrow text-2xl font-bold text-white uppercase">
+                    {t("adminBalance.payouts.title")}
+                  </h2>
+                  <p className="text-amethyst-200 text-sm font-semibold">
+                    {t("adminBalance.payouts.total", {
+                      monto: formatCOP(totalPayouts),
+                    })}
+                  </p>
+                </div>
+                <p className="text-silver-400 mt-1 max-w-xl text-sm">
+                  {t("adminBalance.payouts.intro")}
+                </p>
+
+                {/* Ventas impagas anteriores a la Fase 2 sin payout materializado:
+                    YA están sumadas al total (reconciliación), pero no aparecen en
+                    la tabla por-persona hasta sincronizarlas. */}
+                {ventasSinPayout.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2">
+                    <p className="text-sm text-amber-200">
+                      {t("adminBalance.payouts.sinSincronizar", {
+                        n: ventasSinPayout.length,
+                      })}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={sincronizar}
+                      disabled={syncing}
+                      className="border-amber-300/40 text-amber-100 hover:bg-amber-400/10 flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs tracking-[1px] uppercase transition disabled:opacity-50"
+                    >
+                      {syncing && (
+                        <SpinnerIcon className="size-3.5 animate-spin" />
+                      )}
+                      {t("adminBalance.payouts.sincronizar")}
+                    </button>
+                  </div>
+                )}
+                <div className={`mt-4 overflow-x-auto rounded-xl ${adminInner}`}>
+                  <table className="w-full min-w-xl text-left text-sm">
+                    <thead className="text-silver-400 text-xs tracking-wide uppercase">
+                      <tr>
+                        <th className="px-4 py-3">
+                          {t("adminBalance.colCreditor")}
+                        </th>
+                        <th className="px-4 py-3">
+                          {t("adminBalance.payouts.colOrigin")}
+                        </th>
+                        <th className="px-4 py-3">
+                          {t("adminBalance.payouts.colDate")}
+                        </th>
+                        <th className="px-4 py-3 text-right">
+                          {t("adminBalance.colValue")}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {payoutsPendientes.map((p) => (
+                        <tr key={p.id}>
+                          <td className="text-silver-100 px-4 py-3">
+                            {p.acreedorNombre ?? p.acreedorUid}
+                          </td>
+                          <td className="text-silver-300 px-4 py-3">
+                            {t(`adminBalance.payouts.origen.${p.origen}`)}
+                          </td>
+                          <td className="text-silver-400 px-4 py-3">
+                            {fechaCorta(p.createdAt, locale)}
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-white tabular-nums">
+                            {formatCOP(p.monto)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

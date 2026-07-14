@@ -6,10 +6,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ¿El usuario actual tiene rol admin? (lee su doc de usuario).
+    // ¿El usuario actual tiene rol admin? (lee su doc de usuario). El rol `ceo`
+    // HEREDA admin: es la super-cuenta del negocio (⊇ admin), así que pasa todos
+    // los gates de admin. Por convención un CEO se aprovisiona con ['admin','ceo'],
+    // pero incluir 'ceo' aquí lo hace robusto aunque el doc solo trajera 'ceo'.
     function isAdmin() {
       return request.auth != null
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin']);
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['admin', 'ceo']);
+    }
+
+    // ¿El usuario actual es CEO? Gatea la config comercial INTERNA (comisiones) y
+    // la escritura de precios. El rol `ceo` NO se otorga desde el cliente ni desde
+    // el panel admin (adminSetRoles lo excluye): solo se asigna en consola.
+    function isCeo() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['ceo']);
+    }
+
+    // ¿El slug de perfil dado EXISTE y pertenece al usuario actual? Para atribuir
+    // un beat a un perfil (`beatmakerSlug`) hay que ser su DUEÑO: se valida contra
+    // artistProfiles/{slug}.uid — NO contra el puntero users/{uid}.artistSlug, que
+    // el cliente puede falsear libremente (así un beatmaker no puede firmar/enlazar
+    // su beat con el perfil de OTRO artista).
+    function ownsProfileSlug(slug) {
+      return exists(/databases/$(database)/documents/artistProfiles/$(slug))
+        && get(/databases/$(database)/documents/artistProfiles/$(slug)).data.uid == request.auth.uid;
     }
 
     // ── Config de la compañía (destino de pago, etc.) ────────────────
@@ -18,6 +39,31 @@ service cloud.firestore {
     match /config/{doc} {
       allow read: if request.auth != null;
       allow write: if isAdmin();
+    }
+
+    // ── Config comercial (partida por VISIBILIDAD de lectura) ────────
+    // Firestore gatea la lectura a nivel de DOC, así que el config vive en dos
+    // documentos separados, no en uno solo:
+    //   - `comercialConfig/comisiones` → INTERNAS (comisionBeat, comisionProductor).
+    //     Solo el CEO lee/escribe: son el margen de la empresa, no las ve nadie más.
+    //   - `comercialConfig/precios` → precioBeat/precioMembresia/precioPerfil.
+    //     Legibles por cualquier AUTENTICADO (el comprador debe VER lo que se le
+    //     cobrará, para que display == cobro), pero solo el CEO los escribe.
+    // El SERVIDOR (Cloud Functions, Admin SDK) lee AMBOS ignorando estas reglas,
+    // con FALLBACK a las constantes del dominio (`getComercial`), así que NO hace
+    // falta sembrar los docs: si no existen, rige el default.
+    match /comercialConfig/comisiones {
+      allow read: if isCeo();
+      allow write: if isCeo();
+    }
+    match /comercialConfig/precios {
+      allow read: if request.auth != null;
+      allow write: if isCeo();
+    }
+    // Analítica: solo el ID de propiedad GA4 (para enlazar a los informes). Interno.
+    match /comercialConfig/analitica {
+      allow read: if isCeo();
+      allow write: if isCeo();
     }
 
     // ── Sedes/estudios (override editable: dirección, horario, pago) ──
@@ -68,6 +114,22 @@ service cloud.firestore {
       }
     }
 
+    // ── Datos de pago del socio (a dónde le paga Only G) ─────────────
+    // Doc PRIVADO y dedicado `datosPago/{uid}` (id = uid). Frontera clave: el
+    // admin LEE para poder pagar; el DUEÑO ESCRIBE sus propios datos (banco /
+    // Nequi / efectivo). Va en doc aparte —no inline en users— porque el admin
+    // no puede leer el `users` de otro; este doc sí permite "dueño escribe,
+    // admin lee". NO gatea por rol: un usuario aún 'cliente' con convenio
+    // pendiente puede dejarlos listos. `hasOnly` = allowlist de campos top-level
+    // (el rol CEO futuro heredará el gate de isAdmin(); no hace falta tocarlo).
+    match /datosPago/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.metodo in ['banco', 'nequi', 'efectivo']
+        && request.resource.data.keys().hasOnly(['metodo', 'banco', 'nequi', 'efectivo', 'updatedAt']);
+    }
+
     // ── Solicitudes de convenio (productor/beatmaker) ────────────────
     // El usuario crea SU propia solicitud (estado inicial 'pendiente') y lee las
     // suyas; el admin lee todas. La APROBACIÓN otorga un rol → va por Cloud
@@ -101,7 +163,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])
           && (!('beatmakerSlug' in request.resource.data)
             || request.resource.data.beatmakerSlug == null
-            || request.resource.data.beatmakerSlug == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug)
+            || ownsProfileSlug(request.resource.data.beatmakerSlug))
           // `masterPath`, si viene, debe vivir en la carpeta PRIVADA del propio
           // beatmaker (defensa en profundidad: confirmarPagoBeat firma esta
           // ruta server-side; sin esto, un beatmaker podría apuntar al máster
@@ -117,7 +179,14 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles.hasAny(['beatmaker'])
           && (!('masterPath' in request.resource.data)
             || request.resource.data.masterPath == null
-            || request.resource.data.masterPath.matches('beats/masters/' + request.auth.uid + '/.*')));
+            || request.resource.data.masterPath.matches('beats/masters/' + request.auth.uid + '/.*'))
+          // beatmakerSlug: si NO cambia, se deja pasar (no re-valida ni bloquea si
+          // el perfil se borró luego); si CAMBIA, el nuevo slug debe ser un perfil
+          // propio — cierra la impersonación de atribución también por update.
+          && (request.resource.data.beatmakerSlug == resource.data.beatmakerSlug
+            || !('beatmakerSlug' in request.resource.data)
+            || request.resource.data.beatmakerSlug == null
+            || ownsProfileSlug(request.resource.data.beatmakerSlug)));
 
       allow delete: if isAdmin()
         || (request.auth != null && resource.data.beatmakerUid == request.auth.uid);
@@ -127,10 +196,26 @@ service cloud.firestore {
     // Las CREA el servidor (confirmPayment) vía Admin SDK. El comprador lee las
     // suyas; el beatmaker las suyas; el admin todas. Nadie escribe desde cliente.
     match /beatSales/{id} {
+      // Lee el admin y el BEATMAKER (su venta). El COMPRADOR NO: el doc congela
+      // `comision`/`neto` (la comisión INTERNA de Only G y lo que gana el
+      // beatmaker), que el comprador no debe ver. Su historial de compra, cuando
+      // se construya, saldrá de una fuente buyer-safe (el chat de pago en el que
+      // ya participa), no de aquí. (listMisCompras no está cableado a UI aún.)
       allow read: if request.auth != null
         && (isAdmin()
-          || resource.data.buyerUid == request.auth.uid
           || resource.data.beatmakerUid == request.auth.uid);
+      allow write: if false;
+    }
+
+    // ── Payouts (cuentas por pagar a socios: NETO por venta) ─────────
+    // PASIVO por persona: lo que Only G le debe a un socio (beatmaker/productor)
+    // por el neto de una venta. Los CREA el servidor (confirmarPagoBeat /
+    // backfillPayouts) vía Admin SDK. El admin los lee TODOS (panel + balance);
+    // el ACREEDOR lee solo los SUYOS. Nadie escribe desde el cliente: la
+    // liquidación (Fase 3) pasará por Cloud Function.
+    match /payouts/{id} {
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.acreedorUid == request.auth.uid);
       allow write: if false;
     }
 

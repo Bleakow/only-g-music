@@ -50,6 +50,7 @@
     "cliente": "Cliente",
     "productor": "Productor",
     "admin": "Admin",
+    "ceo": "CEO",
     "artista": "Cantante",
     "beatmaker": "Beatmaker",
     "modelo": "Modelo",
@@ -66,8 +67,21 @@
     "console": "Consola",
     "myBeats": "Mis beats",
     "availability": "Disponibilidad",
+    "myPayouts": "Mis pagos",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
+  },
+  "misPagos": {
+    "eyebrow": "Tu dinero",
+    "title": "Mis pagos",
+    "intro": "Lo que Only G te debe por tus ventas y trabajos. La transferencia la hace el equipo manualmente; aquí ves el estado de cada pago.",
+    "totalPendiente": "Pendiente de cobro",
+    "totalHint": "Suma de lo que aún no se te ha transferido.",
+    "pendientes": "Pendientes",
+    "sinPendientes": "No tienes pagos pendientes ahora mismo.",
+    "historial": "Historial",
+    "error": "No se pudieron cargar tus pagos. Inténtalo de nuevo.",
+    "pagadoEl": "Pagado el {fecha} · {metodo}"
   },
   "login": {
     "resetTitle": "Recuperar contraseña",
@@ -130,6 +144,60 @@
     "nameRequired": "Escribe tu nombre.",
     "saveError": "No se pudo guardar. Inténtalo de nuevo.",
     "settingsSoon": "Pronto podrás ajustar tus preferencias aquí."
+  },
+  "datosPago": {
+    "title": "Datos de pago",
+    "description": "¿A dónde te paga Only G? Estos datos son privados: solo tú y el estudio los ven.",
+    "method": "Método de pago",
+    "metodo": {
+      "banco": "Banco",
+      "nequi": "Nequi",
+      "efectivo": "Efectivo"
+    },
+    "banco": {
+      "entidad": "Entidad bancaria",
+      "entidadPlaceholder": "Bancolombia, Davivienda…",
+      "tipoCuenta": "Tipo de cuenta",
+      "numeroCuenta": "Número de cuenta",
+      "numeroCuentaPlaceholder": "000-000000-00",
+      "titular": "Titular de la cuenta",
+      "titularPlaceholder": "Nombre completo",
+      "tipoDoc": "Tipo de documento",
+      "numeroDoc": "Número de documento",
+      "numeroDocPlaceholder": "Cédula / NIT"
+    },
+    "tipoCuenta": {
+      "ahorros": "Ahorros",
+      "corriente": "Corriente"
+    },
+    "tipoDoc": {
+      "CC": "Cédula de ciudadanía",
+      "CE": "Cédula de extranjería",
+      "NIT": "NIT",
+      "PAS": "Pasaporte"
+    },
+    "nequi": {
+      "telefono": "Número de Nequi",
+      "telefonoPlaceholder": "300 000 0000",
+      "titular": "Titular",
+      "titularPlaceholder": "Nombre completo"
+    },
+    "efectivo": {
+      "nota": "Nota (opcional)",
+      "notaPlaceholder": "Cómo prefieres recibir el efectivo",
+      "hint": "Coordinamos el pago en efectivo contigo directamente."
+    },
+    "save": "Guardar datos de pago",
+    "saving": "Guardando…",
+    "saved": "Datos de pago guardados.",
+    "error": "No se pudieron guardar. Inténtalo de nuevo.",
+    "incomplete": "Completa los campos del método elegido.",
+    "prompt": {
+      "title": "¿Dejamos listos tus datos de pago?",
+      "optional": "Opcional",
+      "description": "Dinos a dónde quieres que Only G te pague. Puedes hacerlo ahora o luego desde tu cuenta.",
+      "add": "Añadir datos de pago"
+    }
   },
   "status": {
     "pendiente": "Pendiente",
@@ -399,6 +467,7 @@
     "quickRolesSub": "Otorga y quita permisos",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
     "quickBeatsSub": "Ventas y pagos de beatmakers",
+    "quickCeoSub": "Comisiones y precios",
     "bookingsActive": "Reservas activas",
     "viewAll": "Ver todas",
     "activityTitle": "Actividad reciente",
@@ -420,6 +489,7 @@
     "roles": "Roles",
     "convenios": "Convenios",
     "beats": "Beats",
+    "ceo": "CEO",
     "roleAdmin": "Administrador",
     "helpTitle": "¿Necesitas ayuda?",
     "helpText": "Soporte disponible 24/7 para ti."
@@ -476,7 +546,66 @@
     "comision": "Comisión",
     "neto": "Neto beatmaker",
     "errorPagar": "No se pudo marcar el pago. Inténtalo de nuevo.",
-    "errorCargar": "No se pudieron cargar las ventas de beats."
+    "errorCargar": "No se pudieron cargar las ventas de beats.",
+    "backfill": "Sincronizar payouts",
+    "backfillDone": "{count} payout(s) sincronizados.",
+    "backfillError": "No se pudo sincronizar. Inténtalo de nuevo."
+  },
+  "adminPayouts": {
+    "title": "Cuentas por pagar",
+    "intro": "Liquida lo que Only G le debe a cada socio. Aquí ves sus datos de pago y registras el pago con su comprobante.",
+    "pendientes": "Por pagar",
+    "sinPendientes": "No hay nada pendiente por pagar.",
+    "sinPayouts": "Aún no hay cuentas por pagar.",
+    "totalPendiente": "Total por pagar: {monto}",
+    "deudaPersona": "Por pagar: {monto}",
+    "datosTitulo": "Datos de pago",
+    "sinDatos": "Este socio aún no registró sus datos de pago.",
+    "marcarPagado": "Marcar pagado",
+    "pagarTodo": "Pagar todo",
+    "verPagados": "Ver liquidados ({count})",
+    "ocultarPagados": "Ocultar liquidados",
+    "verComprobante": "Ver comprobante",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "origen": {
+      "beat": "Beat",
+      "produccion": "Producción"
+    },
+    "errorCargar": "No se pudieron cargar las cuentas por pagar.",
+    "backfill": "Sincronizar payouts",
+    "backfillDone": "{count} payout(s) sincronizados.",
+    "backfillError": "No se pudo sincronizar. Inténtalo de nuevo.",
+    "produccion": {
+      "registrar": "Registrar pago a productor",
+      "title": "Registrar pago a productor",
+      "intro": "Registra a mano lo que Only G le debe a un productor por su trabajo. Entras el neto directo (sin comisión).",
+      "productor": "Productor",
+      "productorPlaceholder": "Elige un productor",
+      "productorBuscar": "Buscar productor…",
+      "sinProductores": "No hay productores registrados.",
+      "monto": "Monto neto",
+      "sede": "Sede (opcional)",
+      "sedeNone": "Sin sede",
+      "nota": "Nota (opcional)",
+      "notaPlaceholder": "Opcional",
+      "cancelar": "Cancelar",
+      "confirmar": "Registrar",
+      "registrando": "Registrando…",
+      "error": "No se pudo registrar el pago. Inténtalo de nuevo.",
+      "errorNoProductor": "El destinatario no es un productor."
+    },
+    "modal": {
+      "title": "Registrar pago",
+      "para": "Vas a registrar el pago a {nombre} de",
+      "comprobante": "Comprobante (opcional)",
+      "comprobanteHint": "Adjunta la captura o el PDF de la transferencia.",
+      "confirmar": "Confirmar pago",
+      "confirmando": "Registrando…",
+      "subiendo": "Subiendo…",
+      "cancelar": "Cancelar",
+      "error": "No se pudo registrar el pago. Inténtalo de nuevo."
+    }
   },
   "adminConfigPagos": {
     "backToAdmin": "← Panel admin",
@@ -492,6 +621,76 @@
     "save": "Guardar",
     "saved": "Guardado ✓",
     "errorSave": "No se pudo guardar. Inténtalo de nuevo."
+  },
+  "ceoConfig": {
+    "eyebrow": "Solo CEO",
+    "title": "Configuración comercial",
+    "intro": "Comisiones y precios de la plataforma. El servidor y el cliente leen estos valores.",
+    "warning": "Los cambios solo afectan a las ventas y cobros NUEVOS. Lo ya cobrado queda congelado con el precio vigente en ese momento.",
+    "save": "Guardar",
+    "saved": "Guardado ✓",
+    "errors": {
+      "load": "No se pudo cargar la configuración.",
+      "save": "No se pudo guardar. Inténtalo de nuevo.",
+      "comisionRango": "La comisión debe estar entre 0 % y 100 %.",
+      "precioRango": "El precio debe ser un número entero mayor que 0."
+    },
+    "comisiones": {
+      "title": "Comisiones",
+      "desc": "Internas: solo tú (CEO) las ves. Es el margen que retiene Only G.",
+      "beat": "Comisión por beat",
+      "beatHint": "Porcentaje que se queda la plataforma de cada venta de beat.",
+      "productor": "Comisión de productor",
+      "productorHint": "Aún sin definir. Se usará cuando se automatice el pago a productores.",
+      "sinDefinir": "Sin definir"
+    },
+    "precios": {
+      "title": "Precios",
+      "desc": "Los ve el comprador. Deben coincidir con lo que se cobra.",
+      "beat": "Precio por beat",
+      "membresia": "Precio de membresía (mensual)",
+      "perfil": "Precio del perfil de artista"
+    }
+  },
+  "ceoAnalitica": {
+    "title": "Analítica",
+    "intro": "Google Analytics (GA4) ya recolecta todo automáticamente —visitas, países, dispositivos, páginas, tiempo y eventos—. Aquí abres los informes; no se duplica un panel dentro de la app.",
+    "propertyIdLabel": "ID de propiedad GA4",
+    "propertyIdPlaceholder": "123456789",
+    "propertyIdHint": "En GA4 → Administrar → Configuración de la propiedad. Es un número; sirve para enlazar directo a tu propiedad.",
+    "save": "Guardar ID",
+    "saved": "Guardado.",
+    "openGa4": "Abrir Google Analytics",
+    "guia": {
+      "title": "Qué informe responde cada pregunta",
+      "visitas": {
+        "q": "Visitas y países",
+        "r": "Informes › Adquisición, y Usuario › Datos demográficos (país)."
+      },
+      "dispositivos": {
+        "q": "Dispositivos",
+        "r": "Usuario › Tecnología (dispositivo, navegador, sistema)."
+      },
+      "paginas": {
+        "q": "Páginas y tiempo de permanencia",
+        "r": "Interacción › Páginas y pantallas (tiempo de interacción medio)."
+      },
+      "eventos": {
+        "q": "Clics y eventos",
+        "r": "Interacción › Eventos (cada evento con su recuento)."
+      },
+      "abandono": {
+        "q": "Puntos de abandono",
+        "r": "Explorar › Exploración de embudo o Rutas; y el informe de Retención."
+      }
+    },
+    "eventos": {
+      "title": "Eventos propios de la app",
+      "desc": "Estos eventos de embudo los envía Only G y aparecen en el informe Eventos de GA4:"
+    },
+    "errors": {
+      "save": "No se pudo guardar. Revisa el ID (solo números)."
+    }
   },
   "adminEstudios": {
     "backToAdmin": "← Panel admin",
@@ -832,6 +1031,21 @@
       "reasonPlaceholder": "Motivo (pagado, refinanciado…)",
       "cancel": "Cancelar",
       "confirm": "Saldar"
+    },
+    "payouts": {
+      "title": "Payouts a socios (pendientes)",
+      "intro": "Neto que Only G le debe a beatmakers/productores por ventas confirmadas. Ya está sumado a los pasivos de arriba. Se liquida en «Ventas y pagos de beats».",
+      "category": "Payout a socio",
+      "colOrigin": "Origen",
+      "colDate": "Fecha",
+      "total": "Total pendiente: {monto}",
+      "sinSincronizar": "{n} venta(s) impaga(s) sin payout materializado (ya incluidas en el total). Sincroniza para verlas por persona y poder liquidarlas.",
+      "sincronizar": "Sincronizar",
+      "syncError": "No se pudieron sincronizar los payouts. Inténtalo de nuevo.",
+      "origen": {
+        "beat": "Beat",
+        "produccion": "Producción"
+      }
     }
   },
   "adminPerfiles": {
@@ -1431,6 +1645,10 @@
       "beat-vendido": {
         "titulo": "Beat vendido",
         "cuerpo": "Se vendió tu beat \"{titulo}\"."
+      },
+      "payout-pagado": {
+        "titulo": "Pago recibido",
+        "cuerpo": "Only G te pagó {monto}."
       }
     }
   },
@@ -1446,7 +1664,10 @@
     "rolesTitle": "Roles",
     "conveniosTitle": "Solicitudes de convenio",
     "beatsTitle": "Ventas y pagos de beats",
+    "payoutsTitle": "Cuentas por pagar",
     "paymentsConfigTitle": "Datos de pago",
+    "ceoTitle": "Configuración comercial",
+    "ceoMessage": "Esta herramienta es solo para el CEO.",
     "estudiosTitle": "Estudios",
     "consoleTitle": "Consola del productor",
     "consoleMessage": "Esta sección es solo para productores.",

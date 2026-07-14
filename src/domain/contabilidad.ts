@@ -541,6 +541,10 @@ export function totalPasivos(pasivos: Pasivo[], ahora: number): number {
  * Balance General simplificado. Ecuación contable: **Activos = Pasivos +
  * Patrimonio**, que cuadra por construcción (Patrimonio = Activos − Pasivos).
  * Activos = valor EN LIBROS de los bienes vigentes (ya depreciados).
+ *
+ * `pasivosExtra`: pasivos DERIVADOS que no viven en la colección `pasivos`
+ * (p. ej. Σ de los payouts pendientes a socios). Se suman al total de pasivos
+ * vigentes. Se mantiene puro: la capa de features inyecta la cifra ya calculada.
  */
 export interface BalanceGeneral {
   activos: number;
@@ -553,8 +557,9 @@ export function balanceGeneral(
   activos: Activo[],
   pasivos: Pasivo[],
   ahora: number,
+  pasivosExtra: number = 0,
 ): BalanceGeneral {
   const totA = totalesInventario(activos, ahora).valorEnLibrosTotal;
-  const totP = totalPasivos(pasivos, ahora);
+  const totP = totalPasivos(pasivos, ahora) + pasivosExtra;
   return { activos: totA, pasivos: totP, patrimonio: totA - totP };
 }

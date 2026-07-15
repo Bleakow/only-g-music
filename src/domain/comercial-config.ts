@@ -19,10 +19,18 @@ export interface Comisiones {
   /** Comisión por venta de beat (0.2 = 20%). */
   comisionBeat: number;
   /**
-   * Comisión del productor por reserva. AÚN SIN VALOR: el dueño la define
-   * después (Fase 5). Ausente = "no configurada" (ningún cálculo la usa todavía).
+   * Comisión GLOBAL del productor por reserva (0.2 = Only G se queda 20%, el
+   * productor cobra el 80% neto). Ausente = "no configurada" → la Fase 5 no
+   * dispara para las sedes que tampoco tengan override (sigue el pago manual).
    */
   comisionProductor?: number;
+  /**
+   * Override de la comisión de productor POR SEDE (`sedeId → fracción 0..1`). Si
+   * una sede no está aquí, HEREDA `comisionProductor` (el global). Permite un
+   * corte distinto en una sede puntual. Solo sobreviven al parseo las entradas
+   * válidas [0,1]; ausente/{} = todas las sedes usan el global.
+   */
+  comisionProductorPorSede?: Record<string, number>;
 }
 
 /** Precios de catálogo/suscripción en COP (enteros > 0). VISIBLES al comprador. */
@@ -66,10 +74,14 @@ export function esPrecioValido(n: unknown): n is number {
  * campo: si es inválido, rige el default. Nunca lanza — el display no puede
  * romperse por un config malformado.
  */
-export function parsePrecios(raw: Record<string, unknown> | undefined): Precios {
+export function parsePrecios(
+  raw: Record<string, unknown> | undefined,
+): Precios {
   const d = DEFAULTS.precios;
   return {
-    precioBeat: esPrecioValido(raw?.precioBeat) ? raw!.precioBeat as number : d.precioBeat,
+    precioBeat: esPrecioValido(raw?.precioBeat)
+      ? (raw!.precioBeat as number)
+      : d.precioBeat,
     precioMembresia: esPrecioValido(raw?.precioMembresia)
       ? (raw!.precioMembresia as number)
       : d.precioMembresia,
@@ -130,6 +142,22 @@ export function parseComisiones(
   };
   if (esComisionValida(raw?.comisionProductor)) {
     out.comisionProductor = raw!.comisionProductor as number;
+  }
+  const porSedeRaw = raw?.comisionProductorPorSede;
+  if (
+    porSedeRaw &&
+    typeof porSedeRaw === "object" &&
+    !Array.isArray(porSedeRaw)
+  ) {
+    const porSede: Record<string, number> = {};
+    for (const [sedeId, v] of Object.entries(
+      porSedeRaw as Record<string, unknown>,
+    )) {
+      // Solo entradas válidas: una comisión malformada de una sede NO puede colarse
+      // (última línea el clamp server-side; ver getComercial en functions).
+      if (esComisionValida(v)) porSede[sedeId] = v;
+    }
+    if (Object.keys(porSede).length > 0) out.comisionProductorPorSede = porSede;
   }
   return out;
 }

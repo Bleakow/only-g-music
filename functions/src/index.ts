@@ -248,11 +248,18 @@ export const onBookingConfirmed = onDocumentUpdated(
     let payoutData: FirebaseFirestore.DocumentData | null = null;
     let netoLog = 0;
     try {
-      const { comisionProductor } = await getComercial();
+      const { comisionProductor, comisionProductorPorSede } =
+        await getComercial();
+      // Comisión EFECTIVA de esta reserva: el override de SU sede si existe, si no
+      // el global. `undefined` en el mapa (sede sin override) → cae al global.
+      const sede = typeof after.sede === "string" ? after.sede : "";
+      const override = comisionProductorPorSede[sede];
+      const comisionEff =
+        typeof override === "number" ? override : comisionProductor;
       const amount = after.amount;
       if (
-        comisionProductor !== null &&
-        comisionProductor > 0 &&
+        comisionEff !== null &&
+        comisionEff > 0 &&
         typeof amount === "number" &&
         Number.isInteger(amount) &&
         amount > 0
@@ -269,7 +276,7 @@ export const onBookingConfirmed = onDocumentUpdated(
             `Reserva ${reservaId}: productorId ${after.productorId} no es productor — sin payout automático.`,
           );
         } else {
-          const comision = Math.round(amount * comisionProductor);
+          const comision = Math.round(amount * comisionEff);
           const neto = amount - comision;
           // neto<=0 (comisión = 100%): Only G se queda todo → sin payout (el ingreso
           // ES el `amount` completo, correcto). Sin deuda "a nadie".
@@ -637,6 +644,7 @@ async function getComercial(): Promise<{
   precioMembresia: number;
   precioPerfil: number;
   comisionProductor: number | null;
+  comisionProductorPorSede: Record<string, number>;
 }> {
   const [comSnap, preSnap] = await Promise.all([
     db.doc("comercialConfig/comisiones").get(),
@@ -647,21 +655,34 @@ async function getComercial(): Promise<{
 
   const precio = (v: unknown, def: number): number =>
     typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.round(v) : def;
-  const comision = (v: unknown, def: number): number =>
-    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : def;
+  const enRango = (v: unknown): v is number =>
+    typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1;
+  const comision = (v: unknown, def: number): number => (enRango(v) ? v : def);
+
+  // Override de comisión de productor por SEDE: solo entradas válidas [0,1] (misma
+  // última línea de defensa que el resto del config; una sede malformada se ignora
+  // y esa sede hereda el global).
+  const porSedeRaw = com.comisionProductorPorSede;
+  const comisionProductorPorSede: Record<string, number> = {};
+  if (
+    porSedeRaw &&
+    typeof porSedeRaw === "object" &&
+    !Array.isArray(porSedeRaw)
+  ) {
+    for (const [sedeId, v] of Object.entries(porSedeRaw)) {
+      if (enRango(v)) comisionProductorPorSede[sedeId] = v;
+    }
+  }
 
   return {
     precioBeat: precio(pre.precioBeat, PRECIO_BEAT),
     comisionBeat: comision(com.comisionBeat, COMISION_BEAT),
     precioMembresia: precio(pre.precioMembresia, PRECIO_MEMBRESIA),
     precioPerfil: precio(pre.precioPerfil, PRECIO_PERFIL),
-    comisionProductor:
-      typeof com.comisionProductor === "number" &&
-      Number.isFinite(com.comisionProductor) &&
-      com.comisionProductor >= 0 &&
-      com.comisionProductor <= 1
-        ? com.comisionProductor
-        : null,
+    comisionProductor: enRango(com.comisionProductor)
+      ? com.comisionProductor
+      : null,
+    comisionProductorPorSede,
   };
 }
 

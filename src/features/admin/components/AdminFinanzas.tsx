@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import { listTransactions } from "../lib/transactions-repo";
+import { listPayouts } from "../lib/payouts-repo";
 import type { Transaccion } from "@/domain/transaccion";
 import { formatCOP } from "@/domain/service";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -13,6 +14,7 @@ import {
   ingresosPorMes,
   mejoresClientes,
   reservasATransacciones,
+  netoProductorPorReserva,
   ordenarTransacciones,
 } from "../lib/finanzas";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
@@ -41,12 +43,20 @@ export function AdminFinanzas() {
 
   useEffect(() => {
     let active = true;
-    Promise.all([listAllBookings(), listTransactions(), listMovimientos()])
-      .then(([bookings, transactions, movs]) => {
+    Promise.all([
+      listAllBookings(),
+      listTransactions(),
+      listMovimientos(),
+      listPayouts(),
+    ])
+      .then(([bookings, transactions, movs, payouts]) => {
         if (!active) return;
         setTxs(
           ordenarTransacciones([
-            ...reservasATransacciones(bookings),
+            ...reservasATransacciones(
+              bookings,
+              netoProductorPorReserva(payouts),
+            ),
             ...transactions,
           ]),
         );

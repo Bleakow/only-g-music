@@ -297,20 +297,29 @@ service cloud.firestore {
     // transiciones (confirmar, en_curso, completar…) y la asignación del monto
     // son server-authoritative vía Admin SDK / ruta protegida por rol.
     match /bookings/{id} {
+      // `productorId` es SERVER/ADMIN-authoritative (asignación interna): el cliente
+      // NO puede sembrarlo al crear. Si lo hiciera, al confirmarse la reserva se le
+      // fabricaría una sesión + un pasivo (payout) a un UID arbitrario. (El reparto
+      // de ingreso NO vive en el booking — el P&L lo deriva del payout — así que no
+      // hay campo financiero cliente-legible/escribible que blindar aquí.)
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.estado == 'pendiente_pago';
+        && request.resource.data.estado == 'pendiente_pago'
+        && !('productorId' in request.resource.data);
 
       allow read: if isAdmin()
         || (request.auth != null && resource.data.uid == request.auth.uid);
 
-      // Admin: cualquier transición. Cliente: solo pendiente_pago → pago_en_revision.
+      // Admin: cualquier transición. Cliente: solo pendiente_pago → pago_en_revision,
+      // sin tocar `productorId` (debe quedar como estaba — el cliente no lo introduce
+      // ni lo altera en su única transición permitida).
       allow update: if isAdmin()
         || (request.auth != null
           && resource.data.uid == request.auth.uid
           && request.resource.data.uid == resource.data.uid
           && resource.data.estado == 'pendiente_pago'
-          && request.resource.data.estado == 'pago_en_revision');
+          && request.resource.data.estado == 'pago_en_revision'
+          && request.resource.data.get('productorId', '') == resource.data.get('productorId', ''));
 
       allow delete: if false;
     }

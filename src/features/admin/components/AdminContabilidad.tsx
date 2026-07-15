@@ -15,7 +15,12 @@ import { listTransactions } from "../lib/transactions-repo";
 import { listMovimientos } from "../lib/movimientos-repo";
 import { listActivos } from "../lib/activos-repo";
 import { listPasivos } from "../lib/pasivos-repo";
-import { reservasATransacciones, ordenarTransacciones } from "../lib/finanzas";
+import { listPayouts } from "../lib/payouts-repo";
+import {
+  reservasATransacciones,
+  netoProductorPorReserva,
+  ordenarTransacciones,
+} from "../lib/finanzas";
 import type { Transaccion } from "@/domain/transaccion";
 import type {
   Movimiento,
@@ -65,17 +70,23 @@ export function AdminContabilidad() {
       listMovimientos(),
       listActivos(),
       listPasivos(),
+      listPayouts(),
     ])
-      .then(([bookings, transactions, movimientos, activos, pasivos]) => {
-        if (!active) return;
-        const transacciones = ordenarTransacciones([
-          ...reservasATransacciones(bookings),
-          ...transactions,
-        ]);
-        setTxs(transacciones);
-        setMovs(movimientos);
-        setData({ activos, pasivos, movimientos, transacciones, ahora: now });
-      })
+      .then(
+        ([bookings, transactions, movimientos, activos, pasivos, payouts]) => {
+          if (!active) return;
+          const transacciones = ordenarTransacciones([
+            ...reservasATransacciones(
+              bookings,
+              netoProductorPorReserva(payouts),
+            ),
+            ...transactions,
+          ]);
+          setTxs(transacciones);
+          setMovs(movimientos);
+          setData({ activos, pasivos, movimientos, transacciones, ahora: now });
+        },
+      )
       .catch((e) => {
         if (!active) return;
         console.error("[contabilidad] load:", e);

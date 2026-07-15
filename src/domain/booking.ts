@@ -176,8 +176,6 @@ export function canReservaTransition(
 /** ¿La reserva sigue viva (no terminal)? Útil para ocupar/liberar el slot. */
 export function isReservaActiva(estado: ReservaEstado): boolean {
   return (
-    estado !== "completada" &&
-    estado !== "cancelada" &&
-    estado !== "expirada"
+    estado !== "completada" && estado !== "cancelada" && estado !== "expirada"
   );
 }

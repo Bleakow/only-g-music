@@ -481,6 +481,18 @@ export function EditIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Bloc de apuntes (documento con líneas de texto). Para G Note (escribir temas).
+export function NoteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M15 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6Z" />
+      <path d="M15 2v4a1 1 0 0 0 1 1h4" />
+      <path d="M9 12h6" />
+      <path d="M9 16h4" />
+    </svg>
+  );
+}
+
 export function EyeIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...strokeProps(props)}>

@@ -286,10 +286,10 @@
   },
   "home": {
     "tagline": "Productora musical · Barranquilla & Bogotá",
-    "kicker": "Distribuidora musical",
+    "kicker": "Compañía musical",
     "heroTitle": "El sonido es <br></br>visión",
     "heroSubtitle": "El arte comienza donde termina el <br></br>miedo a expresarse.",
-    "exploreWork": "Explora nuestro trabajo",
+    "exploreWork": "Explorar",
     "follow": "Síguenos",
     "heroHeadline": "Producimos tu",
     "heroHeadlineAccent": "próximo hit",
@@ -1700,6 +1700,11 @@
     "rootDesc": "Productora musical — artistas, eventos y producciones.",
     "artistFallbackTitle": "Artista — Only G Music",
     "artistDescription": "Perfil de {name} en Only G Music."
+  },
+  "gnote": {
+    "aria": "G Note (próximamente)",
+    "badge": "Pronto",
+    "soon": "G Note — próximamente"
   },
   "chat": {
     "title": "Mensajes",

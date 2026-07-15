@@ -10,7 +10,13 @@ import {
 } from "../lib/open-conversation";
 import { ConversationView } from "./ConversationView";
 import type { Conversation } from "@/domain/conversation";
-import { ArrowLeftIcon, ChatIcon, CloseIcon } from "@/components/icons";
+import { IconButton } from "@/components/ui/IconButton";
+import {
+  ArrowLeftIcon,
+  ChatIcon,
+  CloseIcon,
+  NoteIcon,
+} from "@/components/icons";
 
 /**
  * Burbuja de chat flotante y global (solo con sesión iniciada). Colapsada es un
@@ -51,15 +57,27 @@ export function ConversationBubble() {
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
   if (!open) {
+    // Dock flotante de herramientas rápidas (solo con sesión). Botones de cristal
+    // (IconButton) con micro-interacción sutil. G Note aún no existe → estado
+    // "Pronto" (deshabilitado + badge, honesto, sin fingir que funciona).
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        aria-label={t("chat.open")}
-        className="fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center rounded-full bg-gradient-to-br from-amethyst-400 to-amethyst-600 text-white shadow-[0_8px_30px_rgba(139,92,246,0.5)] transition hover:scale-105 active:scale-95"
+      <div
+        className="fixed right-5 z-50 flex flex-col items-center gap-3"
+        style={{ bottom: "calc(1.25rem + env(safe-area-inset-bottom))" }}
       >
-        <ChatIcon className="size-6" />
-      </button>
+        <div className="relative">
+          <IconButton aria-label={t("gnote.aria")} title={t("gnote.soon")} disabled>
+            <NoteIcon className="size-5" />
+          </IconButton>
+          <span className="pointer-events-none absolute -top-1 -right-1 rounded-full bg-amethyst-500 px-1.5 py-px text-[0.55rem] font-bold tracking-wide text-white uppercase shadow-[0_2px_8px_rgba(124,58,237,0.6)]">
+            {t("gnote.badge")}
+          </span>
+        </div>
+
+        <IconButton aria-label={t("chat.open")} onClick={() => setOpen(true)}>
+          <ChatIcon className="size-6" />
+        </IconButton>
+      </div>
     );
   }
 

@@ -286,10 +286,10 @@
   },
   "home": {
     "tagline": "Music production company · Barranquilla & Bogotá",
-    "kicker": "Music distribution",
+    "kicker": "Music company",
     "heroTitle": "Sound is <br></br>vision",
     "heroSubtitle": "Art begins where the fear <br></br>of expression ends.",
-    "exploreWork": "Explore our work",
+    "exploreWork": "Explore",
     "follow": "Follow us",
     "heroHeadline": "We produce your",
     "heroHeadlineAccent": "next hit",
@@ -1700,6 +1700,11 @@
     "rootDesc": "Music production company — artists, events and productions.",
     "artistFallbackTitle": "Artist — Only G Music",
     "artistDescription": "{name}'s profile on Only G Music."
+  },
+  "gnote": {
+    "aria": "G Note (coming soon)",
+    "badge": "Soon",
+    "soon": "G Note — coming soon"
   },
   "chat": {
     "title": "Messages",

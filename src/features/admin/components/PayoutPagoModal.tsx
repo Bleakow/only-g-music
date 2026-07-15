@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { Alert } from "@/components/ui/Alert";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { SpinnerIcon, CheckIcon } from "@/components/icons";
 import { formatCOP } from "@/domain/service";
@@ -129,11 +130,7 @@ export function PayoutPagoModal({
           </p>
         </div>
 
-        {error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {t("adminPayouts.modal.error")}
-          </p>
-        )}
+        {error && <Alert tone="error">{t("adminPayouts.modal.error")}</Alert>}
       </div>
 
       <div className="mt-6 flex items-center justify-end gap-3">

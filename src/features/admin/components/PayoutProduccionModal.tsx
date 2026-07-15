@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { Alert } from "@/components/ui/Alert";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SpinnerIcon, CheckIcon } from "@/components/icons";
@@ -200,11 +201,7 @@ export function PayoutProduccionModal({
           />
         </div>
 
-        {error && (
-          <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
-            {error}
-          </p>
-        )}
+        {error && <Alert tone="error">{error}</Alert>}
       </div>
 
       <div className="mt-5 flex items-center justify-end gap-3">

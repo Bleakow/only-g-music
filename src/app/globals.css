@@ -31,6 +31,14 @@
   /* Tinta (fondo oscuro con tinte violeta) */
   --color-ink: #0c0a12;
   --color-ink-soft: #15111f;
+  --color-ink-panel: #1a1626;
+
+  /* ── Estado semántico (funcional, separado del acento amatista) ── */
+  /* Habilita utilidades Tailwind: bg-success, text-danger, border-warning… */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #a87bff; /* alias semántico del amatista */
 }
 
 /* ── Fuentes de marca (OGM) ────────────────────────────────────── */

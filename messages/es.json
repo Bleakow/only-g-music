@@ -641,8 +641,11 @@
       "beat": "Comisión por beat",
       "beatHint": "Porcentaje que se queda la plataforma de cada venta de beat.",
       "productor": "Comisión de productor",
-      "productorHint": "Aún sin definir. Se usará cuando se automatice el pago a productores.",
-      "sinDefinir": "Sin definir"
+      "productorHint": "Porcentaje que retiene Only G de cada reserva con productor; el resto es el neto que cobra el productor. En blanco = pago manual (sin split automático).",
+      "sinDefinir": "Sin definir",
+      "porSedeTitle": "Comisión por sede (opcional)",
+      "porSedeHint": "Ajusta el corte de una sede concreta. En blanco hereda la comisión global; un 0 % = esa sede se paga a mano (sin split automático).",
+      "heredaGlobal": "Usa el global"
     },
     "precios": {
       "title": "Precios",

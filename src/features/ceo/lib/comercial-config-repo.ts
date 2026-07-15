@@ -46,9 +46,12 @@ export async function getComercialConfig(): Promise<ComercialConfig> {
 }
 
 /**
- * Actualiza las COMISIONES (SOLO CEO). Valida rango en cliente antes de escribir.
- * `comisionProductor` es opcional: `undefined` = "no configurada" y NO se escribe
- * (se preserva lo que hubiera por `merge`). Un `null` explícito la borra.
+ * Actualiza las COMISIONES (SOLO CEO). Valida rango en cliente antes de escribir
+ * (segunda línea: el CLAMP server-side en `getComercial`). El panel envía el estado
+ * COMPLETO, así que se hace FULL-REPLACE del doc (sin `merge`): un campo/override
+ * omitido = BORRADO. Es la única forma de que quitar el global o el override de una
+ * sede realmente lo limpie (con `merge`, los mapas se fusionan y una clave eliminada
+ * sobreviviría para siempre). El doc es de dominio exclusivo de este panel.
  */
 export async function updateComisiones(data: Comisiones): Promise<void> {
   if (!esComisionValida(data.comisionBeat)) {
@@ -64,7 +67,16 @@ export async function updateComisiones(data: Comisiones): Promise<void> {
     }
     payload.comisionProductor = data.comisionProductor;
   }
-  await setDoc(COMISIONES_REF(), payload, { merge: true });
+  const porSede = data.comisionProductorPorSede;
+  if (porSede && Object.keys(porSede).length > 0) {
+    for (const [sedeId, v] of Object.entries(porSede)) {
+      if (!esComisionValida(v)) {
+        throw new Error(`comisión de la sede ${sedeId} fuera de rango [0,1].`);
+      }
+    }
+    payload.comisionProductorPorSede = porSede;
+  }
+  await setDoc(COMISIONES_REF(), payload);
 }
 
 /** Actualiza los PRECIOS (SOLO CEO). Valida entero > 0 en cliente antes de escribir. */

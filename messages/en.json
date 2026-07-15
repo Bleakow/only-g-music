@@ -641,8 +641,11 @@
       "beat": "Beat commission",
       "beatHint": "Percentage the platform keeps from each beat sale.",
       "productor": "Producer commission",
-      "productorHint": "Not set yet. It will be used once producer payouts are automated.",
-      "sinDefinir": "Not set"
+      "productorHint": "Percentage Only G keeps from each booking with a producer; the rest is the producer's net. Blank = manual payout (no automatic split).",
+      "sinDefinir": "Not set",
+      "porSedeTitle": "Per-location commission (optional)",
+      "porSedeHint": "Override the cut for a specific location. Blank inherits the global commission; 0% = that location is paid manually (no automatic split).",
+      "heredaGlobal": "Uses global"
     },
     "precios": {
       "title": "Prices",

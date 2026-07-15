@@ -16,7 +16,14 @@ import {
   updateComisiones,
   updatePrecios,
 } from "../lib/comercial-config-repo";
-import { AdminPageHeader, adminCard, adminInput, adminLabel } from "@/features/admin/components/admin-ui";
+import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
+import type { Sede } from "@/domain/sede";
+import {
+  AdminPageHeader,
+  adminCard,
+  adminInput,
+  adminLabel,
+} from "@/features/admin/components/admin-ui";
 import { CeoAnalitica } from "./CeoAnalitica";
 
 /** Fracción 0..1 → texto de porcentaje sin ruido flotante (0.2 → "20", 0.205 → "20.5"). */
@@ -55,24 +62,32 @@ export function CeoConfig() {
   // Comisiones en % (0..100); comisionProductor puede quedar vacío = "sin definir".
   const [comisionBeat, setComisionBeat] = useState("");
   const [comisionProductor, setComisionProductor] = useState("");
+  // Override de comisión de productor POR SEDE: sedeId → texto % (vacío = hereda el
+  // global). Las sedes se cargan de Firestore para pintar un campo por cada una.
+  const [sedes, setSedes] = useState<Sede[]>([]);
+  const [overridesSede, setOverridesSede] = useState<Record<string, string>>(
+    {},
+  );
   const [savingComisiones, setSavingComisiones] = useState(false);
-  const [comisionesMsg, setComisionesMsg] = useState<
-    { ok: boolean; text: string } | null
-  >(null);
+  const [comisionesMsg, setComisionesMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   // Precios en COP (dígitos crudos, MoneyInput los agrupa al mostrar).
   const [precioBeat, setPrecioBeat] = useState("");
   const [precioMembresia, setPrecioMembresia] = useState("");
   const [precioPerfil, setPrecioPerfil] = useState("");
   const [savingPrecios, setSavingPrecios] = useState(false);
-  const [preciosMsg, setPreciosMsg] = useState<
-    { ok: boolean; text: string } | null
-  >(null);
+  const [preciosMsg, setPreciosMsg] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
-    getComercialConfig()
-      .then((cfg) => {
+    Promise.all([getComercialConfig(), getAllSedes()])
+      .then(([cfg, sedesList]) => {
         if (!active) return;
         setComisionBeat(pctText(cfg.comisiones.comisionBeat));
         setComisionProductor(
@@ -80,6 +95,14 @@ export function CeoConfig() {
             ? pctText(cfg.comisiones.comisionProductor)
             : "",
         );
+        setSedes(sedesList);
+        const ov: Record<string, string> = {};
+        for (const [sedeId, frac] of Object.entries(
+          cfg.comisiones.comisionProductorPorSede ?? {},
+        )) {
+          ov[sedeId] = pctText(frac);
+        }
+        setOverridesSede(ov);
         setPrecioBeat(String(cfg.precios.precioBeat));
         setPrecioMembresia(String(cfg.precios.precioMembresia));
         setPrecioPerfil(String(cfg.precios.precioPerfil));
@@ -114,6 +137,25 @@ export function CeoConfig() {
           return;
         }
         data.comisionProductor = prod;
+      }
+      // Overrides por sede: solo los NO vacíos entran (vacío = hereda el global).
+      const porSede: Record<string, number> = {};
+      for (const [sedeId, text] of Object.entries(overridesSede)) {
+        const trimmed = text.trim();
+        if (trimmed === "") continue;
+        const frac = pctToFraction(trimmed);
+        if (!esComisionValida(frac)) {
+          const nombre = sedes.find((s) => s.id === sedeId)?.nombre ?? sedeId;
+          setComisionesMsg({
+            ok: false,
+            text: `${nombre}: ${t("errors.comisionRango")}`,
+          });
+          return;
+        }
+        porSede[sedeId] = frac;
+      }
+      if (Object.keys(porSede).length > 0) {
+        data.comisionProductorPorSede = porSede;
       }
       await updateComisiones(data);
       setComisionesMsg({ ok: true, text: t("saved") });
@@ -218,6 +260,37 @@ export function CeoConfig() {
                     setComisionesMsg(null);
                   }}
                 />
+
+                {/* Override de la comisión de productor por SEDE (opcional). En
+                    blanco, la sede hereda la comisión global de arriba. */}
+                {sedes.length > 0 && (
+                  <div className="border-t border-white/10 pt-4">
+                    <p className="text-silver-300 text-sm font-semibold">
+                      {t("comisiones.porSedeTitle")}
+                    </p>
+                    <p className="text-silver-500 mt-1 text-xs">
+                      {t("comisiones.porSedeHint")}
+                    </p>
+                    <div className="mt-3 flex flex-col gap-3">
+                      {sedes.map((s) => (
+                        <PctField
+                          key={s.id}
+                          id={`comisionProductor-${s.id}`}
+                          label={s.nombre}
+                          value={overridesSede[s.id] ?? ""}
+                          placeholder={t("comisiones.heredaGlobal")}
+                          onChange={(v) => {
+                            setOverridesSede((prev) => ({
+                              ...prev,
+                              [s.id]: sanitizePct(v),
+                            }));
+                            setComisionesMsg(null);
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <SaveRow

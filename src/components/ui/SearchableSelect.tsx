@@ -183,7 +183,7 @@ export function SearchableSelect({
         aria-label={ariaLabel}
         className={
           className ||
-          "flex w-full items-center justify-between gap-2 rounded-lg bg-white/[0.06] px-3 py-2 text-left text-white ring-1 ring-white/20 transition outline-none ring-inset hover:ring-white/40 focus:ring-white/50 disabled:opacity-50"
+          "flex min-h-11 w-full items-center justify-between gap-2 rounded-lg bg-white/6 px-3 py-2 text-left text-white ring-1 ring-white/20 ring-inset transition hover:ring-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amethyst-300/70 disabled:opacity-50"
         }
         style={style}
       >
@@ -215,7 +215,7 @@ export function SearchableSelect({
               bottom: menuPos.bottom,
               width: menuPos.width,
             }}
-            className={`${glassSurfaceMenu} z-[90] rounded-xl p-2`}
+            className={`${glassSurfaceMenu} z-90 rounded-xl p-2`}
           >
           <input
             ref={inputRef}
@@ -226,7 +226,7 @@ export function SearchableSelect({
             }}
             onKeyDown={onKey}
             placeholder={searchPlaceholder}
-            className="w-full rounded-lg bg-black/30 px-3 py-2 text-sm text-white ring-1 ring-white/15 transition outline-none ring-inset placeholder:text-white/40 focus:ring-white/40"
+            className="w-full rounded-lg bg-black/30 px-3 py-2 text-base text-white ring-1 ring-white/15 ring-inset transition placeholder:text-white/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amethyst-300/70"
           />
 
           <ul role="listbox" className="mt-2 max-h-60 overflow-auto">
@@ -250,7 +250,7 @@ export function SearchableSelect({
                       type="button"
                       onMouseEnter={() => setActive(i)}
                       onClick={() => choose(o)}
-                      className={`flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
+                      className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${
                         i === active
                           ? "bg-white/10 text-white"
                           : "text-white/80"
@@ -268,7 +268,7 @@ export function SearchableSelect({
                     <button
                       type="button"
                       onClick={commitCustom}
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
+                      className="flex min-h-11 w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white/80 transition hover:bg-white/10 hover:text-white"
                     >
                       {customLabel ? customLabel(typed) : `"${typed}"`}
                     </button>

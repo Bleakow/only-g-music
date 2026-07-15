@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { glassSurfaceMenu, GlassSheen } from "./glass";
 import { ClockIcon } from "@/components/icons";
 
 /** "HH:mm" (24h, formato de almacenamiento) → "h:mm AM/PM" (para mostrar). */
@@ -41,6 +43,7 @@ export function TimePicker({
   stepMin?: number;
 }) {
   const [open, setOpen] = useState(false);
+  const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
   const options = genTimes(min, max, stepMin);
 
@@ -60,35 +63,45 @@ export function TimePicker({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm tabular-nums text-silver-50 transition hover:border-amethyst-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amethyst-300/70"
+        className="flex min-h-11 items-center gap-2 rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-sm tabular-nums text-silver-50 transition hover:border-amethyst-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amethyst-300/70"
       >
         <ClockIcon className="size-4 text-silver-400" />
         {to12h(value)}
       </button>
 
-      {open && (
-        <div
-          role="listbox"
-          className="absolute z-30 mt-1 max-h-56 w-32 overflow-y-auto rounded-lg border border-white/10 bg-ink-soft p-1 shadow-2xl"
-        >
-          {options.map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="option"
-              aria-selected={t === value}
-              onClick={() => {
-                onChange(t);
-                setOpen(false);
-              }}
-              data-active={t === value}
-              className="block w-full rounded-md px-3 py-1.5 text-left text-sm tabular-nums text-silver-100 transition hover:bg-white/5 data-[active=true]:bg-amethyst-500/20 data-[active=true]:text-white"
-            >
-              {to12h(t)}
-            </button>
-          ))}
-        </div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="absolute z-30 mt-1 w-32 origin-top"
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.96, y: -4 }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: -2 }}
+            transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className={`${glassSurfaceMenu} rounded-lg p-1`}>
+              <GlassSheen />
+              <div role="listbox" className="relative max-h-56 overflow-y-auto">
+              {options.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="option"
+                  aria-selected={t === value}
+                  onClick={() => {
+                    onChange(t);
+                    setOpen(false);
+                  }}
+                  data-active={t === value}
+                  className="flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm tabular-nums text-silver-100 transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amethyst-300/70 data-[active=true]:bg-amethyst-500/20 data-[active=true]:text-white"
+                >
+                  {to12h(t)}
+                </button>
+              ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

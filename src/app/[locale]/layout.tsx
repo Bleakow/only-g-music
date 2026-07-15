@@ -14,6 +14,8 @@ import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { PreciosProvider } from "@/features/pricing/components/PreciosProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
 import { InitialLoader } from "@/components/loaders/InitialLoader";
+import { HideOnAdmin } from "@/components/layout/HideOnAdmin";
+import { ConversationBubble } from "@/features/conversations/components/ConversationBubble";
 
 export async function generateMetadata({
   params,
@@ -42,6 +44,8 @@ export const viewport: Viewport = {
   themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
+  // Habilita `env(safe-area-inset-*)` en iPhones con notch/home indicator.
+  viewportFit: "cover",
 };
 
 /** Pre-genera las rutas de cada idioma (SSG-friendly). */
@@ -71,6 +75,11 @@ export default async function LocaleLayout({
               <GlobalErrorListener />
               <InitialLoader />
               {children}
+              {/* Dock de herramientas (chat + G Note). Aquí (no en (site)/layout)
+                  para que también salga en la home; se oculta en /admin. */}
+              <HideOnAdmin>
+                <ConversationBubble />
+              </HideOnAdmin>
             </PreciosProvider>
           </AuthProvider>
         </NextIntlClientProvider>

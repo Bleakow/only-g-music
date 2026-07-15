@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
+import { Alert } from "@/components/ui/Alert";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon } from "@/components/icons";
 import type { BeatSale } from "@/domain/beat-sale";
@@ -119,9 +120,9 @@ export function AdminBeatsPayouts() {
 
       <div className="px-6 sm:px-10">
         {error && (
-          <p className="mb-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <Alert tone="error" className="mb-6">
             {error}
-          </p>
+          </Alert>
         )}
 
         {loading ? (

@@ -49,6 +49,16 @@ export interface Reserva {
   comprobanteUrl?: string;
   /** Productor asignado (se llena en operación interna). */
   productorId?: string;
+  /**
+   * Ingreso REAL de Only G por esta reserva, en COP. Server-authoritative: lo
+   * congela `onBookingConfirmed` cuando una reserva con productor se confirma y
+   * hay comisión de producción configurada (= la comisión, el resto es el neto
+   * que se le paga al productor vía `payouts/prod_{id}`). Si está ausente, el
+   * ingreso es el `amount` completo (reserva sin productor o sin comisión fijada).
+   * El P&L usa este valor; el PORCENTAJE de comisión es secreto (CEO-only) — aquí
+   * solo vive el RESULTADO en pesos, que el admin sí puede leer.
+   */
+  ingresoOnlyG?: number;
   estado: ReservaEstado;
   createdAt: number;
 }

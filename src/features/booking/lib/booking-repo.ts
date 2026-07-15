@@ -41,6 +41,7 @@ function toReserva(id: string, data: DocumentData): Reserva {
     artistSlug: data.artistSlug ?? undefined,
     comprobanteUrl: data.comprobanteUrl ?? undefined,
     productorId: data.productorId ?? undefined,
+    ingresoOnlyG: data.ingresoOnlyG ?? undefined,
     estado: data.estado,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
   };

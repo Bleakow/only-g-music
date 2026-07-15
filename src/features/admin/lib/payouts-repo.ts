@@ -41,9 +41,17 @@ function toPayout(id: string, data: DocumentData): Payout {
     sede: data.sede ?? undefined,
     nota: data.nota ?? undefined,
     monto: typeof data.monto === "number" ? data.monto : 0,
-    estado: data.estado === "pagado" ? "pagado" : "pendiente",
+    // Mapea el estado EXPLÍCITAMENTE: un `anulado` (soft-delete) NO debe caer al
+    // default `pendiente`, o resucitaría como pasivo vivo en el Balance/panel.
+    estado:
+      data.estado === "pagado"
+        ? "pagado"
+        : data.estado === "anulado"
+          ? "anulado"
+          : "pendiente",
     createdAt: toMillis(data.createdAt) ?? Date.now(),
     pagadoAt: toMillis(data.pagadoAt),
+    anuladoAt: toMillis(data.anuladoAt),
     metodo: data.metodo ?? undefined,
     comprobanteUrl: data.comprobanteUrl ?? undefined,
     registradoPor: data.registradoPor ?? undefined,

@@ -16,8 +16,14 @@
 /** Origen del payout (de qué venta nace la deuda). */
 export type PayoutOrigen = "beat" | "produccion";
 
-/** Estado de liquidación del payout. */
-export type PayoutEstado = "pendiente" | "pagado";
+/**
+ * Estado del payout. `pendiente` = cuenta por pagar viva (suma al Balance);
+ * `pagado` = liquidado (Fase 3); `anulado` = la deuda dejó de existir sin pago
+ * (p. ej. la reserva que la originó se canceló). El `anulado` es un SOFT-DELETE
+ * (append-only, como el resto del módulo contable: nunca se borra físicamente un
+ * documento financiero) → sale de los totales de pasivo, pero deja rastro.
+ */
+export type PayoutEstado = "pendiente" | "pagado" | "anulado";
 
 export interface Payout {
   /** Id DETERMINISTA: `beat_{convId}` | `prod_{...}` (idempotencia server-side). */
@@ -46,6 +52,8 @@ export interface Payout {
   comprobanteUrl?: string;
   /** uid del admin que registró la liquidación. */
   registradoPor?: string;
+  /** Instante en que se anuló (soft-delete, Fase 5): reserva cancelada, etc. */
+  anuladoAt?: number;
 }
 
 /** Datos para generar un payout (sin id/estado/timestamps: los pone el servidor). */

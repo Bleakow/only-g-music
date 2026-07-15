@@ -20,7 +20,16 @@ export interface ClienteTop {
   count: number;
 }
 
-/** Reservas que cuentan como ingreso (pago confirmado en adelante) → transacciones. */
+/**
+ * Reservas que cuentan como ingreso (pago confirmado en adelante) → transacciones.
+ *
+ * Modelo NETO (igual que beats): el ingreso de Only G es `ingresoOnlyG` cuando el
+ * server lo congeló (reserva con productor + comisión de producción fijada = solo
+ * la comisión), y cae al `amount` completo si no (reserva sin productor o sin
+ * comisión). El NETO del productor NO es ingreso: vive como `payouts/prod_{id}`.
+ * El filtro sigue mirando `amount>0` (una reserva cobrada) — con `ingresoOnlyG=0`
+ * (comisión total al productor) la reserva sigue contando, con ingreso 0.
+ */
 export function reservasATransacciones(reservas: Reserva[]): Transaccion[] {
   return reservas
     .filter((r) => CONTABLES.includes(r.estado) && (r.amount ?? 0) > 0)
@@ -29,7 +38,7 @@ export function reservasATransacciones(reservas: Reserva[]): Transaccion[] {
       uid: r.uid,
       clientName: r.clientName ?? null,
       concepto: r.serviceName,
-      amount: r.amount ?? 0,
+      amount: r.ingresoOnlyG ?? r.amount ?? 0,
       fecha: r.start,
       estado: r.estado,
       fuente: "reserva" as const,

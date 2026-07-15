@@ -41,7 +41,6 @@ function toReserva(id: string, data: DocumentData): Reserva {
     artistSlug: data.artistSlug ?? undefined,
     comprobanteUrl: data.comprobanteUrl ?? undefined,
     productorId: data.productorId ?? undefined,
-    ingresoOnlyG: data.ingresoOnlyG ?? undefined,
     estado: data.estado,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
   };
@@ -154,7 +153,11 @@ export async function reservarConSlots(
 
     const newDay = { ...day };
     for (const s of ctx.slots) newDay[s] = bookingRef.id;
-    tx.set(slotsRef, { slots: { ...all, [ctx.date]: newDay } }, { merge: true });
+    tx.set(
+      slotsRef,
+      { slots: { ...all, [ctx.date]: newDay } },
+      { merge: true },
+    );
 
     const payload: Record<string, unknown> = {
       estado: "pendiente_pago",

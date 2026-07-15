@@ -41,6 +41,11 @@ const COMISION_BEAT = 0.2;
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
 const GRACIA_MIN = 30;
+/** Estados en que la reserva "existe contablemente" y debe tener su proyección de
+ *  sesión + su payout de productor. Un avance legítimo (confirmada→en_curso→
+ *  completada) NO invalida esas escrituras; solo salir de aquí (cancelada/expirada)
+ *  las aborta. Sync con `CONTABLES` en src/features/admin/lib/finanzas.ts. */
+const ESTADOS_CONTABLES = ["confirmada", "en_curso", "completada"];
 /** Puntos de gamificación — sync con `PUNTOS` en src/domain/artist-profile.ts. */
 const PUNTOS_LIKE = 5;
 const PUNTOS_PAGO_PERFIL = 150;
@@ -218,81 +223,46 @@ export const onBookingConfirmed = onDocumentUpdated(
     if (!after.productorId) return;
 
     const reservaId = event.params.id;
-    const ref = db.collection("sessions").doc(reservaId);
-    if ((await ref.get()).exists) return; // ya existe → idempotente
+    const sessionRef = db.collection("sessions").doc(reservaId);
+    const payoutRef = db.doc(`payouts/prod_${reservaId}`);
 
-    await ref.set({
-      reservaId,
-      productorId: after.productorId,
-      uid: after.uid,
-      clientName: after.clientName ?? null,
-      serviceName: after.serviceName,
-      sede: after.sede,
-      scheduledStart: after.start,
-      scheduledEnd: after.start + (after.durationMin ?? 0) * 60_000,
-      estado: "programada",
-      createdAt: FieldValue.serverTimestamp(),
-    });
-    logger.info(`Sesión ${reservaId} creada → productor ${after.productorId}`);
-
-    // Notificaciones (la sesión se acaba de crear → disparan una sola vez).
-    await notify(
-      after.productorId,
-      "sesion-agendada",
-      { fecha: fmtFecha(after.start) },
-      "/consola",
-    );
-
-    // ── Fase 5: split automático del productor (config-driven, GATED) ────────
-    // Al confirmarse una reserva con productor, si el CEO fijó la comisión de
-    // producción, se CONGELA en el booking el ingreso real de Only G (la comisión,
-    // en pesos) y se emite el NETO como cuenta por pagar (`payouts/prod_{id}`).
+    // ── Fase 5: SESIÓN (proyección para la consola del productor) + SPLIT del
+    // productor, ATÓMICOS en UNA transacción ─────────────────────────────────
     //
-    // GATE: solo con `comisionProductor` POSITIVA fijada por el CEO. `null` (sin
-    // fijar) o `0` NO parten nada → el flujo actual queda intacto (el productor se
+    // Split GATED: solo con `comisionProductor` POSITIVA fijada por el CEO. `null`
+    // (sin fijar) o `0` NO parten nada → el flujo queda intacto (el productor se
     // paga a mano, Fase 4; el P&L cuenta el `amount` completo). Se excluye el 0
-    // adrede: 0% dejaría ingreso 0 + pasivo por el bruto (todo al productor), casi
-    // siempre un teclazo, no una intención. El dueño ACTIVA la Fase 5 fijando el %.
+    // adrede: 0% dejaría ingreso 0 + pasivo por el bruto, casi siempre un teclazo.
+    // El dueño ACTIVA la Fase 5 fijando el %.
     //
-    // Por qué se congela `ingresoOnlyG` en el booking (y no se parte en el cliente):
-    // la comisión es CEO-only (el admin NO la lee), pero el P&L del admin sí debe
-    // reflejar el ingreso NETO. El server escribe el RESULTADO en pesos en el
-    // booking (que el admin sí lee); el PORCENTAJE sigue secreto. Modelo NETO,
-    // idéntico a beats (ingreso = comisión; el neto del socio es un pasivo, no
-    // ingreso).
+    // Por qué NO se guarda el reparto en el booking: el booking es CLIENTE-legible,
+    // así que persistir ahí la comisión/margen lo filtraría al comprador (y un campo
+    // cliente-escribible sería falsificable → falsearía el ingreso del P&L). El
+    // payout NO es cliente-legible → el margen queda invisible; el P&L (admin) deriva
+    // el ingreso como `amount − neto` desde el payout (finanzas.ts). Modelo NETO
+    // idéntico a beats. Invariante: el productor ve SU neto, nunca el `amount`.
     //
-    // Idempotencia + CARRERA con la cancelación: el alta del payout va en
-    // TRANSACCIÓN que RE-LEE el estado del booking. Un `batch` simple decidiría
-    // sobre el snapshot CONGELADO del evento de confirmación: si la reserva se
-    // cancela casi a la vez (confirmar→cancelar en sub-2s), la rama de reversa de
-    // arriba correría ANTES de que el payout exista (no-op) y el split crearía un
-    // pasivo HUÉRFANO sobre una reserva ya cancelada (Eventarc no ordena ni excluye
-    // invocaciones). Al leer `afterRef` DENTRO de la txn, el booking entra en el
-    // read-set: si ya está `cancelada` → aborta; si se cancela antes del commit →
-    // Firestore reintenta y relee `cancelada` → aborta. La txn re-chequea también
-    // que el payout no exista (id determinista `prod_{id}` → sin doble alta). El
-    // `update(ingresoOnlyG)` RE-DISPARA el trigger, pero el retorno por "sesión ya
-    // existe" lo corta. Invariante: el productor ve SU neto, nunca el `amount`.
-    const { comisionProductor } = await getComercial();
-    const amount = after.amount;
-    if (
-      comisionProductor !== null &&
-      comisionProductor > 0 &&
-      typeof amount === "number" &&
-      Number.isInteger(amount) &&
-      amount > 0
-    ) {
-      const payoutRef = db.doc(`payouts/prod_${reservaId}`);
-      // Fast-path fuera de la txn: si ya existe, evita la lectura de `users` + el
-      // role-check (la txn re-valida de todos modos). No es el guard autoritativo.
-      if (!(await payoutRef.get()).exists) {
+    // Las LECTURAS que informan el split (getComercial, rol del productor) van FUERA
+    // de la txn: su fallo NO debe bloquear la sesión (dato operativo que el productor
+    // necesita), solo se salta el split (recuperable a mano, Fase 4).
+    let payoutData: FirebaseFirestore.DocumentData | null = null;
+    let netoLog = 0;
+    try {
+      const { comisionProductor } = await getComercial();
+      const amount = after.amount;
+      if (
+        comisionProductor !== null &&
+        comisionProductor > 0 &&
+        typeof amount === "number" &&
+        Number.isInteger(amount) &&
+        amount > 0
+      ) {
         // El acreedor DEBE existir y tener rol `productor`: no se crea "deuda a
         // cualquiera" (mismo control que el alta manual `registrarPayoutProduccion`).
-        // `productorId` es inyectable por el cliente al crear el booking; esta
-        // validación + el bloqueo de `productorId`/`ingresoOnlyG` en firestore.rules
-        // cierran el griefing de pasivos espurios a UIDs arbitrarios.
-        const prodSnap = await db.doc(`users/${after.productorId}`).get();
-        const prod = prodSnap.data() ?? {};
+        // `productorId` es inyectable por el cliente; esta validación + el bloqueo en
+        // firestore.rules cierran el griefing de pasivos a UIDs arbitrarios.
+        const prod =
+          (await db.doc(`users/${after.productorId}`).get()).data() ?? {};
         const roles = prod.roles;
         if (!Array.isArray(roles) || !roles.includes("productor")) {
           logger.warn(
@@ -301,46 +271,92 @@ export const onBookingConfirmed = onDocumentUpdated(
         } else {
           const comision = Math.round(amount * comisionProductor);
           const neto = amount - comision;
-          // neto<=0 (comisión = 100%): Only G se queda todo → ni payout ni congelado
-          // (el ingreso ES el `amount` completo, correcto). Sin deuda "a nadie".
+          // neto<=0 (comisión = 100%): Only G se queda todo → sin payout (el ingreso
+          // ES el `amount` completo, correcto). Sin deuda "a nadie".
           if (neto > 0) {
-            const acreedorNombre =
-              (prod.displayName as string | null) ||
-              (prod.email as string | null) ||
-              null;
-            const creado = await db.runTransaction(async (tx) => {
-              const bSnap = await tx.get(afterRef);
-              const pSnap = await tx.get(payoutRef);
-              // La reserva ya NO está confirmada (se canceló/cambió en la ventana)
-              // o el payout ya existe → no crear (evita huérfano y doble alta).
-              if (!bSnap.exists || bSnap.data()?.estado !== "confirmada") {
-                return false;
-              }
-              if (pSnap.exists) return false;
-              tx.set(payoutRef, {
-                acreedorUid: after.productorId,
-                acreedorNombre,
-                origen: "produccion",
-                refId: reservaId,
-                ...(after.sede ? { sede: after.sede } : {}),
-                ...(after.serviceName ? { nota: after.serviceName } : {}),
-                monto: neto,
-                estado: "pendiente",
-                createdAt: FieldValue.serverTimestamp(),
-              });
-              // El P&L (finanzas.ts) usará `ingresoOnlyG` en vez de `amount` para
-              // esta reserva → ingreso = comisión (NETO). El % nunca toca el booking.
-              tx.update(afterRef, { ingresoOnlyG: comision });
-              return true;
-            });
-            if (creado) {
-              logger.info(
-                `Payout productor prod_${reservaId} = ${neto} (comisión Only G ${comision}).`,
-              );
-            }
+            netoLog = neto;
+            payoutData = {
+              acreedorUid: after.productorId,
+              acreedorNombre:
+                (prod.displayName as string | null) ||
+                (prod.email as string | null) ||
+                null,
+              origen: "produccion",
+              refId: reservaId,
+              ...(after.sede ? { sede: after.sede } : {}),
+              ...(after.serviceName ? { nota: after.serviceName } : {}),
+              monto: neto,
+              estado: "pendiente",
+            };
           }
         }
       }
+    } catch (e) {
+      // Config/rol ilegibles → sin split; la sesión igual se crea abajo.
+      logger.error(`Reserva ${reservaId}: lecturas del split fallaron:`, e);
+    }
+
+    // UNA transacción atómica. Guarda por que el booking siga CONTABLE, LEÍDO en la
+    // txn → el booking entra en el read-set: si se canceló/expiró en la ventana (o
+    // cambia antes del commit → Firestore reintenta y relee), aborta → ni SESIÓN ni
+    // PAYOUT huérfanos sobre una reserva muerta. Idempotencia INDEPENDIENTE por doc: la
+    // sesión por su existencia, el payout por la suya (id determinista `prod_{id}`) →
+    // el split corre aunque la sesión ya exista (p.ej. productor reasignado) y
+    // viceversa. El split NO escribe el booking (solo lo LEE) → no se re-dispara el
+    // trigger. Sesión+payout se crean juntos o ninguno (sin estado parcial).
+    const res = await db.runTransaction(async (tx) => {
+      const bSnap = await tx.get(afterRef);
+      const sSnap = await tx.get(sessionRef);
+      const pSnap = payoutData ? await tx.get(payoutRef) : null;
+      // Aborta solo si el booking DEJÓ de ser contable (cancelada/expirada/revertida)
+      // en la ventana → sin sesión/payout huérfanos. Un avance a en_curso/completada
+      // (walk-in que arranca ya) sigue siendo contable → NO se pierde la escritura.
+      if (!bSnap.exists || !ESTADOS_CONTABLES.includes(bSnap.data()?.estado)) {
+        return { session: false, payout: false };
+      }
+      let session = false;
+      let payout = false;
+      if (!sSnap.exists) {
+        tx.set(sessionRef, {
+          reservaId,
+          productorId: after.productorId,
+          uid: after.uid,
+          clientName: after.clientName ?? null,
+          serviceName: after.serviceName,
+          sede: after.sede,
+          scheduledStart: after.start,
+          scheduledEnd: after.start + (after.durationMin ?? 0) * 60_000,
+          estado: "programada",
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        session = true;
+      }
+      if (payoutData && pSnap && !pSnap.exists) {
+        tx.set(payoutRef, {
+          ...payoutData,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        payout = true;
+      }
+      return { session, payout };
+    });
+
+    if (res.session) {
+      logger.info(
+        `Sesión ${reservaId} creada → productor ${after.productorId}`,
+      );
+      // La sesión se acaba de crear → notifica una sola vez.
+      await notify(
+        after.productorId,
+        "sesion-agendada",
+        { fecha: fmtFecha(after.start) },
+        "/consola",
+      );
+    }
+    if (res.payout) {
+      logger.info(
+        `Payout productor prod_${reservaId} = ${netoLog} (neto del productor).`,
+      );
     }
   },
 );
@@ -973,60 +989,72 @@ function camposLiquidacion(
  * La transferencia del dinero es MANUAL (fuera de la app); esto deja constancia.
  * Datos de pago SENSIBLES: nunca se loguean.
  */
-export const registrarPagoPayout = onCall({ region: REGION }, async (request) => {
-  await assertAdmin(request.auth?.uid);
-  const adminUid = request.auth!.uid;
-  const { payoutId, metodo, comprobanteUrl } = request.data ?? {};
+export const registrarPagoPayout = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const adminUid = request.auth!.uid;
+    const { payoutId, metodo, comprobanteUrl } = request.data ?? {};
 
-  if (typeof payoutId !== "string" || !payoutId) {
-    throw new HttpsError("invalid-argument", "Falta el payout.");
-  }
-  if (!esMetodoLiquidacion(metodo)) {
-    throw new HttpsError("invalid-argument", "Método de pago inválido.");
-  }
-  if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
-    throw new HttpsError("invalid-argument", "Comprobante inválido.");
-  }
-
-  const payoutRef = db.doc(`payouts/${payoutId}`);
-  const now = Date.now();
-
-  // El flip pendiente→pagado va en TRANSACCIÓN: bajo concurrencia (dos pestañas
-  // del admin, dos admins, o un retry solapado) solo UNA invocación gana el flip;
-  // las demás releen 'pagado' dentro de la txn y salen sin re-escribir ni
-  // re-notificar (evita avisos 'payout-pagado' DUPLICADOS al socio). Devuelve los
-  // datos para notificar SOLO si realmente liquidó (null = no-op idempotente).
-  const res = await db.runTransaction(async (tx) => {
-    const snap = await tx.get(payoutRef);
-    if (!snap.exists) throw new HttpsError("not-found", "Payout inexistente.");
-    const payout = snap.data() as FirebaseFirestore.DocumentData;
-    // Solo se liquida un PENDIENTE: 'pagado' (ya liquidado) y 'anulado'
-    // (soft-delete, deuda extinguida) son no-op — no se resucita un anulado.
-    if (payout.estado !== "pendiente") return null;
-
-    // Representación GEMELA (solo beats): marca la venta como pagada. Lectura
-    // ANTES de cualquier escritura (requisito de las transacciones).
-    const saleId = beatSaleIdDePayout(payoutId, payout.origen);
-    const saleRef = saleId ? db.doc(`beatSales/${saleId}`) : null;
-    const saleExists = saleRef ? (await tx.get(saleRef)).exists : false;
-
-    tx.update(payoutRef, camposLiquidacion(metodo, comprobanteUrl, adminUid, now));
-    if (saleRef && saleExists) {
-      tx.update(saleRef, { paidOut: true, paidOutAt: now });
+    if (typeof payoutId !== "string" || !payoutId) {
+      throw new HttpsError("invalid-argument", "Falta el payout.");
     }
-    return {
-      acreedorUid: payout.acreedorUid as string | undefined,
-      monto: typeof payout.monto === "number" ? payout.monto : 0,
-      origen: String(payout.origen),
-    };
-  });
+    if (!esMetodoLiquidacion(metodo)) {
+      throw new HttpsError("invalid-argument", "Método de pago inválido.");
+    }
+    if (comprobanteUrl !== undefined && typeof comprobanteUrl !== "string") {
+      throw new HttpsError("invalid-argument", "Comprobante inválido.");
+    }
 
-  if (!res) return { ok: true }; // no-op idempotente (ya estaba pagado)
-  logger.info(`Payout liquidado: ${payoutId} (${res.origen})`);
-  // Aviso al ACREEDOR ("te pagamos"). Best-effort; nunca loguear datos de pago.
-  await notify(res.acreedorUid, "payout-pagado", { monto: fmtCOP(res.monto) }, "/cuenta");
-  return { ok: true };
-});
+    const payoutRef = db.doc(`payouts/${payoutId}`);
+    const now = Date.now();
+
+    // El flip pendiente→pagado va en TRANSACCIÓN: bajo concurrencia (dos pestañas
+    // del admin, dos admins, o un retry solapado) solo UNA invocación gana el flip;
+    // las demás releen 'pagado' dentro de la txn y salen sin re-escribir ni
+    // re-notificar (evita avisos 'payout-pagado' DUPLICADOS al socio). Devuelve los
+    // datos para notificar SOLO si realmente liquidó (null = no-op idempotente).
+    const res = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(payoutRef);
+      if (!snap.exists)
+        throw new HttpsError("not-found", "Payout inexistente.");
+      const payout = snap.data() as FirebaseFirestore.DocumentData;
+      // Solo se liquida un PENDIENTE: 'pagado' (ya liquidado) y 'anulado'
+      // (soft-delete, deuda extinguida) son no-op — no se resucita un anulado.
+      if (payout.estado !== "pendiente") return null;
+
+      // Representación GEMELA (solo beats): marca la venta como pagada. Lectura
+      // ANTES de cualquier escritura (requisito de las transacciones).
+      const saleId = beatSaleIdDePayout(payoutId, payout.origen);
+      const saleRef = saleId ? db.doc(`beatSales/${saleId}`) : null;
+      const saleExists = saleRef ? (await tx.get(saleRef)).exists : false;
+
+      tx.update(
+        payoutRef,
+        camposLiquidacion(metodo, comprobanteUrl, adminUid, now),
+      );
+      if (saleRef && saleExists) {
+        tx.update(saleRef, { paidOut: true, paidOutAt: now });
+      }
+      return {
+        acreedorUid: payout.acreedorUid as string | undefined,
+        monto: typeof payout.monto === "number" ? payout.monto : 0,
+        origen: String(payout.origen),
+      };
+    });
+
+    if (!res) return { ok: true }; // no-op idempotente (ya estaba pagado)
+    logger.info(`Payout liquidado: ${payoutId} (${res.origen})`);
+    // Aviso al ACREEDOR ("te pagamos"). Best-effort; nunca loguear datos de pago.
+    await notify(
+      res.acreedorUid,
+      "payout-pagado",
+      { monto: fmtCOP(res.monto) },
+      "/cuenta",
+    );
+    return { ok: true };
+  },
+);
 
 /**
  * "Pagar todo": liquida en LOTE todos los payouts de una persona (SOLO admin) con
@@ -1154,12 +1182,11 @@ export const registrarPayoutProduccion = onCall(
     if (typeof acreedorUid !== "string" || !acreedorUid) {
       throw new HttpsError("invalid-argument", "Falta el productor.");
     }
-    if (
-      typeof monto !== "number" ||
-      !Number.isInteger(monto) ||
-      monto <= 0
-    ) {
-      throw new HttpsError("invalid-argument", "El monto debe ser un entero mayor que cero.");
+    if (typeof monto !== "number" || !Number.isInteger(monto) || monto <= 0) {
+      throw new HttpsError(
+        "invalid-argument",
+        "El monto debe ser un entero mayor que cero.",
+      );
     }
     if (sede !== undefined && typeof sede !== "string") {
       throw new HttpsError("invalid-argument", "Sede inválida.");
@@ -1175,7 +1202,10 @@ export const registrarPayoutProduccion = onCall(
     }
     const roles = userSnap.data()?.roles;
     if (!Array.isArray(roles) || !roles.includes("productor")) {
-      throw new HttpsError("failed-precondition", "El destinatario no es un productor.");
+      throw new HttpsError(
+        "failed-precondition",
+        "El destinatario no es un productor.",
+      );
     }
     // Fallback a email como en el selector del panel (listProductores), para que
     // un productor sin displayName no se muestre como UID crudo tras registrarlo.
@@ -1327,7 +1357,10 @@ async function assertAdmin(uid: string | undefined): Promise<void> {
   // El CEO ⊇ admin también server-side (consistente con `isAdmin()` de las reglas,
   // que usa hasAny(['admin','ceo'])): así un CEO pasa los gates admin aunque un
   // admin le hubiera quitado el rol 'admin' explícito, y puede autorrecuperarse.
-  if (!Array.isArray(roles) || !(roles.includes("admin") || roles.includes("ceo"))) {
+  if (
+    !Array.isArray(roles) ||
+    !(roles.includes("admin") || roles.includes("ceo"))
+  ) {
     throw new HttpsError("permission-denied", "Solo administradores.");
   }
 }

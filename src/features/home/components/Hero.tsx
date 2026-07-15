@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { ScrambleTextPlugin } from "gsap/ScrambleTextPlugin";
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import {
@@ -13,10 +14,12 @@ import {
   SoundCloudIcon,
 } from "@/components/icons";
 import styles from "./Hero.module.css";
+import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SiteMenu } from "@/components/layout/SiteMenu";
 import { ProducerCardsStrip } from "@/features/producers/components/ProducerCardsStrip";
+import { onIntroReady } from "@/components/loaders/intro-ready";
 
-gsap.registerPlugin(ScrollTrigger);
+gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin);
 
 // Imágenes de fondo del hero servidas desde Firebase Storage (públicas). NO van en
 // el repo por copyright (ver .gitignore de public/hero); viven en Storage.
@@ -32,6 +35,30 @@ export function Hero() {
   const scrollToWork = () =>
     window.scrollTo({ top: window.innerHeight * 4.5, behavior: "smooth" });
 
+  // CTA "Explorar": efecto scramble/decode (GSAP). Se dispara al MONTAR (entrada)
+  // y en cada HOVER. Respeta prefers-reduced-motion (deja el texto tal cual).
+  const exploreRef = useRef<HTMLSpanElement>(null);
+  const runScramble = useCallback(() => {
+    const el = exploreRef.current;
+    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
+      return;
+    gsap.to(el, {
+      duration: 0.9,
+      ease: "none",
+      scrambleText: { text: t("exploreWork"), chars: "upperCase", speed: 0.5 },
+    });
+  }, [t]);
+
+  // Las entradas del Hero (cascada de textos + redes + scramble de la CTA)
+  // arrancan cuando el InitialLoader TERMINA, no al montar — si no, se ejecutan
+  // tapadas por el overlay del vinilo (mín. 2s) y no se ven. `intro-play` en el
+  // root dispara las animaciones CSS; el scramble de la CTA se lanza aquí también.
+  const [introReady, setIntroReady] = useState(false);
+  useEffect(() => onIntroReady(() => setIntroReady(true)), []);
+  useEffect(() => {
+    if (introReady) runScramble();
+  }, [introReady, runScramble]);
+
   useEffect(() => {
     // El logo de la máscara sube más en DESKTOP (aislado arriba); en móvil se
     // queda en su sitio (12%). Con gsap.matchMedia la posición se resuelve por
@@ -40,9 +67,54 @@ export function Hero() {
     // AMBAS condiciones para que el callback corra en desktop Y móvil (con solo
     // isDesktop, en móvil no se ejecutaría y el hero se quedaría sin timeline).
     mm.add(
-      { isDesktop: "(min-width: 641px)", isMobile: "(max-width: 640px)" },
+      {
+        isDesktop: "(min-width: 641px)",
+        isMobile: "(max-width: 640px)",
+        reduce: "(prefers-reduced-motion: reduce)",
+      },
       (context) => {
         const isDesktop = Boolean(context.conditions?.isDesktop);
+        const reduce = Boolean(context.conditions?.reduce);
+
+        // ── Reduced-motion: misma NARRATIVA guiada por scroll (cross-fades),
+        // pero SIN zoom de máscara, scale, blur ni parallax (lo vestibular). Los
+        // estados de reposo se fijan de golpe; solo se anima la opacidad. GSAP
+        // matchMedia revierte esto solo si el usuario cambia la preferencia.
+        if (reduce) {
+          gsap.set("#hero-key", { scale: 1 });
+          gsap.set("#logo-mask", {
+            maskSize: "clamp(20vh, 25%, 30vh)",
+            maskPosition: isDesktop ? "center 3%" : "center 12%",
+          });
+          gsap.set(".reveal-item", {
+            autoAlpha: 0,
+            y: 0,
+            scale: 1,
+            filter: "none",
+          });
+          gsap.set("#hero-secondary", { autoAlpha: 0 });
+
+          gsap
+            .timeline({
+              scrollTrigger: {
+                trigger: rootRef.current!,
+                start: "top top",
+                end: "bottom bottom",
+                scrub: 1,
+              },
+            })
+            .to("#hero-key-logo", { autoAlpha: 0 }, 0)
+            .to("#hero-scroll-hint", { autoAlpha: 0 }, 0)
+            .to("#hero-intro", { autoAlpha: 0 }, 0.02)
+            .to("#hero-key", { autoAlpha: 0 }, 0.5)
+            .to("#hero-secondary", { autoAlpha: 1 }, 0.35)
+            .to(".reveal-item", { autoAlpha: 1, stagger: 0.06 }, 0.7)
+            .to("#logo-mask", { autoAlpha: 0 }, 2.2)
+            .to("#hero-reveal", { autoAlpha: 0 }, 2.25)
+            .to("#hero-secondary", { autoAlpha: 0 }, 2.25);
+          return;
+        }
+
         // Estado inicial oculto del contenido revelado (no se ve hasta el final).
         gsap.set(".reveal-item", {
           autoAlpha: 0,
@@ -114,15 +186,18 @@ export function Hero() {
   }, []);
 
   return (
-    <div ref={rootRef} className={styles.scrollTrack}>
+    <div
+      ref={rootRef}
+      className={`${styles.scrollTrack} ${introReady ? "intro-play" : ""}`}
+    >
       <div
         id="logo-mask"
-        className={`${styles.logoMask} fixed top-0 z-[1] h-screen w-full`}
+        className={`${styles.logoMask} fixed top-0 z-[1] h-dvh w-full`}
       >
         <section>
           <div
             id="hero-key"
-            className="fixed block h-screen w-screen scale-105 overflow-hidden"
+            className="fixed block h-dvh w-screen scale-105 overflow-hidden"
           >
             <Image
               id="hero-key-logo"
@@ -162,15 +237,24 @@ export function Hero() {
         className="pointer-events-none fixed inset-0 z-20 flex flex-col justify-between px-6 pt-28 pb-20 sm:px-12 sm:pt-36 sm:pb-24"
       >
         <div className="flex max-w-2xl flex-1 flex-col justify-center">
-          <p className="text-silver-300 text-xs tracking-[4px] uppercase sm:text-sm">
+          <p
+            className="hero-intro-item text-silver-300 text-xs tracking-[4px] uppercase sm:text-sm"
+            style={{ animationDelay: "0.05s" }}
+          >
             {t("kicker")}
           </p>
-          <h1 className="font-narrow mt-3 text-6xl leading-[0.9] font-bold tracking-tight text-white uppercase drop-shadow-[0_2px_14px_rgba(0,0,0,0.65)] sm:text-8xl">
+          <h1
+            className="hero-intro-item font-narrow mt-3 text-6xl leading-[0.9] font-bold tracking-tight text-white uppercase drop-shadow-[0_2px_14px_rgba(0,0,0,0.65)] sm:text-8xl"
+            style={{ animationDelay: "0.18s" }}
+          >
             {t.rich("heroTitle", {
               br: () => <br className="sm:hidden" />,
             })}
           </h1>
-          <p className="text-silver-200 mt-5 max-w-md text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:text-base">
+          <p
+            className="hero-intro-item hidden text-silver-200 mt-5 max-w-md text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:block sm:text-base"
+            style={{ animationDelay: "0.32s" }}
+          >
             {t.rich("heroSubtitle", {
               br: () => <br className="sm:hidden" />,
             })}
@@ -178,50 +262,63 @@ export function Hero() {
           <button
             type="button"
             onClick={scrollToWork}
-            className="group text-silver-100 pointer-events-auto mt-8 inline-flex w-fit items-center gap-3 text-sm tracking-[2px] uppercase transition hover:text-white"
+            onMouseEnter={runScramble}
+            className={`group ${glassSurfaceSoft} text-silver-100 pointer-events-auto mt-8 inline-flex min-h-11 w-fit items-center rounded-full px-6 text-sm tracking-[2px] uppercase transition hover:scale-[1.03] hover:text-white hover:ring-amethyst-300/50 active:scale-95`}
           >
-            <span className="relative pb-1.5">
-              {t("exploreWork")}
-              {/* Subrayado amatista (color de marca) que se desvanece al final. */}
-              <span className="absolute inset-x-0 bottom-0 h-0.5 bg-[linear-gradient(to_right,var(--color-amethyst-400)_0%,var(--color-amethyst-400)_62%,transparent_100%)]" />
-            </span>
-            <span className="transition-transform group-hover:translate-x-1">
-              →
+            <GlassSheen />
+            {/* Ghost invisible que reserva el ancho final: evita que el pill
+                "salte" mientras el texto se descifra (scramble mantiene el largo). */}
+            <span className="relative inline-grid">
+              <span aria-hidden className="invisible col-start-1 row-start-1">
+                {t("exploreWork")}
+              </span>
+              <span ref={exploreRef} className="col-start-1 row-start-1">
+                {t("exploreWork")}
+              </span>
             </span>
           </button>
         </div>
 
-        {/* Redes: sin redirección por ahora (botones inertes). */}
-        <div className="pointer-events-auto flex items-center gap-4">
-          <span className="text-silver-400 text-xs tracking-[3px] uppercase">
+        {/* Redes: enlazadas de verdad (SoundCloud queda de placeholder hasta tener
+            su link). En móvil se muestran abajo como iconos táctiles de 44px, sin
+            el label "Seguir" (comodidad + touch); el slide-in también en móvil. */}
+        <div className="pointer-events-auto flex items-center gap-3">
+          <span className="text-silver-400 hidden text-xs tracking-[3px] uppercase sm:inline">
             {t("follow")}
           </span>
-          <div className="text-silver-200 flex items-center gap-4">
-            <button
-              type="button"
+          <div className="hero-socials text-silver-200 -ml-2.5 flex items-center gap-1 sm:ml-0">
+            <a
+              href="https://www.instagram.com/ogm_na/"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Instagram"
-              className="cursor-pointer transition hover:text-white"
+              className="flex size-11 items-center justify-center rounded-full transition hover:text-white"
             >
               <InstagramIcon className="w-6" />
-            </button>
-            <button
-              type="button"
+            </a>
+            <a
+              href="https://www.youtube.com/@onlygmusic2000"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="YouTube"
-              className="cursor-pointer transition hover:text-white"
+              className="flex size-11 items-center justify-center rounded-full transition hover:text-white"
             >
               <YouTubeIcon className="w-6" />
-            </button>
-            <button
-              type="button"
+            </a>
+            <a
+              href="https://open.spotify.com/intl-es/artist/2GxBIJS8KRQ0Fky139mgUM?si=NGrR7XTpTRGzfaGvmEN2ag"
+              target="_blank"
+              rel="noopener noreferrer"
               aria-label="Spotify"
-              className="cursor-pointer transition hover:text-white"
+              className="flex size-11 items-center justify-center rounded-full transition hover:text-white"
             >
               <SpotifyIcon className="w-6" />
-            </button>
+            </a>
             <button
               type="button"
               aria-label="SoundCloud"
-              className="cursor-pointer transition hover:text-white"
+              title="SoundCloud (pronto)"
+              className="text-silver-500 flex size-11 items-center justify-center rounded-full transition hover:text-white"
             >
               <SoundCloudIcon className="w-7" />
             </button>

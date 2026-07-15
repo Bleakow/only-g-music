@@ -9,6 +9,12 @@
   --animate-menu-reveal: menu-reveal 450ms cubic-bezier(0.22, 1, 0.36, 1);
   --animate-menu-conceal: menu-conceal 450ms cubic-bezier(0.22, 1, 0.36, 1)
     forwards;
+  /* Variantes "derecha": mismo reveal circular pero anclado a la esquina derecha
+     (cuando el avatar vive en el lado derecho, p. ej. topbar admin). */
+  --animate-menu-reveal-right: menu-reveal-right 450ms
+    cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-menu-conceal-right: menu-conceal-right 450ms
+    cubic-bezier(0.22, 1, 0.36, 1) forwards;
   --animate-panel-reveal: panel-reveal 320ms cubic-bezier(0.22, 1, 0.36, 1);
 
   /* ── Paleta de marca: plata + amatista ─────────────────────── */
@@ -116,6 +122,24 @@
   }
 }
 
+/* Reveal/conceal anclados a la DERECHA (avatar en el lado derecho). */
+@keyframes menu-reveal-right {
+  from {
+    clip-path: circle(0% at right 2.25rem top 2.25rem);
+  }
+  to {
+    clip-path: circle(170% at right 2.25rem top 2.25rem);
+  }
+}
+@keyframes menu-conceal-right {
+  from {
+    clip-path: circle(170% at right 2.25rem top 2.25rem);
+  }
+  to {
+    clip-path: circle(0% at right 2.25rem top 2.25rem);
+  }
+}
+
 /* Panel de notificaciones al expandirse: reveal circular (diagonal) desde la
    esquina superior derecha, cerca de la campanita, con leve fundido. */
 @keyframes panel-reveal {
@@ -179,4 +203,69 @@
     var(--color-amethyst-500),
     var(--color-amethyst-300)
   );
+}
+
+/* ── Entrada de la primera pantalla del Hero ─────────────────────
+   Presentación al cargar/recargar. Hecho con CSS (no gsap.from) para ser
+   INMUNE al doble-montaje de React StrictMode, que dejaba los elementos
+   invisibles. El delay por elemento se pone inline (style) en el JSX. */
+/* Oculto hasta que el InitialLoader termina: el Hero añade `.intro-play` al root
+   cuando el overlay se va, y SOLO entonces arrancan las animaciones. Si no, se
+   ejecutan tapadas por el vinilo (mín. 2s) y no se ven. */
+.hero-intro-item {
+  opacity: 0;
+}
+.intro-play .hero-intro-item {
+  animation: hero-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Redes sociales: llegan deslizándose desde la izquierda, escalonadas. */
+.hero-socials > * {
+  opacity: 0;
+}
+.intro-play .hero-socials > * {
+  animation: hero-slide-left 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.intro-play .hero-socials > *:nth-child(1) {
+  animation-delay: 0.5s;
+}
+.intro-play .hero-socials > *:nth-child(2) {
+  animation-delay: 0.58s;
+}
+.intro-play .hero-socials > *:nth-child(3) {
+  animation-delay: 0.66s;
+}
+.intro-play .hero-socials > *:nth-child(4) {
+  animation-delay: 0.74s;
+}
+
+/* Sin motion: visible de una, sin animar. */
+@media (prefers-reduced-motion: reduce) {
+  .hero-intro-item,
+  .hero-socials > * {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes hero-slide-left {
+  from {
+    opacity: 0;
+    transform: translateX(-32px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }

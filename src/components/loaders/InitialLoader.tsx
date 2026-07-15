@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { VinylLoader } from "./VinylLoader";
+import { markIntroReady } from "./intro-ready";
 
 // Mínimo en pantalla: da tiempo a ver la intro del vinilo (entrada + needle drop
 // + arranque) sin que sea un flash. Ajustable a gusto.
@@ -27,6 +28,9 @@ export function InitialLoader() {
     const dismiss = () => {
       if (cancelled) return;
       setVisible(false);
+      // Avisa al Hero para que arranque sus entradas justo cuando el overlay
+      // empieza a irse (si arrancan antes, se ejecutan tapadas y no se ven).
+      markIntroReady();
       window.setTimeout(() => {
         if (!cancelled) setGone(true);
       }, FADE_MS);

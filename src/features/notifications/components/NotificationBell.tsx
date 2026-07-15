@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
+import { IconButton } from "@/components/ui/IconButton";
 import { BellIcon, CheckIcon } from "@/components/icons";
 import type { Notificacion } from "@/domain/notification";
 import {
@@ -115,12 +116,11 @@ export function NotificationBell({
 
   return (
     <div ref={ref} className={wrap}>
-      <button
-        type="button"
+      <IconButton
         onClick={() => setOpen((v) => !v)}
         aria-label={t("notificaciones.title")}
         aria-expanded={open}
-        className="text-silver-100 hover:border-amethyst-300 relative flex size-10 items-center justify-center rounded-full border border-white/25 bg-black/40 backdrop-blur-sm transition hover:text-white"
+        active={open}
       >
         <BellIcon className="size-5" />
         {count > 0 && (
@@ -128,7 +128,7 @@ export function NotificationBell({
             {count > 9 ? "9+" : count}
           </span>
         )}
-      </button>
+      </IconButton>
 
       {open && (
         <div

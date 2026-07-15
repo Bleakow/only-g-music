@@ -92,7 +92,7 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
         onClick={() => setOpen((v) => !v)}
         aria-label={user ? t("userMenu.account") : t("userMenu.access")}
         aria-expanded={open}
-        className={`text-silver-100 hover:border-amethyst-300 absolute top-0 z-20 flex size-10 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white ${
+        className={`text-silver-100 hover:border-amethyst-300 absolute top-0 z-20 flex size-11 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white ${
           align === "right" ? "right-0" : "left-0"
         }`}
       >
@@ -120,8 +120,12 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
           }}
           className={`${glassSurfaceMenu} ${
             open
-              ? "animate-menu-reveal"
-              : "animate-menu-conceal pointer-events-none"
+              ? align === "right"
+                ? "animate-menu-reveal-right"
+                : "animate-menu-reveal"
+              : align === "right"
+                ? "animate-menu-conceal-right pointer-events-none"
+                : "animate-menu-conceal pointer-events-none"
           } absolute top-[-1rem] w-64 overflow-hidden rounded-2xl ${
             align === "right" ? "right-[-1rem]" : "left-[-1rem]"
           }`}

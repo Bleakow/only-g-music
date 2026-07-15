@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
 import { IconButton } from "@/components/ui/IconButton";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BellIcon, CheckIcon } from "@/components/icons";
 import type { Notificacion } from "@/domain/notification";
 import {
@@ -36,6 +37,7 @@ export function NotificationBell({
   const t = useTranslations();
   const locale = useLocale();
   const router = useRouter();
+  const reduce = useReducedMotion();
   const ref = useRef<HTMLDivElement>(null);
 
   const [items, setItems] = useState<Notificacion[]>([]);
@@ -130,15 +132,21 @@ export function NotificationBell({
         )}
       </IconButton>
 
-      {open && (
-        <div
-          className={`fixed top-[4.5rem] w-[min(22rem,calc(100vw-1.5rem))] sm:top-[5.25rem] ${
-            align === "right" ? "right-3 sm:right-4" : "left-3 sm:left-4"
-          }`}
-        >
-          <div
-            className={`${glassSurfaceMenu} animate-panel-reveal overflow-hidden rounded-2xl`}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className={`fixed top-[4.5rem] w-[min(22rem,calc(100vw-1.5rem))] sm:top-[5.25rem] ${
+              align === "right" ? "right-3 sm:right-4" : "left-3 sm:left-4"
+            }`}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: -10 }}
+            animate={reduce ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: -10 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            style={{
+              transformOrigin: align === "right" ? "top right" : "top left",
+            }}
           >
+            <div className={`${glassSurfaceMenu} overflow-hidden rounded-2xl`}>
             <GlassSheen />
             <div className="relative [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
               {/* Header */}
@@ -248,10 +256,11 @@ export function NotificationBell({
                   )}
                 </div>
               )}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

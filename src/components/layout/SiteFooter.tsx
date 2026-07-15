@@ -60,7 +60,7 @@ export async function SiteFooter() {
         </div>
       </div>
 
-      <p className="mt-8 text-xs text-white/40">
+      <p className="mt-8 text-xs text-silver-400">
         {t("footer.rights", { year: String(year) })}
       </p>
     </footer>

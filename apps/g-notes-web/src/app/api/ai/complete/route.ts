@@ -9,9 +9,10 @@ import { geminiGenerate } from "@/features/ai/gemini";
 // de g-notes-web. Guarda la key server-side; el cliente nunca la ve.
 export const runtime = "nodejs";
 
-// Autocompletado inline = alta frecuencia + latencia crítica → Flash (rápido y
-// barato, con capa gratis). Override con GNOTES_GEMINI_MODEL.
-const MODEL = process.env.GNOTES_GEMINI_MODEL ?? "gemini-2.0-flash";
+// Autocompletado inline = alta frecuencia + latencia crítica → Flash-Lite
+// (rápido, barato, con capa gratis). El alias "-latest" evita los 404 de
+// modelos retirados. Override con GNOTES_GEMINI_MODEL.
+const MODEL = process.env.GNOTES_GEMINI_MODEL ?? "gemini-flash-lite-latest";
 
 const SYSTEM = `Eres el autocompletado de un editor de composición musical (como GitHub Copilot, pero para letras de canciones). Continúa el texto de forma natural en el MISMO idioma, estilo, tema, métrica y patrón de rima. Devuelve SOLO la continuación en texto plano: sin comillas, sin explicaciones y sin repetir lo ya escrito. Si el verso parece completo, empieza el siguiente. Máximo una o dos líneas.`;
 

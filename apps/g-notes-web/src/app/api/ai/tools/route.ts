@@ -8,9 +8,10 @@ import { geminiGenerate } from "@/features/ai/gemini";
 
 export const runtime = "nodejs";
 
-// Panel contextual: menor frecuencia, la calidad creativa importa. Con capa
-// gratis, Flash va sobrado; sube a gemini-2.5-pro vía GNOTES_GEMINI_CREATIVE_MODEL.
-const MODEL = process.env.GNOTES_GEMINI_CREATIVE_MODEL ?? "gemini-2.0-flash";
+// Panel contextual: menor frecuencia. Flash-Lite (alias -latest) funciona en la
+// capa gratis y escribe bien; para más chispa, sube a gemini-flash-latest o
+// gemini-3.5-flash vía GNOTES_GEMINI_CREATIVE_MODEL.
+const MODEL = process.env.GNOTES_GEMINI_CREATIVE_MODEL ?? "gemini-flash-lite-latest";
 
 const INSTRUCTIONS: Record<CreativeOp, string> = {
   rimas:

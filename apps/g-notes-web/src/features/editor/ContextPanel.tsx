@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createAiClient, type CreativeOp } from "@only-g/ai-services";
+import { glassSurfaceMenu } from "@only-g/ui";
 import type { EditorSelection } from "@/features/editor/LyricsEditor";
+import { getModel } from "@/features/ai/model-store";
 
 const client = createAiClient();
 
@@ -71,7 +73,7 @@ export function ContextPanel({
     controllerRef.current = new AbortController();
     try {
       const res = await client.creative(
-        { op: next, text: selection.text, context, genre },
+        { op: next, text: selection.text, context, genre, model: getModel() },
         controllerRef.current.signal,
       );
       setItems(res.suggestions);
@@ -92,16 +94,25 @@ export function ContextPanel({
     }
   }
 
+  // Coloca el panel en el lado con más espacio (arriba/abajo) para no salirse del
+  // viewport, y acota la altura de la lista al hueco disponible.
+  const GAP = 8;
+  const spaceAbove = selection.top - GAP;
+  const spaceBelow = window.innerHeight - selection.bottom - GAP;
+  const placeAbove = spaceAbove >= spaceBelow;
+  const listMaxH = Math.max(
+    120,
+    Math.min(260, (placeAbove ? spaceAbove : spaceBelow) - 64),
+  );
+  const left = Math.max(8, Math.min(selection.left, window.innerWidth - 296));
+
   return (
     <div
-      className="glass fixed z-30 w-72 rounded-xl p-2 shadow-2xl shadow-black/50"
+      className={`${glassSurfaceMenu} fixed z-30 w-72 rounded-xl p-2`}
       style={{
-        top: selection.top,
-        left: Math.max(
-          8,
-          Math.min(selection.left, window.innerWidth - 296),
-        ),
-        transform: "translateY(calc(-100% - 8px))",
+        top: placeAbove ? selection.top - GAP : selection.bottom + GAP,
+        left,
+        transform: placeAbove ? "translateY(-100%)" : undefined,
       }}
       // Evita robar el foco (y borrar la selección) del editor al interactuar.
       onMouseDown={(e) => e.preventDefault()}
@@ -125,7 +136,7 @@ export function ContextPanel({
       </div>
 
       {op && (
-        <div className="mt-2 max-h-56 overflow-y-auto">
+        <div className="mt-2 overflow-y-auto" style={{ maxHeight: listMaxH }}>
           {loading && (
             <p className="px-2 py-3 text-xs text-silver-400">Pensando…</p>
           )}

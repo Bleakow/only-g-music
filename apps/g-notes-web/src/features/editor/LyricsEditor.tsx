@@ -20,8 +20,9 @@ export interface EditorSelection {
   text: string;
   from: number;
   to: number;
-  /** Coords de viewport para posicionar el panel contextual. */
+  /** Coords de viewport para posicionar el panel contextual (arriba o abajo). */
   top: number;
+  bottom: number;
   left: number;
 }
 
@@ -57,6 +58,7 @@ function reportSelection(
     from: sel.from,
     to: sel.to,
     top: coords.top,
+    bottom: coords.bottom,
     left: coords.left,
   });
 }

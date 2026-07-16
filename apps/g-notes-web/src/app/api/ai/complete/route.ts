@@ -27,10 +27,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json(stub(body));
 
+  // Modelo elegido por el usuario (guardarraíl: solo gemini-*), si no el default.
+  const model = body.model?.startsWith("gemini") ? body.model : MODEL;
   try {
     const text = await geminiGenerate({
       apiKey,
-      model: MODEL,
+      model,
       system: SYSTEM,
       prompt: buildPrompt(body),
       maxOutputTokens: 48,

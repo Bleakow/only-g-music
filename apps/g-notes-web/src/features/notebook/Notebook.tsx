@@ -25,9 +25,21 @@ import {
   newSong,
   persistLibrary,
 } from "@/features/library/storage";
+import { Button, SearchableSelect, type SelectOption } from "@only-g/ui";
+import { AI_MODELS, DEFAULT_MODEL } from "@only-g/ai-services";
+import { loadModel, setModel } from "@/features/ai/model-store";
 
 type SaveState = "idle" | "saving" | "saved";
 const AUTOSAVE_MS = 900;
+
+const GENRE_OPTIONS: SelectOption[] = GENRES.map((g) => ({
+  value: g,
+  label: g,
+}));
+const MODEL_OPTIONS: SelectOption[] = AI_MODELS.map((m) => ({
+  value: m.id,
+  label: m.label,
+}));
 
 export function Notebook() {
   const [lib, setLib] = useState<Library>({ songs: [], activeId: null });
@@ -35,6 +47,7 @@ export function Notebook() {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selection, setSelection] = useState<EditorSelection | null>(null);
+  const [model, setModelState] = useState(DEFAULT_MODEL);
 
   const editorRef = useRef<LyricsEditorHandle>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -44,8 +57,14 @@ export function Notebook() {
     const loaded = loadLibrary();
     setLib(loaded);
     savedRef.current = JSON.stringify(loaded);
+    setModelState(loadModel());
     setHydrated(true);
   }, []);
+
+  function chooseModel(id: string) {
+    setModel(id);
+    setModelState(id);
+  }
 
   // Autosave con debounce.
   useEffect(() => {
@@ -127,12 +146,9 @@ export function Notebook() {
           <h1 className="bg-linear-to-r from-amethyst-300 to-amethyst-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
             G&nbsp;Notes
           </h1>
-          <button
-            onClick={createSong}
-            className="rounded-lg border border-amethyst-500/40 bg-amethyst-500/15 px-2.5 py-1 text-xs font-medium text-amethyst-300 transition hover:bg-amethyst-500/25"
-          >
+          <Button size="sm" variant="outline" onClick={createSong}>
             + Nueva
-          </button>
+          </Button>
         </div>
         <p className="px-1 text-[0.7rem] uppercase tracking-wide text-silver-500">
           Biblioteca
@@ -173,6 +189,23 @@ export function Notebook() {
             </li>
           ))}
         </ul>
+
+        <div className="border-t border-silver-200/10 pt-3">
+          <p className="mb-1.5 px-1 text-[0.7rem] uppercase tracking-wide text-silver-500">
+            Modelo de IA
+          </p>
+          <SearchableSelect
+            value={model}
+            onChange={chooseModel}
+            options={MODEL_OPTIONS}
+            ariaLabel="Modelo de IA"
+            searchPlaceholder="Buscar modelo…"
+            emptyText="Sin modelos"
+            allowCustom
+            customLabel={(t) => `Usar "${t}"`}
+            placement="top"
+          />
+        </div>
       </aside>
 
       {sidebarOpen && (
@@ -200,21 +233,18 @@ export function Notebook() {
             aria-label="Título"
             className="min-w-0 flex-1 bg-transparent text-lg font-semibold text-silver-50 outline-none placeholder:text-silver-500"
           />
-          <select
-            value={active?.genre ?? ""}
-            onChange={(e) =>
-              patchActive({ genre: e.target.value as Genre | "" })
-            }
-            aria-label="Género"
-            className="rounded-lg border border-silver-200/10 bg-ink-panel px-2 py-1 text-xs text-silver-300 outline-none"
-          >
-            <option value="">Género…</option>
-            {GENRES.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </select>
+          <div className="w-32 shrink-0">
+            <SearchableSelect
+              value={active?.genre ?? ""}
+              onChange={(g) => patchActive({ genre: g as Genre })}
+              options={GENRE_OPTIONS}
+              placeholder="Género…"
+              ariaLabel="Género"
+              searchPlaceholder="Buscar…"
+              emptyText="Sin resultados"
+              className="flex min-h-9 w-full items-center justify-between gap-1 rounded-lg border border-silver-200/10 bg-ink-panel px-2.5 py-1.5 text-left text-xs text-silver-200 outline-none transition hover:border-silver-200/25 focus-visible:ring-2 focus-visible:ring-amethyst-300/70"
+            />
+          </div>
           <SaveIndicator state={saveState} hydrated={hydrated} />
         </div>
 

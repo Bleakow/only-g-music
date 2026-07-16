@@ -15,6 +15,7 @@ import {
 } from "@codemirror/view";
 import type { AiClient } from "@only-g/ai-services";
 import { analysisField } from "@/features/editor/lyric-extensions";
+import { getModel } from "@/features/ai/model-store";
 
 const DEBOUNCE_MS = 450;
 const MIN_LINE_CHARS = 3;
@@ -93,7 +94,7 @@ function fetcher(client: AiClient) {
 
         try {
           const res = await client.complete(
-            { prefix: state.sliceDoc(0, pos), targetMeter },
+            { prefix: state.sliceDoc(0, pos), targetMeter, model: getModel() },
             this.controller.signal,
           );
           const suggestion =

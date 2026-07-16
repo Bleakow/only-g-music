@@ -11,6 +11,8 @@ export interface CompletionRequest {
   genre?: string;
   /** Métrica dominante detectada (sílabas por verso), para coherencia. */
   targetMeter?: number;
+  /** Modelo elegido por el usuario (si no, el default del servidor). */
+  model?: string;
 }
 
 export interface CompletionResponse {
@@ -30,6 +32,8 @@ export interface CreativeRequest {
   /** Contexto alrededor de la selección (opcional). */
   context?: string;
   genre?: string;
+  /** Modelo elegido por el usuario (si no, el default del servidor). */
+  model?: string;
 }
 
 export interface CreativeResponse {

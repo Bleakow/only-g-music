@@ -10,6 +10,8 @@ const workspaceRoot = join(appDir, "..", "..");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
+  // Compila desde fuente los packages internos del workspace (TS, sin pre-build).
+  transpilePackages: ["@only-g/ai-services"],
 };
 
 export default nextConfig;

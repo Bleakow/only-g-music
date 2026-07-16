@@ -1,3 +1,4 @@
-// @only-g/ai-services — esqueleto cableado. TODO: extraccion en tanda siguiente.
-// Origen a mover: cliente + contratos (tipos request/response) del servicio ai-engine — SIN API keys
-export {};
+// @only-g/ai-services — cliente + contratos del servicio de IA de G Notes.
+// Sin API keys: el servidor (route handler / @only-g/ai-engine) resuelve la llamada.
+export * from "./contracts";
+export * from "./client";

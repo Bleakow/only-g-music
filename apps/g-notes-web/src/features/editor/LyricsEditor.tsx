@@ -9,7 +9,12 @@ import {
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { createAiClient } from "@only-g/ai-services";
 import { lyricExtensions } from "@/features/editor/lyric-extensions";
+import { ghostCompletion } from "@/features/editor/ghost";
+
+// Cliente de IA al mismo origen (baseUrl vacío → POST /api/ai/complete).
+const aiClient = createAiClient();
 
 export interface LyricsEditorHandle {
   insertSection: (name: string) => void;
@@ -40,6 +45,7 @@ export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
             if (u.docChanged) onChangeRef.current(u.state.doc.toString());
           }),
           ...lyricExtensions,
+          ...ghostCompletion(aiClient),
         ],
       });
       const view = new EditorView({ state, parent: host.current });

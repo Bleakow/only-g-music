@@ -20,6 +20,11 @@ import {
   NoteIcon,
 } from "@/components/icons";
 
+// URL de la app hermana G Notes (escritor inteligente). Configurable por entorno;
+// en dev G Notes corre en otro puerto (p. ej. 3001).
+const GNOTES_URL =
+  process.env.NEXT_PUBLIC_GNOTES_URL ?? "http://localhost:3001";
+
 /**
  * Burbuja de chat flotante y global (solo con sesión iniciada). Colapsada es un
  * botón en la esquina; expandida muestra la lista de conversaciones del usuario
@@ -84,8 +89,8 @@ export function ConversationBubble() {
 
   if (!open) {
     // Dock flotante de herramientas (solo con sesión). En perfiles de artista se
-    // oculta el dock entero en MÓVIL (choca con el reproductor de audio). G Note:
-    // aún no existe → estado "Pronto" (deshabilitado + badge). En la home solo se
+    // oculta el dock entero en MÓVIL (choca con el reproductor de audio). G Note
+    // abre la app hermana G Notes (escritor); badge "Nuevo". En la home solo se
     // ve en la primera pantalla; al scrollear se desvanece y queda solo el chat.
     return (
       <div
@@ -106,7 +111,9 @@ export function ConversationBubble() {
               <IconButton
                 aria-label={t("gnote.aria")}
                 title={t("gnote.soon")}
-                disabled
+                onClick={() => {
+                  window.location.href = GNOTES_URL;
+                }}
               >
                 <NoteIcon className="size-5" />
               </IconButton>

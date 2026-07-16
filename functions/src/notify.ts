@@ -4,9 +4,8 @@
  * NO se guarda resuelto: se guardan `evento` + `params` y el cliente lo traduce
  * al idioma actual (next-intl).
  *
- * Mantener los ids de evento EN SYNC con `src/domain/notification.ts` (catálogo
- * del lado web). Viven duplicados porque `functions/` es su propio paquete; se
- * unificarán cuando se extraiga `packages/domain` (roadmap).
+ * Los ids de evento (`NotifEvento`) se importan del dominio compartido
+ * `@only-g/shared-types/notification` — única fuente de verdad, ya sin duplicar.
  *
  * Best-effort: si falla la escritura, loguea y sigue — una notificación nunca
  * debe romper la lógica de negocio que la disparó.
@@ -15,23 +14,10 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import * as logger from "firebase-functions/logger";
 
-export type NotifEvento =
-  | "mensaje-nuevo"
-  | "pago-por-revisar"
-  | "pago-confirmado"
-  | "cotizacion-nueva"
-  | "cotizacion-respondida"
-  | "sesion-agendada"
-  | "sesion-proxima"
-  | "gasto-recurrente-por-confirmar"
-  | "perfil-artista-creado"
-  | "premium-activado"
-  | "perfil-por-renovar"
-  | "convenio-solicitado"
-  | "convenio-aprobado"
-  | "convenio-rechazado"
-  | "beat-vendido"
-  | "payout-pagado";
+// Única fuente de verdad en el dominio compartido (ya sin duplicar).
+// Se importa para uso local y se re-exporta para consumidores de `./notify`.
+import type { NotifEvento } from "@only-g/shared-types/notification";
+export type { NotifEvento };
 
 /**
  * Crea una notificación para `uid`. `getFirestore()` se resuelve en runtime (no

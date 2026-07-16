@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+/* ── Design tokens ─────────────────────────────────────────────────
+   Paleta de marca Only G (plata + amatista sobre tinta). Inline en M1;
+   se extraerá a @only-g/ui/tokens.css en M8 para compartir con only-g-web. */
+@theme {
+  --font-sans:
+    "OGM", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Plata (metálica) */
+  --color-silver-50: #f7f7fa;
+  --color-silver-100: #e9e9f0;
+  --color-silver-200: #d4d4e0;
+  --color-silver-300: #b8b8c8;
+  --color-silver-400: #9a9ab0;
+  --color-silver-500: #7e7e95;
+
+  /* Amatista (cristal) */
+  --color-amethyst-300: #c4a5ff;
+  --color-amethyst-400: #a87bff;
+  --color-amethyst-500: #8b5cf6;
+  --color-amethyst-600: #7c3aed;
+  --color-amethyst-700: #6d28d9;
+  --color-amethyst-900: #3b0764;
+
+  /* Tinta (fondo oscuro con tinte violeta) */
+  --color-ink: #0c0a12;
+  --color-ink-soft: #15111f;
+  --color-ink-panel: #1a1626;
+
+  /* Estado semántico */
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #a87bff;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+  color: var(--color-silver-100);
+  background:
+    radial-gradient(
+      60rem 60rem at 15% -10%,
+      color-mix(in oklab, var(--color-amethyst-700) 22%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      50rem 50rem at 100% 0%,
+      color-mix(in oklab, var(--color-amethyst-500) 12%, transparent),
+      transparent 55%
+    ),
+    var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Superficie de cristal reutilizable (versión ligera del glassSurface de Only G) */
+.glass {
+  background: color-mix(in oklab, var(--color-ink-panel) 72%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-silver-200) 12%, transparent);
+  backdrop-filter: blur(16px) saturate(1.1);
+  -webkit-backdrop-filter: blur(16px) saturate(1.1);
+}
+
+/* Textarea del cuaderno: sin resize, scroll limpio, cursor amatista */
+.notebook-surface {
+  caret-color: var(--color-amethyst-400);
+}
+.notebook-surface::placeholder {
+  color: color-mix(in oklab, var(--color-silver-400) 60%, transparent);
+}
+.notebook-surface::-webkit-scrollbar {
+  width: 10px;
+}
+.notebook-surface::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--color-amethyst-500) 30%, transparent);
+  border-radius: 999px;
+}

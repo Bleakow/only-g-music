@@ -2,7 +2,7 @@
 // cuaderno de líricas: tema de marca, gutter con sílabas por verso y realce de
 // las líneas de sección. Todo determinista (sin IA) — "IA solo donde aporta".
 
-import { RangeSetBuilder } from "@codemirror/state";
+import { RangeSetBuilder, StateField } from "@codemirror/state";
 import {
   Decoration,
   type DecorationSet,
@@ -13,7 +13,11 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { isSectionLine } from "@/features/editor/sections";
-import { lineSyllables } from "@/features/notebook/syllables";
+import {
+  analyzeSong,
+  metricSyllables,
+  type SongAnalysis,
+} from "@/features/analysis/metrics";
 
 /* ── Tema tinta + amatista ─────────────────────────────────────────── */
 export const lyricTheme = EditorView.theme(
@@ -49,6 +53,9 @@ export const lyricTheme = EditorView.theme(
       fontSize: "0.7rem",
       fontVariantNumeric: "tabular-nums",
     },
+    ".cm-syl-match": { color: "#c4a5ff" },
+    ".cm-syl-near": { color: "#9a9ab0" },
+    ".cm-syl-off": { color: "#fbbf24", fontWeight: "600" },
     ".cm-section-line": {
       color: "#c4a5ff",
       fontWeight: "600",
@@ -60,17 +67,30 @@ export const lyricTheme = EditorView.theme(
   { dark: true },
 );
 
-/* ── Gutter de sílabas por verso ───────────────────────────────────── */
+/* ── Análisis métrico de la canción (para colorear el gutter) ──────── */
+export const analysisField = StateField.define<SongAnalysis>({
+  create: (state) => analyzeSong(state.doc.toString()),
+  update: (value, tr) =>
+    tr.docChanged ? analyzeSong(tr.newDoc.toString()) : value,
+});
+
+/* ── Gutter de sílabas métricas por verso ──────────────────────────── */
+type Tone = "match" | "near" | "off";
+
 class SyllableMarker extends GutterMarker {
-  constructor(readonly count: number) {
+  constructor(
+    readonly count: number,
+    readonly tone: Tone,
+  ) {
     super();
   }
   eq(other: SyllableMarker) {
-    return other.count === this.count;
+    return other.count === this.count && other.tone === this.tone;
   }
   toDOM() {
     const el = document.createElement("span");
     el.textContent = String(this.count);
+    el.className = `cm-syl cm-syl-${this.tone}`;
     return el;
   }
 }
@@ -80,7 +100,15 @@ export const syllableGutter = gutter({
   lineMarker(view, line) {
     const text = view.state.doc.lineAt(line.from).text;
     if (!text.trim() || isSectionLine(text)) return null;
-    return new SyllableMarker(lineSyllables(text));
+    const count = metricSyllables(text);
+    // Colorea según se ajuste (o rompa) la métrica dominante del tema.
+    const { dominant, verseCount } = view.state.field(analysisField);
+    let tone: Tone = "match";
+    if (dominant > 0 && verseCount > 2) {
+      const delta = Math.abs(count - dominant);
+      tone = delta === 0 ? "match" : delta === 1 ? "near" : "off";
+    }
+    return new SyllableMarker(count, tone);
   },
   lineMarkerChange: (update) => update.docChanged,
 });
@@ -120,6 +148,7 @@ export const sectionHighlighter = ViewPlugin.fromClass(
 
 export const lyricExtensions = [
   lyricTheme,
+  analysisField,
   EditorView.lineWrapping,
   syllableGutter,
   sectionHighlighter,

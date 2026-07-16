@@ -13,19 +13,28 @@
 const isVowel = (c: string): boolean => "aeiouáéíóúü".includes(c);
 const isStrong = (c: string): boolean => "aeoáéó".includes(c);
 const isAccentedWeak = (c: string): boolean => "íú".includes(c);
+const isAccented = (c: string): boolean => "áéíóú".includes(c);
 
-/** Sílabas de una palabra suelta. */
-export function wordSyllables(word: string): number {
+/** Un núcleo silábico (una sílaba), con si lleva la vocal acentuada. */
+export interface Nucleus {
+  accented: boolean;
+}
+
+/**
+ * Núcleos silábicos de una palabra, en orden. Fusiona diptongos/triptongos y
+ * separa hiatos (misma regla que el conteo). Base compartida para contar
+ * sílabas y para localizar la tónica (métrica en [[metrics]]).
+ */
+export function syllableNuclei(word: string): Nucleus[] {
   const w = word.toLowerCase();
-  let syllables = 0;
+  const out: Nucleus[] = [];
   let i = 0;
   while (i < w.length) {
     if (!isVowel(w[i])) {
       i++;
       continue;
     }
-    syllables++;
-    // Consumir el grupo vocálico, cortando en hiato.
+    let accented = isAccented(w[i]);
     let j = i + 1;
     while (j < w.length && isVowel(w[j])) {
       const prev = w[j - 1];
@@ -35,11 +44,18 @@ export function wordSyllables(word: string): number {
         isAccentedWeak(prev) ||
         isAccentedWeak(cur);
       if (hiatus) break;
+      if (isAccented(cur)) accented = true;
       j++;
     }
+    out.push({ accented });
     i = j;
   }
-  return syllables;
+  return out;
+}
+
+/** Sílabas de una palabra suelta. */
+export function wordSyllables(word: string): number {
+  return syllableNuclei(word).length;
 }
 
 /** Sílabas de una línea/verso: suma por palabra (sin sinalefa, ver nota). */

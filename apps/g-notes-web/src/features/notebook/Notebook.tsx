@@ -11,6 +11,7 @@ import {
   countWords,
   lineSyllables,
 } from "@/features/notebook/syllables";
+import { analyzeSong } from "@/features/analysis/metrics";
 import {
   GENRES,
   type Genre,
@@ -73,6 +74,7 @@ export function Notebook() {
       syllables: body
         .split("\n")
         .reduce((total, line) => total + lineSyllables(line), 0),
+      analysis: analyzeSong(body),
     };
   }, [active]);
 
@@ -119,7 +121,7 @@ export function Notebook() {
         }`}
       >
         <div className="flex items-center justify-between px-1">
-          <h1 className="bg-gradient-to-r from-amethyst-300 to-amethyst-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+          <h1 className="bg-linear-to-r from-amethyst-300 to-amethyst-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
             G&nbsp;Notes
           </h1>
           <button
@@ -242,9 +244,18 @@ export function Notebook() {
             {stats.lines} versos · {stats.words} palabras ·{" "}
             <span className="text-amethyst-300">{stats.syllables}</span> sílabas
           </span>
-          <span className="text-silver-500">
-            sílabas por verso a la izquierda de cada línea
-          </span>
+          {stats.analysis.dominant > 0 && stats.analysis.verseCount > 2 ? (
+            <span className="tabular-nums">
+              Métrica:{" "}
+              <span className="text-amethyst-300">{stats.analysis.name}</span> (
+              {stats.analysis.dominant}) · {stats.analysis.consistencyPct}%
+              consistencia
+            </span>
+          ) : (
+            <span className="text-silver-500">
+              sílabas métricas por verso a la izquierda
+            </span>
+          )}
         </div>
       </main>
     </div>

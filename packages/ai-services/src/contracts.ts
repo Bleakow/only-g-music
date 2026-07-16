@@ -19,3 +19,22 @@ export interface CompletionResponse {
   /** De dónde salió: modelo real o stub determinista (sin API key). */
   source: "ai" | "stub";
 }
+
+/** Operaciones del panel contextual (al seleccionar palabra/frase/verso). */
+export type CreativeOp = "rimas" | "frases" | "metaforas" | "expandir";
+
+export interface CreativeRequest {
+  op: CreativeOp;
+  /** La selección (palabra, frase o verso). */
+  text: string;
+  /** Contexto alrededor de la selección (opcional). */
+  context?: string;
+  genre?: string;
+}
+
+export interface CreativeResponse {
+  op: CreativeOp;
+  /** Lista de opciones para mostrar en el panel. */
+  suggestions: string[];
+  source: "ai" | "stub";
+}

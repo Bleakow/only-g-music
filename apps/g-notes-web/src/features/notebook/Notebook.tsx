@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   LyricsEditor,
   type LyricsEditorHandle,
+  type EditorSelection,
 } from "@/features/editor/LyricsEditor";
+import { ContextPanel } from "@/features/editor/ContextPanel";
 import { SECTIONS } from "@/features/editor/sections";
 import {
   countLines,
@@ -32,6 +34,7 @@ export function Notebook() {
   const [hydrated, setHydrated] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selection, setSelection] = useState<EditorSelection | null>(null);
 
   const editorRef = useRef<LyricsEditorHandle>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -235,9 +238,21 @@ export function Notebook() {
               ref={editorRef}
               value={active.body}
               onChange={(body) => patchActive({ body })}
+              onSelection={setSelection}
             />
           )}
         </div>
+
+        <ContextPanel
+          selection={selection}
+          genre={active?.genre || undefined}
+          context={active?.body}
+          onApply={(from, to, text) => {
+            editorRef.current?.replaceRange(from, to, text);
+            setSelection(null);
+          }}
+          onClose={() => setSelection(null)}
+        />
 
         <div className="flex items-center justify-between border-t border-silver-200/10 px-4 py-2 text-xs text-silver-500 md:px-8">
           <span className="tabular-nums">

@@ -16,22 +16,59 @@ import { ghostCompletion } from "@/features/editor/ghost";
 // Cliente de IA al mismo origen (baseUrl vacío → POST /api/ai/complete).
 const aiClient = createAiClient();
 
+export interface EditorSelection {
+  text: string;
+  from: number;
+  to: number;
+  /** Coords de viewport para posicionar el panel contextual. */
+  top: number;
+  left: number;
+}
+
 export interface LyricsEditorHandle {
   insertSection: (name: string) => void;
+  replaceRange: (from: number, to: number, text: string) => void;
   focus: () => void;
 }
 
 interface Props {
   value: string;
   onChange: (value: string) => void;
+  onSelection?: (sel: EditorSelection | null) => void;
+}
+
+function reportSelection(
+  view: EditorView,
+  cb: ((sel: EditorSelection | null) => void) | undefined,
+) {
+  if (!cb) return;
+  const sel = view.state.selection.main;
+  if (sel.empty) {
+    cb(null);
+    return;
+  }
+  const coords = view.coordsAtPos(sel.from);
+  if (!coords) {
+    cb(null);
+    return;
+  }
+  cb({
+    text: view.state.sliceDoc(sel.from, sel.to),
+    from: sel.from,
+    to: sel.to,
+    top: coords.top,
+    left: coords.left,
+  });
 }
 
 export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
-  function LyricsEditor({ value, onChange }, ref) {
+  function LyricsEditor({ value, onChange, onSelection }, ref) {
     const host = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     const onChangeRef = useRef(onChange);
     onChangeRef.current = onChange;
+    const onSelectionRef = useRef(onSelection);
+    onSelectionRef.current = onSelection;
 
     // Crear la vista una sola vez (StrictMode: se destruye y recrea, es idempotente).
     useEffect(() => {
@@ -43,6 +80,9 @@ export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) onChangeRef.current(u.state.doc.toString());
+            if (u.selectionSet || u.docChanged || u.geometryChanged) {
+              reportSelection(u.view, onSelectionRef.current);
+            }
           }),
           ...lyricExtensions,
           ...ghostCompletion(aiClient),
@@ -86,6 +126,15 @@ export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
         view.dispatch({
           changes: { from: pos, insert: snippet },
           selection: { anchor: pos + snippet.length },
+        });
+        view.focus();
+      },
+      replaceRange(from, to, text) {
+        const view = viewRef.current;
+        if (!view) return;
+        view.dispatch({
+          changes: { from, to, insert: text },
+          selection: { anchor: from + text.length },
         });
         view.focus();
       },

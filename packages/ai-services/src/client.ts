@@ -1,4 +1,9 @@
-import type { CompletionRequest, CompletionResponse } from "./contracts";
+import type {
+  CompletionRequest,
+  CompletionResponse,
+  CreativeRequest,
+  CreativeResponse,
+} from "./contracts";
 
 export interface AiClientOptions {
   /** Base URL del servicio (vacío = mismo origen; el default en el browser). */
@@ -29,6 +34,20 @@ export function createAiClient(opts: AiClientOptions = {}) {
       });
       if (!res.ok) throw new Error(`ai/complete ${res.status}`);
       return (await res.json()) as CompletionResponse;
+    },
+
+    async creative(
+      req: CreativeRequest,
+      signal?: AbortSignal,
+    ): Promise<CreativeResponse> {
+      const res = await doFetch(`${base}/api/ai/tools`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(req),
+        signal,
+      });
+      if (!res.ok) throw new Error(`ai/tools ${res.status}`);
+      return (await res.json()) as CreativeResponse;
     },
   };
 }

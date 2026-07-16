@@ -10,6 +10,7 @@ import { DatosPagoForm } from "@/features/socios/components/DatosPagoForm";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { EditIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
 import { hasAnyRole } from "@/domain/user";
 
 function initials(name: string | null, email: string | null): string {
@@ -157,12 +158,18 @@ export default function CuentaPage() {
         </section>
       )}
 
-      {/* Configuración (placeholder de futuras opciones) */}
+      {/* Configuración */}
       <section className="mt-12">
         <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase">
           {t("userMenu.settings")}
         </h2>
-        <p className="text-silver-400 mt-2">{t("account.settingsSoon")}</p>
+        {/* Idioma: en móvil el cambio de idioma vive aquí (se quitó del menú). */}
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/3 px-4 py-3">
+          <span className="text-silver-200 text-sm">
+            {t("account.language")}
+          </span>
+          <LanguageSwitcher />
+        </div>
       </section>
 
       <button

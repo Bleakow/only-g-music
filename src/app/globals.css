@@ -269,3 +269,66 @@
     transform: translateX(0);
   }
 }
+
+/* ── Botones premium (variantes del design system, estilo del artifact) ────
+   Aportan solo la SUPERFICIE; el radio, padding y tipografía los pone cada uso
+   con utilidades Tailwind. */
+.btn-amethyst {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(
+    180deg,
+    var(--color-amethyst-400),
+    var(--color-amethyst-600)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -3px 8px rgba(59, 7, 100, 0.55),
+    0 12px 34px -10px rgba(124, 58, 237, 0.7),
+    0 0 0 1px rgba(196, 165, 255, 0.35);
+}
+/* Barrido de luz que cruza al hover. */
+.btn-amethyst::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 32%,
+    rgba(255, 255, 255, 0.38) 48%,
+    transparent 60%
+  );
+  transform: translateX(-130%);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-amethyst:hover::after {
+  transform: translateX(130%);
+}
+
+/* La "otra variante": outline amatista premium (borde-luz + relleno al hover). */
+.btn-outline {
+  position: relative;
+  color: var(--color-amethyst-300);
+  border: 1px solid rgba(168, 123, 255, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition:
+    color 0.25s,
+    border-color 0.25s,
+    background 0.25s,
+    box-shadow 0.25s;
+}
+.btn-outline:hover {
+  color: #fff;
+  border-color: var(--color-amethyst-300);
+  background: rgba(139, 92, 246, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    0 0 20px -6px rgba(124, 58, 237, 0.5);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-amethyst::after {
+    transition: none;
+  }
+}

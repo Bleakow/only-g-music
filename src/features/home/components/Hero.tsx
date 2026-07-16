@@ -388,7 +388,7 @@ export function Hero() {
             <button
               type="button"
               onClick={scrollToWork}
-              className="reveal-item from-silver-100 to-amethyst-300 text-ink pointer-events-auto invisible rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+              className="reveal-item btn-amethyst pointer-events-auto invisible rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase"
             >
               {t("explore")}
             </button>
@@ -406,7 +406,7 @@ export function Hero() {
             </Link>
             <Link
               href="/agenda"
-              className="reveal-item border-amethyst-400/60 text-amethyst-300 hover:border-amethyst-300 hover:bg-amethyst-500/10 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition"
+              className="reveal-item btn-outline pointer-events-auto invisible rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
             >
               {t("book")}
             </Link>

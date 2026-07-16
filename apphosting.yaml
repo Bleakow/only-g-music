@@ -1,0 +1,9 @@
+# Firebase App Hosting — configuración de runtime del backend `only-g-music`.
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+#
+# maxInstances acota el PEOR CASO de coste del SSR. Con escala-a-cero el riesgo
+# no es el idle (cuesta 0) sino un pico de tráfico o un abuso que dispare muchas
+# instancias a la vez. 5 sobra para el tráfico actual (~100 req/día) y pone techo
+# a la factura. Súbelo cuando el tráfico real lo pida.
+runConfig:
+  maxInstances: 5

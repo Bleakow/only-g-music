@@ -9,7 +9,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "sourceMap": true,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "baseUrl": ".",
+    "paths": {
+      "@only-g/shared-types/*": ["../packages/shared-types/dist/*"]
+    }
   },
   "include": ["src"]
 }

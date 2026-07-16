@@ -1,12 +1,17 @@
+# === Monorepo Only G — .gitignore raíz ===
+# Patrones sin ancla inicial (/) para que apliquen en apps/*, packages/*, services/*.
+
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp
 .pnp.*
 
-# next.js
-/.next/
-/out/
-/build
+# builds / caches
+.next/
+out/
+build/
+dist/
+.turbo/
 
 # debug logs
 npm-debug.log*
@@ -26,10 +31,10 @@ next-env.d.ts
 .DS_Store
 .idea/
 
-# Imágenes placeholder / fotos de terceros en public/hero (copyright) —
-# NO subir. Se conserva solo el fondo de marca que usa el Hero.
-/public/hero/*
-!/public/hero/hero-key-background.jpg
+# Imágenes placeholder / fotos de terceros en public/hero (copyright) — NO subir.
+# Se conserva solo el fondo de marca que usa el Hero.
+apps/only-g-web/public/hero/*
+!apps/only-g-web/public/hero/hero-key-background.jpg
 
 # Claude Code: ajustes locales de la máquina (no compartir)
 .claude/settings.local.json

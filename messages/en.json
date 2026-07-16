@@ -143,7 +143,8 @@
     "photoLabel": "Photo",
     "nameRequired": "Enter your name.",
     "saveError": "Couldn't save. Try again.",
-    "settingsSoon": "Soon you'll be able to adjust your preferences here."
+    "settingsSoon": "Soon you'll be able to adjust your preferences here.",
+    "language": "Language"
   },
   "datosPago": {
     "title": "Payout details",

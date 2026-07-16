@@ -48,14 +48,18 @@ export function SiteMenu({
     pathname === href || pathname.startsWith(`${href}/`);
   const featuredActive = pathname === "/";
 
-  // Vuelve al logo al cerrar; al abrir, la ruleta arranca en el primero.
+  // Vuelve al logo al cerrar; al abrir, la ruleta arranca en la POSICIÓN 1 (no la
+  // 0), para que se note que hay destacados arriba y abajo. Clamp por si hay <2.
   useEffect(() => {
     if (!open) setHovered(null);
-    else setActiveIndex(0);
-  }, [open]);
+    else setActiveIndex(Math.min(1, Math.max(0, featured.length - 1)));
+  }, [open, featured.length]);
 
-  // Si cambian los destacados (semilla → reales), la ruleta vuelve al primero.
-  useEffect(() => setActiveIndex(0), [featured]);
+  // Si cambian los destacados (semilla → reales), la ruleta vuelve a la posición 1.
+  useEffect(
+    () => setActiveIndex(Math.min(1, Math.max(0, featured.length - 1))),
+    [featured],
+  );
 
   // Carga los destacados REALES (curados por el admin) la primera vez que se
   // abre el menú — lazy, para no leer Firestore en cada página. Fallback: semilla.
@@ -332,21 +336,25 @@ export function SiteMenu({
               </div>
             )}
 
-            {/* Hint: señala que se desliza. */}
+          </div>
+
+          <div className={styles.panelFoot}>
+            {/* Móvil: el hint de "deslizar" va aquí, al fondo del todo. */}
             {featured.length > 1 && (
-              <p className={styles.wheelHint} aria-hidden="true">
+              <p
+                className={`${styles.wheelHint} sm:hidden`}
+                aria-hidden="true"
+              >
                 <span className={styles.wheelArrow}>↑</span>
                 {t("swipeHint")}
                 <span className={styles.wheelArrow}>↓</span>
               </p>
             )}
-          </div>
-
-          <div className={styles.panelFoot}>
-            <Link href="/" onClick={close} className={styles.homeLink}>
-              {t("home")}
-            </Link>
-            <LanguageSwitcher />
+            {/* Desktop: cambiar idioma (en móvil vive en Configuración). El botón
+                de Inicio se eliminó del menú. */}
+            <div className="hidden sm:block">
+              <LanguageSwitcher />
+            </div>
           </div>
         </aside>
       </div>

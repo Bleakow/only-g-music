@@ -143,7 +143,8 @@
     "photoLabel": "Foto",
     "nameRequired": "Escribe tu nombre.",
     "saveError": "No se pudo guardar. Inténtalo de nuevo.",
-    "settingsSoon": "Pronto podrás ajustar tus preferencias aquí."
+    "settingsSoon": "Pronto podrás ajustar tus preferencias aquí.",
+    "language": "Idioma"
   },
   "datosPago": {
     "title": "Datos de pago",

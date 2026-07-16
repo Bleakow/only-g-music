@@ -11,7 +11,7 @@ import {
   CheckIcon,
   CloseIcon,
 } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import {
   type Movimiento,
@@ -26,7 +26,7 @@ import {
   periodoMes,
   periodoAnio,
   PERIODO_TODO,
-} from "@/domain/contabilidad";
+} from "@only-g/shared-types/contabilidad";
 import {
   listMovimientos,
   anularMovimiento,

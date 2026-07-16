@@ -3,9 +3,9 @@
  * reservas confirmadas se mapean a transacciones, igual que los pagos de premium
  * confirmados (chat de pago) y, a futuro, otras ventas. Sin UI ni Firebase aquí.
  */
-import type { Reserva, ReservaEstado } from "@/domain/booking";
-import type { Transaccion } from "@/domain/transaccion";
-import type { Payout } from "@/domain/payout";
+import type { Reserva, ReservaEstado } from "@only-g/shared-types/booking";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
+import type { Payout } from "@only-g/shared-types/payout";
 
 const CONTABLES: ReservaEstado[] = ["confirmada", "en_curso", "completada"];
 

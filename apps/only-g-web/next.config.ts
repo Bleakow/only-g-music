@@ -14,6 +14,8 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
+  // Compila desde fuente los packages internos del workspace (TS, sin pre-build).
+  transpilePackages: ["@only-g/shared-types"],
   images: {
     // Placeholders (picsum) + fotos reales subidas a Firebase Storage.
     remotePatterns: [

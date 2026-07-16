@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import type { Producer } from "@/domain/producer";
-import { formatLocation } from "@/domain/location";
+import type { Producer } from "@only-g/shared-types/producer";
+import { formatLocation } from "@only-g/shared-types/location";
 import { listProducers } from "../lib/producers-repo";
 import { SEED_PRODUCERS } from "../data/producers";
 import { ProducerEditorial } from "./ProducerEditorial";

@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { Artist } from "@/domain/artist";
-import type { Role } from "@/domain/user";
+import type { Artist } from "@only-g/shared-types/artist";
+import type { Role } from "@only-g/shared-types/user";
 import { getVisibleProfiles } from "../lib/artist-profile-repo";
 import { profileToArtist } from "../lib/profile-display";
 import { ArtistGrid } from "./ArtistGrid";

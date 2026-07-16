@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { createPortal } from "react-dom";
-import type { PlayerSize } from "@/domain/artist-profile";
+import type { PlayerSize } from "@only-g/shared-types/artist-profile";
 import {
   PlayIcon,
   PauseIcon,

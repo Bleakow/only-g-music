@@ -2,9 +2,9 @@
 
 import { useTranslations } from "next-intl";
 import { CloseIcon } from "@/components/icons";
-import type { Insignia } from "@/domain/artist-profile";
-import type { MetodoPago } from "@/domain/payment-method";
-import { metodosConEstado } from "@/domain/payment-method";
+import type { Insignia } from "@only-g/shared-types/artist-profile";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
+import { metodosConEstado } from "@only-g/shared-types/payment-method";
 
 /**
  * Selector de método de pago (modal). La disponibilidad sale del dominio

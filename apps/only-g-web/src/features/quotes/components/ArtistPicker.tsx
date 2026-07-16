@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { searchArtists } from "@/features/artists/lib/artists-repo";
 import { CloseIcon } from "@/components/icons";
-import type { Artist } from "@/domain/artist";
-import type { QuoteCollaborator } from "@/domain/quote";
+import type { Artist } from "@only-g/shared-types/artist";
+import type { QuoteCollaborator } from "@only-g/shared-types/quote";
 
 const INPUT =
   "w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";

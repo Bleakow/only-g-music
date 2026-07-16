@@ -12,7 +12,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { ensureUserAccount, getUserAccount } from "../lib/user-repo";
 import { logout as doLogout } from "../lib/auth-actions";
-import type { UserAccount } from "@/domain/user";
+import type { UserAccount } from "@only-g/shared-types/user";
 
 interface AuthState {
   /** Usuario de Firebase Auth (sesión) o null. */

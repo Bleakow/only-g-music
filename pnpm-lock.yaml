@@ -28,6 +28,9 @@ importers:
       '@dnd-kit/utilities':
         specifier: ^3.2.2
         version: 3.2.2(react@19.2.7)
+      '@only-g/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
@@ -114,6 +117,12 @@ importers:
   packages/billing: {}
 
   packages/database: {}
+
+  packages/shared-types:
+    devDependencies:
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
 
   packages/ui: {}
 

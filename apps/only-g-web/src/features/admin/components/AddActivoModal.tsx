@@ -14,8 +14,8 @@ import {
   type NuevoActivo,
   type ActivoCategoria,
   ACTIVO_CATEGORIAS,
-} from "@/domain/contabilidad";
-import type { Sede, SedeId } from "@/domain/sede";
+} from "@only-g/shared-types/contabilidad";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addActivo } from "../lib/activos-repo";
 import { adminInput, adminLabel } from "./admin-ui";

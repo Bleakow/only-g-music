@@ -11,10 +11,10 @@ import {
 import type {
   Conversation,
   ConversationMessage,
-} from "@/domain/conversation";
-import { puedeEscribir } from "@/domain/conversation";
-import { hasRole } from "@/domain/user";
-import { formatCOP } from "@/domain/service";
+} from "@only-g/shared-types/conversation";
+import { puedeEscribir } from "@only-g/shared-types/conversation";
+import { hasRole } from "@only-g/shared-types/user";
+import { formatCOP } from "@only-g/shared-types/service";
 import { Button } from "@/components/ui/Button";
 import { PagoPanel } from "./PagoPanel";
 

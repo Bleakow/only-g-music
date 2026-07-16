@@ -5,8 +5,8 @@ import { useTranslations, useLocale } from "next-intl";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import { listTransactions } from "../lib/transactions-repo";
 import { listPayouts } from "../lib/payouts-repo";
-import type { Transaccion } from "@/domain/transaccion";
-import { formatCOP } from "@/domain/service";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
+import { formatCOP } from "@only-g/shared-types/service";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { ArrowRightIcon } from "./admin-icons";
 import {
@@ -19,7 +19,7 @@ import {
 } from "../lib/finanzas";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { listMovimientos } from "../lib/movimientos-repo";
-import type { Movimiento } from "@/domain/contabilidad";
+import type { Movimiento } from "@only-g/shared-types/contabilidad";
 import { EstadoResultados } from "./EstadoResultados";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 import { Skeleton } from "@/components/ui/Skeleton";

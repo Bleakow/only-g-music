@@ -19,11 +19,11 @@ import { ConversationView } from "@/features/conversations/components/Conversati
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 import { Button } from "@/components/ui/Button";
 import { sedes } from "@/features/sedes/data/sedes";
-import { formatCOP } from "@/domain/service";
-import { insigniaDePuntos, type Insignia } from "@/domain/artist-profile";
-import type { MetodoPago } from "@/domain/payment-method";
-import type { QuoteRequest } from "@/domain/quote";
-import type { Reserva } from "@/domain/booking";
+import { formatCOP } from "@only-g/shared-types/service";
+import { insigniaDePuntos, type Insignia } from "@only-g/shared-types/artist-profile";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
+import type { QuoteRequest } from "@only-g/shared-types/quote";
+import type { Reserva } from "@only-g/shared-types/booking";
 import { badgeClass } from "../lib/estados";
 import { Skeleton } from "@/components/ui/Skeleton";
 

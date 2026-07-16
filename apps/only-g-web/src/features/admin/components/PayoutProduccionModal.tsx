@@ -8,7 +8,7 @@ import { Alert } from "@/components/ui/Alert";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { SpinnerIcon, CheckIcon } from "@/components/icons";
-import type { Sede } from "@/domain/sede";
+import type { Sede } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import {
   listProductores,

@@ -2,7 +2,7 @@
  * Configuración de presentación de redes sociales (label + icono). Vive en la
  * feature (no en el dominio) porque referencia componentes de UI (iconos).
  */
-import type { SocialPlatform } from "@/domain/artist";
+import type { SocialPlatform } from "@only-g/shared-types/artist";
 import {
   SpotifyIcon,
   InstagramIcon,

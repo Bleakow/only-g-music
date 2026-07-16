@@ -5,9 +5,9 @@ import { useTranslations } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { EditIcon, PlusIcon, SpinnerIcon } from "@/components/icons";
-import type { Sede, SedeId } from "@/domain/sede";
-import type { DestinoPago } from "@/domain/payment-destination";
-import { toSlug } from "@/domain/artist-profile";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
+import type { DestinoPago } from "@only-g/shared-types/payment-destination";
+import { toSlug } from "@only-g/shared-types/artist-profile";
 import {
   getAllSedes,
   setSedeOverride,

@@ -3,7 +3,7 @@
  * (dynamic import) → el cliente solo descarga el país que abre, no todos. Se
  * cachea en memoria para no re-importar. Los JSON los genera `scripts/gen-geo.mjs`.
  */
-import type { CountryCode } from "@/domain/location";
+import type { CountryCode } from "@only-g/shared-types/location";
 
 export interface StateGeo {
   code: string;

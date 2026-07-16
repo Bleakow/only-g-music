@@ -12,7 +12,7 @@ import {
   type Sesion,
   GRACIA_AUTO_INICIO_MIN,
   debeAutoIniciar,
-} from "@/domain/booking";
+} from "@only-g/shared-types/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { Button } from "@/components/ui/Button";
 import { Skeleton } from "@/components/ui/Skeleton";

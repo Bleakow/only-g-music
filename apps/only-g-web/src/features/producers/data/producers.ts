@@ -1,4 +1,4 @@
-import type { Producer } from "@/domain/producer";
+import type { Producer } from "@only-g/shared-types/producer";
 
 /**
  * Semilla de productores: SOLO fallback para que el home no quede vacío antes de

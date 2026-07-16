@@ -3,7 +3,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { alternatesFor } from "@/lib/seo";
 import { Link } from "@/i18n/navigation";
 import { services } from "@/features/services/data/services";
-import { isQuoteOnly, priceLabel, hasVariants } from "@/domain/service";
+import { isQuoteOnly, priceLabel, hasVariants } from "@only-g/shared-types/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();

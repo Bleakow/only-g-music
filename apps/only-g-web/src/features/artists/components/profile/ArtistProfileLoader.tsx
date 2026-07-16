@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import type { ArtistProfile } from "@/domain/artist-profile";
+import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import { getProfileBySlug } from "../../lib/artist-profile-repo";
 import { ArtistProfileView } from "./ArtistProfileView";
 import { BeatmakerProfileView } from "./BeatmakerProfileView";

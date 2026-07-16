@@ -6,12 +6,12 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { Alert } from "@/components/ui/Alert";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon, CopyIcon, CheckIcon, PlusIcon } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import {
   type Payout,
   agruparPayoutsPendientes,
-} from "@/domain/payout";
-import type { DatosPagoSocio } from "@/domain/datos-pago";
+} from "@only-g/shared-types/payout";
+import type { DatosPagoSocio } from "@only-g/shared-types/datos-pago";
 import { getDatosPago } from "@/features/socios/lib/datos-pago-repo";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import {

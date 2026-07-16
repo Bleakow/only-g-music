@@ -12,7 +12,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Transaccion } from "@/domain/transaccion";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
 
 function toTransaccion(id: string, d: DocumentData): Transaccion {
   return {

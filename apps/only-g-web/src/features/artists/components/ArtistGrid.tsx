@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import type { Artist } from "@/domain/artist";
+import type { Artist } from "@only-g/shared-types/artist";
 import { ArtistCard } from "./ArtistCard";
 
 gsap.registerPlugin(ScrollTrigger);

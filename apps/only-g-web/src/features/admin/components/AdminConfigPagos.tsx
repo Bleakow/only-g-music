@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { SpinnerIcon } from "@/components/icons";
-import type { DestinoPago } from "@/domain/payment-destination";
+import type { DestinoPago } from "@only-g/shared-types/payment-destination";
 import {
   getCompanyPaymentDest,
   setCompanyPaymentDest,

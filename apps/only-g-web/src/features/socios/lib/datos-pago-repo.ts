@@ -19,7 +19,7 @@ import type {
   DatosBanco,
   DatosNequi,
   DatosEfectivo,
-} from "@/domain/datos-pago";
+} from "@only-g/shared-types/datos-pago";
 
 const COLLECTION = "datosPago";
 

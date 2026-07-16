@@ -5,13 +5,13 @@ import { useTranslations, useLocale } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
-import type { Sede, SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import {
   plantillaPorDefecto,
   slotsDeVentana,
   type PlantillaSemanal,
   type VentanaHoraria,
-} from "@/domain/availability";
+} from "@only-g/shared-types/availability";
 import {
   getDisponibilidadMes,
   saveDisponibilidadMes,

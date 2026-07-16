@@ -45,8 +45,8 @@ import {
   perfilVisible,
   compararOrden,
   toSlug,
-} from "@/domain/artist-profile";
-import type { Role } from "@/domain/user";
+} from "@only-g/shared-types/artist-profile";
+import type { Role } from "@only-g/shared-types/user";
 
 const COLLECTION = "artistProfiles";
 

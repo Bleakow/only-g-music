@@ -6,8 +6,8 @@ import { PaymentMethodPicker } from "@/features/conversations/components/Payment
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
-import { insigniaDePuntos } from "@/domain/artist-profile";
-import type { MetodoPago } from "@/domain/payment-method";
+import { insigniaDePuntos } from "@only-g/shared-types/artist-profile";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
 
 /**
  * Botón "Activar membresía" autocontenido: abre el selector de método de pago y,

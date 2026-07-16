@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Artist } from "@/domain/artist";
+import type { Artist } from "@only-g/shared-types/artist";
 import { getVisibleProfiles } from "../lib/artist-profile-repo";
 import { profileToArtist } from "../lib/profile-display";
 import { ArtistCard } from "./ArtistCard";

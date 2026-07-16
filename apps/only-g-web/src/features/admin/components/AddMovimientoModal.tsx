@@ -16,8 +16,8 @@ import {
   type Recurrencia,
   GASTO_CATEGORIAS,
   RECURRENCIAS,
-} from "@/domain/contabilidad";
-import type { Sede, SedeId } from "@/domain/sede";
+} from "@only-g/shared-types/contabilidad";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addMovimiento } from "../lib/movimientos-repo";
 import { adminInput, adminLabel } from "./admin-ui";

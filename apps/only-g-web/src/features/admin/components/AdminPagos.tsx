@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { subscribePendingPayments } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
-import { formatCOP } from "@/domain/service";
-import type { Conversation } from "@/domain/conversation";
+import { formatCOP } from "@only-g/shared-types/service";
+import type { Conversation } from "@only-g/shared-types/conversation";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 
 /**

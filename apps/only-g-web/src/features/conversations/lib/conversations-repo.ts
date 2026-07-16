@@ -27,8 +27,8 @@ import type {
   NewConversation,
   NewConversationMessage,
   PagoConcepto,
-} from "@/domain/conversation";
-import type { MetodoPago } from "@/domain/payment-method";
+} from "@only-g/shared-types/conversation";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
 
 const COL = "conversations";
 

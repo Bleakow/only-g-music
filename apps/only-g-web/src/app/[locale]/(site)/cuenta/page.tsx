@@ -11,7 +11,7 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { EditIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
-import { hasAnyRole } from "@/domain/user";
+import { hasAnyRole } from "@only-g/shared-types/user";
 
 function initials(name: string | null, email: string | null): string {
   const base = name?.trim() || email || "?";

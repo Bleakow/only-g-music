@@ -23,7 +23,7 @@ import {
   type ComercialConfig,
   type Comisiones,
   type Precios,
-} from "@/domain/comercial-config";
+} from "@only-g/shared-types/comercial-config";
 
 const COMISIONES_REF = () => doc(db, "comercialConfig", "comisiones");
 const PRECIOS_REF = () => doc(db, "comercialConfig", "precios");

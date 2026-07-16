@@ -19,7 +19,7 @@ import type {
   NuevoMovimiento,
   Confirmacion,
   ConfirmacionEstado,
-} from "@/domain/contabilidad";
+} from "@only-g/shared-types/contabilidad";
 
 const COLLECTION = "movimientos";
 

@@ -15,9 +15,9 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { Beat } from "@/domain/beat";
-import type { BeatSale } from "@/domain/beat-sale";
-import type { MetodoPago } from "@/domain/payment-method";
+import type { Beat } from "@only-g/shared-types/beat";
+import type { BeatSale } from "@only-g/shared-types/beat-sale";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 
 const COLLECTION = "beatSales";

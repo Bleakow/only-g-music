@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { ConvenioRequest, NuevaConvenioRequest } from "@/domain/convenio";
+import type { ConvenioRequest, NuevaConvenioRequest } from "@only-g/shared-types/convenio";
 
 const COLLECTION = "convenioRequests";
 

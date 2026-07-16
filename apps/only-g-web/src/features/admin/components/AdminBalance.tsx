@@ -10,16 +10,16 @@ import {
   SpinnerIcon,
   CheckIcon,
 } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import {
   type Activo,
   type Pasivo,
   balanceGeneral,
   pasivoVigente,
-} from "@/domain/contabilidad";
-import { type Payout, totalPayoutsPendientes } from "@/domain/payout";
-import type { BeatSale } from "@/domain/beat-sale";
+} from "@only-g/shared-types/contabilidad";
+import { type Payout, totalPayoutsPendientes } from "@only-g/shared-types/payout";
+import type { BeatSale } from "@only-g/shared-types/beat-sale";
 import { listActivos } from "../lib/activos-repo";
 import { listPasivos, saldarPasivo } from "../lib/pasivos-repo";
 import { listPayouts, backfillPayouts } from "../lib/payouts-repo";

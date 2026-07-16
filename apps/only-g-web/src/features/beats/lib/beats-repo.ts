@@ -18,7 +18,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Beat, NuevoBeat } from "@/domain/beat";
+import type { Beat, NuevoBeat } from "@only-g/shared-types/beat";
 
 const COLLECTION = "beats";
 

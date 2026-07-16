@@ -3,7 +3,7 @@
  * partir de los links que pega el artista. Sin UI ni Firebase. El visitante
  * elige la plataforma; aquí solo traducimos el link a su URL de `embed`.
  */
-import type { ProfileTrack, TrackPlatform } from "@/domain/artist-profile";
+import type { ProfileTrack, TrackPlatform } from "@only-g/shared-types/artist-profile";
 
 /** watch?v=ID · youtu.be/ID · /embed/ID · /shorts/ID → URL de embed. */
 export function youtubeEmbed(url: string): string | null {

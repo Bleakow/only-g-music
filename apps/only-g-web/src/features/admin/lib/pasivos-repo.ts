@@ -14,7 +14,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Pasivo, NuevoPasivo } from "@/domain/contabilidad";
+import type { Pasivo, NuevoPasivo } from "@only-g/shared-types/contabilidad";
 
 const COLLECTION = "pasivos";
 

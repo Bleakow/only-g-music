@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import type { Beat } from "@/domain/beat";
-import { formatCOP } from "@/domain/service";
-import type { MetodoPago } from "@/domain/payment-method";
+import type { Beat } from "@only-g/shared-types/beat";
+import { formatCOP } from "@only-g/shared-types/service";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { listBeats } from "@/features/beats/lib/beats-repo";
 import { comprarBeat } from "@/features/beats/lib/beat-sales-repo";

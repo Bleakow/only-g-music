@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
-import type { ArtistProfile } from "@/domain/artist-profile";
+import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { ArrowLeftIcon } from "@/components/icons";
 import { ContactBeatmakerButton } from "@/features/beats/components/ContactBeatmakerButton";

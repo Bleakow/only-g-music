@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { DEFAULTS, type Precios } from "@/domain/comercial-config";
+import { DEFAULTS, type Precios } from "@only-g/shared-types/comercial-config";
 import { getPrecios } from "../lib/precios-repo";
 
 /**

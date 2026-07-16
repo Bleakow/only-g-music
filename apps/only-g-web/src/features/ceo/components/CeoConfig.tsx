@@ -10,14 +10,14 @@ import {
   esComisionValida,
   esPrecioValido,
   type Comisiones,
-} from "@/domain/comercial-config";
+} from "@only-g/shared-types/comercial-config";
 import {
   getComercialConfig,
   updateComisiones,
   updatePrecios,
 } from "../lib/comercial-config-repo";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
-import type { Sede } from "@/domain/sede";
+import type { Sede } from "@only-g/shared-types/sede";
 import {
   AdminPageHeader,
   adminCard,

@@ -13,8 +13,8 @@ import { db } from "@/lib/firebase";
 import type {
   DisponibilidadMes,
   NewDisponibilidadMes,
-} from "@/domain/availability";
-import type { SedeId } from "@/domain/sede";
+} from "@only-g/shared-types/availability";
+import type { SedeId } from "@only-g/shared-types/sede";
 
 const COLLECTION = "availability";
 const docId = (sedeId: SedeId, mes: string) => `${sedeId}_${mes}`;

@@ -21,7 +21,7 @@ import {
   type Producer,
   type EditableProducer,
   compararOrden,
-} from "@/domain/producer";
+} from "@only-g/shared-types/producer";
 
 const COLLECTION = "producers";
 

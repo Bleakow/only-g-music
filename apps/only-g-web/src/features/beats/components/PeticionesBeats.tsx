@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { hasRole } from "@/domain/user";
-import type { BeatRequest, BeatRequestEstado } from "@/domain/beat";
+import { hasRole } from "@only-g/shared-types/user";
+import type { BeatRequest, BeatRequestEstado } from "@only-g/shared-types/beat";
 import {
   createBeatRequest,
   listBeatRequestsAbiertas,

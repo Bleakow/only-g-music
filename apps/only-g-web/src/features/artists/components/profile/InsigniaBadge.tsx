@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { INSIGNIA_META, insigniaDePuntos } from "@/domain/artist-profile";
+import { INSIGNIA_META, insigniaDePuntos } from "@only-g/shared-types/artist-profile";
 
 /**
  * Píldora de insignia (Plata/Oro/Diamante) derivada de los puntos. El label se

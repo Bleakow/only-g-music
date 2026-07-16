@@ -17,7 +17,7 @@ import {
   type Role,
   type ArtistDraft,
   DEFAULT_ROLES,
-} from "@/domain/user";
+} from "@only-g/shared-types/user";
 
 const COLLECTION = "users";
 

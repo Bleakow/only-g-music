@@ -6,8 +6,8 @@
  */
 import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
-import type { Role } from "@/domain/user";
-import type { SedeId } from "@/domain/sede";
+import type { Role } from "@only-g/shared-types/user";
+import type { SedeId } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 
 /** Proyección mínima de un usuario para el buscador del admin. */

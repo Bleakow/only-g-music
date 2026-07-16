@@ -17,7 +17,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Notificacion, NotifPayload } from "@/domain/notification";
+import type { Notificacion, NotifPayload } from "@only-g/shared-types/notification";
 
 const SUB = "notifications";
 /** Tope de la campanita: las últimas N. El archivado/TTL lo maneja el servidor. */

@@ -16,7 +16,7 @@ import {
   activoVigente,
   pasivoVigente,
   valorEnLibros,
-} from "@/domain/contabilidad";
+} from "@only-g/shared-types/contabilidad";
 
 export interface BalanceExportLabels {
   title: string;

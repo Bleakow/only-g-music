@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
-import type { ArtistProfile } from "@/domain/artist-profile";
+import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import {
   aniosDeTrayectoria,
   photoTransformCss,
@@ -12,9 +12,9 @@ import {
   DEFAULT_PLAYER_Y,
   DEFAULT_PLAYER_SIZE,
   GALLERY_SPAN_CLASS,
-} from "@/domain/artist-profile";
-import type { SocialPlatform } from "@/domain/artist";
-import { formatLocation } from "@/domain/location";
+} from "@only-g/shared-types/artist-profile";
+import type { SocialPlatform } from "@only-g/shared-types/artist";
+import { formatLocation } from "@only-g/shared-types/location";
 import { useState } from "react";
 import {
   ArrowLeftIcon,

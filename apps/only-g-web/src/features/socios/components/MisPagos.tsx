@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
-import { type Payout, totalPayoutsPendientes } from "@/domain/payout";
+import { type Payout, totalPayoutsPendientes } from "@only-g/shared-types/payout";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { listMisPayouts } from "@/features/admin/lib/payouts-repo";
 import { Skeleton } from "@/components/ui/Skeleton";

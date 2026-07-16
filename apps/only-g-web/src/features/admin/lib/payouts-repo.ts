@@ -18,7 +18,7 @@ import {
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
-import type { Payout } from "@/domain/payout";
+import type { Payout } from "@only-g/shared-types/payout";
 
 const COLLECTION = "payouts";
 

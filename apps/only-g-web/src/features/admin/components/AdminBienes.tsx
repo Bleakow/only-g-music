@@ -5,7 +5,7 @@ import { useTranslations, useLocale } from "next-intl";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { PlusIcon, TrashIcon, SpinnerIcon } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import {
   type Activo,
@@ -13,8 +13,8 @@ import {
   totalesInventario,
   valorEnLibros,
   valorPorCategoria,
-} from "@/domain/contabilidad";
-import type { Sede } from "@/domain/sede";
+} from "@only-g/shared-types/contabilidad";
+import type { Sede } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { listActivos, darDeBajaActivo } from "../lib/activos-repo";
 import { AddActivoModal } from "./AddActivoModal";

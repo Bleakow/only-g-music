@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { SOCIAL_PLATFORMS, type SocialPlatform } from "@/domain/artist";
+import { SOCIAL_PLATFORMS, type SocialPlatform } from "@only-g/shared-types/artist";
 import { SOCIAL_META } from "../../lib/socials";
 import { PlusIcon, CloseIcon } from "@/components/icons";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";

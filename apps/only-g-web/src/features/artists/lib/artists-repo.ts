@@ -1,4 +1,4 @@
-import type { Artist } from "@/domain/artist";
+import type { Artist } from "@only-g/shared-types/artist";
 import { artists } from "../data/artists";
 import { getVisibleProfiles } from "./artist-profile-repo";
 import { profileToArtist } from "./profile-display";

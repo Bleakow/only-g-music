@@ -3,8 +3,8 @@
  * `Artist` que ya consumen el grid y las cards de la vitrina, para reutilizar esa
  * UI sin tocarla. Sin UI ni Firebase.
  */
-import type { Artist } from "@/domain/artist";
-import type { ArtistProfile } from "@/domain/artist-profile";
+import type { Artist } from "@only-g/shared-types/artist";
+import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 
 export function profileToArtist(p: ArtistProfile): Artist {
   return {

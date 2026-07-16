@@ -11,7 +11,7 @@ import {
   type OpenConversationDetail,
 } from "../lib/open-conversation";
 import { ConversationView } from "./ConversationView";
-import type { Conversation } from "@/domain/conversation";
+import type { Conversation } from "@only-g/shared-types/conversation";
 import { IconButton } from "@/components/ui/IconButton";
 import {
   ArrowLeftIcon,

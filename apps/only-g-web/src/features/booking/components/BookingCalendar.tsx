@@ -6,16 +6,16 @@ import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
-import type { Sede, SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { services } from "@/features/services/data/services";
-import { isQuoteOnly, hasVariants, formatCOP } from "@/domain/service";
+import { isQuoteOnly, hasVariants, formatCOP } from "@only-g/shared-types/service";
 import {
   slotsDeFecha,
   slotsCubiertos,
   estadoDia,
   type DisponibilidadMes,
   type EstadoDia,
-} from "@/domain/availability";
+} from "@only-g/shared-types/availability";
 import { getDisponibilidadMes } from "@/features/availability/lib/availability-repo";
 import {
   getDaySlots,

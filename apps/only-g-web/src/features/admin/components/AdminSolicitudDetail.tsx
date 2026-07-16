@@ -21,7 +21,7 @@ import {
 import { ConversationView } from "@/features/conversations/components/ConversationView";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { Button } from "@/components/ui/Button";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { sedes } from "@/features/sedes/data/sedes";
 import { getSedeById } from "@/features/sedes/lib/sedes-repo";
 import {
@@ -32,13 +32,13 @@ import {
   nextQuoteStates,
   type QuoteRequest,
   type QuoteStatus,
-} from "@/domain/quote";
+} from "@only-g/shared-types/quote";
 import {
   nextReservaStates,
   type Reserva,
   type ReservaEstado,
   type Sesion,
-} from "@/domain/booking";
+} from "@only-g/shared-types/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { AdminPageHeader, adminCard } from "./admin-ui";
 import { Skeleton } from "@/components/ui/Skeleton";

@@ -7,7 +7,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import type { Role } from "@/domain/user";
+import type { Role } from "@only-g/shared-types/user";
 import {
   adminSearchUsers,
   adminSetRoles,

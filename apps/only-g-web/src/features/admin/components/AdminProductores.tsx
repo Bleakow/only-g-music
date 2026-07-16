@@ -18,8 +18,8 @@ import {
   type Producer,
   type EditableProducer,
   emptyProducer,
-} from "@/domain/producer";
-import { formatLocation } from "@/domain/location";
+} from "@only-g/shared-types/producer";
+import { formatLocation } from "@only-g/shared-types/location";
 import {
   listProducers,
   createProducer,

@@ -16,7 +16,7 @@ import {
   TIPOS_CUENTA,
   TIPOS_DOC,
   datosPagoCompletos,
-} from "@/domain/datos-pago";
+} from "@only-g/shared-types/datos-pago";
 import { getDatosPago, updateDatosPago } from "../lib/datos-pago-repo";
 
 // Estilo de campo/etiqueta del sitio (no-admin), alineado con /cuenta.

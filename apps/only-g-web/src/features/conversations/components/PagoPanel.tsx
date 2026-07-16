@@ -5,10 +5,10 @@ import { useTranslations } from "next-intl";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
 import { CopyIcon, CheckIcon } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
-import type { Conversation } from "@/domain/conversation";
-import type { DestinoPago } from "@/domain/payment-destination";
-import { instruccionPago, resolverDestinoPago } from "@/domain/payment-destination";
+import { formatCOP } from "@only-g/shared-types/service";
+import type { Conversation } from "@only-g/shared-types/conversation";
+import type { DestinoPago } from "@only-g/shared-types/payment-destination";
+import { instruccionPago, resolverDestinoPago } from "@only-g/shared-types/payment-destination";
 import { getReservaById } from "@/features/booking/lib/booking-repo";
 import { getSedeById } from "@/features/sedes/lib/sedes-repo";
 import {

@@ -12,7 +12,7 @@
  */
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { parsePrecios, type Precios } from "@/domain/comercial-config";
+import { parsePrecios, type Precios } from "@only-g/shared-types/comercial-config";
 
 /** Lee los precios vigentes; ante cualquier fallo/ausencia, devuelve los defaults. */
 export async function getPrecios(): Promise<Precios> {

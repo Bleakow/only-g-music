@@ -1,4 +1,4 @@
-import type { Artist } from "@/domain/artist";
+import type { Artist } from "@only-g/shared-types/artist";
 
 /**
  * Roster RETIRADO. Los artistas ahora viven en Firestore (`artistProfiles`),

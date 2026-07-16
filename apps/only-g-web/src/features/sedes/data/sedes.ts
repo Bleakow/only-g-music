@@ -1,4 +1,4 @@
-import type { Sede } from "@/domain/sede";
+import type { Sede } from "@only-g/shared-types/sede";
 
 /**
  * Sedes de Only G — DATOS PLACEHOLDER (direcciones/QR pendientes del cliente).

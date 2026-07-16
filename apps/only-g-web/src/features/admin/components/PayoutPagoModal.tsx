@@ -7,8 +7,8 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { Alert } from "@/components/ui/Alert";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { SpinnerIcon, CheckIcon } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
-import { METODOS_PAGO_SOCIO } from "@/domain/datos-pago";
+import { formatCOP } from "@only-g/shared-types/service";
+import { METODOS_PAGO_SOCIO } from "@only-g/shared-types/datos-pago";
 import type { MetodoLiquidacion } from "../lib/payouts-repo";
 
 /**

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
-import { hasAnyRole, hasRole } from "@/domain/user";
+import { hasAnyRole, hasRole } from "@only-g/shared-types/user";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
 
 function initials(name: string | null, email: string | null): string {

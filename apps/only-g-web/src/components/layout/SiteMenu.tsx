@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import Image from "next/image";
-import type { Artist } from "@/domain/artist";
+import type { Artist } from "@only-g/shared-types/artist";
 import { getFeaturedProfiles } from "@/features/artists/lib/artist-profile-repo";
 import { profileToArtist } from "@/features/artists/lib/profile-display";
 import { UserMenu } from "@/features/auth/components/UserMenu";

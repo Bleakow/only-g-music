@@ -13,8 +13,8 @@ import {
   type NuevoPasivo,
   type PasivoCategoria,
   PASIVO_CATEGORIAS,
-} from "@/domain/contabilidad";
-import type { Sede, SedeId } from "@/domain/sede";
+} from "@only-g/shared-types/contabilidad";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { addPasivo } from "../lib/pasivos-repo";
 import { adminInput, adminLabel } from "./admin-ui";

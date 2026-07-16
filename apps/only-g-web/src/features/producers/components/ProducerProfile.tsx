@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import type { Producer } from "@/domain/producer";
-import { formatLocation } from "@/domain/location";
+import type { Producer } from "@only-g/shared-types/producer";
+import { formatLocation } from "@only-g/shared-types/location";
 import { ArrowLeftIcon } from "@/components/icons";
 import { getProducer } from "../lib/producers-repo";
 import { ProducerEditorial } from "./ProducerEditorial";

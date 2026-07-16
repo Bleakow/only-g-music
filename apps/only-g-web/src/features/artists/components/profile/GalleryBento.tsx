@@ -38,7 +38,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   type GalleryItem,
   GALLERY_SPAN_CLASS,
-} from "@/domain/artist-profile";
+} from "@only-g/shared-types/artist-profile";
 import { CloseIcon, ExpandIcon, MoveIcon } from "@/components/icons";
 
 const GRID =

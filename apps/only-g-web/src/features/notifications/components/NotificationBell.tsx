@@ -8,7 +8,7 @@ import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
 import { IconButton } from "@/components/ui/IconButton";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BellIcon, CheckIcon } from "@/components/icons";
-import type { Notificacion } from "@/domain/notification";
+import type { Notificacion } from "@only-g/shared-types/notification";
 import {
   subscribeNotificaciones,
   marcarLeido,

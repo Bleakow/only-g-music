@@ -8,7 +8,7 @@ import {
   FilePdfIcon,
   FileSheetIcon,
 } from "@/components/icons";
-import { formatCOP } from "@/domain/service";
+import { formatCOP } from "@only-g/shared-types/service";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { listAllBookings } from "@/features/booking/lib/booking-repo";
 import { listTransactions } from "../lib/transactions-repo";
@@ -21,13 +21,13 @@ import {
   netoProductorPorReserva,
   ordenarTransacciones,
 } from "../lib/finanzas";
-import type { Transaccion } from "@/domain/transaccion";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
 import type {
   Movimiento,
   GastoCategoria,
   ActivoCategoria,
   PasivoCategoria,
-} from "@/domain/contabilidad";
+} from "@only-g/shared-types/contabilidad";
 import type {
   ContabilidadData,
   ContabilidadLabels,

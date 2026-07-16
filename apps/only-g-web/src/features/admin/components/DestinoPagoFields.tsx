@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import { PhotoUpload } from "@/components/ui/PhotoUpload";
-import type { DestinoPago } from "@/domain/payment-destination";
+import type { DestinoPago } from "@only-g/shared-types/payment-destination";
 
 function Field({
   label,

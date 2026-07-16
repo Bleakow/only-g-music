@@ -20,7 +20,7 @@ import type {
   QuoteRequest,
   NewQuoteRequest,
   QuoteStatus,
-} from "@/domain/quote";
+} from "@only-g/shared-types/quote";
 
 const COLLECTION = "quotes";
 

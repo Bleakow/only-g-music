@@ -6,9 +6,9 @@ import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { listQuotesByUser } from "@/features/quotes/lib/quotes-repo";
 import { listReservasByUser } from "@/features/booking/lib/booking-repo";
-import type { QuoteRequest } from "@/domain/quote";
-import type { Reserva } from "@/domain/booking";
-import { formatCOP } from "@/domain/service";
+import type { QuoteRequest } from "@only-g/shared-types/quote";
+import type { Reserva } from "@only-g/shared-types/booking";
+import { formatCOP } from "@only-g/shared-types/service";
 import { badgeClass, fechaCorta } from "../lib/estados";
 import { Skeleton } from "@/components/ui/Skeleton";
 

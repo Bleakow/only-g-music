@@ -19,8 +19,8 @@ import {
   type ArtistProfile,
   MAX_DESTACADOS,
   premiumEstado,
-} from "@/domain/artist-profile";
-import { TALENT_ROLES, type Role } from "@/domain/user";
+} from "@only-g/shared-types/artist-profile";
+import { TALENT_ROLES, type Role } from "@only-g/shared-types/user";
 import { activarMembresia } from "@/features/admin/lib/admin-users-repo";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { GlassButton } from "@/components/ui/GlassButton";

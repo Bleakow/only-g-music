@@ -1,4 +1,4 @@
-import type { Service } from "@/domain/service";
+import type { Service } from "@only-g/shared-types/service";
 
 /**
  * Catálogo de servicios — DATOS PLACEHOLDER. Precios de referencia en COP e

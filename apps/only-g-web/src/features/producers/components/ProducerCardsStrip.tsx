@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { Producer } from "@/domain/producer";
+import type { Producer } from "@only-g/shared-types/producer";
 import { listProducers } from "../lib/producers-repo";
 import { SEED_PRODUCERS } from "../data/producers";
 import { ProducerCard } from "./ProducerCard";

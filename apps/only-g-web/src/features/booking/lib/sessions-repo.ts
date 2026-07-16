@@ -18,7 +18,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Sesion, NewSesion, SesionEstado } from "@/domain/booking";
+import type { Sesion, NewSesion, SesionEstado } from "@only-g/shared-types/booking";
 
 const COLLECTION = "sessions";
 

@@ -7,7 +7,7 @@ import {
   COUNTRY_CODES,
   type CountryCode,
   type GeoLocation,
-} from "@/domain/location";
+} from "@only-g/shared-types/location";
 import { loadCountryGeo, type CountryGeo } from "../lib/geo";
 
 /**

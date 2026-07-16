@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { DatePicker } from "@/components/ui/DatePicker";
-import type { Transaccion } from "@/domain/transaccion";
-import { formatCOP } from "@/domain/service";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
+import { formatCOP } from "@only-g/shared-types/service";
 import {
   type Movimiento,
   type Periodo,
@@ -13,7 +13,7 @@ import {
   periodoMes,
   periodoAnio,
   PERIODO_TODO,
-} from "@/domain/contabilidad";
+} from "@only-g/shared-types/contabilidad";
 
 const DAY_MS = 86_400_000;
 type PeriodoKey = "mes" | "anio" | "todo" | "custom";

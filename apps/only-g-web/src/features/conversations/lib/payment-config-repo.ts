@@ -6,7 +6,7 @@
  */
 import { getDoc, setDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { DestinoPago } from "@/domain/payment-destination";
+import type { DestinoPago } from "@only-g/shared-types/payment-destination";
 
 export async function getCompanyPaymentDest(): Promise<DestinoPago> {
   const snap = await getDoc(doc(db, "config", "payments"));

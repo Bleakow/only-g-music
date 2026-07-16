@@ -8,14 +8,14 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { SpinnerIcon } from "@/components/icons";
 import { Link } from "@/i18n/navigation";
-import type { ConvenioRequest } from "@/domain/convenio";
+import type { ConvenioRequest } from "@only-g/shared-types/convenio";
 import {
   listConvenioRequests,
   aprobarConvenio,
   rechazarConvenio,
 } from "@/features/convenios/lib/convenio-repo";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
-import type { Sede } from "@/domain/sede";
+import type { Sede } from "@only-g/shared-types/sede";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { AdminPageHeader, adminCard, adminInner, adminInput } from "./admin-ui";
 

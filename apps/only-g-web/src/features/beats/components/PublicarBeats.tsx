@@ -14,7 +14,7 @@ import {
   updateBeat,
 } from "@/features/beats/lib/beats-repo";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
-import type { Beat } from "@/domain/beat";
+import type { Beat } from "@only-g/shared-types/beat";
 import { MUSIC_GENRES } from "@/features/artists/data/genres";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { PhotoUpload } from "@/components/ui/PhotoUpload";

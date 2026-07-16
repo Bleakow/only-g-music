@@ -10,7 +10,7 @@ import {
   logEvent,
   type Analytics,
 } from "firebase/analytics";
-import type { AnalyticsEvent } from "@/domain/analytics";
+import type { AnalyticsEvent } from "@only-g/shared-types/analytics";
 
 let analytics: Analytics | null = null;
 let init: Promise<Analytics | null> | null = null;

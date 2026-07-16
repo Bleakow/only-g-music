@@ -19,7 +19,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Sede, SedeId } from "@/domain/sede";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { sedes } from "../data/sedes";
 
 /** Campos que el admin edita (override guardado en Firestore, sobre la semilla). */

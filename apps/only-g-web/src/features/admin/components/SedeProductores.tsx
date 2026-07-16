@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SpinnerIcon, PlusIcon, TrashIcon } from "@/components/icons";
-import type { SedeId } from "@/domain/sede";
+import type { SedeId } from "@only-g/shared-types/sede";
 import {
   adminSearchUsers,
   adminGetUsersByIds,

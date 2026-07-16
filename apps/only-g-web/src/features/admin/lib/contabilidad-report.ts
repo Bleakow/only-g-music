@@ -22,8 +22,8 @@ import {
   pasivoVigente,
   valorEnLibros,
   PERIODO_TODO,
-} from "@/domain/contabilidad";
-import type { Transaccion } from "@/domain/transaccion";
+} from "@only-g/shared-types/contabilidad";
+import type { Transaccion } from "@only-g/shared-types/transaccion";
 
 export interface ContabilidadData {
   activos: Activo[];

@@ -6,8 +6,8 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { Alert } from "@/components/ui/Alert";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon } from "@/components/icons";
-import type { BeatSale } from "@/domain/beat-sale";
-import { formatCOP } from "@/domain/service";
+import type { BeatSale } from "@only-g/shared-types/beat-sale";
+import { formatCOP } from "@only-g/shared-types/service";
 import {
   listBeatSales,
   marcarPayoutPagado,

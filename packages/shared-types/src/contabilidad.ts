@@ -8,8 +8,8 @@
  * el dueño/inversores, NO libros legales (DIAN/NIIF/partida doble). La app
  * reconcilia, no reemplaza al contador. Montos en COP (formatea con `formatCOP`).
  */
-import type { SedeId } from "@/domain/sede";
-import type { Transaccion } from "@/domain/transaccion";
+import type { SedeId } from "./sede";
+import type { Transaccion } from "./transaccion";
 
 /** Categorías de activo fijo relevantes para una productora musical. */
 export type ActivoCategoria =

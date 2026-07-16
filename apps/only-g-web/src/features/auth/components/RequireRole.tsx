@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
 import { RequireAuth } from "./RequireAuth";
-import { hasAnyRole, type Role } from "@/domain/user";
+import { hasAnyRole, type Role } from "@only-g/shared-types/user";
 
 /**
  * Guard de ruta por ROL. Primero exige sesión (vía RequireAuth) y luego que la

@@ -18,8 +18,8 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import type { Reserva, NewReserva, ReservaEstado } from "@/domain/booking";
-import type { SedeId } from "@/domain/sede";
+import type { Reserva, NewReserva, ReservaEstado } from "@only-g/shared-types/booking";
+import type { SedeId } from "@only-g/shared-types/sede";
 
 const COLLECTION = "bookings";
 

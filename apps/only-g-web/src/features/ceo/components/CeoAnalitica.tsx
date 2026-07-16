@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon } from "@/components/icons";
-import { ANALYTICS_EVENTS } from "@/domain/analytics";
+import { ANALYTICS_EVENTS } from "@only-g/shared-types/analytics";
 import { getAnalitica, updateAnalitica } from "../lib/comercial-config-repo";
 import {
   adminCard,

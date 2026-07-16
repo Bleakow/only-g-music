@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import type { ProfileTrack, TrackPlatform } from "@/domain/artist-profile";
+import type { ProfileTrack, TrackPlatform } from "@only-g/shared-types/artist-profile";
 import { platformsDisponibles, trackEmbed } from "../../lib/embeds";
 import { PlayIcon, SpotifyIcon, YouTubeIcon } from "@/components/icons";
 import { glassSurface, GlassSheen } from "@/components/ui/glass";

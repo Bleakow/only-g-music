@@ -9,7 +9,7 @@ import {
   uploadUserFile,
   uploadUserBlob,
 } from "@/features/uploads/lib/uploads-repo";
-import type { SocialPlatform } from "@/domain/artist";
+import type { SocialPlatform } from "@only-g/shared-types/artist";
 import {
   type EditableProfile,
   type ProfileTrack,
@@ -26,12 +26,12 @@ import {
   insigniaDePuntos,
   photoTransformCss,
   premiumEstado,
-} from "@/domain/artist-profile";
+} from "@only-g/shared-types/artist-profile";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import type { MetodoPago } from "@/domain/payment-method";
+import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import {
   createProfile,
   getProfileBySlug,
@@ -47,7 +47,7 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { LocationPicker } from "@/features/location/components/LocationPicker";
-import { formatLocation, type GeoLocation } from "@/domain/location";
+import { formatLocation, type GeoLocation } from "@only-g/shared-types/location";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { MUSIC_GENRES } from "../../data/genres";
 import {

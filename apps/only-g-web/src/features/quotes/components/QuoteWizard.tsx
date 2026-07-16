@@ -14,7 +14,7 @@ import {
   hasVariants,
   type Service,
   type ServiceVariant,
-} from "@/domain/service";
+} from "@only-g/shared-types/service";
 import { MinusIcon, PlusIcon, CheckIcon, CloseIcon } from "@/components/icons";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { ArtistPicker } from "./ArtistPicker";
@@ -24,8 +24,8 @@ import {
   type NewQuoteRequest,
   type QuoteItem,
   type QuoteCollaborator,
-} from "@/domain/quote";
-import type { Sede, SedeId } from "@/domain/sede";
+} from "@only-g/shared-types/quote";
+import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";

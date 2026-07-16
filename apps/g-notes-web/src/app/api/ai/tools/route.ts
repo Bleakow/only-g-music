@@ -1,16 +1,16 @@
 import type { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import type {
   CreativeOp,
   CreativeRequest,
   CreativeResponse,
 } from "@only-g/ai-services";
+import { geminiGenerate } from "@/features/ai/gemini";
 
 export const runtime = "nodejs";
 
-// El panel contextual es de menor frecuencia que el autocompletado y la calidad
-// creativa importa → Opus 4.8 por defecto. Override GNOTES_AI_CREATIVE_MODEL.
-const MODEL = process.env.GNOTES_AI_CREATIVE_MODEL ?? "claude-opus-4-8";
+// Panel contextual: menor frecuencia, la calidad creativa importa. Con capa
+// gratis, Flash va sobrado; sube a gemini-2.5-pro vía GNOTES_GEMINI_CREATIVE_MODEL.
+const MODEL = process.env.GNOTES_GEMINI_CREATIVE_MODEL ?? "gemini-2.0-flash";
 
 const INSTRUCTIONS: Record<CreativeOp, string> = {
   rimas:
@@ -25,15 +25,6 @@ const INSTRUCTIONS: Record<CreativeOp, string> = {
 
 const SYSTEM = `Eres el panel contextual de un editor de composición musical. Ayudas al compositor sin reemplazarlo: propones opciones breves, frescas y coherentes con su letra. Responde en el mismo idioma de la selección.`;
 
-const SCHEMA = {
-  type: "object",
-  properties: {
-    suggestions: { type: "array", items: { type: "string" } },
-  },
-  required: ["suggestions"],
-  additionalProperties: false,
-} as const;
-
 export async function POST(req: NextRequest): Promise<Response> {
   let body: CreativeRequest;
   try {
@@ -45,35 +36,24 @@ export async function POST(req: NextRequest): Promise<Response> {
     return json({ op: body.op, suggestions: [], source: "stub" }, 400);
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json(stub(body));
 
   try {
-    const suggestions = await creativeWithClaude(body, apiKey);
-    return json({ op: body.op, suggestions, source: "ai" });
+    const raw = await geminiGenerate({
+      apiKey,
+      model: MODEL,
+      system: SYSTEM,
+      prompt: buildPrompt(body),
+      maxOutputTokens: 400,
+      temperature: 1.0,
+      json: true,
+    });
+    return json({ op: body.op, suggestions: parseSuggestions(raw), source: "ai" });
   } catch (err) {
     console.error("ai/tools:", err);
     return json(stub(body));
   }
-}
-
-async function creativeWithClaude(
-  body: CreativeRequest,
-  apiKey: string,
-): Promise<string[]> {
-  const client = new Anthropic({ apiKey });
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 400,
-    system: SYSTEM,
-    output_config: { effort: "low", format: { type: "json_schema", schema: SCHEMA } },
-    messages: [{ role: "user", content: buildPrompt(body) }],
-  });
-  const block = res.content.find((b) => b.type === "text");
-  const raw = block && block.type === "text" ? block.text : "{}";
-  const parsed = JSON.parse(raw) as { suggestions?: unknown };
-  const list = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
-  return list.filter((s): s is string => typeof s === "string" && s.trim().length > 0);
 }
 
 function buildPrompt(body: CreativeRequest): string {
@@ -85,7 +65,29 @@ function buildPrompt(body: CreativeRequest): string {
 ${INSTRUCTIONS[body.op]}
 
 Selección:
-"${body.text.trim()}"${context}`;
+"${body.text.trim()}"${context}
+
+Responde SOLO con un objeto JSON: {"suggestions": ["opción 1", "opción 2", ...]}.`;
+}
+
+/** Parseo defensivo: acepta el objeto, un array pelado o texto con ```json ```. */
+function parseSuggestions(raw: string): string[] {
+  let text = raw.trim();
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) text = fence[1].trim();
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    const list = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as { suggestions?: unknown })?.suggestions)
+        ? (parsed as { suggestions: unknown[] }).suggestions
+        : [];
+    return list.filter(
+      (s): s is string => typeof s === "string" && s.trim().length > 0,
+    );
+  } catch {
+    return [];
+  }
 }
 
 function stub(body: CreativeRequest): CreativeResponse {

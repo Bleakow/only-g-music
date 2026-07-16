@@ -10,7 +10,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.111.0",
     "@codemirror/commands": "^6.6.0",
     "@codemirror/state": "^6.4.0",
     "@codemirror/view": "^6.30.0",

@@ -1,17 +1,17 @@
 import type { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import type {
   CompletionRequest,
   CompletionResponse,
 } from "@only-g/ai-services";
+import { geminiGenerate } from "@/features/ai/gemini";
 
 // Precursor del servicio @only-g/ai-engine: por ahora vive como route handler
 // de g-notes-web. Guarda la key server-side; el cliente nunca la ve.
 export const runtime = "nodejs";
 
-// Autocompletado inline = alta frecuencia + latencia crítica → Haiku 4.5 por
-// defecto (rápido/barato). Override con GNOTES_AI_MODEL (p. ej. claude-opus-4-8).
-const MODEL = process.env.GNOTES_AI_MODEL ?? "claude-haiku-4-5";
+// Autocompletado inline = alta frecuencia + latencia crítica → Flash (rápido y
+// barato, con capa gratis). Override con GNOTES_GEMINI_MODEL.
+const MODEL = process.env.GNOTES_GEMINI_MODEL ?? "gemini-2.0-flash";
 
 const SYSTEM = `Eres el autocompletado de un editor de composición musical (como GitHub Copilot, pero para letras de canciones). Continúa el texto de forma natural en el MISMO idioma, estilo, tema, métrica y patrón de rima. Devuelve SOLO la continuación en texto plano: sin comillas, sin explicaciones y sin repetir lo ya escrito. Si el verso parece completo, empieza el siguiente. Máximo una o dos líneas.`;
 
@@ -23,14 +23,19 @@ export async function POST(req: NextRequest): Promise<Response> {
     return json({ suggestion: "", source: "stub" }, 400);
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return json(stub(body));
-  }
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return json(stub(body));
 
   try {
-    const suggestion = await completeWithClaude(body, apiKey);
-    return json({ suggestion, source: "ai" });
+    const text = await geminiGenerate({
+      apiKey,
+      model: MODEL,
+      system: SYSTEM,
+      prompt: buildPrompt(body),
+      maxOutputTokens: 48,
+      temperature: 0.9,
+    });
+    return json({ suggestion: text.trim(), source: "ai" });
   } catch (err) {
     // Nunca romper la escritura por un fallo del modelo: degradar al stub.
     console.error("ai/complete:", err);
@@ -38,28 +43,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 }
 
-async function completeWithClaude(
-  body: CompletionRequest,
-  apiKey: string,
-): Promise<string> {
-  const client = new Anthropic({ apiKey });
-  const res = await client.messages.create({
-    model: MODEL,
-    max_tokens: 48,
-    system: SYSTEM,
-    messages: [{ role: "user", content: buildPrompt(body) }],
-  });
-  const block = res.content.find((b) => b.type === "text");
-  const text = block && block.type === "text" ? block.text : "";
-  return text.trim();
-}
-
 function buildPrompt(body: CompletionRequest): string {
   const genre = body.genre?.trim() || "no especificado";
   const meter = body.targetMeter
     ? `${body.targetMeter} sílabas por verso (mantén la coherencia métrica)`
     : "libre";
-  // Acotar el contexto para controlar tokens/latencia.
   const prefix = body.prefix.slice(-1500);
   return `Género: ${genre}. Métrica objetivo: ${meter}.
 Continúa esta letra a partir del final (no repitas lo ya escrito):

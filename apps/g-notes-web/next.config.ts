@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
   // Compila desde fuente los packages internos del workspace (TS, sin pre-build).
-  transpilePackages: ["@only-g/ai-services"],
+  transpilePackages: ["@only-g/ai-services", "@only-g/ui"],
 };
 
 export default nextConfig;

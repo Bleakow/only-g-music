@@ -26,6 +26,9 @@ importers:
       '@only-g/ai-services':
         specifier: workspace:*
         version: link:../../packages/ai-services
+      '@only-g/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.0.0
         version: 15.5.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -72,6 +75,9 @@ importers:
       '@only-g/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
+      '@only-g/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       exceljs:
         specifier: ^4.4.0
         version: 4.4.0
@@ -165,7 +171,20 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
-  packages/ui: {}
+  packages/ui:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.17)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
 
   services/ai-engine: {}
 

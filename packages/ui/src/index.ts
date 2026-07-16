@@ -1,3 +1,7 @@
-// @only-g/ui — esqueleto cableado. TODO: extraccion en tanda siguiente.
-// Origen a mover: apps/only-g-web/src/components/ui/* + glass.tsx (glassSurface*) + icons/ + tokens @theme/fuentes/keyframes de globals.css + useAutosave (de ProfileBuilder)
-export {};
+// @only-g/ui — design system compartido del ecosistema Only G.
+// Consumido por fuente (transpilePackages). Los tokens de marca (amatista/plata/
+// ink) los provee el globals.css de cada app.
+export * from "./glass";
+export * from "./icons";
+export * from "./button";
+export * from "./select";

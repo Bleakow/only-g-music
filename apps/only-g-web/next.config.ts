@@ -1,18 +1,19 @@
 import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
-import { dirname } from "node:path";
+import { dirname, join } from "node:path";
 import createNextIntlPlugin from "next-intl/plugin";
 
-const projectRoot = dirname(fileURLToPath(import.meta.url));
+const appDir = dirname(fileURLToPath(import.meta.url));
+// Raíz del monorepo: apps/only-g-web -> ../../. Fija el tracing root al
+// workspace para que Next resuelva bien las dependencias hoisted por pnpm.
+const workspaceRoot = join(appDir, "..", "..");
 
 // next-intl: enlaza la config de petición (catálogos por locale).
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // Fija la raíz del proyecto: hay un package-lock.json suelto en el home del
-  // usuario que confundía la inferencia automática de Next.
-  outputFileTracingRoot: projectRoot,
+  outputFileTracingRoot: workspaceRoot,
   images: {
     // Placeholders (picsum) + fotos reales subidas a Firebase Storage.
     remotePatterns: [

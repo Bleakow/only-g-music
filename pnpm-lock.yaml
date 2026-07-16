@@ -12,6 +12,8 @@ importers:
         specifier: ^2
         version: 2.10.5
 
+  apps/g-notes-web: {}
+
   apps/only-g-web:
     dependencies:
       '@breezystack/lamejs':
@@ -102,6 +104,20 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.9.3
+
+  packages/ai-services: {}
+
+  packages/analytics: {}
+
+  packages/auth: {}
+
+  packages/billing: {}
+
+  packages/database: {}
+
+  packages/ui: {}
+
+  services/ai-engine: {}
 
 packages:
 

@@ -2,9 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
-import { glassSurfaceMenu } from "@only-g/ui";
-import { CHIP_BTN } from "@/components/ui";
-import { SECTIONS } from "@/features/editor/sections";
+import { glassSurfaceMenu, glassSurfaceSoft } from "@only-g/ui";
+import { ShareIcon } from "@/components/icons";
 import type { Library, Song } from "@/features/library/types";
 
 /**
@@ -19,7 +18,6 @@ export function OverflowMenu({
   fontId,
   fonts,
   onChooseFont,
-  onInsertSection,
   onToggleList,
   onCreateList,
   onShare,
@@ -30,7 +28,6 @@ export function OverflowMenu({
   fontId: string;
   fonts: { id: string; label: string }[];
   onChooseFont: (id: string) => void;
-  onInsertSection: (name: string) => void;
   onToggleList: (listId: string) => void;
   onCreateList: (name: string) => void;
   onShare: () => void;
@@ -85,7 +82,7 @@ export function OverflowMenu({
         ref={btnRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={CHIP_BTN}
+        className={`${glassSurfaceSoft} inline-flex min-h-7 items-center rounded-full px-3 py-1 text-silver-200 outline-none transition hover:text-amethyst-200 focus-visible:ring-2 focus-visible:ring-amethyst-300/60`}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label="Más opciones"
@@ -102,28 +99,6 @@ export function OverflowMenu({
             className={`${glassSurfaceMenu} z-80 w-64 rounded-xl p-3`}
             role="menu"
           >
-            {/* Insertar sección */}
-            <p className="mb-1.5 text-[0.65rem] uppercase tracking-[0.15em] text-silver-500">
-              Insertar sección
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {SECTIONS.map((name) => (
-                <button
-                  key={name}
-                  type="button"
-                  onClick={() => {
-                    onInsertSection(name);
-                    setOpen(false);
-                  }}
-                  className="rounded-md border border-silver-200/10 px-2 py-0.5 text-[0.7rem] text-silver-400 transition hover:border-amethyst-500/40 hover:text-amethyst-300"
-                >
-                  {name}
-                </button>
-              ))}
-            </div>
-
-            <div className="my-3 h-px bg-silver-200/10" />
-
             {/* Listas (many-to-many) */}
             <p className="mb-1.5 text-[0.65rem] uppercase tracking-[0.15em] text-silver-500">
               Listas
@@ -194,7 +169,7 @@ export function OverflowMenu({
               className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm text-silver-200 transition hover:bg-silver-200/5"
               role="menuitem"
             >
-              <span aria-hidden>↗</span> Compartir la letra
+              <ShareIcon className="size-4 shrink-0" /> Compartir la letra
             </button>
             <button
               type="button"

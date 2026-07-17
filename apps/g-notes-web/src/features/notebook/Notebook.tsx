@@ -7,7 +7,9 @@ import {
   type EditorSelection,
 } from "@/features/editor/LyricsEditor";
 import { ContextPanel } from "@/features/editor/ContextPanel";
+import { SectionPalette } from "@/features/editor/SectionPalette";
 import { getTemplate } from "@/features/editor/templates";
+import { ShareIcon } from "@/components/icons";
 import {
   countLines,
   countWords,
@@ -35,7 +37,11 @@ import {
   mergeLibraries,
   saveCloudLibrary,
 } from "@/features/library/sync";
-import { Button, SearchableSelect, type SelectOption } from "@only-g/ui";
+import {
+  SearchableSelect,
+  glassSurfaceSoft,
+  type SelectOption,
+} from "@only-g/ui";
 import { AI_MODELS, DEFAULT_MODEL } from "@only-g/ai-services";
 import { loadModel, setModel } from "@/features/ai/model-store";
 import {
@@ -306,9 +312,12 @@ export function Notebook() {
           <h1 className="text-[0.8rem] font-bold uppercase tracking-[0.3em] text-silver-100">
             G&nbsp;Notes
           </h1>
-          <Button size="sm" variant="outline" onClick={createSong}>
+          <button
+            onClick={createSong}
+            className={`${glassSurfaceSoft} rounded-full px-3.5 py-1.5 text-xs font-semibold text-silver-100 transition hover:text-amethyst-200`}
+          >
             + Nueva
-          </Button>
+          </button>
         </div>
 
         <div className="flex items-center justify-between px-1">
@@ -358,10 +367,10 @@ export function Notebook() {
           />
           {/* Deshacer / rehacer — en ESCRITORIO arriba; en móvil bajan a la barra
               inferior (al alcance del pulgar). */}
-          <div className="hidden shrink-0 items-center gap-1 md:flex">
+          <div className="hidden shrink-0 items-center gap-1.5 md:flex">
             <button
               onClick={() => editorRef.current?.undo()}
-              className="rounded-lg border border-silver-200/10 px-2 py-1 text-base leading-none text-silver-300 transition hover:border-amethyst-500/40 hover:text-amethyst-300"
+              className={`${glassSurfaceSoft} flex size-9 items-center justify-center rounded-xl text-base leading-none text-silver-200 transition hover:text-amethyst-200`}
               aria-label="Deshacer"
               title="Deshacer"
             >
@@ -369,7 +378,7 @@ export function Notebook() {
             </button>
             <button
               onClick={() => editorRef.current?.redo()}
-              className="rounded-lg border border-silver-200/10 px-2 py-1 text-base leading-none text-silver-300 transition hover:border-amethyst-500/40 hover:text-amethyst-300"
+              className={`${glassSurfaceSoft} flex size-9 items-center justify-center rounded-xl text-base leading-none text-silver-200 transition hover:text-amethyst-200`}
               aria-label="Rehacer"
               title="Rehacer"
             >
@@ -398,9 +407,6 @@ export function Notebook() {
                 fontId={lyricFont}
                 fonts={LYRIC_FONTS}
                 onChooseFont={chooseFont}
-                onInsertSection={(name) =>
-                  editorRef.current?.insertSection(name)
-                }
                 onToggleList={toggleList}
                 onCreateList={createList}
                 onShare={shareSong}
@@ -410,7 +416,7 @@ export function Notebook() {
           </div>
         )}
 
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="relative min-h-0 flex-1 overflow-hidden">
           {/* Manuscrito: la letra empieza por la IZQUIERDA y ocupa todo el ancho
               (como un bloc de notas), no centrada. Sin card ni glow. La fuente
               elegida entra por --lyric-font (cambia en vivo). */}
@@ -428,6 +434,12 @@ export function Notebook() {
               />
             )}
           </div>
+          {/* Paleta de secciones flotante: PC siempre visible, móvil desplegable. */}
+          {active && (
+            <SectionPalette
+              onInsert={(name) => editorRef.current?.insertSection(name)}
+            />
+          )}
         </div>
 
         <ContextPanel
@@ -446,38 +458,43 @@ export function Notebook() {
         <div className="flex items-center gap-2 border-t border-silver-200/10 px-3 py-2 md:hidden">
           <button
             onClick={() => editorRef.current?.undo()}
-            className="flex size-10 items-center justify-center rounded-xl border border-silver-200/10 text-lg text-silver-300 transition active:border-amethyst-500/50 active:text-amethyst-300"
+            className={`${glassSurfaceSoft} flex size-10 items-center justify-center rounded-xl text-lg text-silver-200 transition active:text-amethyst-200`}
             aria-label="Deshacer"
           >
             ↶
           </button>
           <button
             onClick={() => editorRef.current?.redo()}
-            className="flex size-10 items-center justify-center rounded-xl border border-silver-200/10 text-lg text-silver-300 transition active:border-amethyst-500/50 active:text-amethyst-300"
+            className={`${glassSurfaceSoft} flex size-10 items-center justify-center rounded-xl text-lg text-silver-200 transition active:text-amethyst-200`}
             aria-label="Rehacer"
           >
             ↷
           </button>
           <button
             onClick={shareSong}
-            className="flex size-10 items-center justify-center rounded-xl border border-amethyst-400/40 text-lg text-amethyst-300 transition active:bg-amethyst-500/15"
+            className={`${glassSurfaceSoft} flex size-10 items-center justify-center rounded-xl text-amethyst-300 transition active:text-amethyst-200`}
             aria-label="Compartir la letra"
           >
-            ↗
+            <ShareIcon className="size-5" />
           </button>
-          <div className="ml-auto w-32">
-            <SearchableSelect
-              value={model}
-              onChange={chooseModel}
-              options={MODEL_OPTIONS}
-              ariaLabel="Asistente · modelo de IA"
-              searchPlaceholder="Buscar…"
-              emptyText="—"
-              allowCustom
-              customLabel={(t) => `Usar "${t}"`}
-              placement="top"
-              className={COMPACT_SELECT}
-            />
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="rounded-full bg-linear-to-r from-amethyst-500 to-amethyst-700 px-2 py-1 text-[0.7rem] font-bold text-white">
+              IA
+            </span>
+            <div className="w-28">
+              <SearchableSelect
+                value={model}
+                onChange={chooseModel}
+                options={MODEL_OPTIONS}
+                ariaLabel="Asistente · modelo de IA"
+                searchPlaceholder="Buscar…"
+                emptyText="—"
+                allowCustom
+                customLabel={(t) => `Usar "${t}"`}
+                placement="top"
+                className={COMPACT_SELECT}
+              />
+            </div>
           </div>
         </div>
 
@@ -502,7 +519,9 @@ export function Notebook() {
               En móvil se ocultan las etiquetas; los selects quedan compactos. */}
           <div className="ml-auto flex shrink-0 items-center gap-3">
             <div className="flex items-center gap-1.5">
-              <span className="hidden text-silver-500 sm:inline">Asistente</span>
+              <span className="rounded-full bg-linear-to-r from-amethyst-500 to-amethyst-700 px-2 py-0.5 text-[0.7rem] font-bold text-white">
+                IA
+              </span>
               <div className="w-28 sm:w-32">
                 <SearchableSelect
                   value={model}

@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* Escanea el paquete de UI compartido (@only-g/ui). En Tailwind v4 los paquetes
+   del workspace NO se auto-detectan, así que sin este @source las clases que
+   viven dentro de sus componentes (Button, SearchableSelect, glass, iconos como
+   `size-4`) nunca se generan → botones sin estilo y SVGs a 300×150 (tamaño por
+   defecto de un <svg> sin width/height). Ruta relativa a este .css. */
+@source "../../../../packages/ui/src";
+
 /* ── Design tokens ─────────────────────────────────────────────────
    Paleta de marca Only G (plata + amatista sobre tinta). Inline en M1;
    se extraerá a @only-g/ui/tokens.css en M8 para compartir con only-g-web. */

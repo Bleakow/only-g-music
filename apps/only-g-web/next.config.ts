@@ -15,7 +15,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
   // Compila desde fuente los packages internos del workspace (TS, sin pre-build).
-  transpilePackages: ["@only-g/shared-types"],
+  transpilePackages: ["@only-g/shared-types", "@only-g/ui"],
   images: {
     // Placeholders (picsum) + fotos reales subidas a Firebase Storage.
     remotePatterns: [

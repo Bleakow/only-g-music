@@ -8,9 +8,10 @@ import { geminiGenerate } from "@/features/ai/gemini";
 
 export const runtime = "nodejs";
 
-// Panel contextual: menor frecuencia, la calidad creativa importa. Con capa
-// gratis, Flash va sobrado; sube a gemini-2.5-pro vía GNOTES_GEMINI_CREATIVE_MODEL.
-const MODEL = process.env.GNOTES_GEMINI_CREATIVE_MODEL ?? "gemini-2.0-flash";
+// Panel contextual: menor frecuencia. Flash-Lite (alias -latest) funciona en la
+// capa gratis y escribe bien; para más chispa, sube a gemini-flash-latest o
+// gemini-3.5-flash vía GNOTES_GEMINI_CREATIVE_MODEL.
+const MODEL = process.env.GNOTES_GEMINI_CREATIVE_MODEL ?? "gemini-flash-lite-latest";
 
 const INSTRUCTIONS: Record<CreativeOp, string> = {
   rimas:
@@ -39,10 +40,12 @@ export async function POST(req: NextRequest): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json(stub(body));
 
+  // Modelo elegido por el usuario (guardarraíl: solo gemini-*), si no el default.
+  const model = body.model?.startsWith("gemini") ? body.model : MODEL;
   try {
     const raw = await geminiGenerate({
       apiKey,
-      model: MODEL,
+      model,
       system: SYSTEM,
       prompt: buildPrompt(body),
       maxOutputTokens: 400,

@@ -29,6 +29,10 @@ export async function geminiGenerate(opts: GeminiOptions): Promise<string> {
       generationConfig: {
         maxOutputTokens: opts.maxOutputTokens,
         temperature: opts.temperature ?? 0.9,
+        // Desactiva el "thinking" (Gemini 2.5/3): sin él, los modelos que piensan
+        // gastaban todo el presupuesto razonando y devolvían vacío. Además, para
+        // autocompletado/panel queremos respuesta directa, rápida y barata.
+        thinkingConfig: { thinkingBudget: 0 },
         ...(opts.json ? { responseMimeType: "application/json" } : {}),
       },
     }),
@@ -40,5 +44,11 @@ export async function geminiGenerate(opts: GeminiOptions): Promise<string> {
   }
 
   const data = (await res.json()) as GeminiResponse;
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+  // Une TODAS las partes de texto: los modelos "thinking" (Gemini 3) pueden
+  // devolver el texto en una parte posterior, no en parts[0].
+  const parts = data.candidates?.[0]?.content?.parts ?? [];
+  return parts
+    .map((p) => p.text ?? "")
+    .join("")
+    .trim();
 }

@@ -2,13 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createAiClient, type CreativeOp } from "@only-g/ai-services";
+import { glassSurfaceMenu } from "@only-g/ui";
 import type { EditorSelection } from "@/features/editor/LyricsEditor";
+import { getModel } from "@/features/ai/model-store";
 
 const client = createAiClient();
 
+// El valor de `op` es el contrato con el backend ("frases"); la etiqueta es solo
+// UI. "Similares" reemplaza la selección; el resto se inserta junto a ella.
 const OPS: { op: CreativeOp; label: string }[] = [
   { op: "rimas", label: "Rimas" },
-  { op: "frases", label: "Frases" },
+  { op: "frases", label: "Similares" },
   { op: "metaforas", label: "Metáforas" },
   { op: "expandir", label: "Expandir" },
 ];
@@ -71,7 +75,7 @@ export function ContextPanel({
     controllerRef.current = new AbortController();
     try {
       const res = await client.creative(
-        { op: next, text: selection.text, context, genre },
+        { op: next, text: selection.text, context, genre, model: getModel() },
         controllerRef.current.signal,
       );
       setItems(res.suggestions);
@@ -85,35 +89,56 @@ export function ContextPanel({
 
   function apply(text: string) {
     if (!selection) return;
-    if (op === "expandir") {
-      onApply(selection.to, selection.to, `\n${text}`);
-    } else {
+    // "Similares" (frases) SUSTITUYE la selección por una mejor versión.
+    if (op === "frases") {
       onApply(selection.from, selection.to, text);
+      return;
     }
+    // Rimas: se coloca junto a la selección, en la misma línea (misma idea de verso).
+    if (op === "rimas") {
+      onApply(selection.to, selection.to, ` ${text}`);
+      return;
+    }
+    // Metáforas y Expandir: se añaden en una línea nueva justo debajo, sin borrar
+    // lo seleccionado (son alternativas/continuaciones, no reemplazos).
+    onApply(selection.to, selection.to, `\n${text}`);
   }
+
+  // Coloca el panel en el lado con más espacio (arriba/abajo) para no salirse del
+  // viewport, y acota la altura de la lista al hueco disponible.
+  const GAP = 8;
+  const spaceAbove = selection.top - GAP;
+  const spaceBelow = window.innerHeight - selection.bottom - GAP;
+  const placeAbove = spaceAbove >= spaceBelow;
+  const listMaxH = Math.max(
+    120,
+    Math.min(260, (placeAbove ? spaceAbove : spaceBelow) - 64),
+  );
+  const left = Math.max(8, Math.min(selection.left, window.innerWidth - 296));
 
   return (
     <div
-      className="glass fixed z-30 w-72 rounded-xl p-2 shadow-2xl shadow-black/50"
+      className={`${glassSurfaceMenu} z-30 w-72 rounded-xl p-2`}
       style={{
-        top: selection.top,
-        left: Math.max(
-          8,
-          Math.min(selection.left, window.innerWidth - 296),
-        ),
-        transform: "translateY(calc(-100% - 8px))",
+        // position:fixed va INLINE a propósito: glassSurfaceMenu trae `relative`
+        // y, ya compilado (tras el fix del @source), esa clase gana a un `fixed`
+        // por clase Tailwind. Inline gana siempre. Ver memoria glass-popover-trap.
+        position: "fixed",
+        top: placeAbove ? selection.top - GAP : selection.bottom + GAP,
+        left,
+        transform: placeAbove ? "translateY(-100%)" : undefined,
       }}
       // Evita robar el foco (y borrar la selección) del editor al interactuar.
       onMouseDown={(e) => e.preventDefault()}
       role="dialog"
       aria-label="Herramientas creativas"
     >
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1">
         {OPS.map(({ op: o, label }) => (
           <button
             key={o}
             onClick={() => run(o)}
-            className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
+            className={`flex-1 rounded-md px-2 py-1.5 text-xs transition ${
               op === o
                 ? "bg-amethyst-500/25 text-amethyst-300"
                 : "text-silver-300 hover:bg-silver-200/5"
@@ -122,10 +147,18 @@ export function ContextPanel({
             {label}
           </button>
         ))}
+        {/* Cerrar: en móvil no hay tecla Esc. */}
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="shrink-0 rounded-md px-2 py-1.5 text-sm leading-none text-silver-500 transition hover:text-silver-200"
+        >
+          ✕
+        </button>
       </div>
 
       {op && (
-        <div className="mt-2 max-h-56 overflow-y-auto">
+        <div className="mt-2 overflow-y-auto" style={{ maxHeight: listMaxH }}>
           {loading && (
             <p className="px-2 py-3 text-xs text-silver-400">Pensando…</p>
           )}

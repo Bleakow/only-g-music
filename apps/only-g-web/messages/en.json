@@ -1703,9 +1703,9 @@
     "artistDescription": "{name}'s profile on Only G Music."
   },
   "gnote": {
-    "aria": "G Note (coming soon)",
-    "badge": "Soon",
-    "soon": "G Note — coming soon"
+    "aria": "Open G Notes — Smart writer",
+    "badge": "New",
+    "soon": "Write songs in G Notes"
   },
   "chat": {
     "title": "Messages",

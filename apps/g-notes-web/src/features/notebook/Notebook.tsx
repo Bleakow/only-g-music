@@ -34,9 +34,15 @@ import {
 import { LibraryList } from "@/features/library/LibraryList";
 import { SongMeta } from "@/features/library/SongMeta";
 import { type GroupBy } from "@/features/library/organize";
+import {
+  loadCloudLibrary,
+  mergeLibraries,
+  saveCloudLibrary,
+} from "@/features/library/sync";
 import { Button, SearchableSelect, type SelectOption } from "@only-g/ui";
 import { AI_MODELS, DEFAULT_MODEL } from "@only-g/ai-services";
 import { loadModel, setModel } from "@/features/ai/model-store";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CreateReleaseDialog } from "@/components/CreateReleaseDialog";
 import { COMPACT_SELECT } from "@/components/ui";
@@ -64,11 +70,17 @@ export function Notebook() {
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [showNewRelease, setShowNewRelease] = useState(false);
+  const [cloudReady, setCloudReady] = useState(false);
+  const { user } = useAuth();
 
   const editorRef = useRef<LyricsEditorHandle>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedRef = useRef("");
+  // Espejo siempre-al-día de `lib` para usar dentro de efectos async (el merge).
+  const libRef = useRef(lib);
+  libRef.current = lib;
 
+  // Carga local instantánea (offline-first): escribir de inmediato, sin esperar red.
   useEffect(() => {
     const loaded = loadLibrary();
     setLib(loaded);
@@ -77,12 +89,44 @@ export function Notebook() {
     setHydrated(true);
   }, []);
 
+  // Sync con la nube al tener sesión: une local + Firestore (sin perder trabajo de
+  // ninguno) y sube el resultado. Una sola carga al entrar (sin subscripción viva).
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const cloud = await loadCloudLibrary(user.uid);
+        if (cancelled) return;
+        // Merge si hay nube; si está vacía, se sube el local (siembra la nube con
+        // el trabajo de usuarios que hasta ahora solo escribían en localStorage).
+        const merged = cloud ? mergeLibraries(libRef.current, cloud) : libRef.current;
+        if (cloud) {
+          setLib(merged);
+          persistLibrary(merged);
+          savedRef.current = JSON.stringify(merged);
+        }
+        void saveCloudLibrary(user.uid, merged);
+      } catch (err) {
+        // Sin nube (offline / reglas): seguimos en local, no rompemos la escritura.
+        console.error("gnotes sync:", err);
+      } finally {
+        if (!cancelled) setCloudReady(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   function chooseModel(id: string) {
     setModel(id);
     setModelState(id);
   }
 
-  // Autosave con debounce.
+  // Autosave con debounce: siempre a localStorage (instantáneo, offline) y, tras el
+  // merge inicial (cloudReady), también a Firestore. El gate cloudReady evita pisar
+  // la nube antes de haberla unido con lo local.
   useEffect(() => {
     if (!hydrated) return;
     const snapshot = JSON.stringify(lib);
@@ -93,11 +137,16 @@ export function Notebook() {
       persistLibrary(lib);
       savedRef.current = snapshot;
       setSaveState("saved");
+      if (user && cloudReady) {
+        void saveCloudLibrary(user.uid, lib).catch((err) =>
+          console.error("gnotes cloud save:", err),
+        );
+      }
     }, AUTOSAVE_MS);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [lib, hydrated]);
+  }, [lib, hydrated, user, cloudReady]);
 
   const active = useMemo(
     () => lib.songs.find((s) => s.id === lib.activeId) ?? null,
@@ -453,7 +502,11 @@ function SaveIndicator({
 }) {
   if (!hydrated) return null;
   const label =
-    state === "saving" ? "Guardando…" : state === "saved" ? "Guardado" : "Local";
+    state === "saving"
+      ? "Guardando…"
+      : state === "saved"
+        ? "Sincronizado"
+        : "Local";
   return (
     <div className="hidden items-center gap-1.5 text-xs text-silver-400 sm:flex">
       <span

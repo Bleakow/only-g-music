@@ -1,5 +1,10 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
+import {
+  getFirestore,
+  initializeFirestore,
+  type Firestore,
+} from "firebase/firestore";
 
 /**
  * Cliente de Firebase de G Notes. Apunta al MISMO proyecto que Only G Music, así
@@ -24,9 +29,17 @@ const firebaseConfig = {
 };
 
 // Evita reinicializar la app en hot-reload o múltiples imports.
-const app: FirebaseApp =
-  getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const isNewApp = getApps().length === 0;
+const app: FirebaseApp = isNewApp ? initializeApp(firebaseConfig) : getApp();
 
 export const auth: Auth = getAuth(app);
+
+// Firestore para sincronizar la biblioteca del escritor por uid.
+// `ignoreUndefinedProperties`: Firestore RECHAZA `undefined` y aborta la escritura
+// completa; con esto esos campos se omiten en vez de reventar. `initializeFirestore`
+// solo puede llamarse una vez por app (de ahí el guard `isNewApp`).
+export const db: Firestore = isNewApp
+  ? initializeFirestore(app, { ignoreUndefinedProperties: true })
+  : getFirestore(app);
 
 export default app;

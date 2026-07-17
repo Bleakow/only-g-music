@@ -544,6 +544,15 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── G Notes (biblioteca del escritor) ────────────────────────────
+    // Un doc por usuario con SU biblioteca de composición (canciones, releases,
+    // listas): gnotes/{uid}. Contenido PRIVADO del autor — solo él lee/escribe;
+    // ni el admin lo ve (son sus letras). No gatea por rol: el acceso al producto
+    // lo controla la app (LoginGate); el entitlement de membresía llega en M7.
+    match /gnotes/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Por defecto, todo lo demás cerrado hasta que su fase defina reglas.
     match /{document=**} {
       allow read, write: if false;

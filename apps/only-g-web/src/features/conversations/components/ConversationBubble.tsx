@@ -20,10 +20,13 @@ import {
   NoteIcon,
 } from "@/components/icons";
 
-// URL de la app hermana G Notes (escritor inteligente). Configurable por entorno;
-// en dev G Notes corre en otro puerto (p. ej. 3001).
+// URL de la app hermana G Notes (escritor inteligente). En producción DEBE venir
+// de NEXT_PUBLIC_GNOTES_URL (apphosting.yaml). Si no está configurada, el botón
+// NO se muestra: es preferible ocultarlo a mandar al usuario a un sitio muerto.
+// El fallback a localhost queda acotado a desarrollo, donde G Notes corre en :3001.
 const GNOTES_URL =
-  process.env.NEXT_PUBLIC_GNOTES_URL ?? "http://localhost:3001";
+  process.env.NEXT_PUBLIC_GNOTES_URL ??
+  (process.env.NODE_ENV === "development" ? "http://localhost:3001" : null);
 
 /**
  * Burbuja de chat flotante y global (solo con sesión iniciada). Colapsada es un
@@ -84,8 +87,9 @@ export function ConversationBubble() {
 
   const active = conversations.find((c) => c.id === activeId) ?? null;
 
-  // G Note: en la home solo antes de scrollear; en el resto, siempre.
-  const showGNote = isHome ? !scrolled : true;
+  // G Note: solo si hay URL configurada (si no, no existe a dónde ir). En la home
+  // además solo antes de scrollear; en el resto, siempre.
+  const showGNote = Boolean(GNOTES_URL) && (isHome ? !scrolled : true);
 
   if (!open) {
     // Dock flotante de herramientas (solo con sesión). En perfiles de artista se
@@ -112,7 +116,7 @@ export function ConversationBubble() {
                 aria-label={t("gnote.aria")}
                 title={t("gnote.soon")}
                 onClick={() => {
-                  window.location.href = GNOTES_URL;
+                  if (GNOTES_URL) window.location.href = GNOTES_URL;
                 }}
               >
                 <NoteIcon className="size-5" />

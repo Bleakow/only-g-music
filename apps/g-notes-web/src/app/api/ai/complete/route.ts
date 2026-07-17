@@ -4,6 +4,7 @@ import type {
   CompletionResponse,
 } from "@only-g/ai-services";
 import { geminiGenerate } from "@/features/ai/gemini";
+import { verifiedUid } from "@/lib/firebase/admin";
 
 // Precursor del servicio @only-g/ai-engine: por ahora vive como route handler
 // de g-notes-web. Guarda la key server-side; el cliente nunca la ve.
@@ -17,6 +18,11 @@ const MODEL = process.env.GNOTES_GEMINI_MODEL ?? "gemini-flash-lite-latest";
 const SYSTEM = `Eres el autocompletado de un editor de composición musical (como GitHub Copilot, pero para letras de canciones). Continúa el texto de forma natural en el MISMO idioma, estilo, tema, métrica y patrón de rima. Devuelve SOLO la continuación en texto plano: sin comillas, sin explicaciones y sin repetir lo ya escrito. Si el verso parece completo, empieza el siguiente. Máximo una o dos líneas.`;
 
 export async function POST(req: NextRequest): Promise<Response> {
+  // Puerta: sin ID token válido de nuestro proyecto, ni se lee el body ni se
+  // toca Gemini. Es lo que impide que un desconocido queme la cuota.
+  const uid = await verifiedUid(req);
+  if (!uid) return unauthorized();
+
   let body: CompletionRequest;
   try {
     body = (await req.json()) as CompletionRequest;
@@ -76,6 +82,13 @@ function stub(body: CompletionRequest): CompletionResponse {
 function json(payload: CompletionResponse, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function unauthorized(): Response {
+  return new Response(JSON.stringify({ error: "unauthorized" }), {
+    status: 401,
     headers: { "content-type": "application/json" },
   });
 }

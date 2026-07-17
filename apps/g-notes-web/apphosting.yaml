@@ -1,0 +1,61 @@
+# Firebase App Hosting — backend de G Notes (app hermana: escritor inteligente).
+# Docs: https://firebase.google.com/docs/app-hosting/configure
+#
+# El rootDirectory del backend = apps/g-notes-web se fija al CREAR el backend en
+# la consola (no viaja en este archivo). maxInstances acota el peor caso de coste.
+
+runConfig:
+  maxInstances: 5
+
+env:
+  # ── Firebase (cliente) ──────────────────────────────────────────────
+  # MISMO proyecto que Only G Music → mismo uid y misma cuenta. Valores PÚBLICOS
+  # por diseño (viajan en el bundle del navegador); la seguridad real son las
+  # reglas de Firestore + la verificación del ID token en el servidor. Van con
+  # availability BUILD porque las NEXT_PUBLIC_* se hornean al compilar.
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: "AIzaSyCi0s4xEFtVoxNueTLbR9Cd7p7E1LRspzU"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: "only-g-music-745ca.firebaseapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: "only-g-music-745ca"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+    value: "only-g-music-745ca.firebasestorage.app"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+    value: "591339153514"
+    availability:
+      - BUILD
+      - RUNTIME
+  - variable: NEXT_PUBLIC_FIREBASE_APP_ID
+    value: "1:591339153514:web:4a5870f2853f06c6788213"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ── Enlace a la app hermana ─────────────────────────────────────────
+  - variable: NEXT_PUBLIC_ONLY_G_URL
+    value: "https://only-g-music--only-g-music-745ca.us-east4.hosted.app"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # ── IA (servidor) ───────────────────────────────────────────────────
+  # SECRETO en Secret Manager (NUNCA inline). Crear una sola vez con:
+  #   firebase apphosting:secrets:set GEMINI_API_KEY --project only-g-music-745ca
+  # Solo se necesita en runtime (lo lee el route handler de /api/ai/*).
+  - variable: GEMINI_API_KEY
+    secret: GEMINI_API_KEY
+    availability:
+      - RUNTIME

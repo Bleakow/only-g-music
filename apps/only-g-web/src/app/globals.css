@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Escanea el paquete de UI compartido (@only-g/ui). En Tailwind v4 los paquetes
+   del workspace NO se auto-detectan; sin este @source las clases internas de sus
+   componentes (Button, SearchableSelect, glass) no se generan. Ruta relativa a
+   este .css. */
+@source "../../../../packages/ui/src";
+
 /* ── Design tokens ─────────────────────────────────────────────── */
 @theme {
   --font-sans: "OGM", system-ui, sans-serif;

@@ -118,8 +118,18 @@ export function ConversationBubble() {
               <IconButton
                 aria-label={t("gnote.aria")}
                 title={t("gnote.soon")}
-                onClick={() => {
-                  if (GNOTES_URL) window.location.href = GNOTES_URL;
+                onClick={async () => {
+                  if (!GNOTES_URL) return;
+                  // Hand-off SSO: adjunta el ID token en el FRAGMENTO (#…), que no
+                  // se envía a servidores ni en el Referer. G Notes lo cambia por
+                  // una sesión propia y no vuelve a pedir login. Si falla, salta
+                  // igual y G Notes mostrará el login normal.
+                  try {
+                    const token = await user.getIdToken();
+                    window.location.href = `${GNOTES_URL}/#sso=${encodeURIComponent(token)}`;
+                  } catch {
+                    window.location.href = GNOTES_URL;
+                  }
                 }}
               >
                 <NoteIcon className="size-5" />

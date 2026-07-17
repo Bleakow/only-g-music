@@ -7,12 +7,7 @@ import {
   type EditorSelection,
 } from "@/features/editor/LyricsEditor";
 import { ContextPanel } from "@/features/editor/ContextPanel";
-import { SECTIONS } from "@/features/editor/sections";
-import {
-  SONG_TEMPLATES,
-  getTemplate,
-  suggestedTemplateId,
-} from "@/features/editor/templates";
+import { getTemplate } from "@/features/editor/templates";
 import {
   countLines,
   countWords,
@@ -33,6 +28,7 @@ import {
 } from "@/features/library/storage";
 import { LibraryList } from "@/features/library/LibraryList";
 import { SongMeta } from "@/features/library/SongMeta";
+import { OverflowMenu } from "@/features/library/OverflowMenu";
 import { type GroupBy } from "@/features/library/organize";
 import {
   loadCloudLibrary,
@@ -42,9 +38,17 @@ import {
 import { Button, SearchableSelect, type SelectOption } from "@only-g/ui";
 import { AI_MODELS, DEFAULT_MODEL } from "@only-g/ai-services";
 import { loadModel, setModel } from "@/features/ai/model-store";
+import {
+  DEFAULT_FONT,
+  LYRIC_FONTS,
+  fontStack,
+  loadFont,
+  setFont,
+} from "@/features/editor/fonts";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { CreateReleaseDialog } from "@/components/CreateReleaseDialog";
+import { ShareDialog } from "@/components/ShareDialog";
 import { COMPACT_SELECT } from "@/components/ui";
 
 type SaveState = "idle" | "saving" | "saved";
@@ -53,6 +57,10 @@ const AUTOSAVE_MS = 900;
 const MODEL_OPTIONS: SelectOption[] = AI_MODELS.map((m) => ({
   value: m.id,
   label: m.label,
+}));
+const FONT_OPTIONS: SelectOption[] = LYRIC_FONTS.map((f) => ({
+  value: f.id,
+  label: f.label,
 }));
 
 export function Notebook() {
@@ -67,9 +75,11 @@ export function Notebook() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selection, setSelection] = useState<EditorSelection | null>(null);
   const [model, setModelState] = useState(DEFAULT_MODEL);
+  const [lyricFont, setLyricFontState] = useState(DEFAULT_FONT);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("none");
   const [showNewRelease, setShowNewRelease] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [cloudReady, setCloudReady] = useState(false);
   const { user } = useAuth();
 
@@ -86,6 +96,7 @@ export function Notebook() {
     setLib(loaded);
     savedRef.current = JSON.stringify(loaded);
     setModelState(loadModel());
+    setLyricFontState(loadFont());
     setHydrated(true);
   }, []);
 
@@ -122,6 +133,11 @@ export function Notebook() {
   function chooseModel(id: string) {
     setModel(id);
     setModelState(id);
+  }
+
+  function chooseFont(id: string) {
+    setFont(id);
+    setLyricFontState(id);
   }
 
   // Autosave con debounce: siempre a localStorage (instantáneo, offline) y, tras el
@@ -164,17 +180,6 @@ export function Notebook() {
       analysis: analyzeSong(body),
     };
   }, [active]);
-
-  // Plantillas: la sugerida para el género activo va primero y marcada.
-  const templateOptions = useMemo<SelectOption[]>(() => {
-    const suggested = suggestedTemplateId(active?.genre || undefined);
-    return [...SONG_TEMPLATES]
-      .sort((a, b) => (a.id === suggested ? -1 : b.id === suggested ? 1 : 0))
-      .map((t) => ({
-        value: t.id,
-        label: t.id === suggested ? `${t.name} · sugerida` : t.name,
-      }));
-  }, [active?.genre]);
 
   function patchActive(patch: Partial<Song>) {
     setLib((prev) => ({
@@ -282,8 +287,15 @@ export function Notebook() {
     if (tpl) editorRef.current?.insertTemplate(tpl.sections);
   }
 
+  // Compartir la letra: abre el lienzo con marca (imagen descargable / copiar).
+  function shareSong() {
+    if (active) setShowShare(true);
+  }
+
   return (
-    <div className="flex min-h-dvh">
+    // h-dvh (no min-h): altura FIJA al viewport → el editor y el sidebar hacen
+    // scroll INTERNO en vez de empujar/estirar el layout con textos largos.
+    <div className="flex h-dvh overflow-hidden">
       {/* ── Sidebar / biblioteca ─────────────────────────────── */}
       <aside
         className={`glass fixed inset-y-0 left-0 z-20 flex w-72 flex-col gap-3 p-4 transition-transform md:static md:translate-x-0 ${
@@ -291,7 +303,7 @@ export function Notebook() {
         }`}
       >
         <div className="flex items-center justify-between px-1">
-          <h1 className="bg-linear-to-r from-amethyst-300 to-amethyst-500 bg-clip-text text-lg font-bold tracking-tight text-transparent">
+          <h1 className="text-[0.8rem] font-bold uppercase tracking-[0.3em] text-silver-100">
             G&nbsp;Notes
           </h1>
           <Button size="sm" variant="outline" onClick={createSong}>
@@ -317,23 +329,6 @@ export function Notebook() {
           onRequestDelete={setPendingDelete}
         />
 
-        <div className="border-t border-silver-200/10 pt-3">
-          <p className="mb-1.5 px-1 text-[0.7rem] uppercase tracking-wide text-silver-500">
-            Modelo de IA
-          </p>
-          <SearchableSelect
-            value={model}
-            onChange={chooseModel}
-            options={MODEL_OPTIONS}
-            ariaLabel="Modelo de IA"
-            searchPlaceholder="Buscar modelo…"
-            emptyText="Sin modelos"
-            allowCustom
-            customLabel={(t) => `Usar "${t}"`}
-            placement="top"
-            className={COMPACT_SELECT}
-          />
-        </div>
       </aside>
 
       {sidebarOpen && (
@@ -359,10 +354,11 @@ export function Notebook() {
             onChange={(e) => patchActive({ title: e.target.value })}
             placeholder="Título de la canción…"
             aria-label="Título"
-            className="min-w-0 flex-1 bg-transparent text-xl font-semibold tracking-tight text-silver-50 outline-none placeholder:font-normal placeholder:text-silver-500"
+            className="min-w-0 flex-1 bg-transparent text-2xl font-semibold tracking-tight text-silver-50 outline-none placeholder:font-normal placeholder:text-silver-500"
           />
-          {/* Deshacer / rehacer: al alcance del pulgar en móvil (no hay Ctrl+Z). */}
-          <div className="flex shrink-0 items-center gap-1">
+          {/* Deshacer / rehacer — en ESCRITORIO arriba; en móvil bajan a la barra
+              inferior (al alcance del pulgar). */}
+          <div className="hidden shrink-0 items-center gap-1 md:flex">
             <button
               onClick={() => editorRef.current?.undo()}
               className="rounded-lg border border-silver-200/10 px-2 py-1 text-base leading-none text-silver-300 transition hover:border-amethyst-500/40 hover:text-amethyst-300"
@@ -383,50 +379,45 @@ export function Notebook() {
           <SaveIndicator state={saveState} hydrated={hydrated} />
         </div>
 
+        {/* Tira de metadatos (Nivel 4): chips ligeros + menú «···». Cierra el
+            "chrome" con el separador; en móvil los chips fluyen (flex-wrap). */}
         {active && (
-          <SongMeta
-            song={active}
-            library={lib}
-            onPatch={patchActive}
-            onAssignRelease={assignRelease}
-            onCreateRelease={() => setShowNewRelease(true)}
-            onToggleList={toggleList}
-            onCreateList={createList}
-          />
+          <div className="flex flex-wrap items-center gap-2 border-b border-silver-200/10 px-4 pb-3 md:px-8">
+            <SongMeta
+              song={active}
+              library={lib}
+              onPatch={patchActive}
+              onAssignRelease={assignRelease}
+              onCreateRelease={() => setShowNewRelease(true)}
+              onApplyTemplate={applyTemplate}
+            />
+            <div className="ml-auto">
+              <OverflowMenu
+                song={active}
+                library={lib}
+                fontId={lyricFont}
+                fonts={LYRIC_FONTS}
+                onChooseFont={chooseFont}
+                onInsertSection={(name) =>
+                  editorRef.current?.insertSection(name)
+                }
+                onToggleList={toggleList}
+                onCreateList={createList}
+                onShare={shareSong}
+                onDelete={() => setPendingDelete(active.id)}
+              />
+            </div>
+          </div>
         )}
 
-        {/* Toolbar: plantilla de estructura + secciones sueltas (con separador) */}
-        <div className="flex flex-wrap items-center gap-1.5 border-b border-silver-200/10 px-4 pb-3 md:px-8">
-          <div className="w-48">
-            <SearchableSelect
-              value=""
-              onChange={applyTemplate}
-              options={templateOptions}
-              placeholder="＋ Plantilla…"
-              ariaLabel="Insertar plantilla de estructura"
-              searchPlaceholder="Buscar plantilla…"
-              emptyText="Sin plantillas"
-              className={COMPACT_SELECT}
-            />
-          </div>
-          <span className="mx-0.5 text-silver-600" aria-hidden>
-            |
-          </span>
-          {SECTIONS.map((name) => (
-            <button
-              key={name}
-              onClick={() => editorRef.current?.insertSection(name)}
-              className="rounded-md border border-silver-200/10 px-2 py-0.5 text-[0.7rem] text-silver-400 transition hover:border-amethyst-500/40 hover:text-amethyst-300"
-            >
-              {name}
-            </button>
-          ))}
-        </div>
-
-        <div className="min-h-0 flex-1 overflow-hidden px-3 pb-3 md:px-6">
-          {/* Hoja de escritura: card de cristal que se ilumina en amatista al
-              enfocar → señala "aquí se escribe". Medida cómoda (max-w-3xl). */}
-          <div className="mx-auto flex h-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-silver-200/10 bg-white/1.5 transition-all duration-300 focus-within:border-amethyst-500/30 focus-within:bg-white/2.5 focus-within:shadow-[0_0_0_1px_rgba(139,92,246,0.12),0_24px_70px_-40px_rgba(139,92,246,0.55)]">
+        <div className="min-h-0 flex-1 overflow-hidden">
+          {/* Manuscrito: la letra empieza por la IZQUIERDA y ocupa todo el ancho
+              (como un bloc de notas), no centrada. Sin card ni glow. La fuente
+              elegida entra por --lyric-font (cambia en vivo). */}
+          <div
+            className="h-full px-4 md:px-8"
+            style={{ "--lyric-font": fontStack(lyricFont) } as React.CSSProperties}
+          >
             {hydrated && active && (
               <LyricsEditor
                 key={active.id}
@@ -450,23 +441,101 @@ export function Notebook() {
           onClose={() => setSelection(null)}
         />
 
-        <div className="flex items-center justify-between border-t border-silver-200/10 px-4 py-2 text-xs text-silver-500 md:px-8">
+        {/* Barra inferior MÓVIL (< md): deshacer/rehacer/compartir al alcance del
+            pulgar + Asistente (modelo). Targets grandes para tocar. */}
+        <div className="flex items-center gap-2 border-t border-silver-200/10 px-3 py-2 md:hidden">
+          <button
+            onClick={() => editorRef.current?.undo()}
+            className="flex size-10 items-center justify-center rounded-xl border border-silver-200/10 text-lg text-silver-300 transition active:border-amethyst-500/50 active:text-amethyst-300"
+            aria-label="Deshacer"
+          >
+            ↶
+          </button>
+          <button
+            onClick={() => editorRef.current?.redo()}
+            className="flex size-10 items-center justify-center rounded-xl border border-silver-200/10 text-lg text-silver-300 transition active:border-amethyst-500/50 active:text-amethyst-300"
+            aria-label="Rehacer"
+          >
+            ↷
+          </button>
+          <button
+            onClick={shareSong}
+            className="flex size-10 items-center justify-center rounded-xl border border-amethyst-400/40 text-lg text-amethyst-300 transition active:bg-amethyst-500/15"
+            aria-label="Compartir la letra"
+          >
+            ↗
+          </button>
+          <div className="ml-auto w-32">
+            <SearchableSelect
+              value={model}
+              onChange={chooseModel}
+              options={MODEL_OPTIONS}
+              ariaLabel="Asistente · modelo de IA"
+              searchPlaceholder="Buscar…"
+              emptyText="—"
+              allowCustom
+              customLabel={(t) => `Usar "${t}"`}
+              placement="top"
+              className={COMPACT_SELECT}
+            />
+          </div>
+        </div>
+
+        {/* Footer ESCRITORIO (md+): contadores · métrica · Asistente · fuente. */}
+        <div className="hidden items-center gap-4 border-t border-silver-200/10 px-4 py-2 text-xs text-silver-500 md:flex md:px-8">
           <span className="tabular-nums">
             {stats.lines} versos · {stats.words} palabras ·{" "}
             <span className="text-amethyst-300">{stats.syllables}</span> sílabas
           </span>
           {stats.analysis.dominant > 0 && stats.analysis.verseCount > 2 ? (
-            <span className="tabular-nums">
-              Métrica:{" "}
-              <span className="text-amethyst-300">{stats.analysis.name}</span> (
-              {stats.analysis.dominant}) · {stats.analysis.consistencyPct}%
-              consistencia
+            <span className="hidden tabular-nums sm:inline">
+              Métrica{" "}
+              <span className="text-amethyst-300">{stats.analysis.dominant}</span>{" "}
+              · {stats.analysis.consistencyPct}%
             </span>
           ) : (
-            <span className="text-silver-500">
-              sílabas métricas por verso a la izquierda
+            <span className="hidden text-silver-500 sm:inline">
+              sílabas por verso a la izquierda
             </span>
           )}
+          {/* Preferencias (derecha): Asistente IA (modelo) + fuente de la letra.
+              En móvil se ocultan las etiquetas; los selects quedan compactos. */}
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="hidden text-silver-500 sm:inline">Asistente</span>
+              <div className="w-28 sm:w-32">
+                <SearchableSelect
+                  value={model}
+                  onChange={chooseModel}
+                  options={MODEL_OPTIONS}
+                  ariaLabel="Modelo de IA"
+                  searchPlaceholder="Buscar modelo…"
+                  emptyText="Sin modelos"
+                  allowCustom
+                  customLabel={(t) => `Usar "${t}"`}
+                  placement="top"
+                  className={COMPACT_SELECT}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-serif text-silver-500" aria-hidden>
+                Aa
+              </span>
+              <div className="w-24">
+                <SearchableSelect
+                  value={lyricFont}
+                  onChange={chooseFont}
+                  options={FONT_OPTIONS}
+                  ariaLabel="Fuente de la letra"
+                  searchPlaceholder="Buscar…"
+                  emptyText="—"
+                  placement="top"
+                  className={COMPACT_SELECT}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 
@@ -488,6 +557,14 @@ export function Notebook() {
         open={showNewRelease}
         onCreate={createRelease}
         onCancel={() => setShowNewRelease(false)}
+      />
+
+      <ShareDialog
+        open={showShare}
+        title={active?.title ?? ""}
+        body={active?.body ?? ""}
+        genre={active?.genre || undefined}
+        onClose={() => setShowShare(false)}
       />
     </div>
   );

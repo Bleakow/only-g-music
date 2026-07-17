@@ -13,6 +13,14 @@
 @theme {
   --font-sans:
     "OGM", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Serif editorial para el CUERPO de la letra (sensación de manuscrito premium).
+     Solo fuentes de sistema: sin descargas, sin fallback silencioso. */
+  --font-serif:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia,
+    serif;
+
+  /* Tinta cálida de la letra (off-white con tinte violeta, no blanco puro) */
+  --color-lyric: #e6e3ef;
 
   /* Plata (metálica) */
   --color-silver-50: #f7f7fa;

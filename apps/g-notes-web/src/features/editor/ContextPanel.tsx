@@ -8,9 +8,11 @@ import { getModel } from "@/features/ai/model-store";
 
 const client = createAiClient();
 
+// El valor de `op` es el contrato con el backend ("frases"); la etiqueta es solo
+// UI. "Similares" reemplaza la selección; el resto se inserta junto a ella.
 const OPS: { op: CreativeOp; label: string }[] = [
   { op: "rimas", label: "Rimas" },
-  { op: "frases", label: "Frases" },
+  { op: "frases", label: "Similares" },
   { op: "metaforas", label: "Metáforas" },
   { op: "expandir", label: "Expandir" },
 ];
@@ -87,11 +89,19 @@ export function ContextPanel({
 
   function apply(text: string) {
     if (!selection) return;
-    if (op === "expandir") {
-      onApply(selection.to, selection.to, `\n${text}`);
-    } else {
+    // "Similares" (frases) SUSTITUYE la selección por una mejor versión.
+    if (op === "frases") {
       onApply(selection.from, selection.to, text);
+      return;
     }
+    // Rimas: se coloca junto a la selección, en la misma línea (misma idea de verso).
+    if (op === "rimas") {
+      onApply(selection.to, selection.to, ` ${text}`);
+      return;
+    }
+    // Metáforas y Expandir: se añaden en una línea nueva justo debajo, sin borrar
+    // lo seleccionado (son alternativas/continuaciones, no reemplazos).
+    onApply(selection.to, selection.to, `\n${text}`);
   }
 
   // Coloca el panel en el lado con más espacio (arriba/abajo) para no salirse del
@@ -108,8 +118,12 @@ export function ContextPanel({
 
   return (
     <div
-      className={`${glassSurfaceMenu} fixed z-30 w-72 rounded-xl p-2`}
+      className={`${glassSurfaceMenu} z-30 w-72 rounded-xl p-2`}
       style={{
+        // position:fixed va INLINE a propósito: glassSurfaceMenu trae `relative`
+        // y, ya compilado (tras el fix del @source), esa clase gana a un `fixed`
+        // por clase Tailwind. Inline gana siempre. Ver memoria glass-popover-trap.
+        position: "fixed",
         top: placeAbove ? selection.top - GAP : selection.bottom + GAP,
         left,
         transform: placeAbove ? "translateY(-100%)" : undefined,
@@ -119,12 +133,12 @@ export function ContextPanel({
       role="dialog"
       aria-label="Herramientas creativas"
     >
-      <div className="flex gap-1">
+      <div className="flex items-center gap-1">
         {OPS.map(({ op: o, label }) => (
           <button
             key={o}
             onClick={() => run(o)}
-            className={`flex-1 rounded-md px-2 py-1 text-xs transition ${
+            className={`flex-1 rounded-md px-2 py-1.5 text-xs transition ${
               op === o
                 ? "bg-amethyst-500/25 text-amethyst-300"
                 : "text-silver-300 hover:bg-silver-200/5"
@@ -133,6 +147,14 @@ export function ContextPanel({
             {label}
           </button>
         ))}
+        {/* Cerrar: en móvil no hay tecla Esc. */}
+        <button
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="shrink-0 rounded-md px-2 py-1.5 text-sm leading-none text-silver-500 transition hover:text-silver-200"
+        >
+          ✕
+        </button>
       </div>
 
       {op && (

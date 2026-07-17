@@ -9,6 +9,8 @@ import {
   EditorView,
   gutter,
   GutterMarker,
+  highlightActiveLine,
+  placeholder,
   ViewPlugin,
   type ViewUpdate,
 } from "@codemirror/view";
@@ -33,10 +35,20 @@ export const lyricTheme = EditorView.theme(
       lineHeight: "2",
       overflow: "auto",
     },
-    ".cm-content": { padding: "0.5rem 0 40vh 0", caretColor: "#a87bff" },
+    ".cm-content": { padding: "1rem 0 40vh 0", caretColor: "#a87bff" },
     "&.cm-focused": { outline: "none" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#a87bff" },
-    ".cm-line": { padding: "0 1rem" },
+    ".cm-line": { padding: "0 1.25rem" },
+    // Línea activa: leve baño de amatista, da sensación de "vivo" al escribir.
+    ".cm-activeLine": {
+      backgroundColor: "color-mix(in oklab, #8b5cf6 7%, transparent)",
+      borderRadius: "0.375rem",
+    },
+    // Placeholder: invita a escribir cuando la canción está en blanco.
+    ".cm-placeholder": {
+      color: "color-mix(in oklab, #7e7e95 85%, transparent)",
+      fontStyle: "italic",
+    },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
       {
         backgroundColor: "color-mix(in oklab, #8b5cf6 28%, transparent)",
@@ -150,6 +162,8 @@ export const lyricExtensions = [
   lyricTheme,
   analysisField,
   EditorView.lineWrapping,
+  highlightActiveLine(),
+  placeholder("Escribe aquí tu primera línea…"),
   syllableGutter,
   sectionHighlighter,
 ];

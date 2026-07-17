@@ -8,7 +8,13 @@ import {
 } from "react";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import {
+  defaultKeymap,
+  history,
+  historyKeymap,
+  redo,
+  undo,
+} from "@codemirror/commands";
 import { createAiClient } from "@only-g/ai-services";
 import { lyricExtensions } from "@/features/editor/lyric-extensions";
 import { ghostCompletion } from "@/features/editor/ghost";
@@ -28,7 +34,10 @@ export interface EditorSelection {
 
 export interface LyricsEditorHandle {
   insertSection: (name: string) => void;
+  insertTemplate: (sections: string[]) => void;
   replaceRange: (from: number, to: number, text: string) => void;
+  undo: () => void;
+  redo: () => void;
   focus: () => void;
 }
 
@@ -131,6 +140,27 @@ export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
         });
         view.focus();
       },
+      insertTemplate(sections: string[]) {
+        const view = viewRef.current;
+        if (!view) return;
+        // Cada sección en su línea, con un renglón en blanco debajo para escribir.
+        const skeleton = sections.map((s) => `[${s}]\n\n`).join("");
+        if (view.state.doc.length === 0) {
+          view.dispatch({
+            changes: { from: 0, insert: skeleton },
+            selection: { anchor: skeleton.length },
+          });
+        } else {
+          const pos = view.state.selection.main.head;
+          const line = view.state.doc.lineAt(pos);
+          const snippet = (line.text.trim() === "" ? "" : "\n") + skeleton;
+          view.dispatch({
+            changes: { from: pos, insert: snippet },
+            selection: { anchor: pos + snippet.length },
+          });
+        }
+        view.focus();
+      },
       replaceRange(from, to, text) {
         const view = viewRef.current;
         if (!view) return;
@@ -138,6 +168,18 @@ export const LyricsEditor = forwardRef<LyricsEditorHandle, Props>(
           changes: { from, to, insert: text },
           selection: { anchor: from + text.length },
         });
+        view.focus();
+      },
+      undo() {
+        const view = viewRef.current;
+        if (!view) return;
+        undo(view);
+        view.focus();
+      },
+      redo() {
+        const view = viewRef.current;
+        if (!view) return;
+        redo(view);
         view.focus();
       },
       focus() {

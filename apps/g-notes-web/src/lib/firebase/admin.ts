@@ -34,3 +34,19 @@ export async function verifiedUid(req: Request): Promise<string | null> {
     return null;
   }
 }
+
+/**
+ * Hand-off SSO desde Only G: verifica un ID token y devuelve un CUSTOM token para
+ * el mismo uid, con el que G Notes inicia sesión sin re-login. Firmar el custom
+ * token requiere que el service account de Cloud Run tenga
+ * `roles/iam.serviceAccountTokenCreator` sobre sí mismo. Si no lo tiene o el token
+ * es inválido, devuelve null → el hand-off degrada a login normal.
+ */
+export async function mintCustomToken(idToken: string): Promise<string | null> {
+  try {
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    return await adminAuth.createCustomToken(decoded.uid);
+  } catch {
+    return null;
+  }
+}

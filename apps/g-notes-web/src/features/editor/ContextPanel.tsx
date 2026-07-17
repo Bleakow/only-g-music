@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createAiClient, type CreativeOp } from "@only-g/ai-services";
+import type { CreativeOp } from "@only-g/ai-services";
 import { glassSurfaceMenu } from "@only-g/ui";
 import type { EditorSelection } from "@/features/editor/LyricsEditor";
+import { aiClient } from "@/features/ai/client";
 import { getModel } from "@/features/ai/model-store";
-
-const client = createAiClient();
 
 // El valor de `op` es el contrato con el backend ("frases"); la etiqueta es solo
 // UI. "Similares" reemplaza la selección; el resto se inserta junto a ella.
@@ -74,7 +73,7 @@ export function ContextPanel({
     controllerRef.current?.abort();
     controllerRef.current = new AbortController();
     try {
-      const res = await client.creative(
+      const res = await aiClient.creative(
         { op: next, text: selection.text, context, genre, model: getModel() },
         controllerRef.current.signal,
       );

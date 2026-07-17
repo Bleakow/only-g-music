@@ -15,12 +15,9 @@ import {
   redo,
   undo,
 } from "@codemirror/commands";
-import { createAiClient } from "@only-g/ai-services";
+import { aiClient } from "@/features/ai/client";
 import { lyricExtensions } from "@/features/editor/lyric-extensions";
 import { ghostCompletion } from "@/features/editor/ghost";
-
-// Cliente de IA al mismo origen (baseUrl vacío → POST /api/ai/complete).
-const aiClient = createAiClient();
 
 export interface EditorSelection {
   text: string;

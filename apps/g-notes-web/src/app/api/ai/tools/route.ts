@@ -5,6 +5,7 @@ import type {
   CreativeResponse,
 } from "@only-g/ai-services";
 import { geminiGenerate } from "@/features/ai/gemini";
+import { verifiedUid } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,11 @@ const INSTRUCTIONS: Record<CreativeOp, string> = {
 const SYSTEM = `Eres el panel contextual de un editor de composición musical. Ayudas al compositor sin reemplazarlo: propones opciones breves, frescas y coherentes con su letra. Responde en el mismo idioma de la selección.`;
 
 export async function POST(req: NextRequest): Promise<Response> {
+  // Puerta: sin ID token válido de nuestro proyecto, ni se lee el body ni se
+  // toca Gemini. Es lo que impide que un desconocido queme la cuota.
+  const uid = await verifiedUid(req);
+  if (!uid) return unauthorized();
+
   let body: CreativeRequest;
   try {
     body = (await req.json()) as CreativeRequest;
@@ -119,6 +125,13 @@ function stub(body: CreativeRequest): CreativeResponse {
 function json(payload: CreativeResponse, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
+    headers: { "content-type": "application/json" },
+  });
+}
+
+function unauthorized(): Response {
+  return new Response(JSON.stringify({ error: "unauthorized" }), {
+    status: 401,
     headers: { "content-type": "application/json" },
   });
 }

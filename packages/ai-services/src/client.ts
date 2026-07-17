@@ -10,6 +10,12 @@ export interface AiClientOptions {
   baseUrl?: string;
   /** Inyectable para tests. */
   fetchImpl?: typeof fetch;
+  /**
+   * Devuelve el ID token del usuario (o null si no hay sesión). Se envía como
+   * `Authorization: Bearer <token>` y el servidor lo verifica antes de llamar al
+   * modelo. Se inyecta desde la app: este paquete no sabe nada de Firebase.
+   */
+  getToken?: () => Promise<string | null>;
 }
 
 /**
@@ -21,6 +27,13 @@ export function createAiClient(opts: AiClientOptions = {}) {
   const base = opts.baseUrl ?? "";
   const doFetch = opts.fetchImpl ?? fetch;
 
+  async function headers(): Promise<Record<string, string>> {
+    const h: Record<string, string> = { "content-type": "application/json" };
+    const token = opts.getToken ? await opts.getToken() : null;
+    if (token) h.authorization = `Bearer ${token}`;
+    return h;
+  }
+
   return {
     async complete(
       req: CompletionRequest,
@@ -28,7 +41,7 @@ export function createAiClient(opts: AiClientOptions = {}) {
     ): Promise<CompletionResponse> {
       const res = await doFetch(`${base}/api/ai/complete`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await headers(),
         body: JSON.stringify(req),
         signal,
       });
@@ -42,7 +55,7 @@ export function createAiClient(opts: AiClientOptions = {}) {
     ): Promise<CreativeResponse> {
       const res = await doFetch(`${base}/api/ai/tools`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: await headers(),
         body: JSON.stringify(req),
         signal,
       });

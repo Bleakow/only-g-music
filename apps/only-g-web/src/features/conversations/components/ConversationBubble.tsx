@@ -20,13 +20,16 @@ import {
   NoteIcon,
 } from "@/components/icons";
 
-// URL de la app hermana G Notes (escritor inteligente). En producción DEBE venir
-// de NEXT_PUBLIC_GNOTES_URL (apphosting.yaml). Si no está configurada, el botón
-// NO se muestra: es preferible ocultarlo a mandar al usuario a un sitio muerto.
-// El fallback a localhost queda acotado a desarrollo, donde G Notes corre en :3001.
+// URL de la app hermana G Notes (escritor inteligente). Se puede override con
+// NEXT_PUBLIC_GNOTES_URL (p. ej. un dominio propio a futuro). Si no, usa la URL
+// estable del backend de App Hosting en producción, o localhost en desarrollo.
+// Se hardcodea a propósito: only-g-web saca su env del overrideEnv de consola, y
+// no queremos tocar esa config (es la que sirve su Firebase) solo por este enlace.
 const GNOTES_URL =
   process.env.NEXT_PUBLIC_GNOTES_URL ??
-  (process.env.NODE_ENV === "development" ? "http://localhost:3001" : null);
+  (process.env.NODE_ENV === "development"
+    ? "http://localhost:3001"
+    : "https://g-notes--only-g-music-745ca.us-east4.hosted.app");
 
 /**
  * Burbuja de chat flotante y global (solo con sesión iniciada). Colapsada es un

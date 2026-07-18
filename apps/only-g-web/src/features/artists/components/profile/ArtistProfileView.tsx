@@ -15,7 +15,7 @@ import {
 } from "@only-g/shared-types/artist-profile";
 import type { SocialPlatform } from "@only-g/shared-types/artist";
 import { formatLocation } from "@only-g/shared-types/location";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeftIcon,
   SettingsIcon,
@@ -74,6 +74,44 @@ export function ArtistProfileView({
 }) {
   const t = useTranslations();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  // Clamp de colisión del reproductor overlay: su posición se guarda como % global
+  // (normalmente calibrada en escritorio). En móvil el bloque de identidad (nombre/
+  // tagline/CTAs, de alto POR CONTENIDO) ocupa más y el player podía caer encima.
+  // Medimos dónde empieza la identidad y limitamos el `top%` para que nunca la pise,
+  // en cualquier resolución. Solo BAJA el valor; si la medición falla, usa el crudo.
+  const heroRef = useRef<HTMLElement>(null);
+  const identityRef = useRef<HTMLDivElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const [playerTop, setPlayerTop] = useState<number | null>(null);
+
+  useEffect(() => {
+    const hero = heroRef.current;
+    const identity = identityRef.current;
+    if (!hero || !identity) return;
+    const rawY = profile.playerY ?? DEFAULT_PLAYER_Y;
+    const recompute = () => {
+      const heroH = hero.getBoundingClientRect().height;
+      if (heroH === 0) return;
+      const idTop =
+        identity.getBoundingClientRect().top - hero.getBoundingClientRect().top;
+      const identityTopPct = (idTop / heroH) * 100;
+      const halfPlayerPct = playerRef.current
+        ? (playerRef.current.getBoundingClientRect().height / 2 / heroH) * 100
+        : 0;
+      const maxY = identityTopPct - halfPlayerPct - 2; // 2% de respiro
+      setPlayerTop(Math.max(4, Math.min(rawY, maxY)));
+    };
+    recompute();
+    // ResizeObserver capta el cambio de alto del hero (barra de URL de iOS que
+    // aparece/oculta) y el reflujo del texto de identidad (rotación/nombre largo).
+    const ro = new ResizeObserver(recompute);
+    ro.observe(hero);
+    ro.observe(identity);
+    if (playerRef.current) ro.observe(playerRef.current);
+    return () => ro.disconnect();
+  }, [profile.playerY, profile.playerSize, profile.entryTrackUrl]);
+
   const now = Date.now();
   const isPremium = premiumEstado(profile.premium, now) === "activo";
   const anios =
@@ -93,7 +131,10 @@ export function ArtistProfileView({
   return (
     <article className="relative min-h-dvh">
       {/* Pantalla 1: foto + identidad + acciones */}
-      <section className="relative h-dvh w-full overflow-hidden bg-neutral-950">
+      <section
+        ref={heroRef}
+        className="relative h-dvh w-full overflow-hidden bg-neutral-950"
+      >
         {profile.photoURL ? (
           <>
             {/* Dirección de arte: en móvil, la foto vertical si existe; en PC, la
@@ -147,7 +188,7 @@ export function ArtistProfileView({
           )}
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
+        <div ref={identityRef} className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {isPremium && (
               <span className="border-amethyst-300/50 bg-amethyst-500/15 text-amethyst-200 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[2px] uppercase">
@@ -205,10 +246,11 @@ export function ArtistProfileView({
         {/* Reproductor SOBRE la foto — sin marco, blanco, posición/tamaño libres */}
         {profile.entryTrackUrl && profile.playerOverlay !== false && (
           <div
+            ref={playerRef}
             className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 ${PLAYER_SIZE_W[profile.playerSize ?? DEFAULT_PLAYER_SIZE]}`}
             style={{
               left: `${profile.playerX ?? DEFAULT_PLAYER_X}%`,
-              top: `${profile.playerY ?? DEFAULT_PLAYER_Y}%`,
+              top: `${playerTop ?? profile.playerY ?? DEFAULT_PLAYER_Y}%`,
             }}
           >
             <ProfileAudioPlayer

@@ -2,11 +2,14 @@
 
 import { useMemo } from "react";
 import { SearchableSelect, type SelectOption } from "@only-g/ui";
-import { COMPACT_SELECT } from "@/components/ui";
+import { CHIP_SELECT } from "@/components/ui";
+import {
+  SONG_TEMPLATES,
+  suggestedTemplateId,
+} from "@/features/editor/templates";
 import {
   GENRES,
   KIND_LABEL,
-  SONG_STATES,
   STATE_DOT,
   STATE_LABEL,
   type Genre,
@@ -15,20 +18,16 @@ import {
   type SongState,
 } from "@/features/library/types";
 
-const STATE_OPTIONS: SelectOption[] = SONG_STATES.map((s) => ({
-  value: s,
-  label: STATE_LABEL[s],
-}));
-
 const GENRE_OPTIONS: SelectOption[] = [
   { value: "", label: "Sin género" },
   ...GENRES.map((g) => ({ value: g, label: g })),
 ];
 
 /**
- * Barra de metadata de la canción activa: estado · género · álbum · listas.
- * Todos los controles reutilizan el SearchableSelect de @only-g/ui en tamaño
- * compacto. Las listas son many-to-many (chips + añadir/crear).
+ * Tira de metadatos como CHIPS ligeros: estado · género · álbum · ＋plantilla.
+ * Nivel 4 de la jerarquía — presente pero apagado, sin peso de formulario. Las
+ * listas y lo secundario viven en el menú «···» (OverflowMenu). Responsive:
+ * los chips fluyen (flex-wrap) en pantallas estrechas.
  */
 export function SongMeta({
   song,
@@ -36,16 +35,14 @@ export function SongMeta({
   onPatch,
   onAssignRelease,
   onCreateRelease,
-  onToggleList,
-  onCreateList,
+  onApplyTemplate,
 }: {
   song: Song;
   library: Library;
   onPatch: (patch: Partial<Song>) => void;
   onAssignRelease: (releaseId: string | null) => void;
   onCreateRelease: () => void;
-  onToggleList: (listId: string) => void;
-  onCreateList: (name: string) => void;
+  onApplyTemplate: (templateId: string) => void;
 }) {
   const releaseOptions: SelectOption[] = useMemo(
     () => [
@@ -59,38 +56,40 @@ export function SongMeta({
     [library.releases],
   );
 
-  const assignedLists = library.lists.filter((l) =>
-    song.listIds.includes(l.id),
-  );
+  const templateOptions: SelectOption[] = useMemo(() => {
+    const suggested = suggestedTemplateId(song.genre || undefined);
+    return [...SONG_TEMPLATES]
+      .sort((a, b) => (a.id === suggested ? -1 : b.id === suggested ? 1 : 0))
+      .map((t) => ({
+        value: t.id,
+        label: t.id === suggested ? `${t.name} · sugerida` : t.name,
+      }));
+  }, [song.genre]);
 
-  const listOptions: SelectOption[] = useMemo(
-    () =>
-      library.lists
-        .filter((l) => !song.listIds.includes(l.id))
-        .map((l) => ({ value: l.id, label: l.name || "Sin nombre" })),
-    [library.lists, song.listIds],
-  );
+  // Estado: solo 2 (borrador/terminada), así que un chip que ALTERNA al pulsar.
+  const nextState: SongState =
+    song.estado === "borrador" ? "terminada" : "borrador";
+  const done = song.estado === "terminada";
 
   return (
-    <div className="flex flex-wrap items-center gap-2 px-4 pb-2 md:px-8">
-      {/* Estado */}
-      <div className="flex items-center gap-1.5">
+    <>
+      {/* Estado — chip toggle con color semántico */}
+      <button
+        type="button"
+        onClick={() => onPatch({ estado: nextState })}
+        title={`Marcar como ${STATE_LABEL[nextState]}`}
+        className={`inline-flex min-h-7 items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition ${
+          done
+            ? "border-success/30 text-success hover:border-success/50"
+            : "border-warning/30 text-warning hover:border-warning/50"
+        }`}
+      >
         <span
-          className={`h-2 w-2 shrink-0 rounded-full ${STATE_DOT[song.estado]}`}
+          className={`h-1.5 w-1.5 rounded-full ${STATE_DOT[song.estado]}`}
           aria-hidden
         />
-        <div className="w-28">
-          <SearchableSelect
-            value={song.estado}
-            onChange={(v) => onPatch({ estado: v as SongState })}
-            options={STATE_OPTIONS}
-            ariaLabel="Estado de la canción"
-            searchPlaceholder="Buscar…"
-            emptyText="—"
-            className={COMPACT_SELECT}
-          />
-        </div>
-      </div>
+        {STATE_LABEL[song.estado]}
+      </button>
 
       {/* Género */}
       <div className="w-32">
@@ -98,16 +97,16 @@ export function SongMeta({
           value={song.genre}
           onChange={(v) => onPatch({ genre: v as Genre | "" })}
           options={GENRE_OPTIONS}
-          placeholder="Género…"
+          placeholder="Género"
           ariaLabel="Género"
           searchPlaceholder="Buscar…"
           emptyText="Sin resultados"
-          className={COMPACT_SELECT}
+          className={CHIP_SELECT}
         />
       </div>
 
       {/* Álbum / release (exclusivo) */}
-      <div className="w-44">
+      <div className="w-40">
         <SearchableSelect
           value={song.releaseId ?? ""}
           onChange={(v) => {
@@ -115,51 +114,27 @@ export function SongMeta({
             else onAssignRelease(v || null);
           }}
           options={releaseOptions}
-          placeholder="Álbum…"
+          placeholder="Álbum"
           ariaLabel="Álbum o release"
           searchPlaceholder="Buscar release…"
           emptyText="Sin releases"
-          className={COMPACT_SELECT}
+          className={CHIP_SELECT}
         />
       </div>
 
-      {/* Listas (many-to-many) */}
-      <div className="flex flex-wrap items-center gap-1">
-        {assignedLists.map((l) => (
-          <span
-            key={l.id}
-            className="inline-flex items-center gap-1 rounded-full border border-amethyst-400/40 bg-amethyst-500/10 px-2 py-0.5 text-[0.7rem] text-amethyst-200"
-          >
-            {l.name || "Sin nombre"}
-            <button
-              type="button"
-              onClick={() => onToggleList(l.id)}
-              className="text-amethyst-300/70 transition hover:text-danger"
-              aria-label={`Quitar de ${l.name}`}
-            >
-              ✕
-            </button>
-          </span>
-        ))}
-        <div className="w-32">
-          <SearchableSelect
-            value=""
-            onChange={(v) => {
-              const existing = library.lists.find((l) => l.id === v);
-              if (existing) onToggleList(existing.id);
-              else if (v.trim()) onCreateList(v.trim());
-            }}
-            options={listOptions}
-            placeholder="＋ Lista…"
-            ariaLabel="Añadir a lista"
-            searchPlaceholder="Buscar o crear…"
-            emptyText="Escribe para crear"
-            allowCustom
-            customLabel={(t) => `Crear lista "${t}"`}
-            className={COMPACT_SELECT}
-          />
-        </div>
+      {/* ＋ Plantilla (acción: inserta una estructura) */}
+      <div className="w-36">
+        <SearchableSelect
+          value=""
+          onChange={(id) => onApplyTemplate(id)}
+          options={templateOptions}
+          placeholder="＋ Plantilla"
+          ariaLabel="Insertar plantilla de estructura"
+          searchPlaceholder="Buscar plantilla…"
+          emptyText="Sin plantillas"
+          className={CHIP_SELECT}
+        />
       </div>
-    </div>
+    </>
   );
 }

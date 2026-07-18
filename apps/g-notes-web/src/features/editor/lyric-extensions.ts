@@ -25,23 +25,42 @@ import {
 export const lyricTheme = EditorView.theme(
   {
     "&": {
-      color: "var(--color-silver-100)",
+      color: "var(--color-lyric)",
       backgroundColor: "transparent",
       height: "100%",
-      fontSize: "1.05rem",
+      fontSize: "1.18rem",
     },
+    // La LETRA en la fuente elegida (--lyric-font, por defecto la serif editorial):
+    // es el manuscrito, el héroe de la pantalla. Se cambia en vivo por variable CSS.
     ".cm-scroller": {
-      fontFamily: "var(--font-sans)",
-      lineHeight: "2",
+      fontFamily: "var(--lyric-font, var(--font-serif))",
+      lineHeight: "1.95",
       overflow: "auto",
+      // Scroll SUTIL: barra fina y apagada (Firefox). En webkit, más abajo.
+      scrollbarWidth: "thin",
+      scrollbarColor: "rgba(255,255,255,0.14) transparent",
     },
-    ".cm-content": { padding: "1rem 0 40vh 0", caretColor: "#a87bff" },
+    ".cm-scroller::-webkit-scrollbar": { width: "10px", height: "10px" },
+    ".cm-scroller::-webkit-scrollbar-track": { background: "transparent" },
+    ".cm-scroller::-webkit-scrollbar-thumb": {
+      background: "rgba(255,255,255,0.10)",
+      borderRadius: "999px",
+      border: "3px solid transparent",
+      backgroundClip: "padding-box",
+    },
+    ".cm-scroller::-webkit-scrollbar-thumb:hover": {
+      background: "rgba(255,255,255,0.20)",
+      backgroundClip: "padding-box",
+    },
+    // Relleno inferior MÍNIMO: sin scroll prematuro. La barra aparece solo cuando
+    // la letra de verdad llega al límite (como un bloc de notas), no antes.
+    ".cm-content": { padding: "0.75rem 0 1.5rem 0", caretColor: "#a87bff" },
     "&.cm-focused": { outline: "none" },
     ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#a87bff" },
-    ".cm-line": { padding: "0 1.25rem" },
-    // Línea activa: leve baño de amatista, da sensación de "vivo" al escribir.
+    ".cm-line": { padding: "0 1.5rem" },
+    // Línea activa: un SUSURRO neutral (no amatista) — foco sin "gaming glow".
     ".cm-activeLine": {
-      backgroundColor: "color-mix(in oklab, #8b5cf6 7%, transparent)",
+      backgroundColor: "rgba(255,255,255,0.022)",
       borderRadius: "0.375rem",
     },
     // Placeholder: invita a escribir cuando la canción está en blanco.
@@ -51,29 +70,32 @@ export const lyricTheme = EditorView.theme(
     },
     "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection":
       {
-        backgroundColor: "color-mix(in oklab, #8b5cf6 28%, transparent)",
+        backgroundColor: "color-mix(in oklab, #8b5cf6 24%, transparent)",
       },
     ".cm-gutters": {
       backgroundColor: "transparent",
       border: "none",
-      color: "color-mix(in oklab, #c4a5ff 65%, transparent)",
+      color: "color-mix(in oklab, #7e7e95 70%, transparent)",
     },
     ".cm-syl-gutter": {
       minWidth: "2.2rem",
-      padding: "0 0.5rem 0 0.25rem",
+      padding: "0 0.6rem 0 0.25rem",
       textAlign: "right",
-      fontSize: "0.7rem",
+      fontSize: "0.66rem",
+      fontFamily: "var(--font-sans)",
       fontVariantNumeric: "tabular-nums",
     },
-    ".cm-syl-match": { color: "#c4a5ff" },
-    ".cm-syl-near": { color: "#9a9ab0" },
-    ".cm-syl-off": { color: "#fbbf24", fontWeight: "600" },
+    ".cm-syl-match": { color: "color-mix(in oklab, #c4a5ff 78%, transparent)" },
+    ".cm-syl-near": { color: "#7e7e95" },
+    ".cm-syl-off": { color: "#e8b14c", fontWeight: "600" },
+    // Marcador de sección: etiqueta fina, en versalitas espaciadas, amatista tenue.
     ".cm-section-line": {
-      color: "#c4a5ff",
+      color: "color-mix(in oklab, #c4a5ff 88%, transparent)",
+      fontFamily: "var(--font-sans)",
       fontWeight: "600",
-      letterSpacing: "0.02em",
+      letterSpacing: "0.2em",
       textTransform: "uppercase",
-      fontSize: "0.8rem",
+      fontSize: "0.68rem",
     },
   },
   { dark: true },

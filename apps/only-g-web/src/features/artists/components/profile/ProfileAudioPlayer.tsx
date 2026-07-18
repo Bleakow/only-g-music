@@ -259,7 +259,7 @@ export function ProfileAudioPlayer({
           onClick={() => setLoop((v) => !v)}
           aria-pressed={loop}
           aria-label="Repetir"
-          className="absolute right-0 top-0 flex size-7 items-center justify-center rounded-full transition"
+          className="absolute right-0 top-0 flex size-11 items-center justify-center rounded-full transition"
           style={{ color: loop ? accent : "rgba(255,255,255,0.4)" }}
         >
           <RepeatIcon className="size-4" />
@@ -296,7 +296,7 @@ export function ProfileAudioPlayer({
           type="button"
           onClick={() => seekBy(-10)}
           aria-label="Retroceder 10s"
-          className={`transition hover:text-white ${isOverlay ? "text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" : "text-white/70"}`}
+          className={`flex size-11 items-center justify-center rounded-full transition hover:text-white ${isOverlay ? "text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" : "text-white/70"}`}
         >
           <RewindIcon className="size-5" />
         </button>
@@ -320,7 +320,7 @@ export function ProfileAudioPlayer({
           type="button"
           onClick={() => seekBy(10)}
           aria-label="Avanzar 10s"
-          className={`transition hover:text-white ${isOverlay ? "text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" : "text-white/70"}`}
+          className={`flex size-11 items-center justify-center rounded-full transition hover:text-white ${isOverlay ? "text-white/90 drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]" : "text-white/70"}`}
         >
           <ForwardIcon className="size-5" />
         </button>

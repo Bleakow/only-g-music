@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useTranslations, useLocale } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { services } from "@/features/services/data/services";
@@ -17,6 +17,8 @@ import {
 } from "@only-g/shared-types/service";
 import { MinusIcon, PlusIcon, CheckIcon, CloseIcon } from "@/components/icons";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
+import { MoneyInput } from "@/components/ui/MoneyInput";
+import { Alert } from "@/components/ui/Alert";
 import { ArtistPicker } from "./ArtistPicker";
 import { createQuoteRequest } from "../lib/quotes-repo";
 import { track } from "@/lib/firebase/analytics";
@@ -51,7 +53,6 @@ const keyOf = (slug: string, variantId?: string) =>
 
 export function QuoteWizard() {
   const t = useTranslations();
-  const locale = useLocale();
   const params = useSearchParams();
   const { user, account } = useAuth();
 
@@ -611,17 +612,9 @@ export function QuoteWizard() {
                   <span className="text-silver-400 pointer-events-none absolute top-1/2 left-4 -translate-y-1/2">
                     $
                   </span>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={
-                      budget
-                        ? new Intl.NumberFormat(locale).format(Number(budget))
-                        : ""
-                    }
-                    onChange={(e) =>
-                      setBudget(e.target.value.replace(/\D/g, ""))
-                    }
+                  <MoneyInput
+                    value={budget}
+                    onChange={setBudget}
                     placeholder="500.000"
                     className={`${INPUT} pl-8 tabular-nums`}
                   />
@@ -667,14 +660,7 @@ export function QuoteWizard() {
             </>
           )}
 
-          {error && (
-            <p
-              role="alert"
-              className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
-            >
-              {error}
-            </p>
-          )}
+          {error && <Alert tone="error">{error}</Alert>}
 
           <div className="mt-2 flex items-center justify-between gap-3">
             {step > 1 ? (

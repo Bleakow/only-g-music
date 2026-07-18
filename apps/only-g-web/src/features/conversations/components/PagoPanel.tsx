@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 import { CopyIcon, CheckIcon } from "@/components/icons";
 import { formatCOP } from "@only-g/shared-types/service";
 import type { Conversation } from "@only-g/shared-types/conversation";
@@ -139,7 +140,7 @@ export function PagoPanel({
             <button
               type="button"
               onClick={() => copiar(instr?.valor)}
-              className="inline-flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs text-silver-200 transition hover:border-amethyst-300/60 hover:text-white"
+              className="inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs text-silver-200 transition hover:border-amethyst-300/60 hover:text-white"
             >
               {copied ? (
                 <CheckIcon className="size-3.5" />
@@ -184,7 +185,7 @@ export function PagoPanel({
         >
           {t("pago.uploadReceipt")}
         </Button>
-        {error && <p className="mt-2 text-sm text-red-300">{error}</p>}
+        {error && <Alert tone="error" className="mt-2">{error}</Alert>}
       </section>
     );
   }
@@ -192,14 +193,14 @@ export function PagoPanel({
   // En revisión: aviso al cliente; botón de confirmar para el admin.
   if (pago.estado === "en_revision") {
     return (
-      <section className="rounded-xl border border-sky-400/30 bg-sky-400/10 p-4 text-sm">
-        <p className="text-sky-100">{t("pago.reviewing")}</p>
+      <section className="text-sm">
+        <Alert tone="info">{t("pago.reviewing")}</Alert>
         {isAdmin && (
           <>
             <Button className="mt-3" onClick={confirmar} loading={busy}>
               {t("pago.confirmButton", { monto: montoFmt })}
             </Button>
-            {error && <p className="mt-2 text-red-300">{error}</p>}
+            {error && <Alert tone="error" className="mt-2">{error}</Alert>}
           </>
         )}
       </section>

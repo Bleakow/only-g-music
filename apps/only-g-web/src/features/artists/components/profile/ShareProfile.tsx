@@ -86,7 +86,8 @@ export function ShareProfile({
     <>
       <GlassButton onClick={() => setOpen(true)}>
         <ShareIcon className="size-5" />
-        {t("shareProfile.share")}
+        {/* En móvil solo el icono (el espacio es escaso); texto desde sm:. */}
+        <span className="hidden sm:inline">{t("shareProfile.share")}</span>
       </GlassButton>
 
       {/* Borrador (sin membresía): en vez de compartir, invitamos a publicar. */}

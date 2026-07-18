@@ -15,10 +15,13 @@ import {
   type Service,
   type ServiceVariant,
 } from "@only-g/shared-types/service";
-import { MinusIcon, PlusIcon, CheckIcon, CloseIcon } from "@/components/icons";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
 import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Alert } from "@/components/ui/Alert";
+import { GlassModal } from "@/components/ui/GlassModal";
+import { glassSurface, GlassSheen } from "@/components/ui/glass";
 import { ArtistPicker } from "./ArtistPicker";
 import { createQuoteRequest } from "../lib/quotes-repo";
 import { track } from "@/lib/firebase/analytics";
@@ -53,6 +56,7 @@ const keyOf = (slug: string, variantId?: string) =>
 
 export function QuoteWizard() {
   const t = useTranslations();
+  const reduce = useReducedMotion();
   const params = useSearchParams();
   const { user, account } = useAuth();
 
@@ -690,43 +694,56 @@ export function QuoteWizard() {
         </form>
       </main>
 
-      {/* -- Panel de opciones (variantes) */}
-      {modalService && modalService.variants && (
-        <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/80 sm:items-center sm:p-6"
-          onClick={() => setModalSlug(null)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="variant-modal-title"
-        >
-          <div
-            className="bg-ink-soft max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-white/10 p-6 sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
+      {/* -- Barra flotante para continuar (paso 1): avanzar sin llegar al fondo */}
+      <AnimatePresence>
+        {step === 1 && lines.length > 0 && (
+          <motion.div
+            initial={reduce ? false : { y: 90, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={reduce ? { opacity: 0 } : { y: 90, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 340, damping: 34 }}
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[calc(0.85rem+env(safe-area-inset-bottom))]"
           >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2
-                  id="variant-modal-title"
-                  className="font-narrow text-2xl font-bold text-white uppercase"
-                >
-                  {modalService.name}
-                </h2>
-                <p className="text-silver-300 mt-1 text-sm">
-                  {t("quoteWizard.modalVariantSubtitle")}
-                </p>
-              </div>
+            <div
+              className={`${glassSurface} pointer-events-auto flex w-full max-w-2xl items-center justify-between gap-3 rounded-full py-2 pr-2 pl-3 sm:pl-5`}
+            >
+              <GlassSheen />
+              <span className="text-silver-100 flex items-center gap-2.5">
+                <span className="bg-amethyst-500/30 text-amethyst-50 grid size-8 shrink-0 place-items-center rounded-full text-sm font-bold tabular-nums">
+                  {itemCount}
+                </span>
+                <span className="hidden text-sm sm:inline">
+                  {t("quoteWizard.cartSummary", {
+                    items: itemCount,
+                    lines: lines.length,
+                  })}
+                </span>
+              </span>
               <button
                 type="button"
-                onClick={() => setModalSlug(null)}
-                aria-label={t("quoteWizard.ariaCloseModal")}
-                className="text-silver-200 flex size-11 shrink-0 items-center justify-center rounded-full border border-white/20 transition hover:border-white hover:text-white"
+                onClick={next}
+                className="btn-amethyst shrink-0 rounded-full px-6 py-3 text-sm font-semibold tracking-[2px] uppercase"
               >
-                <CloseIcon className="size-5" />
+                {t("quoteWizard.next")}
               </button>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-            <div className="mt-5 flex flex-col gap-3">
-              {modalService.variants.map((v) => {
+      {/* -- Panel de opciones (variantes) */}
+      {modalService && modalService.variants && (
+        <GlassModal
+          open
+          onClose={() => setModalSlug(null)}
+          title={modalService.name}
+        >
+          <p className="text-silver-300 -mt-2 text-sm">
+            {t("quoteWizard.modalVariantSubtitle")}
+          </p>
+
+          <div className="mt-5 flex max-h-[55svh] flex-col gap-3 overflow-y-auto">
+            {modalService.variants.map((v) => {
                 const key = keyOf(modalService.slug, v.id);
                 const qty = cart[key] ?? 0;
                 return (
@@ -787,15 +804,14 @@ export function QuoteWizard() {
               })}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setModalSlug(null)}
-              className="from-silver-100 to-amethyst-300 text-ink mt-6 w-full rounded-full bg-gradient-to-r px-6 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
-            >
-              {t("quoteWizard.modalDone")}
-            </button>
-          </div>
-        </div>
+          <button
+            type="button"
+            onClick={() => setModalSlug(null)}
+            className="btn-amethyst mt-6 w-full rounded-full px-6 py-3 text-sm font-semibold tracking-[2px] uppercase"
+          >
+            {t("quoteWizard.modalDone")}
+          </button>
+        </GlassModal>
       )}
     </>
   );

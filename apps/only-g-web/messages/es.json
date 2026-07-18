@@ -1530,7 +1530,8 @@
   },
   "trackPlayers": {
     "play": "Reproducir {title}",
-    "unavailable": "no disponible"
+    "unavailable": "no disponible",
+    "pause": "Pausar {title}"
   },
   "artistPicker": {
     "placeholder": "Escribe el nombre del artista…",

@@ -11,6 +11,7 @@ import {
   RewindIcon,
   ForwardIcon,
 } from "@/components/icons";
+import { claimAudio, subscribeAudio } from "../../lib/audio-bus";
 
 export const PLAYER_SIZE_W: Record<PlayerSize, string> = {
   sm: "w-52",
@@ -178,6 +179,16 @@ export function ProfileAudioPlayer({
     else a.pause();
   }
 
+  // "Un audio a la vez": si otra fuente (un tema destacado) toma el turno,
+  // pausamos la canción del perfil. Ver features/artists/lib/audio-bus.
+  useEffect(
+    () =>
+      subscribeAudio((active) => {
+        if (active !== "profile") audioRef.current?.pause();
+      }),
+    [],
+  );
+
   // Autoplay al entrar al perfil. CLAVE: aquí NO tocamos el grafo de Web Audio —
   // crearlo sin un gesto enruta el <audio> por un AudioContext suspendido y suena
   // en silencio (y como play() "resuelve", nada lo recupera = el bug de "queda en
@@ -338,7 +349,10 @@ export function ProfileAudioPlayer({
         preload="metadata"
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-        onPlay={() => setPlaying(true)}
+        onPlay={() => {
+          setPlaying(true);
+          claimAudio("profile");
+        }}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
         onError={() => {

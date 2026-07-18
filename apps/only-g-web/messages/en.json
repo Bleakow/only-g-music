@@ -1397,7 +1397,8 @@
     "errors": {
       "autoSave": "Could not auto-save. Check your connection and try again.",
       "payment": "Could not start payment. Please try again.",
-      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB."
+      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB.",
+      "videoTooLong": "The video is longer than {maxSec}s. Use a shorter clip."
     },
     "photo": {
       "alt": "Profile photo",
@@ -1508,6 +1509,14 @@
       "youtubePlaceholder": "YouTube link",
       "spotifyPlaceholder": "Spotify link",
       "addButton": "Add track"
+    },
+    "featured": {
+      "sectionTitle": "Featured media",
+      "hint": "Shown next to your bio, instead of repeating your profile photo. Upload a short clip (5–8s: it loops, muted) or a photo that represents you: your group, a move, your vibe.",
+      "upload": "Upload a video or a photo",
+      "formats": "Video up to {maxSec}s or an image",
+      "change": "Change",
+      "remove": "Remove"
     }
   },
   "shareProfile": {

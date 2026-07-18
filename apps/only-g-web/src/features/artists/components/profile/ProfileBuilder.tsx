@@ -16,7 +16,9 @@ import {
   type PhotoTransform,
   type PlayerSize,
   type GalleryItem,
+  type FeaturedMedia,
   type Premium,
+  FEATURED_VIDEO_MAX_SECONDS,
   DEFAULT_PHOTO_TRANSFORM,
   DEFAULT_PLAYER_X,
   DEFAULT_PLAYER_Y,
@@ -73,7 +75,31 @@ import {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const MAX_MB = 25;
+/**
+ * Tope del clip destacado. Coincide con el límite de las reglas de Storage
+ * (`uploads/{uid}`: 25 MB); un clip corto (≤8s) cabe de sobra. Subir de más lo
+ * rechazaría Storage, no solo el cliente.
+ */
+const FEATURED_VIDEO_MAX_MB = 25;
 const GENRE_OPTIONS = MUSIC_GENRES.map((g) => ({ value: g, label: g }));
+
+/** Lee la duración (s) de un archivo de video por sus metadatos, sin subirlo. */
+function videoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const v = document.createElement("video");
+    v.preload = "metadata";
+    v.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(v.duration);
+    };
+    v.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("metadata"));
+    };
+    v.src = url;
+  });
+}
 
 let trackSeq = 0;
 interface EditorTrack extends ProfileTrack {
@@ -183,6 +209,8 @@ export function ProfileBuilder({
   const [photoURL, setPhotoURL] = useState("");
   // Foto vertical opcional para móvil (art direction). La principal es para PC.
   const [photoMobile, setPhotoMobile] = useState("");
+  // Media destacada (pantalla 2, junto a la bio): clip corto o foto.
+  const [featuredMedia, setFeaturedMedia] = useState<FeaturedMedia | null>(null);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [songURL, setSongURL] = useState("");
   // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
@@ -260,6 +288,7 @@ export function ProfileBuilder({
           setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
           setPhotoURL(p.photoURL);
           setPhotoMobile(p.photoURLMobile ?? "");
+          setFeaturedMedia(p.featuredMedia ?? null);
           setPt(p.photoTransform ?? DEFAULT_PHOTO_TRANSFORM);
           setGallery(p.gallery);
           setSongURL(p.entryTrackUrl ?? "");
@@ -307,6 +336,7 @@ export function ProfileBuilder({
       photoURL,
       photoURLMobile: photoMobile || undefined,
       photoTransform: pt,
+      featuredMedia: featuredMedia ?? undefined,
       gallery,
       tracks: tracks
         .filter((t) => t.title.trim())
@@ -435,6 +465,43 @@ export function ProfileBuilder({
     } finally {
       setUploading(null);
       setSyncPrompt(null);
+    }
+  }
+
+  // Media destacada (pantalla 2): acepta foto o clip corto. El video se valida
+  // por duración (≤8s) ANTES de subir; se guarda mudo y en bucle en la vista.
+  async function onFeaturedUpload(files: File[]) {
+    const file = files[0];
+    if (!file || !user) return;
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isVideo && !isImage) return;
+
+    const maxMb = isVideo ? FEATURED_VIDEO_MAX_MB : MAX_MB;
+    if (file.size > maxMb * 1024 * 1024) {
+      setError(t("profileBuilder.errors.fileTooLarge", { name: file.name, maxMb }));
+      return;
+    }
+    if (isVideo) {
+      const seconds = await videoDuration(file).catch(() => null);
+      // Tolerancia de 0.5s por redondeos del contenedor.
+      if (seconds != null && seconds > FEATURED_VIDEO_MAX_SECONDS + 0.5) {
+        setError(
+          t("profileBuilder.errors.videoTooLong", {
+            maxSec: FEATURED_VIDEO_MAX_SECONDS,
+          }),
+        );
+        return;
+      }
+    }
+
+    setUploading("featured");
+    setError(null);
+    try {
+      const u = await uploadUserFile(user.uid, file);
+      setFeaturedMedia({ url: u.url, type: isVideo ? "video" : "image" });
+    } finally {
+      setUploading(null);
     }
   }
 
@@ -1206,6 +1273,86 @@ export function ProfileBuilder({
           placeholder={t("profileBuilder.bio.placeholder")}
           className="text-silver-100 min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed transition outline-none placeholder:text-white/30 focus:bg-white/10"
         />
+      </Block>
+
+      {/* Media destacada (pantalla 2): reemplaza la repetición de la foto de
+          perfil por un clip corto en bucle o una foto que represente al artista. */}
+      <Block title={t("profileBuilder.featured.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.featured.hint")}
+        </p>
+        {featuredMedia ? (
+          <div className="flex flex-col gap-3">
+            <div className="relative aspect-[3/4] w-full max-w-[240px] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
+              {featuredMedia.type === "video" ? (
+                <video
+                  src={featuredMedia.url}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <Image
+                  src={featuredMedia.url}
+                  alt=""
+                  fill
+                  sizes="240px"
+                  className="object-cover"
+                />
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <UploadButton
+                accept="image/*,video/*"
+                onFiles={onFeaturedUpload}
+                disabled={uploading === "featured"}
+                className={`${glassSurfaceSoft} relative inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/85 transition hover:text-white`}
+              >
+                <GlassSheen />
+                <span className="relative inline-flex items-center gap-2">
+                  {uploading === "featured" ? (
+                    <SpinnerIcon className="size-4 animate-spin" />
+                  ) : (
+                    <EditIcon className="size-4" />
+                  )}
+                  {t("profileBuilder.featured.change")}
+                </span>
+              </UploadButton>
+              <button
+                type="button"
+                onClick={() => setFeaturedMedia(null)}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/50 transition hover:text-red-300"
+              >
+                <TrashIcon className="size-4" />
+                {t("profileBuilder.featured.remove")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <UploadButton
+            accept="image/*,video/*"
+            onFiles={onFeaturedUpload}
+            disabled={uploading === "featured"}
+            className={`${glassSurfaceSoft} group flex w-full flex-col items-center justify-center gap-2 rounded-2xl px-6 py-10 text-center text-white/80 transition hover:text-white`}
+          >
+            <GlassSheen />
+            <span className="relative inline-flex flex-col items-center gap-2">
+              {uploading === "featured" ? (
+                <SpinnerIcon className="size-6 animate-spin" />
+              ) : (
+                <ImageIcon className="size-6" />
+              )}
+              <span className="text-sm">{t("profileBuilder.featured.upload")}</span>
+              <span className="text-xs text-white/40">
+                {t("profileBuilder.featured.formats", {
+                  maxSec: FEATURED_VIDEO_MAX_SECONDS,
+                })}
+              </span>
+            </span>
+          </UploadButton>
+        )}
       </Block>
 
       {/* Redes */}

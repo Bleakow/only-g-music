@@ -241,6 +241,20 @@ export const GALLERY_SPAN_CLASS: Record<GallerySpan, string> = {
   big: "col-span-2 row-span-2",
 };
 
+// ── Media destacada (pantalla 2) ────────────────────────────────────────────
+
+/**
+ * Media de la "pantalla 2" del perfil (junto a la bio). Un clip corto en bucle
+ * (video) o una foto que represente al artista. `type` decide cómo se renderiza.
+ */
+export interface FeaturedMedia {
+  url: string;
+  type: "video" | "image";
+}
+
+/** Duración máxima recomendada del clip destacado (segundos). */
+export const FEATURED_VIDEO_MAX_SECONDS = 8;
+
 // ── Entidad ─────────────────────────────────────────────────────────────────
 
 export interface ArtistProfile {
@@ -276,6 +290,13 @@ export interface ArtistProfile {
   photoURLMobile?: string;
   /** Encuadre de la foto principal (zoom/pan/rotación). */
   photoTransform?: PhotoTransform;
+  /**
+   * Media destacada de la "pantalla 2" (junto a la bio). Reemplaza la repetición
+   * de la foto de perfil: un clip corto (≤8s, en bucle mudo) o una foto que
+   * represente al artista —su agrupación, un movimiento, su esencia—. Si no se
+   * sube nada, la pantalla 2 cae a `photoURL`.
+   */
+  featuredMedia?: FeaturedMedia;
   /** Galería de mejores fotos artísticas (bento: cada foto con su tamaño). */
   gallery: GalleryItem[];
   /** Temas destacados (botones de reproducción YouTube/Spotify). */
@@ -368,6 +389,7 @@ export type EditableProfile = Pick<
   | "photoURL"
   | "photoURLMobile"
   | "photoTransform"
+  | "featuredMedia"
   | "gallery"
   | "tracks"
   | "entryTrackUrl"

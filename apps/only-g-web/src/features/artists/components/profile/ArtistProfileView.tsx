@@ -276,14 +276,38 @@ export function ArtistProfileView({
       {/* Pantalla 2: foto + bio + redes */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 py-20 md:grid-cols-2 md:items-end md:gap-16 md:py-28">
         <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
-          {profile.photoURL && (
-            <Image
-              src={profile.photoURL}
-              alt={profile.artisticName}
-              fill
-              sizes="(max-width: 768px) 100vw, 45vw"
-              className="object-cover object-top"
-            />
+          {profile.featuredMedia ? (
+            profile.featuredMedia.type === "video" ? (
+              // Clip corto en bucle: animación rápida, sin sonido ni controles.
+              <video
+                src={profile.featuredMedia.url}
+                autoPlay
+                loop
+                muted
+                playsInline
+                aria-label={profile.artisticName}
+                className="absolute inset-0 h-full w-full object-cover object-center"
+              />
+            ) : (
+              <Image
+                src={profile.featuredMedia.url}
+                alt={profile.artisticName}
+                fill
+                sizes="(max-width: 768px) 100vw, 45vw"
+                className="object-cover object-center"
+              />
+            )
+          ) : (
+            // Respaldo para perfiles que aún no suben media destacada.
+            profile.photoURL && (
+              <Image
+                src={profile.photoURL}
+                alt={profile.artisticName}
+                fill
+                sizes="(max-width: 768px) 100vw, 45vw"
+                className="object-cover object-top"
+              />
+            )
           )}
         </div>
 

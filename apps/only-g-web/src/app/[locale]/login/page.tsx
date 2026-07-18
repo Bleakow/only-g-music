@@ -19,6 +19,7 @@ import {
   getMyPendingConvenio,
 } from "@/features/convenios/lib/convenio-repo";
 import { FacebookIcon } from "@/components/icons";
+import { Alert } from "@/components/ui/Alert";
 
 type Mode = "login" | "register" | "reset";
 
@@ -191,16 +192,16 @@ function LoginForm() {
 
           {isReset && resetSent ? (
             <div className="mt-6 flex flex-col gap-4">
-              <p className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-100 rounded-lg border px-3 py-3 text-sm">
+              <Alert tone="success">
                 {t.rich("login.resetSent", {
                   email,
                   strong: (chunks) => <strong>{chunks}</strong>,
                 })}
-              </p>
+              </Alert>
               <button
                 type="button"
                 onClick={() => switchMode("login")}
-                className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+                className="btn-outline rounded-full px-6 py-3 text-sm tracking-[2px] uppercase transition"
               >
                 {t("login.backToLogin")}
               </button>
@@ -294,19 +295,12 @@ function LoginForm() {
                   </div>
                 )}
 
-                {error && (
-                  <p
-                    role="alert"
-                    className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
-                  >
-                    {error}
-                  </p>
-                )}
+                {error && <Alert tone="error">{error}</Alert>}
 
                 <button
                   type="submit"
                   disabled={busy}
-                  className="from-silver-100 to-amethyst-300 text-ink mt-1 rounded-full bg-gradient-to-r px-6 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="btn-amethyst mt-1 rounded-full px-6 py-3 text-sm font-semibold tracking-[2px] uppercase transition disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {busy
                     ? t("login.submitting")
@@ -403,7 +397,7 @@ function JoinFnButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-lg border px-3 py-2.5 text-sm transition ${
+      className={`flex min-h-11 items-center justify-center rounded-lg border px-3 py-2.5 text-sm transition ${
         active
           ? "border-amethyst-300 bg-amethyst-500/15 text-white"
           : "text-silver-300 border-white/15 hover:border-white/40"

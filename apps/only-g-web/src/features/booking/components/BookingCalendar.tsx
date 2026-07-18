@@ -24,6 +24,7 @@ import {
 } from "../lib/booking-repo";
 import { ArrowLeftIcon, ClockIcon } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
+import { Alert } from "@/components/ui/Alert";
 
 // Servicios agendables directos: precio fijo y sin variantes (los de variantes
 // o "a cotizar" pasan por el wizard de cotizacion).
@@ -320,7 +321,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
             type="button"
             onClick={() => shift(-1)}
             aria-label={t("bookingCalendar.prevMonth")}
-            className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
+            className="text-silver-200 hover:border-amethyst-300 flex size-11 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
           >
             <ArrowLeftIcon className="size-4" />
           </button>
@@ -331,16 +332,16 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
             type="button"
             onClick={() => shift(1)}
             aria-label={t("bookingCalendar.nextMonth")}
-            className="text-silver-200 hover:border-amethyst-300 flex size-10 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
+            className="text-silver-200 hover:border-amethyst-300 flex size-11 items-center justify-center rounded-full border border-white/15 transition hover:text-white"
           >
             <ArrowLeftIcon className="size-4 rotate-180" />
           </button>
         </div>
 
         {dispNoDefinida && (
-          <p className="mb-4 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+          <Alert tone="warning" className="mb-4">
             {t("bookingCalendar.noAvailability", { month: monthName })}
-          </p>
+          </Alert>
         )}
 
         <div className="grid grid-cols-7 gap-1 text-center">
@@ -385,7 +386,7 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
                         ? t("bookingCalendar.dayTitle.partial")
                         : t("bookingCalendar.dayTitle.free")
                 }
-                className={`data-[selected=true]:from-silver-100 data-[selected=true]:to-amethyst-300 data-[selected=true]:text-ink aspect-square rounded-lg text-sm transition enabled:hover:bg-white/5 disabled:cursor-not-allowed data-[selected=true]:bg-gradient-to-br data-[selected=true]:font-bold ${cls}`}
+                className={`data-[selected=true]:from-silver-100 data-[selected=true]:to-amethyst-300 data-[selected=true]:text-ink aspect-square min-h-11 rounded-lg text-sm transition enabled:hover:bg-white/5 disabled:cursor-not-allowed data-[selected=true]:bg-gradient-to-br data-[selected=true]:font-bold ${cls}`}
               >
                 {day}
               </button>
@@ -465,12 +466,9 @@ export function BookingCalendar({ servicioSlug }: { servicioSlug?: string }) {
       )}
 
       {error && (
-        <p
-          role="alert"
-          className="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
-        >
+        <Alert tone="error" className="mt-6">
           {error}
-        </p>
+        </Alert>
       )}
 
       {/* Resumen + confirmar */}

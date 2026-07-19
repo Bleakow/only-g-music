@@ -42,6 +42,7 @@ import {
 import { SocialPalette } from "./SocialPalette";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { AudioTrimModal } from "./AudioTrimModal";
+import { VideoTrimModal } from "./VideoTrimModal";
 import { GalleryBento } from "./GalleryBento";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -216,6 +217,8 @@ export function ProfileBuilder({
   // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
   // sube es el FRAGMENTO, no este archivo.
   const [trimFile, setTrimFile] = useState<File | null>(null);
+  // Video de media destacada pendiente de recortar (abre el VideoTrimModal).
+  const [videoTrimFile, setVideoTrimFile] = useState<File | null>(null);
   // Confirmación antes de quitar la canción (acción destructiva).
   const [confirmRemoveSong, setConfirmRemoveSong] = useState(false);
   // Aviso de "publica tu perfil" al intentar verlo sin membresía vigente.
@@ -468,38 +471,68 @@ export function ProfileBuilder({
     }
   }
 
-  // Media destacada (pantalla 2): acepta foto o clip corto. El video se valida
-  // por duración (≤8s) ANTES de subir; se guarda mudo y en bucle en la vista.
+  // Media destacada (pantalla 2): acepta foto o clip corto. La foto sube directa;
+  // el video que excede duración (≤8s) o tamaño abre el recortador (VideoTrimModal),
+  // y el que ya cabe sube tal cual (sin re-encode, mejor calidad).
   async function onFeaturedUpload(files: File[]) {
     const file = files[0];
     if (!file || !user) return;
     const isVideo = file.type.startsWith("video/");
     const isImage = file.type.startsWith("image/");
     if (!isVideo && !isImage) return;
+    setError(null);
 
-    const maxMb = isVideo ? FEATURED_VIDEO_MAX_MB : MAX_MB;
-    if (file.size > maxMb * 1024 * 1024) {
-      setError(t("profileBuilder.errors.fileTooLarge", { name: file.name, maxMb }));
-      return;
-    }
-    if (isVideo) {
-      const seconds = await videoDuration(file).catch(() => null);
-      // Tolerancia de 0.5s por redondeos del contenedor.
-      if (seconds != null && seconds > FEATURED_VIDEO_MAX_SECONDS + 0.5) {
+    if (isImage) {
+      if (file.size > MAX_MB * 1024 * 1024) {
         setError(
-          t("profileBuilder.errors.videoTooLong", {
-            maxSec: FEATURED_VIDEO_MAX_SECONDS,
+          t("profileBuilder.errors.fileTooLarge", {
+            name: file.name,
+            maxMb: MAX_MB,
           }),
         );
         return;
       }
+      setUploading("featured");
+      try {
+        const u = await uploadUserFile(user.uid, file);
+        setFeaturedMedia({ url: u.url, type: "image" });
+      } finally {
+        setUploading(null);
+      }
+      return;
     }
 
+    // Video: ¿necesita recorte? (duración con tolerancia de 0.5s, o tamaño).
+    const seconds = await videoDuration(file).catch(() => null);
+    const overDuration =
+      seconds != null && seconds > FEATURED_VIDEO_MAX_SECONDS + 0.5;
+    const overSize = file.size > FEATURED_VIDEO_MAX_MB * 1024 * 1024;
+    if (overDuration || overSize) {
+      setVideoTrimFile(file); // abre el recortador
+      return;
+    }
+    setUploading("featured");
+    try {
+      const u = await uploadUserFile(user.uid, file);
+      setFeaturedMedia({ url: u.url, type: "video" });
+    } finally {
+      setUploading(null);
+    }
+  }
+
+  // Sube el clip recortado (Blob) y cierra el modal. Si falla, relanza para que el
+  // modal muestre el error y siga abierto (no perdemos el recorte hecho).
+  async function onVideoTrimConfirm(blob: Blob, ext: string) {
+    if (!user) return;
     setUploading("featured");
     setError(null);
     try {
-      const u = await uploadUserFile(user.uid, file);
-      setFeaturedMedia({ url: u.url, type: isVideo ? "video" : "image" });
+      const up = await uploadUserBlob(user.uid, blob, `featured.${ext}`);
+      setFeaturedMedia({ url: up.url, type: "video" });
+      setVideoTrimFile(null);
+    } catch (e) {
+      console.error("[builder] video trim upload:", e);
+      throw e;
     } finally {
       setUploading(null);
     }
@@ -1474,6 +1507,17 @@ export function ProfileBuilder({
           accent={accent}
           onCancel={() => setTrimFile(null)}
           onConfirm={onTrimConfirm}
+        />
+      )}
+
+      {videoTrimFile && (
+        <VideoTrimModal
+          file={videoTrimFile}
+          accent={accent}
+          maxSeconds={FEATURED_VIDEO_MAX_SECONDS}
+          maxBytes={FEATURED_VIDEO_MAX_MB * 1024 * 1024}
+          onCancel={() => setVideoTrimFile(null)}
+          onConfirm={onVideoTrimConfirm}
         />
       )}
 

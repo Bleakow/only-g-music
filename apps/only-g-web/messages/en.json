@@ -1397,8 +1397,7 @@
     "errors": {
       "autoSave": "Could not auto-save. Check your connection and try again.",
       "payment": "Could not start payment. Please try again.",
-      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB.",
-      "videoTooLong": "The video is longer than {maxSec}s. Use a shorter clip."
+      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB."
     },
     "photo": {
       "alt": "Profile photo",
@@ -1517,6 +1516,18 @@
       "formats": "Video up to {maxSec}s or an image",
       "change": "Change",
       "remove": "Remove"
+    },
+    "videoTrim": {
+      "title": "Trim video",
+      "hint": "Drag the window to pick the segment (max {max}s). It loops, muted.",
+      "loading": "Loading video…",
+      "length": "Length: {value}",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Trim & upload",
+      "processing": "Processing…",
+      "uploading": "Uploading…",
+      "error": "Couldn't process the video. Try another file."
     }
   },
   "shareProfile": {

@@ -32,6 +32,49 @@ import { MembershipPayButton } from "./MembershipPayButton";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { PhotoViewer } from "./PhotoViewer";
 
+/** Media destacada de la pantalla 2: clip en bucle mudo o foto. Si el video no
+ *  carga (p.ej. un webm en un Safari antiguo), cae a la foto para no dejar hueco. */
+function FeaturedVisual({
+  media,
+  photoURL,
+  name,
+}: {
+  media: ArtistProfile["featuredMedia"];
+  photoURL: string;
+  name: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (media && media.type === "video" && !failed) {
+    return (
+      <video
+        src={media.url}
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-label={name}
+        onError={() => setFailed(true)}
+        className="absolute inset-0 h-full w-full object-cover object-center"
+      />
+    );
+  }
+  const src = media && media.type === "image" ? media.url : photoURL;
+  if (!src) return null;
+  return (
+    <Image
+      src={src}
+      alt={name}
+      fill
+      sizes="(max-width: 768px) 100vw, 45vw"
+      className={
+        media?.type === "image"
+          ? "object-cover object-center"
+          : "object-cover object-top"
+      }
+    />
+  );
+}
+
 function Socials({ socials }: { socials: ArtistProfile["socials"] }) {
   const entries = Object.entries(socials).filter(
     ([key, url]) => SOCIAL_META[key as SocialPlatform] && url && url !== "#",
@@ -276,39 +319,11 @@ export function ArtistProfileView({
       {/* Pantalla 2: foto + bio + redes */}
       <section className="mx-auto grid max-w-6xl gap-10 px-6 py-20 md:grid-cols-2 md:items-end md:gap-16 md:py-28">
         <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
-          {profile.featuredMedia ? (
-            profile.featuredMedia.type === "video" ? (
-              // Clip corto en bucle: animación rápida, sin sonido ni controles.
-              <video
-                src={profile.featuredMedia.url}
-                autoPlay
-                loop
-                muted
-                playsInline
-                aria-label={profile.artisticName}
-                className="absolute inset-0 h-full w-full object-cover object-center"
-              />
-            ) : (
-              <Image
-                src={profile.featuredMedia.url}
-                alt={profile.artisticName}
-                fill
-                sizes="(max-width: 768px) 100vw, 45vw"
-                className="object-cover object-center"
-              />
-            )
-          ) : (
-            // Respaldo para perfiles que aún no suben media destacada.
-            profile.photoURL && (
-              <Image
-                src={profile.photoURL}
-                alt={profile.artisticName}
-                fill
-                sizes="(max-width: 768px) 100vw, 45vw"
-                className="object-cover object-top"
-              />
-            )
-          )}
+          <FeaturedVisual
+            media={profile.featuredMedia}
+            photoURL={profile.photoURL}
+            name={profile.artisticName}
+          />
         </div>
 
         <div className="md:pb-6">

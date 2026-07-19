@@ -782,6 +782,12 @@
     "share": "Compartir",
     "downloadPdf": "Descargar PDF",
     "downloadExcel": "Descargar Excel",
+    "periodLabel": "Periodo:",
+    "periodo": {
+      "mes": "Mes",
+      "anio": "Año",
+      "todo": "Todo"
+    },
     "loadError": "No se pudo cargar la contabilidad.",
     "exportError": "No se pudo generar el informe.",
     "tabs": {
@@ -798,7 +804,24 @@
       "expenses": "Gastos",
       "profit": "Utilidad",
       "margin": "Margen",
-      "total": "Total"
+      "total": "Total",
+      "docTitle": "Informe Contable",
+      "brand": "Only G Music",
+      "periodoLabel": "Periodo:",
+      "periodoTodo": "Todo el histórico",
+      "generatedLabel": "Generado:",
+      "resumen": "Resumen financiero",
+      "vision": "Visión general",
+      "detalleGastos": "Detalle de gastos",
+      "bienes": "Bienes (Activos)",
+      "patrimonioNeto": "Patrimonio Neto",
+      "notaPositiva": "El período cierra con una utilidad positiva de {monto} ({margen}% de margen).",
+      "notaNegativa": "Durante el período se registraron más gastos que ingresos, generando una utilidad negativa de {monto}.",
+      "sinGastos": "Sin gastos registrados en el período.",
+      "sinBienes": "Sin bienes registrados.",
+      "sinPasivos": "Sin pasivos registrados.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "Este informe fue generado automáticamente."
     }
   },
   "adminFinanzas": {
@@ -984,6 +1007,7 @@
     "intro": "Balance General simplificado: Activos (valor en libros) − Pasivos = Patrimonio. Exporta para tu contador o inversores.",
     "addButton": "Registrar pasivo",
     "loadError": "No se pudo cargar el balance (¿rol admin y reglas desplegadas?).",
+    "exportError": "No se pudo generar el PDF.",
     "exportCsv": "CSV",
     "exportPdf": "PDF",
     "assets": "Activos",
@@ -1009,7 +1033,16 @@
     },
     "export": {
       "title": "Balance General — Only G",
-      "generated": "Generado: {date}"
+      "generated": "Generado: {date}",
+      "docTitle": "Balance General",
+      "brand": "Only G Music",
+      "generatedLabel": "Generado:",
+      "resumen": "Resumen",
+      "patrimonioNeto": "Patrimonio Neto",
+      "sinActivos": "Sin activos registrados.",
+      "sinPasivos": "Sin pasivos registrados.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "Este informe fue generado automáticamente."
     },
     "add": {
       "title": "Registrar pasivo",
@@ -1397,8 +1430,7 @@
     "errors": {
       "autoSave": "No se pudo autoguardar. Revisa tu conexión e inténtalo de nuevo.",
       "payment": "No se pudo iniciar el pago. Inténtalo de nuevo.",
-      "fileTooLarge": "\"{name}\" supera {maxMb} MB.",
-      "videoTooLong": "El video supera los {maxSec} s. Usa un clip más corto."
+      "fileTooLarge": "\"{name}\" supera {maxMb} MB."
     },
     "photo": {
       "alt": "Foto principal",
@@ -1517,6 +1549,18 @@
       "formats": "Video de hasta {maxSec} s o una imagen",
       "change": "Cambiar",
       "remove": "Quitar"
+    },
+    "videoTrim": {
+      "title": "Recortar video",
+      "hint": "Arrastra la ventana para elegir el tramo (máx. {max}s). Se mostrará en bucle y sin sonido.",
+      "loading": "Cargando video…",
+      "length": "Duración: {value}",
+      "preview": "Previsualizar",
+      "cancel": "Cancelar",
+      "confirm": "Recortar y subir",
+      "processing": "Procesando…",
+      "uploading": "Subiendo…",
+      "error": "No se pudo procesar el video. Prueba con otro archivo."
     }
   },
   "shareProfile": {

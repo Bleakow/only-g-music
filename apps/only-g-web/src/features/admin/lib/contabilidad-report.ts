@@ -1,19 +1,21 @@
 /**
- * Informe contable COMPLETO → PDF (jsPDF + autotable) y Excel (ExcelJS). Toma los
+ * Informe contable COMPLETO → PDF premium (react-pdf) y Excel (ExcelJS). Toma los
  * datos crudos ya cargados y calcula con el dominio (P&L, balance, etc.). Pesa
- * bastante (jsPDF/ExcelJS), así que se importa EN DIFERIDO desde el componente.
+ * bastante (react-pdf/ExcelJS), así que se importa EN DIFERIDO desde el componente.
  * Las etiquetas llegan traducidas (i18n) para no acoplar el dominio a next-intl.
+ *
+ * El PDF es un DOCUMENTO diseñado: portada con resumen + gráfico, y una página
+ * por sección de detalle que pagina sola. El layout vive en ./pdf/*; aquí solo
+ * calculamos y formateamos el modelo de presentación.
  */
-import { jsPDF } from "jspdf";
-import autoTable from "jspdf-autotable";
+import { createElement, type ReactElement } from "react";
+import { pdf, type DocumentProps } from "@react-pdf/renderer";
 import ExcelJS from "exceljs";
 import {
   type Activo,
   type Pasivo,
   type Movimiento,
-  type ActivoCategoria,
-  type GastoCategoria,
-  type PasivoCategoria,
+  type Periodo,
   balanceGeneral,
   estadoResultados,
   expandirGastos,
@@ -21,9 +23,12 @@ import {
   activoVigente,
   pasivoVigente,
   valorEnLibros,
-  PERIODO_TODO,
 } from "@only-g/shared-types/contabilidad";
 import type { Transaccion } from "@only-g/shared-types/transaccion";
+import { ContabilidadReport } from "./pdf/ContabilidadReport";
+import type { ContabilidadLabels, ContabilidadModel } from "./pdf/types";
+
+export type { ContabilidadLabels } from "./pdf/types";
 
 export interface ContabilidadData {
   activos: Activo[];
@@ -33,126 +38,84 @@ export interface ContabilidadData {
   ahora: number;
 }
 
-export interface ContabilidadLabels {
-  title: string;
-  generado: string;
-  resultados: string;
-  ingresos: string;
-  gastos: string;
-  utilidad: string;
-  margen: string;
-  seccionGastos: string;
-  seccionBienes: string;
-  seccionPasivos: string;
-  patrimonio: string;
-  colFecha: string;
-  colConcepto: string;
-  colCategoria: string;
-  colMonto: string;
-  colValor: string;
-  total: string;
-  gastoCat: (c: GastoCategoria) => string;
-  activoCat: (c: ActivoCategoria) => string;
-  pasivoCat: (c: PasivoCategoria) => string;
-  money: (n: number) => string;
-  date: (ms: number) => string;
+/** Fecha de corte del BALANCE para el periodo: fin del periodo (exclusivo) pero
+ *  nunca en el futuro. Un informe de "Junio 2026" muestra el balance al cierre de
+ *  junio; "Todo el histórico" → ahora. Así valorEnLibros/vigencia son coherentes
+ *  con el mes elegido en vez de mezclar el estado de hoy con un P&L pasado. */
+function corteDe(periodo: Periodo, ahora: number): number {
+  return periodo.hasta != null ? Math.min(periodo.hasta, ahora) : ahora;
 }
 
-const ACCENT: [number, number, number] = [124, 58, 237];
-
-type DocConTabla = jsPDF & { lastAutoTable: { finalY: number } };
-
-function computar(d: ContabilidadData) {
+function computar(d: ContabilidadData, periodo: Periodo, corte: number) {
   return {
-    balance: balanceGeneral(d.activos, d.pasivos, d.ahora),
-    pl: estadoResultados(d.transacciones, d.movimientos, PERIODO_TODO, d.ahora),
-    gastos: expandirGastos(d.movimientos, PERIODO_TODO, d.ahora).filter(
-      cuentaEnPnl,
-    ),
-    bienes: d.activos.filter((a) => activoVigente(a, d.ahora)),
-    pasivos: d.pasivos.filter((p) => pasivoVigente(p, d.ahora)),
+    balance: balanceGeneral(d.activos, d.pasivos, corte),
+    pl: estadoResultados(d.transacciones, d.movimientos, periodo, d.ahora),
+    gastos: expandirGastos(d.movimientos, periodo, d.ahora).filter(cuentaEnPnl),
+    bienes: d.activos.filter((a) => activoVigente(a, corte)),
+    pasivos: d.pasivos.filter((p) => pasivoVigente(p, corte)),
   };
 }
 
-/** Informe contable → PDF (Blob). Secciones: P&L, Gastos, Bienes, Pasivos. */
-export function buildContabilidadPDF(
+/** Aplana el dominio a un modelo de presentación ya formateado (strings + los
+ *  pocos números que el gráfico necesita para escalar). */
+function buildModel(
   d: ContabilidadData,
   L: ContabilidadLabels,
-): Blob {
-  const { balance, pl, gastos, bienes, pasivos } = computar(d);
-  const doc = new jsPDF() as DocConTabla;
+  periodo: Periodo,
+): ContabilidadModel {
+  const corte = corteDe(periodo, d.ahora);
+  const { balance, pl, gastos, bienes, pasivos } = computar(d, periodo, corte);
+  const maxChart = Math.max(pl.ingresos, pl.gastos, 1);
 
-  doc.setFontSize(18);
-  doc.text(L.title, 14, 18);
-  doc.setFontSize(9);
-  doc.setTextColor(120);
-  doc.text(L.generado, 14, 24);
-  doc.setTextColor(0);
-
-  autoTable(doc, {
-    startY: 32,
-    head: [[L.resultados, ""]],
-    body: [
-      [L.ingresos, L.money(pl.ingresos)],
-      [L.gastos, L.money(pl.gastos)],
-      [L.utilidad, L.money(pl.utilidad)],
-      [L.margen, `${Math.round(pl.margen * 100)}%`],
-    ],
-    theme: "grid",
-    headStyles: { fillColor: ACCENT },
-    columnStyles: { 1: { halign: "right" } },
-  });
-
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 8,
-    head: [[L.colFecha, L.colConcepto, L.colCategoria, L.colMonto]],
-    body: gastos.map((g) => [
+  return {
+    ingresos: L.money(pl.ingresos),
+    gastos: L.money(pl.gastos),
+    utilidad: { value: L.money(pl.utilidad), negative: pl.utilidad < 0 },
+    margen: {
+      value: `${Math.round(pl.margen * 100)}%`,
+      negative: pl.margen < 0,
+    },
+    chart: {
+      ingresos: pl.ingresos,
+      gastos: pl.gastos,
+      ingresosDisplay: L.money(pl.ingresos),
+      gastosDisplay: L.money(pl.gastos),
+      maxDisplay: L.money(maxChart),
+    },
+    gastosRows: gastos.map((g) => [
       L.date(g.fecha),
       g.concepto,
       L.gastoCat(g.categoria),
       L.money(g.monto),
     ]),
-    foot: [[L.total, "", "", L.money(pl.gastos)]],
-    theme: "striped",
-    headStyles: { fillColor: ACCENT },
-    footStyles: { fillColor: [30, 30, 40], textColor: 255 },
-    columnStyles: { 3: { halign: "right" } },
-  });
-
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 8,
-    head: [[L.seccionBienes, L.colCategoria, L.colValor]],
-    body: bienes.map((a) => [
+    gastosTotal: L.money(pl.gastos),
+    bienesRows: bienes.map((a) => [
       a.nombre,
       L.activoCat(a.categoria),
-      L.money(valorEnLibros(a, d.ahora)),
+      L.money(valorEnLibros(a, corte)),
     ]),
-    foot: [[L.total, "", L.money(balance.activos)]],
-    theme: "striped",
-    headStyles: { fillColor: ACCENT },
-    footStyles: { fillColor: [30, 30, 40], textColor: 255 },
-    columnStyles: { 2: { halign: "right" } },
-  });
-
-  autoTable(doc, {
-    startY: doc.lastAutoTable.finalY + 8,
-    head: [[L.seccionPasivos, L.colCategoria, L.colValor]],
-    body: pasivos.map((p) => [
+    bienesTotal: L.money(balance.activos),
+    pasivosRows: pasivos.map((p) => [
       p.nombre,
       L.pasivoCat(p.categoria),
       L.money(p.monto),
     ]),
-    foot: [
-      [L.total, "", L.money(balance.pasivos)],
-      [L.patrimonio, "", L.money(balance.patrimonio)],
-    ],
-    theme: "striped",
-    headStyles: { fillColor: ACCENT },
-    footStyles: { fillColor: [30, 30, 40], textColor: 255 },
-    columnStyles: { 2: { halign: "right" } },
-  });
+    pasivosTotal: L.money(balance.pasivos),
+    patrimonio: L.money(balance.patrimonio),
+  };
+}
 
-  return doc.output("blob");
+/** Informe contable → PDF (Blob). Portada + páginas de Gastos, Bienes, Pasivos.
+ *  `periodo` acota el P&L/gastos y la fecha de corte del balance (informe mensual). */
+export function buildContabilidadPDF(
+  d: ContabilidadData,
+  L: ContabilidadLabels,
+  periodo: Periodo,
+): Promise<Blob> {
+  const model = buildModel(d, L, periodo);
+  return pdf(
+    createElement(ContabilidadReport, { model, L }) as ReactElement<DocumentProps>,
+  ).toBlob();
 }
 
 /** Nombre de hoja válido para Excel (máx 31, sin caracteres prohibidos). */
@@ -164,8 +127,10 @@ function safeSheet(name: string): string {
 export async function buildContabilidadXLSX(
   d: ContabilidadData,
   L: ContabilidadLabels,
+  periodo: Periodo,
 ): Promise<Blob> {
-  const { balance, pl, gastos, bienes, pasivos } = computar(d);
+  const corte = corteDe(periodo, d.ahora);
+  const { balance, pl, gastos, bienes, pasivos } = computar(d, periodo, corte);
   const wb = new ExcelJS.Workbook();
 
   const resumen = wb.addWorksheet(safeSheet(L.resultados));
@@ -188,7 +153,7 @@ export async function buildContabilidadXLSX(
   const bn = wb.addWorksheet(safeSheet(L.seccionBienes));
   bn.addRow([L.colConcepto, L.colCategoria, L.colValor]);
   for (const a of bienes)
-    bn.addRow([a.nombre, L.activoCat(a.categoria), valorEnLibros(a, d.ahora)]);
+    bn.addRow([a.nombre, L.activoCat(a.categoria), valorEnLibros(a, corte)]);
   bn.addRow([L.total, "", balance.activos]);
 
   const pv = wb.addWorksheet(safeSheet(L.seccionPasivos));

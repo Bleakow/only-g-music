@@ -1,12 +1,14 @@
 /**
- * Export del Balance General (PURO): genera CSV y HTML imprimible a partir de los
+ * Export del Balance General (PURO): genera CSV y PDF premium a partir de los
  * datos ya cargados. Sin DOM ni Firebase aquí — el componente se encarga de la
- * descarga (Blob) y de abrir la ventana de impresión. Las etiquetas llegan ya
- * traducidas (i18n) para no acoplar el dominio a next-intl.
+ * descarga (Blob). Las etiquetas llegan ya traducidas (i18n) para no acoplar el
+ * dominio a next-intl.
  *
  * CSV → números CRUDOS (parseables por una hoja de cálculo).
- * HTML → montos formateados (COP) para imprimir / guardar como PDF.
+ * PDF → documento diseñado (react-pdf), unificado con el Informe Contable.
  */
+import { createElement, type ReactElement } from "react";
+import { pdf, type DocumentProps } from "@react-pdf/renderer";
 import {
   type Activo,
   type Pasivo,
@@ -17,10 +19,12 @@ import {
   pasivoVigente,
   valorEnLibros,
 } from "@only-g/shared-types/contabilidad";
+import { BalanceReport } from "./pdf/BalanceReport";
+import type { BalanceLabels, BalanceModel } from "./pdf/types";
 
 export interface BalanceExportLabels {
   title: string;
-  generado: string; // "Generado: <fecha>"
+  generado: string; // "Generado: <fecha>" (CSV)
   seccionActivos: string;
   seccionPasivos: string;
   totalActivos: string;
@@ -35,6 +39,19 @@ export interface BalanceExportLabels {
   /** Etiqueta de categoría para las filas de payout ("Payout a socio"). */
   payoutCat: string;
   money: (n: number) => string;
+  // --- extras para el PDF premium (el CSV los ignora) ---
+  docTitle: string;
+  brand: string;
+  generadoLabel: string;
+  generadoValue: string;
+  resumen: string;
+  assets: string;
+  liabilities: string;
+  patrimonioNeto: string;
+  sinActivos: string;
+  sinPasivos: string;
+  footerCopy: string;
+  footerNote: string;
 }
 
 /**
@@ -93,81 +110,67 @@ export function balanceToCSV(
   return lines.join("\r\n");
 }
 
-function esc(v: string): string {
-  return v
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-}
-
-/** Balance → documento HTML imprimible (blanco/negro, auto-print al cargar). */
-export function balanceToHTML(
+/** Balance → PDF premium (Blob). Portada (Activos·Pasivos·Patrimonio + ecuación)
+ *  y páginas de Activos y Pasivos que paginan solas. Los payouts pendientes se
+ *  mezclan en las filas de pasivos (ya sumados a `balance.pasivos`). */
+export function buildBalancePDF(
   activos: Activo[],
   pasivos: Pasivo[],
   balance: BalanceGeneral,
   ahora: number,
   L: BalanceExportLabels,
   payouts: PayoutExportRow[] = [],
-): string {
-  const row = (nombre: string, cat: string, valor: number) =>
-    `<tr><td>${esc(nombre)}</td><td>${esc(cat)}</td><td class="n">${esc(
-      L.money(valor),
-    )}</td></tr>`;
-
+): Promise<Blob> {
   const activosRows = activos
     .filter((a) => activoVigente(a, ahora))
-    .map((a) => row(a.nombre, L.activoCat(a.categoria), valorEnLibros(a, ahora)))
-    .join("");
-  const pasivosRows =
-    pasivos
+    .map((a) => [
+      a.nombre,
+      L.activoCat(a.categoria),
+      L.money(valorEnLibros(a, ahora)),
+    ]);
+
+  const pasivosRows = [
+    ...pasivos
       .filter((p) => pasivoVigente(p, ahora))
-      .map((p) => row(p.nombre, L.pasivoCat(p.categoria), p.monto))
-      .join("") +
-    payouts.map((p) => row(p.concepto, L.payoutCat, p.monto)).join("");
+      .map((p) => [p.nombre, L.pasivoCat(p.categoria), L.money(p.monto)]),
+    ...payouts.map((p) => [p.concepto, L.payoutCat, L.money(p.monto)]),
+  ];
 
-  const totalRow = (label: string, valor: number) =>
-    `<tr class="tot"><td colspan="2">${esc(label)}</td><td class="n">${esc(
-      L.money(valor),
-    )}</td></tr>`;
+  const model: BalanceModel = {
+    assets: L.money(balance.activos),
+    liabilities: L.money(balance.pasivos),
+    patrimonio: L.money(balance.patrimonio),
+    patrimonioNegative: balance.patrimonio < 0,
+    activosRows,
+    pasivosRows,
+    totalActivos: L.money(balance.activos),
+    totalPasivos: L.money(balance.pasivos),
+  };
 
-  return `<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>${esc(L.title)}</title>
-<style>
-  *{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111}
-  body{margin:40px;max-width:720px}
-  h1{font-size:24px;margin:0 0 4px}
-  .sub{color:#666;font-size:12px;margin:0 0 24px}
-  h2{font-size:14px;text-transform:uppercase;letter-spacing:1px;margin:24px 0 8px;border-bottom:2px solid #111;padding-bottom:4px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  td{padding:6px 8px;border-bottom:1px solid #eee}
-  th{text-align:left;padding:6px 8px;font-size:11px;text-transform:uppercase;color:#666}
-  .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-  .tot td{font-weight:700;border-top:1px solid #111;border-bottom:none}
-  .eq{margin-top:32px;padding:12px;background:#f3f3f3;border-radius:8px;font-weight:700;text-align:center}
-  @media print{body{margin:16px}}
-</style></head>
-<body>
-  <h1>${esc(L.title)}</h1>
-  <p class="sub">${esc(L.generado)}</p>
+  const labels: BalanceLabels = {
+    docTitle: L.docTitle,
+    brand: L.brand,
+    generadoLabel: L.generadoLabel,
+    generadoValue: L.generadoValue,
+    resumen: L.resumen,
+    seccionActivos: L.seccionActivos,
+    seccionPasivos: L.seccionPasivos,
+    patrimonioNeto: L.patrimonioNeto,
+    colConcepto: L.colConcepto,
+    colCategoria: L.colCategoria,
+    colValor: L.colValor,
+    assets: L.assets,
+    liabilities: L.liabilities,
+    totalActivos: L.totalActivos,
+    totalPasivos: L.totalPasivos,
+    ecuacion: L.ecuacion,
+    sinActivos: L.sinActivos,
+    sinPasivos: L.sinPasivos,
+    footerCopy: L.footerCopy,
+    footerNote: L.footerNote,
+  };
 
-  <h2>${esc(L.seccionActivos)}</h2>
-  <table><thead><tr><th>${esc(L.colConcepto)}</th><th>${esc(
-    L.colCategoria,
-  )}</th><th class="n">${esc(L.colValor)}</th></tr></thead>
-  <tbody>${activosRows}${totalRow(L.totalActivos, balance.activos)}</tbody></table>
-
-  <h2>${esc(L.seccionPasivos)}</h2>
-  <table><thead><tr><th>${esc(L.colConcepto)}</th><th>${esc(
-    L.colCategoria,
-  )}</th><th class="n">${esc(L.colValor)}</th></tr></thead>
-  <tbody>${pasivosRows}${totalRow(L.totalPasivos, balance.pasivos)}</tbody></table>
-
-  <table style="margin-top:16px"><tbody>${totalRow(
-    L.patrimonio,
-    balance.patrimonio,
-  )}</tbody></table>
-
-  <p class="eq">${esc(L.ecuacion)}</p>
-  <script>window.onload=function(){window.print()}</script>
-</body></html>`;
+  return pdf(
+    createElement(BalanceReport, { model, L: labels }) as ReactElement<DocumentProps>,
+  ).toBlob();
 }

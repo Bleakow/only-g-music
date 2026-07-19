@@ -782,6 +782,12 @@
     "share": "Share",
     "downloadPdf": "Download PDF",
     "downloadExcel": "Download Excel",
+    "periodLabel": "Period:",
+    "periodo": {
+      "mes": "Month",
+      "anio": "Year",
+      "todo": "All"
+    },
     "loadError": "Could not load accounting.",
     "exportError": "Could not generate the report.",
     "tabs": {
@@ -798,7 +804,24 @@
       "expenses": "Expenses",
       "profit": "Profit",
       "margin": "Margin",
-      "total": "Total"
+      "total": "Total",
+      "docTitle": "Accounting Report",
+      "brand": "Only G Music",
+      "periodoLabel": "Period:",
+      "periodoTodo": "All time",
+      "generatedLabel": "Generated:",
+      "resumen": "Financial summary",
+      "vision": "Overview",
+      "detalleGastos": "Expense detail",
+      "bienes": "Assets",
+      "patrimonioNeto": "Net Equity",
+      "notaPositiva": "The period closes with a positive profit of {monto} ({margen}% margin).",
+      "notaNegativa": "During the period, expenses exceeded income, resulting in a negative profit of {monto}.",
+      "sinGastos": "No expenses recorded for the period.",
+      "sinBienes": "No assets recorded.",
+      "sinPasivos": "No liabilities recorded.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "This report was generated automatically."
     }
   },
   "adminFinanzas": {
@@ -984,6 +1007,7 @@
     "intro": "Simplified balance sheet: Assets (book value) − Liabilities = Equity. Export it for your accountant or investors.",
     "addButton": "Add liability",
     "loadError": "Couldn't load the balance (admin role and rules deployed?).",
+    "exportError": "Couldn't generate the PDF.",
     "exportCsv": "CSV",
     "exportPdf": "PDF",
     "assets": "Assets",
@@ -1009,7 +1033,16 @@
     },
     "export": {
       "title": "Balance sheet — Only G",
-      "generated": "Generated: {date}"
+      "generated": "Generated: {date}",
+      "docTitle": "Balance Sheet",
+      "brand": "Only G Music",
+      "generatedLabel": "Generated:",
+      "resumen": "Summary",
+      "patrimonioNeto": "Net Equity",
+      "sinActivos": "No assets recorded.",
+      "sinPasivos": "No liabilities recorded.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "This report was generated automatically."
     },
     "add": {
       "title": "Add liability",
@@ -1397,8 +1430,7 @@
     "errors": {
       "autoSave": "Could not auto-save. Check your connection and try again.",
       "payment": "Could not start payment. Please try again.",
-      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB.",
-      "videoTooLong": "The video is longer than {maxSec}s. Use a shorter clip."
+      "fileTooLarge": "\"{name}\" exceeds {maxMb} MB."
     },
     "photo": {
       "alt": "Profile photo",
@@ -1517,6 +1549,18 @@
       "formats": "Video up to {maxSec}s or an image",
       "change": "Change",
       "remove": "Remove"
+    },
+    "videoTrim": {
+      "title": "Trim video",
+      "hint": "Drag the window to pick the segment (max {max}s). It loops, muted.",
+      "loading": "Loading video…",
+      "length": "Length: {value}",
+      "preview": "Preview",
+      "cancel": "Cancel",
+      "confirm": "Trim & upload",
+      "processing": "Processing…",
+      "uploading": "Uploading…",
+      "error": "Couldn't process the video. Try another file."
     }
   },
   "shareProfile": {

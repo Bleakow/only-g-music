@@ -28,7 +28,7 @@ import {
   type BalanceExportLabels,
   type PayoutExportRow,
   balanceToCSV,
-  balanceToHTML,
+  buildBalancePDF,
 } from "../lib/contabilidad-export";
 import { AddPasivoModal } from "./AddPasivoModal";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
@@ -49,6 +49,7 @@ export function AdminBalance({
   const [error, setError] = useState<string | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
 
   // Liquidación de pasivo
   const [saldarTarget, setSaldarTarget] = useState<Pasivo | null>(null);
@@ -152,6 +153,21 @@ export function AdminBalance({
       pasivoCat: (c) => t(`adminBalance.categoria.${c}`),
       payoutCat: t("adminBalance.payouts.category"),
       money: (n) => formatCOP(n),
+      // --- PDF premium ---
+      docTitle: t("adminBalance.export.docTitle"),
+      brand: t("adminBalance.export.brand"),
+      generadoLabel: t("adminBalance.export.generatedLabel"),
+      generadoValue: fechaCorta(now, locale),
+      resumen: t("adminBalance.export.resumen"),
+      assets: t("adminBalance.assets"),
+      liabilities: t("adminBalance.liabilities"),
+      patrimonioNeto: t("adminBalance.export.patrimonioNeto"),
+      sinActivos: t("adminBalance.export.sinActivos"),
+      sinPasivos: t("adminBalance.export.sinPasivos"),
+      footerCopy: t("adminBalance.export.footerCopy", {
+        year: new Date(now).getFullYear(),
+      }),
+      footerNote: t("adminBalance.export.footerNote"),
     };
   }
 
@@ -184,19 +200,31 @@ export function AdminBalance({
     URL.revokeObjectURL(url);
   }
 
-  function imprimirPDF() {
-    const html = balanceToHTML(
-      activos,
-      pasivos,
-      balance,
-      now,
-      exportLabels(),
-      payoutExportRows(),
-    );
-    const w = window.open("", "_blank");
-    if (!w) return;
-    w.document.write(html);
-    w.document.close();
+  async function descargarPDF() {
+    if (pdfBusy) return;
+    setPdfBusy(true);
+    setError(null);
+    try {
+      const blob = await buildBalancePDF(
+        activos,
+        pasivos,
+        balance,
+        now,
+        exportLabels(),
+        payoutExportRows(),
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "balance-general.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error("[balance] pdf:", e);
+      setError(t("adminBalance.exportError"));
+    } finally {
+      setPdfBusy(false);
+    }
   }
 
   async function confirmarSaldar() {
@@ -226,7 +254,8 @@ export function AdminBalance({
       <GlassButton onClick={descargarCSV} disabled={loading}>
         {t("adminBalance.exportCsv")}
       </GlassButton>
-      <GlassButton onClick={imprimirPDF} disabled={loading}>
+      <GlassButton onClick={descargarPDF} disabled={loading || pdfBusy}>
+        {pdfBusy && <SpinnerIcon className="size-4 animate-spin" />}
         {t("adminBalance.exportPdf")}
       </GlassButton>
     </>

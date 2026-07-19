@@ -3,6 +3,15 @@ packages:
   - 'packages/*'
   - 'services/*'
 
+# @react-pdf/pdfkit importa `pako/lib/zlib/*` (layout de pako v1) pero NO declara
+# pako como dependencia: lo esperaba hoisted. Al quitar jspdf se perdió ese hoist
+# incidental y el build de Next fallaba. Declaramos la dep que le falta a pdfkit
+# (extensión de paquete) → pnpm le da un pako@1.x anidado, sin tocar fontkit (0.2.9).
+packageExtensions:
+  '@react-pdf/pdfkit':
+    dependencies:
+      pako: ^1.0.11
+
 # Scripts de build (postinstall) aprobados. pnpm los bloquea por seguridad hasta
 # aprobarlos aquí explícitamente. Todos traen binarios prebuilt → aprobar es seguro.
 allowBuilds:

@@ -782,6 +782,12 @@
     "share": "Compartir",
     "downloadPdf": "Descargar PDF",
     "downloadExcel": "Descargar Excel",
+    "periodLabel": "Periodo:",
+    "periodo": {
+      "mes": "Mes",
+      "anio": "Año",
+      "todo": "Todo"
+    },
     "loadError": "No se pudo cargar la contabilidad.",
     "exportError": "No se pudo generar el informe.",
     "tabs": {
@@ -798,7 +804,24 @@
       "expenses": "Gastos",
       "profit": "Utilidad",
       "margin": "Margen",
-      "total": "Total"
+      "total": "Total",
+      "docTitle": "Informe Contable",
+      "brand": "Only G Music",
+      "periodoLabel": "Periodo:",
+      "periodoTodo": "Todo el histórico",
+      "generatedLabel": "Generado:",
+      "resumen": "Resumen financiero",
+      "vision": "Visión general",
+      "detalleGastos": "Detalle de gastos",
+      "bienes": "Bienes (Activos)",
+      "patrimonioNeto": "Patrimonio Neto",
+      "notaPositiva": "El período cierra con una utilidad positiva de {monto} ({margen}% de margen).",
+      "notaNegativa": "Durante el período se registraron más gastos que ingresos, generando una utilidad negativa de {monto}.",
+      "sinGastos": "Sin gastos registrados en el período.",
+      "sinBienes": "Sin bienes registrados.",
+      "sinPasivos": "Sin pasivos registrados.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "Este informe fue generado automáticamente."
     }
   },
   "adminFinanzas": {
@@ -984,6 +1007,7 @@
     "intro": "Balance General simplificado: Activos (valor en libros) − Pasivos = Patrimonio. Exporta para tu contador o inversores.",
     "addButton": "Registrar pasivo",
     "loadError": "No se pudo cargar el balance (¿rol admin y reglas desplegadas?).",
+    "exportError": "No se pudo generar el PDF.",
     "exportCsv": "CSV",
     "exportPdf": "PDF",
     "assets": "Activos",
@@ -1009,7 +1033,16 @@
     },
     "export": {
       "title": "Balance General — Only G",
-      "generated": "Generado: {date}"
+      "generated": "Generado: {date}",
+      "docTitle": "Balance General",
+      "brand": "Only G Music",
+      "generatedLabel": "Generado:",
+      "resumen": "Resumen",
+      "patrimonioNeto": "Patrimonio Neto",
+      "sinActivos": "Sin activos registrados.",
+      "sinPasivos": "Sin pasivos registrados.",
+      "footerCopy": "Only G Music © {year}",
+      "footerNote": "Este informe fue generado automáticamente."
     },
     "add": {
       "title": "Registrar pasivo",

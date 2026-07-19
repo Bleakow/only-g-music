@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import {
   ShareIcon,
@@ -22,11 +22,16 @@ import {
   ordenarTransacciones,
 } from "../lib/finanzas";
 import type { Transaccion } from "@only-g/shared-types/transaccion";
-import type {
-  Movimiento,
-  GastoCategoria,
-  ActivoCategoria,
-  PasivoCategoria,
+import {
+  type Movimiento,
+  type GastoCategoria,
+  type ActivoCategoria,
+  type PasivoCategoria,
+  type Periodo,
+  estadoResultados,
+  periodoMes,
+  periodoAnio,
+  PERIODO_TODO,
 } from "@only-g/shared-types/contabilidad";
 import type {
   ContabilidadData,
@@ -41,6 +46,19 @@ import { AdminPageHeader } from "./admin-ui";
 
 type TabKey = "resultados" | "pagos" | "gastos" | "bienes" | "balance";
 const TABS: TabKey[] = ["resultados", "pagos", "gastos", "bienes", "balance"];
+
+type PeriodoKey = "mes" | "anio" | "todo";
+const PERIODOS: PeriodoKey[] = ["mes", "anio", "todo"];
+
+/** "2026-06" → "Junio 2026" (primera letra en mayúscula para es). */
+function mesAnioLabel(ym: string, locale: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  const s = new Date(y, (m || 1) - 1, 1).toLocaleDateString(locale, {
+    month: "long",
+    year: "numeric",
+  });
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 /**
  * Área de CONTABILIDAD: una sola ventana con todo lo contable en pestañas
@@ -61,6 +79,33 @@ export function AdminContabilidad() {
   const [movs, setMovs] = useState<Movimiento[]>([]);
   const [busy, setBusy] = useState<null | "pdf" | "xlsx" | "share">(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Periodo del informe (mensual / anual / histórico completo).
+  const [periodoKey, setPeriodoKey] = useState<PeriodoKey>("todo");
+  const [ym, setYm] = useState(() => {
+    const d = new Date(now);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [anio, setAnio] = useState(() => new Date(now).getFullYear());
+
+  const periodo: Periodo = useMemo(() => {
+    if (periodoKey === "mes") {
+      const [y, m] = ym.split("-").map(Number);
+      return periodoMes(y, m - 1);
+    }
+    if (periodoKey === "anio") return periodoAnio(anio);
+    return PERIODO_TODO;
+  }, [periodoKey, ym, anio]);
+
+  const periodoValue =
+    periodoKey === "mes"
+      ? mesAnioLabel(ym, locale)
+      : periodoKey === "anio"
+        ? String(anio)
+        : t("adminContabilidad.export.periodoTodo");
+
+  const fileSuffix =
+    periodoKey === "mes" ? ym : periodoKey === "anio" ? String(anio) : "historico";
 
   useEffect(() => {
     let active = true;
@@ -98,31 +143,69 @@ export function AdminContabilidad() {
   }, [t, now]);
 
   function labels(): ContabilidadLabels {
+    // La nota del callout depende del signo de la utilidad (mismo P&L que el PDF).
+    const pl = estadoResultados(txs, movs, periodo, now);
+    const nota =
+      pl.utilidad < 0
+        ? t("adminContabilidad.export.notaNegativa", {
+            monto: formatCOP(Math.abs(pl.utilidad)),
+          })
+        : t("adminContabilidad.export.notaPositiva", {
+            monto: formatCOP(pl.utilidad),
+            margen: Math.round(pl.margen * 100),
+          });
+
     return {
-      title: t("adminContabilidad.export.title"),
-      generado: t("adminContabilidad.export.generated", {
-        date: fechaCorta(now, locale),
-      }),
-      resultados: t("adminContabilidad.tabs.resultados"),
+      // formatters
+      gastoCat: (c: GastoCategoria) => t(`adminGastos.categoria.${c}`),
+      activoCat: (c: ActivoCategoria) => t(`adminBienes.categoria.${c}`),
+      pasivoCat: (c: PasivoCategoria) => t(`adminBalance.categoria.${c}`),
+      money: (n: number) => formatCOP(n),
+      date: (ms: number) => fechaCorta(ms, locale),
+      // cabecera de marca
+      docTitle: t("adminContabilidad.export.docTitle"),
+      brand: t("adminContabilidad.export.brand"),
+      periodoLabel: t("adminContabilidad.export.periodoLabel"),
+      periodoValue,
+      generadoLabel: t("adminContabilidad.export.generatedLabel"),
+      generadoValue: fechaCorta(now, locale),
+      // secciones
+      resumen: t("adminContabilidad.export.resumen"),
+      vision: t("adminContabilidad.export.vision"),
+      detalleGastos: t("adminContabilidad.export.detalleGastos"),
+      seccionBienes: t("adminContabilidad.export.bienes"),
+      seccionPasivos: t("adminBalance.liabilities"),
+      patrimonioNeto: t("adminContabilidad.export.patrimonioNeto"),
+      // stats + columnas
       ingresos: t("adminContabilidad.export.income"),
       gastos: t("adminContabilidad.export.expenses"),
       utilidad: t("adminContabilidad.export.profit"),
       margen: t("adminContabilidad.export.margin"),
-      seccionGastos: t("adminContabilidad.tabs.gastos"),
-      seccionBienes: t("adminContabilidad.tabs.bienes"),
-      seccionPasivos: t("adminBalance.liabilities"),
-      patrimonio: t("adminBalance.equity"),
       colFecha: t("adminGastos.colDate"),
       colConcepto: t("adminBalance.colConcept"),
       colCategoria: t("adminBalance.colCategory"),
       colMonto: t("adminGastos.colAmount"),
       colValor: t("adminBalance.colValue"),
       total: t("adminContabilidad.export.total"),
-      gastoCat: (c: GastoCategoria) => t(`adminGastos.categoria.${c}`),
-      activoCat: (c: ActivoCategoria) => t(`adminBienes.categoria.${c}`),
-      pasivoCat: (c: PasivoCategoria) => t(`adminBalance.categoria.${c}`),
-      money: (n: number) => formatCOP(n),
-      date: (ms: number) => fechaCorta(ms, locale),
+      totalActivos: t("adminBalance.totalAssets"),
+      totalPasivos: t("adminBalance.totalLiabilities"),
+      // textos / estados
+      nota,
+      sinGastos: t("adminContabilidad.export.sinGastos"),
+      sinBienes: t("adminContabilidad.export.sinBienes"),
+      sinPasivos: t("adminContabilidad.export.sinPasivos"),
+      footerCopy: t("adminContabilidad.export.footerCopy", {
+        year: new Date(now).getFullYear(),
+      }),
+      footerNote: t("adminContabilidad.export.footerNote"),
+      // --- compat XLSX ---
+      title: t("adminContabilidad.export.title"),
+      generado: t("adminContabilidad.export.generated", {
+        date: fechaCorta(now, locale),
+      }),
+      resultados: t("adminContabilidad.tabs.resultados"),
+      seccionGastos: t("adminContabilidad.tabs.gastos"),
+      patrimonio: t("adminBalance.equity"),
     };
   }
 
@@ -142,7 +225,10 @@ export function AdminContabilidad() {
     try {
       const { buildContabilidadPDF } =
         await import("../lib/contabilidad-report");
-      descargar(buildContabilidadPDF(data, labels()), "contabilidad.pdf");
+      descargar(
+        await buildContabilidadPDF(data, labels(), periodo),
+        `contabilidad-${fileSuffix}.pdf`,
+      );
     } catch (e) {
       console.error("[contabilidad] pdf:", e);
       setError(t("adminContabilidad.exportError"));
@@ -159,8 +245,8 @@ export function AdminContabilidad() {
       const { buildContabilidadXLSX } =
         await import("../lib/contabilidad-report");
       descargar(
-        await buildContabilidadXLSX(data, labels()),
-        "contabilidad.xlsx",
+        await buildContabilidadXLSX(data, labels(), periodo),
+        `contabilidad-${fileSuffix}.xlsx`,
       );
     } catch (e) {
       console.error("[contabilidad] xlsx:", e);
@@ -177,8 +263,8 @@ export function AdminContabilidad() {
     try {
       const { buildContabilidadPDF } =
         await import("../lib/contabilidad-report");
-      const blob = buildContabilidadPDF(data, labels());
-      const file = new File([blob], "contabilidad.pdf", {
+      const blob = await buildContabilidadPDF(data, labels(), periodo);
+      const file = new File([blob], `contabilidad-${fileSuffix}.pdf`, {
         type: "application/pdf",
       });
       if (navigator.canShare?.({ files: [file] })) {
@@ -235,6 +321,45 @@ export function AdminContabilidad() {
           >
             <FileSheetIcon className="size-5" />
           </ExportButton>
+        </div>
+
+        {/* Periodo del informe: mensual / anual / histórico. Afecta al PDF y al Excel. */}
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-silver-400 mr-1 text-xs tracking-[1.5px] uppercase">
+            {t("adminContabilidad.periodLabel")}
+          </span>
+          {PERIODOS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setPeriodoKey(k)}
+              className={`rounded-full border px-3.5 py-1.5 text-xs font-semibold tracking-wide uppercase transition ${
+                periodoKey === k
+                  ? "border-amethyst-300 bg-amethyst-500/15 text-white"
+                  : "text-silver-300 border-white/15 hover:border-white/30 hover:text-white"
+              }`}
+            >
+              {t(`adminContabilidad.periodo.${k}`)}
+            </button>
+          ))}
+          {periodoKey === "mes" && (
+            <input
+              type="month"
+              value={ym}
+              onChange={(e) => setYm(e.target.value)}
+              className="rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 transition outline-none ring-inset focus:ring-white/50 [color-scheme:dark]"
+            />
+          )}
+          {periodoKey === "anio" && (
+            <input
+              type="number"
+              min={2020}
+              max={2100}
+              value={anio}
+              onChange={(e) => setAnio(Number(e.target.value))}
+              className="w-24 rounded-lg bg-white/[0.06] px-3 py-1.5 text-sm text-white ring-1 ring-white/20 transition outline-none ring-inset focus:ring-white/50"
+            />
+          )}
         </div>
       </AdminPageHeader>
 

@@ -1397,7 +1397,8 @@
     "errors": {
       "autoSave": "No se pudo autoguardar. Revisa tu conexión e inténtalo de nuevo.",
       "payment": "No se pudo iniciar el pago. Inténtalo de nuevo.",
-      "fileTooLarge": "\"{name}\" supera {maxMb} MB."
+      "fileTooLarge": "\"{name}\" supera {maxMb} MB.",
+      "videoTooLong": "El video supera los {maxSec} s. Usa un clip más corto."
     },
     "photo": {
       "alt": "Foto principal",
@@ -1508,6 +1509,14 @@
       "youtubePlaceholder": "Link YouTube",
       "spotifyPlaceholder": "Link Spotify",
       "addButton": "Añadir tema"
+    },
+    "featured": {
+      "sectionTitle": "Media destacada",
+      "hint": "Aparece junto a tu biografía, en lugar de repetir tu foto de perfil. Sube un clip corto (5–8 s: se reproduce en bucle y sin sonido) o una foto que te represente: tu agrupación, un movimiento, tu esencia.",
+      "upload": "Sube un video o una foto",
+      "formats": "Video de hasta {maxSec} s o una imagen",
+      "change": "Cambiar",
+      "remove": "Quitar"
     }
   },
   "shareProfile": {
@@ -1530,7 +1539,8 @@
   },
   "trackPlayers": {
     "play": "Reproducir {title}",
-    "unavailable": "no disponible"
+    "unavailable": "no disponible",
+    "pause": "Pausar {title}"
   },
   "artistPicker": {
     "placeholder": "Escribe el nombre del artista…",

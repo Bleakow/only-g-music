@@ -37,6 +37,7 @@ function toReserva(id: string, data: DocumentData): Reserva {
     clientName: data.clientName ?? undefined,
     clientEmail: data.clientEmail ?? undefined,
     quoteId: data.quoteId ?? undefined,
+    pedidoId: data.pedidoId ?? undefined,
     tipo: data.tipo ?? undefined,
     artistSlug: data.artistSlug ?? undefined,
     comprobanteUrl: data.comprobanteUrl ?? undefined,

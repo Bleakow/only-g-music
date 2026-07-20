@@ -14,11 +14,17 @@ import {
   hasVariants,
   type Service,
   type ServiceVariant,
+  type PricingModel,
 } from "@only-g/shared-types/service";
+import {
+  lineaTipoDe,
+  subtotalLinea,
+  totalPedido,
+  tieneSesion,
+  type LineaTipo,
+} from "@only-g/shared-types/pedido";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
-import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
-import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Alert } from "@/components/ui/Alert";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { glassSurface, glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
@@ -26,63 +32,60 @@ import {
   ServiceCard,
   ServiceCheckBadge,
 } from "@/features/services/components/ServiceCard";
-import { ArtistPicker } from "./ArtistPicker";
-import { createQuoteRequest } from "../lib/quotes-repo";
-import { track } from "@/lib/firebase/analytics";
 import {
-  type NewQuoteRequest,
-  type QuoteItem,
-  type QuoteCollaborator,
-} from "@only-g/shared-types/quote";
+  SessionSlotPicker,
+  type SessionSlotValue,
+} from "@/features/booking/components/SessionSlotPicker";
+import { createPedido, type PedidoLineaInput } from "../lib/pedidos-repo";
+import { track } from "@/lib/firebase/analytics";
 import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
-import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 
-const TOTAL = 3;
-
-// Catálogo COTIZABLE: solo servicios de alcance variable (a medida). Excluye los
-// de precio fijo (grabación, mezcla, máster) — esos van por compra directa
-// (/comprar). Con variantes, se incluye si AL MENOS una es a-cotizar (p. ej. renta
-// "varios días"); las variantes comprables se filtran dentro del modal.
-const QUOTABLE = services.filter((s) =>
-  hasVariants(s) ? (s.variants ?? []).some((v) => isQuoteOnly(v)) : isQuoteOnly(s),
+// Catálogo COMPRABLE (precio fijo, un solo pago): servicios sin variantes que
+// no son "a cotizar", o servicios con variantes que tienen AL MENOS una
+// variante comprable (p. ej. renta-estudio: "horas"/"dia" sí, "varios-dias"
+// no). Filtro a nivel de módulo — no depende de props/estado.
+const PURCHASABLE = services.filter((s) =>
+  hasVariants(s) ? (s.variants ?? []).some((v) => !isQuoteOnly(v)) : !isQuoteOnly(s),
 );
+
+const keyOf = (slug: string, variantId?: string) =>
+  variantId ? `${slug}::${variantId}` : slug;
+
+type StepKey = "cart" | "agenda" | "contact";
 
 const INPUT =
   "w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";
 const LABEL = "flex flex-col gap-1.5 text-left";
 const LABEL_TEXT = "text-xs uppercase tracking-[2px] text-silver-300";
 const STEPPER = `${glassSurfaceSoft} flex size-10 items-center justify-center rounded-full text-silver-100 transition hover:text-white hover:ring-amethyst-300/70`;
+const VENUE_BTN =
+  "rounded-lg border px-4 py-3 text-left transition";
 
 type Line = {
   key: string;
   service: Service;
   variant?: ServiceVariant;
   qty: number;
+  tipo: LineaTipo;
+  pricing: PricingModel;
+  precioUnitario: number;
+  subtotal: number;
 };
 
-const keyOf = (slug: string, variantId?: string) =>
-  variantId ? `${slug}::${variantId}` : slug;
-
-export function QuoteWizard() {
+export function CompraWizard() {
   const t = useTranslations();
   const reduce = useReducedMotion();
   const params = useSearchParams();
   const { user, account } = useAuth();
 
-  const STEPS = [
-    t("quoteWizard.stepOrder"),
-    t("quoteWizard.stepProject"),
-    t("quoteWizard.stepContact"),
-  ];
-
   const initialService = (() => {
     const slug = params.get("servicio");
-    return slug ? QUOTABLE.find((s) => s.slug === slug) : undefined;
+    return slug ? PURCHASABLE.find((s) => s.slug === slug) : undefined;
   })();
 
-  const [step, setStep] = useState(1);
+  const [stepKey, setStepKey] = useState<StepKey>("cart");
   const [cart, setCart] = useState<Record<string, number>>(() =>
     initialService && !hasVariants(initialService)
       ? { [initialService.slug]: 1 }
@@ -91,33 +94,7 @@ export function QuoteWizard() {
   const [modalSlug, setModalSlug] = useState<string | null>(
     initialService && hasVariants(initialService) ? initialService.slug : null,
   );
-  const [details, setDetails] = useState("");
-  const [references, setReferences] = useState("");
-  const [attachments, setAttachments] = useState<UploadedFile[]>([]);
-  const [collabs, setCollabs] = useState<QuoteCollaborator[]>([]);
 
-  // Pre-llena el colaborador si se llega con ?colaborador=slug (botón "Cotizar
-  // con" del perfil): busca el perfil REAL por slug en Firestore.
-  useEffect(() => {
-    const slug = params.get("colaborador");
-    if (!slug) return;
-    let active = true;
-    getProfileBySlug(slug)
-      .then((p) => {
-        if (active && p)
-          setCollabs([
-            {
-              id: p.slug,
-              name: p.artisticName,
-              ...(p.photoURL ? { image: p.photoURL } : {}),
-            },
-          ]);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [params]);
   const [sedes, setSedes] = useState<Sede[]>(seedSedes);
   const [sede, setSede] = useState<SedeId>(seedSedes[0].id);
 
@@ -134,13 +111,19 @@ export function QuoteWizard() {
       active = false;
     };
   }, []);
-  const [budget, setBudget] = useState("");
+
+  const [sessionPicks, setSessionPicks] = useState<
+    Record<string, SessionSlotValue | null>
+  >({});
+
   const [contactName, setContactName] = useState(
     account?.displayName ?? user?.displayName ?? "",
   );
   const [contactEmail, setContactEmail] = useState(
     account?.email ?? user?.email ?? "",
   );
+  // Se captura para el futuro chat de pago del pedido; `CreatePedidoInput`
+  // (pedidos-repo) todavía no admite teléfono, así que por ahora no se envía.
   const [contactPhone, setContactPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -150,24 +133,51 @@ export function QuoteWizard() {
   for (const [key, qty] of Object.entries(cart)) {
     if (qty <= 0) continue;
     const [slug, variantId] = key.split("::");
-    const service = QUOTABLE.find((s) => s.slug === slug);
+    const service = PURCHASABLE.find((s) => s.slug === slug);
     if (!service) continue;
     const variant = variantId
-      ? service.variants?.find((v) => v.id === variantId)
+      ? service.variants?.find((v) => v.id === variantId && !isQuoteOnly(v))
       : undefined;
-    lines.push({ key, service, variant, qty });
+    if (variantId && !variant) continue;
+    const p = variant ?? service;
+    if (isQuoteOnly(p)) continue;
+    const precioUnitario = p.basePrice ?? 0;
+    lines.push({
+      key,
+      service,
+      variant,
+      qty,
+      tipo: lineaTipoDe(p.pricing),
+      pricing: p.pricing,
+      precioUnitario,
+      subtotal: subtotalLinea(precioUnitario, qty),
+    });
   }
 
-  const fixedTotal = lines.reduce((sum, l) => {
-    const p = l.variant ?? l.service;
-    return sum + (isQuoteOnly(p) ? 0 : (p.basePrice ?? 0) * l.qty);
-  }, 0);
-  const hasQuoteOnly = lines.some((l) => isQuoteOnly(l.variant ?? l.service));
+  const total = totalPedido(lines);
   const itemCount = lines.reduce((n, l) => n + l.qty, 0);
+  const hasSesion = tieneSesion(lines);
+  const sessionLines = lines.filter((l) => l.tipo === "sesion");
+  const allSlotsReady = sessionLines.every((l) => sessionPicks[l.key]);
+
+  const steps: StepKey[] = [
+    "cart",
+    ...(hasSesion ? (["agenda"] as const) : []),
+    "contact",
+  ];
+  const stepIdx = Math.max(0, steps.indexOf(stepKey));
+  const STEP_LABELS: Record<StepKey, string> = {
+    cart: t("compraWizard.stepOrder"),
+    agenda: t("compraWizard.stepAgenda"),
+    contact: t("compraWizard.stepContact"),
+  };
 
   const modalService = modalSlug
-    ? (QUOTABLE.find((s) => s.slug === modalSlug) ?? null)
+    ? (PURCHASABLE.find((s) => s.slug === modalSlug) ?? null)
     : null;
+  const modalVariants = (modalService?.variants ?? []).filter(
+    (v) => !isQuoteOnly(v),
+  );
 
   function setQty(key: string, qty: number) {
     setCart((c) => {
@@ -187,73 +197,88 @@ export function QuoteWizard() {
     });
   }
 
+  /** Slots (HH:mm) por fecha ya elegidos por OTRAS líneas de sesión del mismo
+   *  pedido — se pasan al picker de `excludeKey` para que no se pisen entre sí. */
+  function blockedFor(excludeKey: string): Record<string, string[]> {
+    const out: Record<string, string[]> = {};
+    for (const [k, pick] of Object.entries(sessionPicks)) {
+      if (k === excludeKey || !pick) continue;
+      out[pick.date] = [...(out[pick.date] ?? []), ...pick.slots];
+    }
+    return out;
+  }
+
   function next() {
     setError(null);
-    if (step === 1 && lines.length === 0) {
-      setError(t("quoteWizard.errorEmptyCart"));
+    if (stepKey === "cart" && lines.length === 0) {
+      setError(t("compraWizard.errorEmptyCart"));
       return;
     }
-    if (step === 2 && !details.trim()) {
-      setError(t("quoteWizard.errorEmptyDetails"));
+    if (stepKey === "agenda" && !allSlotsReady) {
+      setError(t("compraWizard.errorMissingSlot"));
       return;
     }
-    setStep((s) => Math.min(TOTAL, s + 1));
+    setStepKey(steps[Math.min(steps.length - 1, stepIdx + 1)]);
   }
 
   function back() {
     setError(null);
-    setStep((s) => Math.max(1, s - 1));
+    setStepKey(steps[Math.max(0, stepIdx - 1)]);
   }
 
   async function submit() {
     setError(null);
     if (!contactName.trim() || !contactEmail.trim()) {
-      setError(t("quoteWizard.errorMissingContact"));
+      setError(t("compraWizard.errorMissingContact"));
+      return;
+    }
+    if (!sede) {
+      setError(t("compraWizard.errorMissingVenue"));
       return;
     }
     if (!user) {
-      setError(t("quoteWizard.errorSessionExpired"));
+      setError(t("compraWizard.errorSessionExpired"));
       return;
     }
     setBusy(true);
     try {
-      const items: QuoteItem[] = lines.map((l) => {
-        const p = l.variant ?? l.service;
-        const item: QuoteItem = {
+      const lineas: PedidoLineaInput[] = lines.map((l) => {
+        const input: PedidoLineaInput = {
           serviceSlug: l.service.slug,
           serviceName: l.variant
             ? `${l.service.name} — ${l.variant.name}`
             : l.service.name,
-          quantity: l.qty,
+          tipo: l.tipo,
+          pricing: l.pricing,
+          cantidad: l.qty,
+          precioUnitario: l.precioUnitario,
+          subtotal: l.subtotal,
         };
-        if (l.variant) item.variantId = l.variant.id;
-        if (!isQuoteOnly(p) && p.basePrice != null)
-          item.unitPrice = p.basePrice;
-        return item;
+        if (l.variant) input.variantId = l.variant.id;
+        const pick = sessionPicks[l.key];
+        if (l.tipo === "sesion" && pick) {
+          input.start = pick.start;
+          input.durationMin = pick.durationMin;
+          input.slotCtx = { mes: pick.mes, date: pick.date, slots: pick.slots };
+        }
+        return input;
       });
 
-      const payload: NewQuoteRequest = {
+      const id = await createPedido({
         uid: user.uid,
-        items,
-        collaborators: collabs.length ? collabs : undefined,
-        details: details.trim(),
-        references: references.trim() || undefined,
-        attachments: attachments.length ? attachments : undefined,
         sede,
-        budget: budget ? formatCOP(Number(budget)) : undefined,
-        contactName: contactName.trim(),
-        contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone.trim() || undefined,
-        estimatedTotal: fixedTotal > 0 ? fixedTotal : undefined,
-        hasQuoteOnlyItems: hasQuoteOnly,
-      };
-
-      const id = await createQuoteRequest(payload);
-      track("quote_submitted");
+        clientName: contactName.trim(),
+        clientEmail: contactEmail.trim(),
+        lineas,
+        total,
+      });
+      track("pedido_submitted");
       setDoneId(id);
     } catch (e) {
-      console.error("[cotizar] error:", e);
-      setError(t("quoteWizard.errorSubmit"));
+      const taken = e instanceof Error && e.message === "SLOT_TAKEN";
+      setError(
+        t(taken ? "compraWizard.errorSlotTaken" : "compraWizard.errorSubmit"),
+      );
     } finally {
       setBusy(false);
     }
@@ -266,55 +291,57 @@ export function QuoteWizard() {
           <CheckIcon className="size-8" />
         </div>
         <h1 className="font-narrow mt-6 text-4xl font-bold uppercase sm:text-5xl">
-          {t("quoteWizard.successHeading")}
+          {t("compraWizard.successHeading")}
         </h1>
         <p className="text-silver-300 mt-3">
-          {t("quoteWizard.successBody", { itemCount })}
+          {t("compraWizard.successBody", { itemCount })}
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/cuenta"
+            href={`/solicitudes/pedido/${doneId}`}
             className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase"
           >
-            {t("quoteWizard.goToAccount")}
+            {t("compraWizard.viewOrder")}
           </Link>
           <Link
             href="/"
             className="btn-outline rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
           >
-            {t("quoteWizard.goHome")}
+            {t("compraWizard.goHome")}
           </Link>
         </div>
       </main>
     );
   }
 
+  const isLastStep = stepIdx === steps.length - 1;
+
   return (
     <>
       <main className="mx-auto min-h-dvh max-w-2xl px-6 pt-28 pb-32 sm:px-12">
         <header className="mb-8">
           <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
-            {t("quoteWizard.eyebrow")}
+            {t("compraWizard.eyebrow")}
           </p>
           <h1 className="font-narrow mt-3 text-4xl font-bold uppercase sm:text-6xl">
-            {t("quoteWizard.heading")}
+            {t("compraWizard.heading")}
           </h1>
 
           <div className="mt-6 flex items-center gap-2">
-            {STEPS.map((label, i) => (
+            {steps.map((key, i) => (
               <span
-                key={label}
+                key={key}
                 className={`h-1.5 flex-1 rounded-full transition-colors ${
-                  i < step ? "bg-amethyst-300" : "bg-white/10"
+                  i <= stepIdx ? "bg-amethyst-300" : "bg-white/10"
                 }`}
               />
             ))}
           </div>
           <p className="text-silver-400 mt-2 text-xs tracking-[2px] uppercase">
-            {t("quoteWizard.stepIndicator", {
-              step,
-              total: TOTAL,
-              stepName: STEPS[step - 1],
+            {t("compraWizard.stepIndicator", {
+              step: stepIdx + 1,
+              total: steps.length,
+              stepName: STEP_LABELS[stepKey],
             })}
           </p>
         </header>
@@ -322,17 +349,17 @@ export function QuoteWizard() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (step < TOTAL) next();
+            if (!isLastStep) next();
             else submit();
           }}
           className="flex flex-col gap-5"
         >
-          {/* -- Paso 1: armar el pedido */}
-          {step === 1 && (
+          {/* -- Paso: carrito -- */}
+          {stepKey === "cart" && (
             <div className="flex flex-col gap-4">
-              <p className="text-silver-300">{t("quoteWizard.step1Intro")}</p>
+              <p className="text-silver-300">{t("compraWizard.step1Intro")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
-                {QUOTABLE.map((s) => {
+                {PURCHASABLE.map((s) => {
                   const variantsCard = hasVariants(s);
                   const serviceLines = lines.filter(
                     (l) => l.service.slug === s.slug,
@@ -350,10 +377,10 @@ export function QuoteWizard() {
                       priceLabel={
                         variantsCard
                           ? active
-                            ? t("quoteWizard.variantCount", {
+                            ? t("compraWizard.variantCount", {
                                 count: serviceLines.length,
                               })
-                            : t("quoteWizard.variantsCta")
+                            : t("compraWizard.variantsCta")
                           : priceLabel(s)
                       }
                       onSelect={() =>
@@ -383,7 +410,7 @@ export function QuoteWizard() {
                                       onClick={() => setQty(l.key, l.qty - 1)}
                                       className={STEPPER}
                                       aria-label={t(
-                                        "quoteWizard.ariaRemoveOne",
+                                        "compraWizard.ariaRemoveOne",
                                       )}
                                     >
                                       <MinusIcon className="size-4" />
@@ -395,7 +422,7 @@ export function QuoteWizard() {
                                       type="button"
                                       onClick={() => setQty(l.key, l.qty + 1)}
                                       className={STEPPER}
-                                      aria-label={t("quoteWizard.ariaAddOne")}
+                                      aria-label={t("compraWizard.ariaAddOne")}
                                     >
                                       <PlusIcon className="size-4" />
                                     </button>
@@ -407,7 +434,7 @@ export function QuoteWizard() {
                                 onClick={() => setModalSlug(s.slug)}
                                 className="text-amethyst-300 hover:text-amethyst-200 self-start py-2 text-sm font-semibold transition"
                               >
-                                {t("quoteWizard.changeOptions")}
+                                {t("compraWizard.changeOptions")}
                               </button>
                             </div>
                           ) : (
@@ -417,7 +444,7 @@ export function QuoteWizard() {
                                   type="button"
                                   onClick={() => setQty(s.slug, qty - 1)}
                                   className={STEPPER}
-                                  aria-label={t("quoteWizard.ariaRemoveOne")}
+                                  aria-label={t("compraWizard.ariaRemoveOne")}
                                 >
                                   <MinusIcon className="size-4" />
                                 </button>
@@ -428,7 +455,7 @@ export function QuoteWizard() {
                                   type="button"
                                   onClick={() => setQty(s.slug, qty + 1)}
                                   className={STEPPER}
-                                  aria-label={t("quoteWizard.ariaAddOne")}
+                                  aria-label={t("compraWizard.ariaAddOne")}
                                 >
                                   <PlusIcon className="size-4" />
                                 </button>
@@ -437,9 +464,7 @@ export function QuoteWizard() {
                                 </span>
                               </div>
                               <span className="text-sm font-semibold text-white">
-                                {isQuoteOnly(s)
-                                  ? t("solicitudDetail.toQuote")
-                                  : formatCOP((s.basePrice ?? 0) * qty)}
+                                {formatCOP((s.basePrice ?? 0) * qty)}
                               </span>
                             </div>
                           )}
@@ -453,62 +478,27 @@ export function QuoteWizard() {
               {lines.length > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
                   <span className="text-silver-300">
-                    {t("quoteWizard.cartSummary", {
+                    {t("compraWizard.cartSummary", {
                       items: itemCount,
                       lines: lines.length,
                     })}
                   </span>
                   <span className="font-semibold text-white">
-                    {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
-                    {hasQuoteOnly && ` ${t("quoteWizard.plusToQuote")}`}
+                    {t("compraWizard.total")} {formatCOP(total)}
                   </span>
                 </div>
               )}
             </div>
           )}
 
-          {/* -- Paso 2: proyecto + colaboradores */}
-          {step === 2 && (
-            <>
-              <label className={LABEL}>
-                <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelProjectDetails")}
-                </span>
-                <textarea
-                  value={details}
-                  onChange={(e) => setDetails(e.target.value)}
-                  rows={4}
-                  placeholder={t("quoteWizard.placeholderProjectDetails")}
-                  className={INPUT}
-                  required
-                />
-              </label>
-
-              <div className={LABEL}>
-                <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelReferences")}
-                </span>
-                <FileUpload value={attachments} onChange={setAttachments}>
-                  <input
-                    type="text"
-                    value={references}
-                    onChange={(e) => setReferences(e.target.value)}
-                    placeholder={t("quoteWizard.placeholderReferences")}
-                    className="text-silver-50 flex-1 bg-transparent px-4 py-2.5 outline-none"
-                  />
-                </FileUpload>
-              </div>
-
-              <div className={LABEL}>
-                <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelArtists")}
-                </span>
-                <ArtistPicker value={collabs} onChange={setCollabs} />
-              </div>
+          {/* -- Paso: agenda (solo si hay línea de sesión) -- */}
+          {stepKey === "agenda" && hasSesion && (
+            <div className="flex flex-col gap-6">
+              <p className="text-silver-300">{t("compraWizard.agendaIntro")}</p>
 
               <fieldset className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelVenue")}
+                  {t("compraWizard.labelVenue")}
                 </span>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {sedes.map((s) => (
@@ -516,7 +506,7 @@ export function QuoteWizard() {
                       key={s.id}
                       type="button"
                       onClick={() => setSede(s.id)}
-                      className={`rounded-lg border px-4 py-3 text-left transition ${
+                      className={`${VENUE_BTN} ${
                         sede === s.id
                           ? "border-amethyst-300 bg-amethyst-500/10 text-white"
                           : "text-silver-200 border-white/15 bg-black/30 hover:border-white/40"
@@ -532,82 +522,109 @@ export function QuoteWizard() {
                   ))}
                 </div>
               </fieldset>
-            </>
+
+              {sessionLines.map((l) => (
+                <div
+                  key={l.key}
+                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5"
+                >
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-narrow text-lg leading-tight font-bold text-white uppercase">
+                        {l.variant
+                          ? `${l.service.name} — ${l.variant.name}`
+                          : l.service.name}
+                      </p>
+                      <p className="text-silver-400 mt-0.5 text-xs">
+                        {t("compraWizard.sessionHoursNeeded", { hours: l.qty })}
+                      </p>
+                    </div>
+                    {sessionPicks[l.key] && (
+                      <span className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 flex size-8 shrink-0 items-center justify-center rounded-full border">
+                        <CheckIcon className="size-4" />
+                      </span>
+                    )}
+                  </div>
+                  <SessionSlotPicker
+                    sede={sede}
+                    requiredHours={l.qty}
+                    blockedByOtherLines={blockedFor(l.key)}
+                    onChange={(v) =>
+                      setSessionPicks((p) => ({ ...p, [l.key]: v }))
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           )}
 
-          {/* -- Paso 3: resumen + contacto */}
-          {step === 3 && (
+          {/* -- Paso: contacto + confirmar -- */}
+          {stepKey === "contact" && (
             <>
+              {!hasSesion && (
+                <fieldset className={LABEL}>
+                  <span className={LABEL_TEXT}>
+                    {t("compraWizard.labelVenue")}
+                  </span>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {sedes.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSede(s.id)}
+                        className={`${VENUE_BTN} ${
+                          sede === s.id
+                            ? "border-amethyst-300 bg-amethyst-500/10 text-white"
+                            : "text-silver-200 border-white/15 bg-black/30 hover:border-white/40"
+                        }`}
+                      >
+                        <span className="block text-sm font-semibold">
+                          {s.nombre}
+                        </span>
+                        <span className="text-silver-400 block text-xs">
+                          {s.ciudad}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
                 <h2 className="text-silver-400 text-xs tracking-[2px] uppercase">
-                  {t("quoteWizard.orderSummaryHeading")}
+                  {t("compraWizard.orderSummaryHeading")}
                 </h2>
                 <ul className="mt-3 flex flex-col gap-2">
-                  {lines.map((l) => {
-                    const p = l.variant ?? l.service;
-                    return (
-                      <li
-                        key={l.key}
-                        className="flex items-center justify-between text-sm"
-                      >
-                        <span className="text-silver-100">
-                          {l.service.name}
-                          {l.variant ? ` — ${l.variant.name}` : ""}{" "}
-                          <span className="text-silver-400">× {l.qty}</span>
-                        </span>
-                        <span className="font-semibold text-white">
-                          {isQuoteOnly(p)
-                            ? t("solicitudDetail.toQuote")
-                            : formatCOP((p.basePrice ?? 0) * l.qty)}
-                        </span>
-                      </li>
-                    );
-                  })}
+                  {lines.map((l) => (
+                    <li
+                      key={l.key}
+                      className="flex items-center justify-between text-sm"
+                    >
+                      <span className="text-silver-100">
+                        {l.service.name}
+                        {l.variant ? ` — ${l.variant.name}` : ""}{" "}
+                        <span className="text-silver-400">× {l.qty}</span>
+                      </span>
+                      <span className="font-semibold text-white">
+                        {formatCOP(l.subtotal)}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
                 <div className="mt-3 flex items-center justify-between border-t border-white/10 pt-3 text-sm">
                   <span className="text-silver-300">
-                    {t("quoteWizard.totalEstimated")}
+                    {t("compraWizard.totalToPay")}
                   </span>
                   <span className="font-semibold text-white">
-                    {t("quoteWizard.estimated")} {formatCOP(fixedTotal)}
-                    {hasQuoteOnly && ` ${t("quoteWizard.plusToQuote")}`}
+                    {formatCOP(total)}
                   </span>
                 </div>
-                {collabs.length > 0 && (
-                  <p className="text-silver-400 mt-3 text-xs">
-                    {t("quoteWizard.artistsPrefix", {
-                      names: collabs.map((c) => c.name).join(", "),
-                    })}
-                  </p>
-                )}
-                {attachments.length > 0 && (
-                  <p className="text-silver-400 mt-1 text-xs">
-                    {t("quoteWizard.attachmentsCount", {
-                      count: attachments.length,
-                    })}
-                  </p>
-                )}
               </div>
 
               <label className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelBudget")}
+                  {t("compraWizard.labelName")}
                 </span>
-                <div className="relative">
-                  <span className="text-silver-400 pointer-events-none absolute top-1/2 left-4 -translate-y-1/2">
-                    $
-                  </span>
-                  <MoneyInput
-                    value={budget}
-                    onChange={setBudget}
-                    placeholder="500.000"
-                    className={`${INPUT} pl-8 tabular-nums`}
-                  />
-                </div>
-              </label>
-
-              <label className={LABEL}>
-                <span className={LABEL_TEXT}>{t("quoteWizard.labelName")}</span>
                 <input
                   type="text"
                   value={contactName}
@@ -619,7 +636,7 @@ export function QuoteWizard() {
               </label>
               <label className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelEmail")}
+                  {t("compraWizard.labelEmail")}
                 </span>
                 <input
                   type="email"
@@ -632,7 +649,7 @@ export function QuoteWizard() {
               </label>
               <label className={LABEL}>
                 <span className={LABEL_TEXT}>
-                  {t("quoteWizard.labelPhone")}
+                  {t("compraWizard.labelPhone")}
                 </span>
                 <input
                   type="tel"
@@ -648,13 +665,13 @@ export function QuoteWizard() {
           {error && <Alert tone="error">{error}</Alert>}
 
           <div className="mt-2 flex items-center justify-between gap-3">
-            {step > 1 ? (
+            {stepIdx > 0 ? (
               <button
                 type="button"
                 onClick={back}
                 className="btn-outline rounded-full px-6 py-3 text-sm tracking-[2px] uppercase"
               >
-                {t("quoteWizard.back")}
+                {t("compraWizard.back")}
               </button>
             ) : (
               <span />
@@ -666,18 +683,18 @@ export function QuoteWizard() {
               className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy
-                ? t("quoteWizard.sending")
-                : step < TOTAL
-                  ? t("quoteWizard.next")
-                  : t("quoteWizard.submit")}
+                ? t("compraWizard.sending")
+                : isLastStep
+                  ? t("compraWizard.submit")
+                  : t("compraWizard.next")}
             </button>
           </div>
         </form>
       </main>
 
-      {/* -- Barra flotante para continuar (paso 1): avanzar sin llegar al fondo */}
+      {/* -- Barra flotante para continuar (paso carrito) -- */}
       <AnimatePresence>
-        {step === 1 && lines.length > 0 && (
+        {stepKey === "cart" && lines.length > 0 && (
           <motion.div
             initial={reduce ? false : { y: 90, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -694,7 +711,7 @@ export function QuoteWizard() {
                   {itemCount}
                 </span>
                 <span className="hidden text-sm sm:inline">
-                  {t("quoteWizard.cartSummary", {
+                  {t("compraWizard.cartSummary", {
                     items: itemCount,
                     lines: lines.length,
                   })}
@@ -705,94 +722,92 @@ export function QuoteWizard() {
                 onClick={next}
                 className="btn-amethyst shrink-0 rounded-full px-6 py-3 text-sm font-semibold tracking-[2px] uppercase"
               >
-                {t("quoteWizard.next")}
+                {t("compraWizard.next")}
               </button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* -- Panel de opciones (variantes) */}
-      {modalService && modalService.variants && (
+      {/* -- Panel de opciones (variantes comprables) -- */}
+      {modalService && modalVariants.length > 0 && (
         <GlassModal
           open
           onClose={() => setModalSlug(null)}
           title={modalService.name}
         >
           <p className="text-silver-300 -mt-2 text-sm">
-            {t("quoteWizard.modalVariantSubtitle")}
+            {t("compraWizard.modalVariantSubtitle")}
           </p>
 
           <div className="mt-5 flex max-h-[55svh] flex-col gap-3 overflow-y-auto">
-            {modalService.variants
-              .filter((v) => isQuoteOnly(v))
-              .map((v) => {
-                const key = keyOf(modalService.slug, v.id);
-                const qty = cart[key] ?? 0;
-                return (
-                  <div
-                    key={v.id}
-                    className={`rounded-xl border p-4 transition ${
-                      qty > 0
-                        ? "border-amethyst-300 bg-amethyst-500/10"
-                        : "border-white/10 bg-white/[0.03]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-white">{v.name}</p>
-                        {v.description && (
-                          <p className="text-silver-300 mt-0.5 text-sm">
-                            {v.description}
-                          </p>
-                        )}
-                        <p className="text-amethyst-200 mt-1 text-sm font-semibold">
-                          {priceLabel(v)}
+            {modalVariants.map((v) => {
+              const key = keyOf(modalService.slug, v.id);
+              const qty = cart[key] ?? 0;
+              return (
+                <div
+                  key={v.id}
+                  className={`rounded-xl border p-4 transition ${
+                    qty > 0
+                      ? "border-amethyst-300 bg-amethyst-500/10"
+                      : "border-white/10 bg-white/[0.03]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-white">{v.name}</p>
+                      {v.description && (
+                        <p className="text-silver-300 mt-0.5 text-sm">
+                          {v.description}
                         </p>
-                      </div>
-                      {qty === 0 ? (
+                      )}
+                      <p className="text-amethyst-200 mt-1 text-sm font-semibold">
+                        {priceLabel(v)}
+                      </p>
+                    </div>
+                    {qty === 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => setQty(key, 1)}
+                        className="btn-outline shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
+                      >
+                        {t("compraWizard.variantAdd")}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setQty(key, 1)}
-                          className="btn-outline shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
+                          onClick={() => setQty(key, qty - 1)}
+                          className={STEPPER}
+                          aria-label={t("compraWizard.ariaRemoveOne")}
                         >
-                          {t("quoteWizard.variantAdd")}
+                          <MinusIcon className="size-4" />
                         </button>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setQty(key, qty - 1)}
-                            className={STEPPER}
-                            aria-label={t("quoteWizard.ariaRemoveOne")}
-                          >
-                            <MinusIcon className="size-4" />
-                          </button>
-                          <span className="min-w-[2ch] text-center font-semibold text-white">
-                            {qty}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setQty(key, qty + 1)}
-                            className={STEPPER}
-                            aria-label={t("quoteWizard.ariaAddOne")}
-                          >
-                            <PlusIcon className="size-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
+                        <span className="min-w-[2ch] text-center font-semibold text-white">
+                          {qty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setQty(key, qty + 1)}
+                          className={STEPPER}
+                          aria-label={t("compraWizard.ariaAddOne")}
+                        >
+                          <PlusIcon className="size-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
 
           <button
             type="button"
             onClick={() => setModalSlug(null)}
             className="btn-amethyst mt-6 w-full rounded-full px-6 py-3 text-sm font-semibold tracking-[2px] uppercase"
           >
-            {t("quoteWizard.modalDone")}
+            {t("compraWizard.modalDone")}
           </button>
         </GlassModal>
       )}

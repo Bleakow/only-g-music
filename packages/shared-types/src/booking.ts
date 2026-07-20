@@ -16,11 +16,12 @@ export type ReservaEstado =
   | "expirada";
 
 /**
- * Tipo de reserva. `sesion` es una cita de estudio (con slot); `perfil_artista`
+ * Tipo de reserva. `sesion` es una cita de estudio (con slot); `entregable` es un
+ * servicio sin agenda (mezcla/máster: por cantidad, no ocupa slot); `perfil_artista`
  * es la compra del perfil de artista; `proyecto` nace de una cotización aceptada
  * (sin slot/fecha — se paga y el agendado se coordina en el chat).
  */
-export type ReservaTipo = "sesion" | "perfil_artista" | "proyecto";
+export type ReservaTipo = "sesion" | "entregable" | "perfil_artista" | "proyecto";
 
 export interface Reserva {
   id: string;
@@ -41,6 +42,8 @@ export interface Reserva {
   clientEmail?: string;
   /** Si la reserva nació de una cotización aceptada. */
   quoteId?: string;
+  /** Si la reserva es una línea de un Pedido (compra directa multi-servicio). */
+  pedidoId?: string;
   /** Tipo de reserva (por defecto `sesion`). */
   tipo?: ReservaTipo;
   /** Slug del perfil de artista asociado (solo en pedidos `perfil_artista`). */

@@ -324,6 +324,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Pedidos (compra directa multi-servicio) ──────────────────────
+    // Un pedido agrupa varias reservas (sus líneas) con UN pago. El cliente lo
+    // crea en 'pendiente_pago'; sus reservas viven en `bookings` (reglas de
+    // arriba). El cliente dueño solo puede enlazar la conversación de pago y
+    // subir el comprobante (pendiente_pago → pago_en_revision), sin tocar
+    // uid/total/lineas. Confirmar el pago (y con él todas las reservas) es
+    // server-authoritative vía la Cloud Function confirmPayment.
+    match /pedidos/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'pendiente_pago';
+
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && resource.data.estado == 'pendiente_pago'
+          && request.resource.data.estado in ['pendiente_pago', 'pago_en_revision']
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['estado', 'comprobanteUrl', 'paymentConversationId']));
+
+      allow delete: if false;
+    }
+
     // (El chat de cada solicitud migró al modelo `conversations` — ver más abajo.
     // Las subcolecciones `messages` bajo quotes/bookings quedaron obsoletas.)
 

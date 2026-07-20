@@ -65,7 +65,7 @@ export type NewConversationMessage = Omit<
 
 // ── Pago (máquina de estados, solo type "pago") ─────────────────────────────
 
-export type PagoConcepto = "premium" | "reserva" | "beat";
+export type PagoConcepto = "premium" | "reserva" | "beat" | "pedido";
 
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
@@ -96,7 +96,7 @@ export interface Conversation {
   participants: string[];
   status: ConversationStatus;
   /** Enlace opcional a la entidad de contexto. */
-  ref?: { kind: "quote" | "booking" | "premium" | "beat"; id: string };
+  ref?: { kind: "quote" | "booking" | "premium" | "beat" | "pedido"; id: string };
   /** Estado del pago (solo `type === "pago"`). */
   pago?: PagoState;
   /** Resumen del último mensaje (para listar conversaciones sin leer su hilo). */

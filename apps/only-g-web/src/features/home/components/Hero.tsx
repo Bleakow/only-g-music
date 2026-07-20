@@ -405,10 +405,10 @@ export function Hero() {
               {t("quote")}
             </Link>
             <Link
-              href="/agenda"
+              href="/comprar"
               className="reveal-item btn-outline pointer-events-auto invisible rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
             >
-              {t("book")}
+              {t("buy")}
             </Link>
           </div>
         </div>

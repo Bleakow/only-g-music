@@ -15,11 +15,13 @@ export function badgeClass(estado: string): string {
       return "border-sky-400/40 bg-sky-400/10 text-sky-200";
     case "aceptada":
     case "confirmada":
+    case "confirmado":
     case "en_curso":
     case "completada":
       return "border-emerald-400/40 bg-emerald-400/10 text-emerald-200";
     case "rechazada":
     case "cancelada":
+    case "cancelado":
     case "expirada":
       return "border-red-500/40 bg-red-500/10 text-red-200";
     default:

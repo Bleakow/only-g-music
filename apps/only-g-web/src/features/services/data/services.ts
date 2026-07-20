@@ -1,12 +1,30 @@
 import type { Service } from "@only-g/shared-types/service";
 
 /**
- * Catálogo de servicios — DATOS PLACEHOLDER. Precios de referencia en COP e
- * imágenes placeholder (picsum) solo para maquetar el embudo. Reemplazar por
- * los servicios/tarifas/fotos reales de Only G (idealmente en Firestore para
- * que el admin los edite). Las imágenes pueden moverse a /public/services/*.
+ * Catálogo de servicios. Precios de referencia en COP. Las FOTOS se sirven desde
+ * Firebase Storage (misma carpeta `hero` que los fondos del home; `public/hero`
+ * está gitignoreado por copyright). Fuente ÚNICA compartida por ambos catálogos
+ * (/comprar y /cotizar) y la página de servicios. (Pendiente: mover a Firestore
+ * para que el admin edite servicios/precios/fotos sin desplegar.)
  */
-const img = (seed: string) => `https://picsum.photos/seed/ogm-${seed}/240/240`;
+const HERO =
+  "https://storage.googleapis.com/only-g-music-745ca.firebasestorage.app/hero";
+/** Nombre real del archivo de foto de cada servicio (en la carpeta hero de
+ *  Storage). ⚠ produccion/beat aún no están subidos con foto propia. */
+const PHOTO: Record<string, string> = {
+  grabacion: "grabacion.jpg",
+  mezcla: "mezcla.jpg",
+  master: "master.jpg",
+  produccion: "produccion.jpg",
+  renta: "rentar-studio.jpg",
+  beat: "beat.jpg",
+};
+/** Foto de un servicio en Storage. */
+const img = (seed: string) => `${HERO}/${PHOTO[seed] ?? seed}`;
+
+/** Fondo compartido del catálogo (mismo en /comprar y /cotizar). */
+export const CATALOG_BG_DESKTOP = `${HERO}/buy.png`;
+export const CATALOG_BG_MOBILE = `${HERO}/buy-mobile.png`;
 
 export const services: Service[] = [
   {

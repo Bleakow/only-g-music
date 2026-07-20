@@ -161,7 +161,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </h1>
         <Link
           href="/solicitudes"
-          className="border-silver-300/40 text-silver-100 hover:border-silver-100 mt-6 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+          className="btn-outline mt-6 rounded-full px-6 py-3 text-sm tracking-[2px] uppercase"
         >
           {t("solicitudDetail.backToRequests")}
         </Link>
@@ -265,19 +265,19 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
           </p>
           <div className="mt-3 flex flex-wrap gap-3">
             <Button
+              className="btn-amethyst"
               onClick={() => responderCotizacion("aceptada")}
               loading={busy}
             >
               {t("solicitudDetail.acceptProposal")}
             </Button>
-            <button
-              type="button"
+            <Button
+              variant="danger"
               onClick={() => responderCotizacion("rechazada")}
               disabled={busy}
-              className="text-silver-200 rounded-full border border-white/20 px-5 py-2.5 text-sm transition hover:border-red-400/50 hover:text-red-300 disabled:opacity-50"
             >
               {t("solicitudDetail.rejectProposal")}
-            </button>
+            </Button>
           </div>
         </section>
       )}
@@ -297,7 +297,10 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
           <p className="text-silver-300 mt-2 text-sm">
             {t("solicitudDetail.paymentStartHint")}
           </p>
-          <Button className="mt-3" onClick={() => setShowPicker(true)}>
+          <Button
+            className="btn-amethyst mt-3"
+            onClick={() => setShowPicker(true)}
+          >
             {t("solicitudDetail.pay")}
           </Button>
         </section>

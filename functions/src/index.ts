@@ -509,6 +509,11 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   if (refKind === "beat") {
     return await confirmarPagoBeat(convRef, conv, refId);
   }
+  // Pago de PEDIDO: confirma el pedido y TODAS sus reservas (cada una dispara
+  // onBookingConfirmed) y cierra el hilo.
+  if (refKind === "pedido") {
+    return await confirmarPagoPedido(convRef, conv, refId);
+  }
   if (refKind !== "premium") {
     throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
   }
@@ -621,6 +626,69 @@ async function confirmarPagoReserva(
     `Pago de reserva confirmado: ${convRef.id} → booking ${bookingId}`,
   );
   // La notificación al cliente ("pago-confirmado") la dispara onBookingConfirmed.
+  return { ok: true };
+}
+
+/**
+ * Confirma el pago de un PEDIDO (SOLO admin, vía confirmPayment). Un pedido agrupa
+ * varias reservas (sus líneas); confirmar el pago las pasa TODAS a `confirmada` en
+ * un batch — cada transición dispara onBookingConfirmed (sesión + payout por
+ * reserva) — y cierra el chat de pago. NO escribe en `transactions`: el ingreso lo
+ * DERIVA /admin/finanzas de las reservas confirmadas (igual que una reserva suelta).
+ */
+async function confirmarPagoPedido(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+  pedidoId: string,
+): Promise<{ ok: true }> {
+  const pedidoRef = db.doc(`pedidos/${pedidoId}`);
+  const pedido = (await pedidoRef.get()).data();
+  if (!pedido) throw new HttpsError("not-found", "Pedido inexistente.");
+  if (
+    pedido.estado !== "pago_en_revision" &&
+    pedido.estado !== "pendiente_pago"
+  ) {
+    throw new HttpsError(
+      "failed-precondition",
+      "El pedido no está listo para confirmar.",
+    );
+  }
+
+  const reservaIds: string[] = Array.isArray(pedido.lineas)
+    ? pedido.lineas
+        .map((l: FirebaseFirestore.DocumentData) => l?.reservaId)
+        .filter((x: unknown): x is string => typeof x === "string")
+    : [];
+
+  const batch = db.batch();
+  batch.update(pedidoRef, {
+    estado: "confirmado",
+    confirmedAt: FieldValue.serverTimestamp(),
+  });
+  for (const rid of reservaIds) {
+    // Solo confirma las que están listas (idempotente / defensivo).
+    batch.update(db.doc(`bookings/${rid}`), {
+      estado: "confirmada",
+      confirmedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: conv.pago?.monto ?? pedido.total ?? 0,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(
+    `Pago de pedido confirmado: ${convRef.id} → pedido ${pedidoId} (${reservaIds.length} reservas)`,
+  );
+  // La notificación al cliente la dispara onBookingConfirmed de cada reserva.
   return { ok: true };
 }
 
@@ -1926,6 +1994,14 @@ export const onPaymentUnderReview = onDocumentUpdated(
         const b = (await bRef.get()).data();
         if (b?.estado === "pendiente_pago") {
           await bRef.update({ estado: "pago_en_revision" });
+        }
+      }
+      // Pedido: refleja el comprobante en el estado del pedido (server-side).
+      if (after.ref?.kind === "pedido" && typeof after.ref?.id === "string") {
+        const pRef = db.doc(`pedidos/${after.ref.id}`);
+        const p = (await pRef.get()).data();
+        if (p?.estado === "pendiente_pago") {
+          await pRef.update({ estado: "pago_en_revision" });
         }
       }
       const payerUid = Array.isArray(after.participants)

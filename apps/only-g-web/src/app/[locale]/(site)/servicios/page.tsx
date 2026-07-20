@@ -33,7 +33,12 @@ export default async function ServiciosPage() {
       <div className="grid gap-5 sm:grid-cols-2">
         {services.map((s) => {
           const variants = hasVariants(s);
-          const quote = variants || isQuoteOnly(s);
+          // Comprable = precio conocido (compra directa). Con variantes, basta
+          // que UNA sea comprable (p. ej. renta-estudio: "horas"/"dia" sí). El
+          // resto va a cotización. Misma regla que la wizard de compra.
+          const purchasable = variants
+            ? (s.variants ?? []).some((v) => !isQuoteOnly(v))
+            : !isQuoteOnly(s);
           return (
             <div
               key={s.slug}
@@ -56,19 +61,19 @@ export default async function ServiciosPage() {
                   {variants ? t("manyOptions") : priceLabel(s)}
                 </p>
 
-                {quote ? (
+                {purchasable ? (
+                  <Link
+                    href={`/comprar?servicio=${s.slug}`}
+                    className="mt-5 inline-flex justify-center rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-6 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
+                  >
+                    {variants ? t("chooseOptions") : t("buy")}
+                  </Link>
+                ) : (
                   <Link
                     href={`/cotizar?servicio=${s.slug}`}
                     className="mt-5 inline-flex justify-center rounded-full border border-amethyst-400/60 px-6 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
                   >
                     {variants ? t("chooseOptions") : t("requestQuote")}
-                  </Link>
-                ) : (
-                  <Link
-                    href={`/agenda?servicio=${s.slug}`}
-                    className="mt-5 inline-flex justify-center rounded-full bg-gradient-to-r from-silver-100 to-amethyst-300 px-6 py-2.5 text-sm font-semibold uppercase tracking-[2px] text-ink transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
-                  >
-                    {t("book")}
                   </Link>
                 )}
               </div>

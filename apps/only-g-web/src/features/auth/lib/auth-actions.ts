@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signInWithPopup,
+  getAdditionalUserInfo,
   GoogleAuthProvider,
   FacebookAuthProvider,
   updateProfile,
@@ -82,20 +83,31 @@ export async function loginWithEmail(email: string, password: string) {
   return cred.user;
 }
 
+/** Resultado de un login social: además del usuario, si la cuenta es NUEVA
+ *  (`isNewUser`) — el llamador la usa para pedir el tipo de usuario, ya que
+ *  `signInWithPopup` sirve tanto para alta como para login de existentes. */
+export type SocialResult = { user: User; isNewUser: boolean };
+
 const googleProvider = new GoogleAuthProvider();
 
-export async function loginWithGoogle() {
+export async function loginWithGoogle(): Promise<SocialResult> {
   const cred = await signInWithPopup(auth, googleProvider);
   await safeEnsureAccount(cred.user);
-  return cred.user;
+  return {
+    user: cred.user,
+    isNewUser: getAdditionalUserInfo(cred)?.isNewUser ?? false,
+  };
 }
 
 const facebookProvider = new FacebookAuthProvider();
 
-export async function loginWithFacebook() {
+export async function loginWithFacebook(): Promise<SocialResult> {
   const cred = await signInWithPopup(auth, facebookProvider);
   await safeEnsureAccount(cred.user);
-  return cred.user;
+  return {
+    user: cred.user,
+    isNewUser: getAdditionalUserInfo(cred)?.isNewUser ?? false,
+  };
 }
 
 export function logout() {

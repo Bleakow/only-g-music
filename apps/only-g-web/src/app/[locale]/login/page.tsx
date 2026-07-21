@@ -13,7 +13,9 @@ import {
   loginWithFacebook,
   sendPasswordReset,
   authErrorCode,
+  type SocialResult,
 } from "@/features/auth/lib/auth-actions";
+import { GlassModal } from "@/components/ui/GlassModal";
 import {
   createConvenioRequest,
   getMyPendingConvenio,
@@ -75,6 +77,8 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [intent, setIntent] = useState<JoinFn>("visitante");
+  // Nuevo usuario social pendiente de elegir su tipo (dispara el modal).
+  const [pendingSocialUser, setPendingSocialUser] = useState<User | null>(null);
 
   const isRegister = mode === "register";
   const isReset = mode === "reset";
@@ -86,12 +90,12 @@ function LoginForm() {
     setPasswordConfirm("");
   }
 
-  // Tras un alta (email o social): si el usuario eligió productor/beatmaker,
-  // manda la solicitud de convenio (queda `pendiente` hasta que un admin la
-  // apruebe) y lo lleva a la pantalla de confirmación; cantante va a su alta
-  // self-serve; visitante (o un login normal) vuelve a `next`.
-  async function afterAuth(authUser: User) {
-    if (isRegister && (intent === "productor" || intent === "beatmaker")) {
+  // Enruta tras un ALTA (email o cuenta social nueva) según el `tipo` elegido:
+  // productor/beatmaker → solicitud de convenio (queda `pendiente` hasta que un
+  // admin la apruebe) → pantalla de confirmación; cantante → su alta self-serve;
+  // visitante → `next`.
+  async function routeAfterJoin(authUser: User, tipo: JoinFn) {
+    if (tipo === "productor" || tipo === "beatmaker") {
       try {
         // Dedup: no crees otra solicitud si ya hay una pendiente (p. ej. un login
         // social de alguien que ya la mandó — signInWithPopup no distingue cuenta
@@ -102,7 +106,7 @@ function LoginForm() {
             uid: authUser.uid,
             displayName: authUser.displayName ?? name ?? null,
             email: authUser.email ?? email ?? null,
-            tipo: intent,
+            tipo,
           });
         }
         router.push("/convenio/enviado");
@@ -114,7 +118,7 @@ function LoginForm() {
       }
       return;
     }
-    router.push(isRegister && intent === "cantante" ? "/artista/nuevo" : next);
+    router.push(tipo === "cantante" ? "/artista/nuevo" : next);
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -131,7 +135,7 @@ function LoginForm() {
           return;
         }
         const authUser = await registerWithEmail(email, password, name);
-        await afterAuth(authUser);
+        await routeAfterJoin(authUser, intent);
       } else {
         await loginWithEmail(email, password);
         router.push(next);
@@ -143,14 +147,39 @@ function LoginForm() {
     }
   }
 
-  async function social(action: () => Promise<User>) {
+  async function social(action: () => Promise<SocialResult>) {
     setError(null);
     setBusy(true);
     try {
-      const authUser = await action();
-      await afterAuth(authUser);
+      const { user: authUser, isNewUser } = await action();
+      if (isNewUser) {
+        // Cuenta NUEVA por social: pide el tipo de usuario, igual que el registro
+        // manual (el login social no muestra ese selector). Si ya lo eligió en el
+        // formulario de registro, respétalo sin volver a preguntar.
+        if (isRegister && intent !== "visitante") {
+          await routeAfterJoin(authUser, intent);
+        } else {
+          setPendingSocialUser(authUser);
+        }
+      } else {
+        // Usuario existente que inicia sesión: no se le pide tipo.
+        router.push(next);
+      }
     } catch (err) {
       setError(t(`authErrors.${authErrorCode(err)}`));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Nuevo usuario social que aún debe elegir su tipo (abre el modal de abajo).
+  async function pickSocialType(tipo: JoinFn) {
+    const authUser = pendingSocialUser;
+    if (!authUser) return;
+    setPendingSocialUser(null);
+    setBusy(true);
+    try {
+      await routeAfterJoin(authUser, tipo);
     } finally {
       setBusy(false);
     }
@@ -413,6 +442,32 @@ function LoginForm() {
           )}
         </div>
       </div>
+
+      {/* Nuevo usuario social: elige tu tipo (el login social no muestra el
+          selector «¿Cómo te unes?» del registro manual). */}
+      <GlassModal
+        open={!!pendingSocialUser}
+        onClose={() => setPendingSocialUser(null)}
+        title={t("login.howJoin")}
+      >
+        <p className="text-silver-300 text-sm">
+          {t("login.socialTypeSubtitle")}
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <JoinFnButton active={false} onClick={() => pickSocialType("visitante")}>
+            {t("login.fnVisitante")}
+          </JoinFnButton>
+          <JoinFnButton active={false} onClick={() => pickSocialType("cantante")}>
+            {t("login.fnCantante")}
+          </JoinFnButton>
+          <JoinFnButton active={false} onClick={() => pickSocialType("productor")}>
+            {t("login.fnProductor")}
+          </JoinFnButton>
+          <JoinFnButton active={false} onClick={() => pickSocialType("beatmaker")}>
+            {t("login.fnBeatmaker")}
+          </JoinFnButton>
+        </div>
+      </GlassModal>
     </main>
   );
 }

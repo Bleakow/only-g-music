@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { IntroInfo } from "@/components/ui/IntroInfo";
 
 /**
  * Piezas compartidas del panel admin para vestir CADA pestaña con el mismo
@@ -32,11 +33,18 @@ export function AdminPageHeader({
   eyebrow,
   title,
   subtitle,
+  info,
+  infoKey,
   children,
 }: {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Ayuda de la pantalla: se muestra tras un botón «(i)» + modal de primera
+   *  visita (en vez de un párrafo siempre visible que estorba). */
+  info?: ReactNode;
+  /** Clave estable para recordar la primera visita — pásala si usas `info`. */
+  infoKey?: string;
   children?: ReactNode;
 }) {
   return (
@@ -46,9 +54,16 @@ export function AdminPageHeader({
           {eyebrow}
         </p>
       )}
-      <h1 className="font-narrow mt-2 text-4xl leading-[0.95] font-bold uppercase drop-shadow-[0_2px_16px_rgba(0,0,0,0.75)] sm:text-5xl">
-        {title}
-      </h1>
+      <div className="mt-2 flex items-start gap-3">
+        <h1 className="font-narrow text-4xl leading-[0.95] font-bold uppercase drop-shadow-[0_2px_16px_rgba(0,0,0,0.75)] sm:text-5xl">
+          {title}
+        </h1>
+        {info != null && (
+          <IntroInfo title={title} storageKey={infoKey ?? title}>
+            {info}
+          </IntroInfo>
+        )}
+      </div>
       {subtitle && (
         <p className="text-silver-200 mt-3 max-w-xl text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:text-base">
           {subtitle}

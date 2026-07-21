@@ -291,7 +291,8 @@ export function AdminContabilidad() {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminContabilidad.title")}
-        subtitle={t("adminContabilidad.intro")}
+        info={t("adminContabilidad.intro")}
+        infoKey="contabilidad"
       >
         <div className="mt-6 flex flex-wrap items-center gap-2.5">
           <ExportButton

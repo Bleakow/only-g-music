@@ -88,6 +88,7 @@ export function AdminPerfiles() {
   const [mockName, setMockName] = useState("");
   const [mockBusy, setMockBusy] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [curarOpen, setCurarOpen] = useState(false);
   const [membershipTarget, setMembershipTarget] = useState<{
     profile: ArtistProfile;
@@ -313,27 +314,20 @@ export function AdminPerfiles() {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminPerfiles.title")}
+        infoKey="perfiles"
+        info={t.rich("adminPerfiles.descripcion", {
+          max: MAX_DESTACADOS,
+          strong: (chunks) => <strong className="text-white">{chunks}</strong>,
+        })}
       >
-        <p className="text-silver-200 mt-3 max-w-xl text-sm drop-shadow-[0_1px_6px_rgba(0,0,0,0.7)] sm:text-base">
-          {t.rich("adminPerfiles.descripcion", {
-            max: MAX_DESTACADOS,
-            strong: (chunks) => (
-              <strong className="text-white">{chunks}</strong>
-            ),
-          })}
-        </p>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <GlassButton onClick={() => setCurarOpen(true)}>
             <StarIcon className="size-4" />
             {t("adminPerfiles.curarEscaparate")}
           </GlassButton>
-          <GlassButton onClick={() => setLinkOpen(true)}>
-            <UserPlusIcon className="size-4" />
-            {t("adminPerfiles.link.vincularUsuario")}
-          </GlassButton>
-          <GlassButton onClick={() => setMockOpen(true)}>
+          <GlassButton onClick={() => setCreateOpen(true)}>
             <PlusIcon className="size-4" />
-            {t("adminPerfiles.crearMock")}
+            {t("adminPerfiles.crear")}
           </GlassButton>
         </div>
       </AdminPageHeader>
@@ -612,6 +606,49 @@ export function AdminPerfiles() {
             )}
             {t("adminPerfiles.mockCrear")}
           </GlassButton>
+        </div>
+      </GlassModal>
+
+      {/* Elegir cómo crear el usuario: vinculado a una cuenta real o mock */}
+      <GlassModal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title={t("adminPerfiles.crearTitle")}
+      >
+        <p className="text-silver-300 text-sm">
+          {t("adminPerfiles.crearDescripcion")}
+        </p>
+        <div className="mt-6 flex flex-col gap-4">
+          <div>
+            <GlassButton
+              onClick={() => {
+                setCreateOpen(false);
+                setLinkOpen(true);
+              }}
+              className="w-full justify-center !text-amethyst-200"
+            >
+              <UserPlusIcon className="size-4" />
+              {t("adminPerfiles.crearVinculado")}
+            </GlassButton>
+            <p className="text-silver-400 mt-1.5 text-xs">
+              {t("adminPerfiles.crearVinculadoHint")}
+            </p>
+          </div>
+          <div>
+            <GlassButton
+              onClick={() => {
+                setCreateOpen(false);
+                setMockOpen(true);
+              }}
+              className="w-full justify-center"
+            >
+              <PlusIcon className="size-4" />
+              {t("adminPerfiles.crearMockOpcion")}
+            </GlassButton>
+            <p className="text-silver-400 mt-1.5 text-xs">
+              {t("adminPerfiles.crearMockHint")}
+            </p>
+          </div>
         </div>
       </GlassModal>
 

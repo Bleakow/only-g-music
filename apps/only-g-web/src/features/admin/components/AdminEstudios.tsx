@@ -193,7 +193,8 @@ export function AdminEstudios() {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminEstudios.title")}
-        subtitle={t("adminEstudios.intro")}
+        info={t("adminEstudios.intro")}
+        infoKey="estudios"
       />
 
       <div className="px-6 sm:px-10">

@@ -105,7 +105,8 @@ export function AdminBeatsPayouts() {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminBeats.title")}
-        subtitle={t("adminBeats.intro")}
+        info={t("adminBeats.intro")}
+        infoKey="beats"
       >
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <GlassButton onClick={sincronizarPayouts} disabled={backfilling}>

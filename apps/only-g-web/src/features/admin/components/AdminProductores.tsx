@@ -227,7 +227,8 @@ export function AdminProductores() {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminProductores.title")}
-        subtitle={t("adminProductores.intro")}
+        info={t("adminProductores.intro")}
+        infoKey="productores"
       >
         <div className="mt-4">
           <GlassButton onClick={abrirNuevo} className="!text-amethyst-200">

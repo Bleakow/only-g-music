@@ -15,6 +15,7 @@ import {
 } from "@only-g/shared-types/booking";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { Button } from "@/components/ui/Button";
+import { IntroInfo } from "@/components/ui/IntroInfo";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 /** Formatea una duración en ms a `H:MM:SS` (o `M:SS` si < 1h). */
@@ -84,14 +85,16 @@ export function ProducerConsole() {
       <p className="text-amethyst-300 text-sm tracking-[4px] uppercase">
         {t("roles.productor")}
       </p>
-      <h1 className="font-narrow mt-2 text-5xl font-bold uppercase sm:text-6xl">
-        {t("userMenu.console")}
-      </h1>
-      <p className="text-silver-300 mt-3">
-        {t("producerConsole.description", {
-          graceMins: GRACIA_AUTO_INICIO_MIN,
-        })}
-      </p>
+      <div className="mt-2 flex items-start gap-3">
+        <h1 className="font-narrow text-5xl font-bold uppercase sm:text-6xl">
+          {t("userMenu.console")}
+        </h1>
+        <IntroInfo title={t("userMenu.console")} storageKey="consola">
+          {t("producerConsole.description", {
+            graceMins: GRACIA_AUTO_INICIO_MIN,
+          })}
+        </IntroInfo>
+      </div>
 
       {loading ? (
         <div className="mt-10 flex flex-col gap-3">

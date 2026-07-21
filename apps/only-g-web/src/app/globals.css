@@ -282,6 +282,7 @@
 .btn-amethyst {
   position: relative;
   overflow: hidden;
+  cursor: pointer;
   color: #fff;
   background: linear-gradient(
     180deg,
@@ -293,6 +294,15 @@
     inset 0 -3px 8px rgba(59, 7, 100, 0.55),
     0 12px 34px -10px rgba(124, 58, 237, 0.7),
     0 0 0 1px rgba(196, 165, 255, 0.35);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.2s ease,
+    filter 0.2s ease;
+}
+/* Feedback de pulsación (táctil/click): se hunde un poco al presionar. */
+.btn-amethyst:active {
+  transform: scale(0.96);
+  filter: brightness(0.95);
 }
 /* Barrido de luz que cruza al hover. */
 .btn-amethyst::after {

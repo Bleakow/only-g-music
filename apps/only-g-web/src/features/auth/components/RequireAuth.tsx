@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
-import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
 
 function LockIcon({ className = "" }: { className?: string }) {
@@ -40,7 +40,6 @@ export function RequireAuth({
 }) {
   const { user, loading } = useAuth();
   const pathname = usePathname();
-  const router = useRouter();
   const t = useTranslations();
   const heading = title ?? t("auth.loginRequired");
   const desc = message ?? t("auth.loginRequiredDesc");
@@ -53,14 +52,6 @@ export function RequireAuth({
   }
 
   if (!user) {
-    function goBack() {
-      if (typeof window !== "undefined" && window.history.length > 1) {
-        router.back();
-      } else {
-        router.push("/");
-      }
-    }
-
     return (
       <main className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 text-center">
         <div
@@ -89,24 +80,13 @@ export function RequireAuth({
             >
               {t("auth.login")}
             </Link>
-            <button
-              type="button"
-              onClick={goBack}
-              className="btn-outline rounded-full px-8 py-3 text-sm tracking-[2px] uppercase transition"
-            >
-              {t("auth.goBack")}
-            </button>
-          </div>
-
-          <p className="text-silver-400 mt-6 text-sm">
-            {t("auth.noAccount")}{" "}
             <Link
               href={`/login?mode=register&next=${encodeURIComponent(pathname)}`}
-              className="text-amethyst-300 hover:text-amethyst-200 font-semibold underline-offset-4 hover:underline"
+              className="btn-outline rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition"
             >
               {t("auth.createAccount")}
             </Link>
-          </p>
+          </div>
         </div>
       </main>
     );

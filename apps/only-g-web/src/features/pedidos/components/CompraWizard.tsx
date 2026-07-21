@@ -470,49 +470,56 @@ export function CompraWizard() {
                               </button>
                             </div>
                           ) : (
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setQty(
-                                      s.slug,
-                                      s.slug === "grabacion"
-                                        ? Math.max(
-                                            HORAS_MIN_GRABACION,
-                                            qty - 1,
-                                          )
-                                        : qty - 1,
-                                    )
-                                  }
-                                  className={STEPPER}
-                                  aria-label={t("compraWizard.ariaRemoveOne")}
-                                >
-                                  <MinusIcon className="size-4" />
-                                </button>
-                                <span className="min-w-[2ch] text-center font-semibold text-white">
-                                  {qty}
+                            <div className="flex flex-col gap-1.5">
+                              {/* Fila 1: contador + precio (nada más, para que el
+                                  valor nunca se desborde). */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setQty(
+                                        s.slug,
+                                        s.slug === "grabacion"
+                                          ? Math.max(
+                                              HORAS_MIN_GRABACION,
+                                              qty - 1,
+                                            )
+                                          : qty - 1,
+                                      )
+                                    }
+                                    className={STEPPER}
+                                    aria-label={t("compraWizard.ariaRemoveOne")}
+                                  >
+                                    <MinusIcon className="size-4" />
+                                  </button>
+                                  <span className="min-w-[2ch] text-center font-semibold text-white">
+                                    {qty}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setQty(s.slug, qty + 1)}
+                                    className={STEPPER}
+                                    aria-label={t("compraWizard.ariaAddOne")}
+                                  >
+                                    <PlusIcon className="size-4" />
+                                  </button>
+                                </div>
+                                <span className="shrink-0 text-sm font-semibold text-white">
+                                  {formatCOP(serviceLines[0]?.subtotal ?? 0)}
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => setQty(s.slug, qty + 1)}
-                                  className={STEPPER}
-                                  aria-label={t("compraWizard.ariaAddOne")}
-                                >
-                                  <PlusIcon className="size-4" />
-                                </button>
-                                <span className="text-silver-400 ml-1 text-xs">
-                                  {unitLabel(s)}
-                                </span>
+                              </div>
+                              {/* Fila 2: unidad (por hora / por canción) + hint,
+                                  debajo para no empujar el precio. */}
+                              <p className="text-silver-400 text-xs">
+                                {unitLabel(s)}
                                 {s.slug === "grabacion" && (
-                                  <span className="text-amethyst-200/90 text-xs font-semibold">
-                                    · {t("compraWizard.minHoursHint")}
+                                  <span className="text-amethyst-200/90 font-semibold">
+                                    {" · "}
+                                    {t("compraWizard.minHoursHint")}
                                   </span>
                                 )}
-                              </div>
-                              <span className="text-sm font-semibold text-white">
-                                {formatCOP(serviceLines[0]?.subtotal ?? 0)}
-                              </span>
+                              </p>
                             </div>
                           )}
                         </>

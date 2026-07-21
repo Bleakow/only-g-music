@@ -279,22 +279,40 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
                 </div>
               </>
             ) : (
-              <div className="flex flex-col gap-1.5 p-2.5 pt-14">
-                <Link
-                  href="/login"
-                  onClick={() => setOpen(false)}
-                  className={ITEM}
+              <>
+                {/* Cabecera junto al avatar del trigger (mismo layout que con
+                    sesión) → el avatar deja de "flotar" solo arriba. */}
+                <div
+                  className={`border-b border-white/10 p-4 ${
+                    align === "right" ? "pr-16 text-right" : "pl-16 text-left"
+                  }`}
                 >
-                  {t("auth.login")}
-                </Link>
-                <Link
-                  href="/login?mode=register"
-                  onClick={() => setOpen(false)}
-                  className="from-silver-100 to-amethyst-300 text-ink block rounded-xl bg-gradient-to-r px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
-                >
-                  {t("auth.createAccount")}
-                </Link>
-              </div>
+                  <p className="text-sm font-semibold text-white">
+                    {t("userMenu.guestTitle")}
+                  </p>
+                  <p className="text-silver-300 text-xs">
+                    {t("userMenu.guestSubtitle")}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 p-2.5">
+                  {/* Crear cuenta = CTA principal (gradiente); Iniciar sesión =
+                      secundario, ahora con el mismo estilo redondeado (no el viejo). */}
+                  <Link
+                    href="/login?mode=register"
+                    onClick={() => setOpen(false)}
+                    className="from-silver-100 to-amethyst-300 text-ink block rounded-xl bg-gradient-to-r px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
+                  >
+                    {t("auth.createAccount")}
+                  </Link>
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
+                    className="text-silver-100 hover:border-amethyst-300/60 block rounded-xl border border-white/20 px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:bg-white/5 hover:text-white"
+                  >
+                    {t("auth.login")}
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         </div>

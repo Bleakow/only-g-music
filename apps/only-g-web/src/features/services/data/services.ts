@@ -35,6 +35,10 @@ export const MIS_COSAS_BG_MOBILE = `${HERO}/mis-cosas-mobile.png`;
 export const LISTA_ARTISTAS_BG_DESKTOP = `${HERO}/lista-artistas.png`;
 export const LISTA_ARTISTAS_BG_MOBILE = `${HERO}/lista-artistas-mobile.png`;
 
+/** Fondo de la consola del productor (/consola). */
+export const PANEL_PROD_BG_DESKTOP = `${HERO}/panel-prod.png`;
+export const PANEL_PROD_BG_MOBILE = `${HERO}/panel-prod-mobile.png`;
+
 export const services: Service[] = [
   {
     slug: "grabacion",

@@ -60,6 +60,8 @@
   "userMenu": {
     "account": "Menú de cuenta",
     "access": "Acceder",
+    "guestTitle": "Tu cuenta",
+    "guestSubtitle": "Inicia sesión o crea una cuenta",
     "user": "Usuario",
     "myRequests": "Mis cosas",
     "myArtistProfile": "Mi perfil de artista",
@@ -347,6 +349,7 @@
     "explore": "Explorar",
     "artists": "Artistas",
     "quote": "Cotizar producción",
+    "quoteShort": "Cotizar",
     "book": "Agendar cita",
     "buy": "Comprar",
     "meetProducers": "Conoce a los productores",

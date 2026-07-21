@@ -374,7 +374,7 @@ export function Hero() {
         id="hero-reveal"
         className="pointer-events-none fixed inset-0 z-[2] flex flex-col items-center px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-12 sm:pb-10"
       >
-        <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-[13svh] text-center sm:gap-5 sm:pt-[20vh]">
+        <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-[22svh] text-center sm:gap-5 sm:pt-[20vh]">
           <h2 className="reveal-item font-narrow invisible text-[2.7rem] leading-[0.95] font-bold tracking-tight text-white uppercase sm:text-7xl">
             {t("heroHeadline")}{" "}
             <span className="from-amethyst-300 to-amethyst-500 bg-gradient-to-r bg-clip-text text-transparent">
@@ -404,7 +404,9 @@ export function Hero() {
               href="/cotizar"
               className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-4 py-2.5 text-center text-xs tracking-[1.5px] uppercase transition hover:bg-white/5 sm:px-8 sm:py-3 sm:text-sm sm:tracking-[2px]"
             >
-              {t("quote")}
+              {/* Móvil: "Cotizar" (sin salto de línea); desde sm: texto completo. */}
+              <span className="sm:hidden">{t("quoteShort")}</span>
+              <span className="hidden sm:inline">{t("quote")}</span>
             </Link>
             <Link
               href="/comprar"

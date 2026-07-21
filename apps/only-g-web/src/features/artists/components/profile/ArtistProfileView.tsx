@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import {
@@ -112,7 +112,15 @@ export function ArtistProfileView({
   isOwner?: boolean;
 }) {
   const t = useTranslations();
+  const router = useRouter();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
+
+  // "Atrás" contextual: vuelve a DONDE se venía (la lista, o el editor/panel admin
+  // si el admin llegó por "Ver perfil"), no siempre a la lista. Fallback: /artistas.
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/artistas");
+  }
 
   // Clamp de colisión del reproductor overlay: su posición se guarda como % global
   // (normalmente calibrada en escritorio). En móvil el bloque de identidad (nombre/
@@ -213,7 +221,7 @@ export function ArtistProfileView({
 
         <div className="absolute top-4 left-4 z-20 flex flex-col items-start gap-2">
           {/* Atrás: cristal hecho a mano (Tailwind). */}
-          <GlassButton href="/artistas">
+          <GlassButton onClick={goBack}>
             <ArrowLeftIcon className="size-4 transition-transform duration-300 group-hover:-translate-x-1" />
             {t("artistProfile.back")}
           </GlassButton>

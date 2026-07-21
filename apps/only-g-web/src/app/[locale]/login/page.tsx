@@ -18,7 +18,7 @@ import {
   createConvenioRequest,
   getMyPendingConvenio,
 } from "@/features/convenios/lib/convenio-repo";
-import { FacebookIcon, EyeIcon, EyeOffIcon } from "@/components/icons";
+import { FacebookIcon, EyeIcon, EyeOffIcon, ArrowLeftIcon } from "@/components/icons";
 import { Alert } from "@/components/ui/Alert";
 
 type Mode = "login" | "register" | "reset";
@@ -169,6 +169,22 @@ function LoginForm() {
 
   return (
     <main className="bg-ink relative flex min-h-dvh items-center justify-center overflow-hidden px-6 py-16">
+      {/* Atrás: la ventana de login está fuera del layout `(site)` (no trae el
+          header). Este botón devuelve a DONDE se venía (fallback: `next` o inicio). */}
+      <button
+        type="button"
+        onClick={() => {
+          if (typeof window !== "undefined" && window.history.length > 1)
+            router.back();
+          else router.push(next);
+        }}
+        aria-label={t("nav.back")}
+        className="text-silver-100 fixed top-4 left-4 z-20 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 py-2 text-sm backdrop-blur-sm transition hover:border-white hover:text-white sm:top-5 sm:left-6"
+      >
+        <ArrowLeftIcon className="size-4" />
+        {t("nav.back")}
+      </button>
+
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-70"

@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     "El cuaderno inteligente para compositores. La IA no reemplaza al artista, la potencia. Parte del ecosistema Only G Music.",
   applicationName: "G Notes",
+  icons: { icon: "/favicon.png", apple: "/favicon.png" },
 };
 
 export const viewport: Viewport = {

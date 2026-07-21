@@ -19,7 +19,11 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
-import { activarPase, esPaseTipo, type PaseTipo } from "@only-g/shared-types/pase";
+// SOLO el TIPO (se borra al compilar). NO importar VALORES del paquete: functions
+// se compila con tsc sin bundler y el paquete exporta `.ts` fuente → un import de
+// valor haría `require` de un .ts en runtime y fallaría el deploy. Por eso el
+// registro del pase y `esPaseTipo` se construyen/definen INLINE aquí abajo.
+import type { PaseTipo } from "@only-g/shared-types/pase";
 
 initializeApp();
 const db = getFirestore();
@@ -48,6 +52,10 @@ const PRECIO_GOLDEN_PASS = 350000;
 const PRECIO_PREMIUM_PASS = 600000;
 /** Meses de vigencia de la parte temporal de un pase — sync con PASE_DURACION_MESES. */
 const PASE_DURACION_MESES = 1;
+/** ¿El tier es uno de los 3 válidos? (inline: functions no importa valores del paquete). */
+function esPaseTipo(v: unknown): v is PaseTipo {
+  return v === "lite" || v === "golden" || v === "premium";
+}
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -814,13 +822,36 @@ async function concederPase(
   cortesia: boolean,
 ): Promise<void> {
   const userRef = db.doc(`users/${uid}`);
+
+  // Registro del pase (inline: functions no importa el helper `activarPase`).
+  // Producción: golden→artista, premium→grupo. Video: solo premium.
+  const paseExpira = new Date(now);
+  paseExpira.setMonth(paseExpira.getMonth() + PASE_DURACION_MESES);
+  const paseRec: {
+    tipo: PaseTipo;
+    activo: boolean;
+    since: number;
+    expiresAt: number;
+    cortesia?: boolean;
+    produccion?: { alcance: "artista" | "grupo"; usado: boolean };
+    video?: { usado: boolean };
+  } = { tipo, activo: true, since: now, expiresAt: paseExpira.getTime() };
+  if (cortesia) paseRec.cortesia = true;
+  if (tipo === "golden") {
+    paseRec.produccion = { alcance: "artista", usado: false };
+  }
+  if (tipo === "premium") {
+    paseRec.produccion = { alcance: "grupo", usado: false };
+    paseRec.video = { usado: false };
+  }
+
   const gExpira = new Date(now);
   gExpira.setMonth(gExpira.getMonth() + GNOTES_DURACION_MESES);
   batch.set(
     userRef,
     {
       gnotesPremium: { activo: true, since: now, expiresAt: gExpira.getTime() },
-      pase: activarPase(tipo, now, cortesia),
+      pase: paseRec,
       updatedAt: FieldValue.serverTimestamp(),
     },
     { merge: true },

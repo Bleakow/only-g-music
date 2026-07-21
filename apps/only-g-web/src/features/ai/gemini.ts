@@ -42,13 +42,22 @@ export async function geminiGenerate(opts: GeminiOptions): Promise<string> {
   // Gemini 3.x (a donde hoy apunta el alias `-latest`) lo controla con
   // `thinkingLevel` ("low" = el mínimo); YA NO acepta el antiguo
   // `thinkingBudget: 0`, que devuelve 400 "invalid argument".
-  let res = await post(buildBody({ thinkingConfig: { thinkingLevel: "low" } }));
+  let body = buildBody({ thinkingConfig: { thinkingLevel: "low" } });
+  let res = await post(body);
 
   // Resiliencia ante la DERIVA de la API de Gemini: si el modelo rechaza el
   // control de thinking (400), se reintenta SIN él (formato universal). Así un
   // futuro repunteo del alias `-latest` a otro modelo no vuelve a tumbar la IA.
   if (res.status === 400) {
-    res = await post(buildBody({}));
+    body = buildBody({});
+    res = await post(body);
+  }
+
+  // Transitorio (429 rate-limit / 503 modelo sobrecargado): un reintento corto
+  // con el MISMO cuerpo, para no caer al stub por un pico de carga de Gemini.
+  if (res.status === 429 || res.status === 503) {
+    await new Promise((r) => setTimeout(r, 400));
+    res = await post(body);
   }
 
   if (!res.ok) {

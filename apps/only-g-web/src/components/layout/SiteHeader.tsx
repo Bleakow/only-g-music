@@ -10,19 +10,20 @@ export function SiteHeader() {
   const t = useTranslations();
   const pathname = usePathname();
   const router = useRouter();
-  // En la lista de artistas y en los perfiles (de artista y de productor) el logo
-  // de Inicio sobra: el perfil trae su propia navegación (su botón "Atrás").
+  // En la lista de artistas y en los perfiles (de artista y de productor) la
+  // cabecera sobra: esas páginas traen su propia navegación (su botón "Atrás").
   const hideLogo =
     pathname === "/artistas" ||
     pathname.startsWith("/artistas/") ||
     pathname.startsWith("/productores/");
-  // El editor del propio perfil es una pantalla inmersiva: en vez del logo va un
-  // botón "Atrás" y se oculta la hamburguesa (su navegación vive en la barra).
+  // El editor del propio perfil es una pantalla inmersiva: se oculta la
+  // hamburguesa (su navegación vive en la barra); igual lleva el botón "Atrás".
   const isProfileEdit = pathname === "/artista/perfil";
-  // En el flujo de compra / cotización (y el editor de perfil), en vez del logo de
-  // Inicio va un botón "Atrás" que devuelve a donde el usuario venía.
-  const showBack =
-    pathname === "/comprar" || pathname === "/cotizar" || isProfileEdit;
+  // El logo de Inicio SOLO va en la home. Toda página interior lleva el botón
+  // "Atrás" (router.back → vuelve a donde venías), nunca el logo como "ir a
+  // inicio": es la navegación consistente en toda la app.
+  const isHome = pathname === "/";
+  const showBack = !isHome && !hideLogo;
 
   return (
     <>

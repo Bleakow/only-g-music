@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { alternatesFor } from "@/lib/seo";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { ArrowLeftIcon } from "@/components/icons";
 import { BeatsCatalog } from "@/features/beats/components/BeatsCatalog";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -38,11 +36,8 @@ export default async function BeatsPage() {
           className="pointer-events-none absolute inset-x-6 bottom-0 h-px bg-gradient-to-r from-transparent via-white/15 to-transparent sm:inset-x-12"
         />
 
-        <GlassButton href="/">
-          <ArrowLeftIcon className="size-4 transition-transform duration-300 group-hover:-translate-x-1" />
-          {t("back")}
-        </GlassButton>
-
+        {/* La navegación "Atrás" la provee el SiteHeader (botón fijo arriba a la
+            izquierda, router.back). Sin botón "ir a inicio" propio. */}
         <div className="mt-14 sm:mt-20">
           <h1 className="font-narrow mt-3 text-6xl leading-[0.9] font-bold uppercase sm:text-8xl">
             {t("title")}

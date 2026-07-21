@@ -436,6 +436,7 @@ export function ProfileBuilder({
     photoMobile,
     pt,
     gallery,
+    featuredMedia,
     songURL,
     playerOverlay,
     playerX,

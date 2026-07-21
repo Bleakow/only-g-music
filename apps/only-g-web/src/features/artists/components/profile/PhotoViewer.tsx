@@ -67,8 +67,15 @@ export function PhotoViewer({
   return createPortal(
     <div
       className="fixed inset-0 z-[80] flex items-center justify-center bg-black/90 backdrop-blur-sm"
+      // `pan-y`: el navegador conserva el scroll vertical, pero el arrastre
+      // HORIZONTAL llega a los eventos de puntero (si no, en táctil el navegador
+      // lo secuestra y dispara `pointercancel`, y el swipe se perdía).
+      style={{ touchAction: "pan-y" }}
       onPointerDown={(e) => {
         startX.current = e.clientX;
+      }}
+      onPointerCancel={() => {
+        startX.current = null;
       }}
       onPointerUp={(e) => {
         const sx = startX.current;
@@ -101,6 +108,7 @@ export function PhotoViewer({
           fill
           sizes="92vw"
           className="object-contain"
+          draggable={false}
           priority
         />
       </div>

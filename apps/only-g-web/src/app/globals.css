@@ -6,6 +6,12 @@
    este .css. */
 @source "../../../../packages/ui/src";
 
+/* shared-types también trae clases Tailwind en constantes (p. ej.
+   GALLERY_SPAN_CLASS: col-span-2/row-span-2 para el tamaño de las fotos en la
+   galería). Sin este @source, esas utilidades sin prefijo nunca se generan y el
+   botón de cambiar tamaño «no hace nada». */
+@source "../../../../packages/shared-types/src";
+
 /* ── Design tokens ─────────────────────────────────────────────── */
 @theme {
   --font-sans: "OGM", system-ui, sans-serif;

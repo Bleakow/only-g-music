@@ -38,6 +38,7 @@ import {
   type Premium,
   type PhotoTransform,
   type PlayerSize,
+  type FeaturedMedia,
   type GalleryItem,
   type GallerySpan,
   GALLERY_SPAN_CYCLE,
@@ -114,6 +115,13 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
         ? (data.disciplines as Role[])
         : ["artista"],
     socio: data.socio === true,
+    // Media destacada (video/imagen) y artistas relacionados: sin estas dos
+    // líneas el dato se GUARDABA en Firestore pero nunca se leía de vuelta, así
+    // que no aparecía ni en el perfil ni al recargar el editor.
+    featuredMedia: (data.featuredMedia as FeaturedMedia) ?? undefined,
+    relatedArtists: Array.isArray(data.relatedArtists)
+      ? (data.relatedArtists as string[])
+      : undefined,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
     updatedAt: data.updatedAt?.toMillis?.() ?? Date.now(),
   };

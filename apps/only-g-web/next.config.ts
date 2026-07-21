@@ -11,9 +11,18 @@ const workspaceRoot = join(appDir, "..", "..");
 // next-intl: enlaza la config de petición (catálogos por locale).
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 
+// ID único por build (cambia en cada deploy). Se inyecta como env pública para
+// que CLIENTE y SERVIDOR compartan el mismo valor: el cliente compara el suyo
+// (horneado en su bundle) con el que devuelve `/api/version` (el desplegado) y,
+// si difieren, avisa de que hay una versión nueva. Respeta un id externo si el
+// CI lo provee (p. ej. el SHA de git).
+const BUILD_ID =
+  process.env.NEXT_PUBLIC_BUILD_ID ?? Date.now().toString(36);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   outputFileTracingRoot: workspaceRoot,
+  env: { NEXT_PUBLIC_BUILD_ID: BUILD_ID },
   // Compila desde fuente los packages internos del workspace (TS, sin pre-build).
   transpilePackages: ["@only-g/shared-types", "@only-g/ui"],
   images: {

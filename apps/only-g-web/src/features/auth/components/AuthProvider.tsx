@@ -10,7 +10,11 @@ import {
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { ensureUserAccount, getUserAccount } from "../lib/user-repo";
+import {
+  ensureUserAccount,
+  getUserAccount,
+  subscribeUserAccount,
+} from "../lib/user-repo";
 import { logout as doLogout } from "../lib/auth-actions";
 import type { UserAccount } from "@only-g/shared-types/user";
 
@@ -38,16 +42,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // `active`: evita aplicar el resultado de un ensureUserAccount obsoleto si
     // el estado de sesión cambió de nuevo (logout→login rápido) o al desmontar.
     let active = true;
+    // Suscripción viva al doc de cuenta; se corta al cambiar de sesión.
+    let unsubAccount: (() => void) | null = null;
     const unsub = onAuthStateChanged(auth, async (fbUser) => {
       setUser(fbUser);
+      unsubAccount?.();
+      unsubAccount = null;
       if (fbUser) {
         try {
+          // Alta idempotente (crea el doc si no existe) + primer valor inmediato.
           const acc = await ensureUserAccount(fbUser);
           if (active) setAccount(acc);
         } catch {
           // Si falla la lectura (p. ej. reglas/offline), no rompemos la app.
           if (active) setAccount(null);
         }
+        if (!active) return;
+        // A partir de aquí, el rol/membresía se refresca EN VIVO: si el servidor
+        // otorga un rol o cambia la membresía, se ve sin recargar la pestaña.
+        unsubAccount = subscribeUserAccount(fbUser.uid, (acc) => {
+          if (active) setAccount(acc);
+        });
       } else {
         setAccount(null);
       }
@@ -55,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => {
       active = false;
+      unsubAccount?.();
       unsub();
     };
   }, []);

@@ -5,6 +5,7 @@
 import {
   doc,
   getDoc,
+  onSnapshot,
   setDoc,
   updateDoc,
   serverTimestamp,
@@ -86,6 +87,25 @@ export async function updateUserProfile(
 export async function getUserAccount(uid: string): Promise<UserAccount | null> {
   const snap = await getDoc(doc(db, COLLECTION, uid));
   return snap.exists() ? toAccount(uid, snap.data()) : null;
+}
+
+/**
+ * Suscripción EN VIVO al doc de cuenta (`users/{uid}`). Refleja al instante los
+ * cambios que hace el servidor (nuevo rol, membresía, etc.) sin que el usuario
+ * tenga que recargar la pestaña. Devuelve la función para cancelar.
+ */
+export function subscribeUserAccount(
+  uid: string,
+  cb: (account: UserAccount | null) => void,
+): () => void {
+  return onSnapshot(
+    doc(db, COLLECTION, uid),
+    (snap) => cb(snap.exists() ? toAccount(uid, snap.data()) : null),
+    (err) => {
+      // Sin red / reglas: no rompemos la app; conservamos la cuenta actual.
+      console.warn("[user-repo] subscribeUserAccount:", err);
+    },
+  );
 }
 
 /**

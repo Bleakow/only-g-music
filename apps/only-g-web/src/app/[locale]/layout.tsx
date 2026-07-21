@@ -16,6 +16,7 @@ import { GlobalErrorListener } from "@/features/observability/components/GlobalE
 import { InitialLoader } from "@/components/loaders/InitialLoader";
 import { HideOnAdmin } from "@/components/layout/HideOnAdmin";
 import { ConversationBubble } from "@/features/conversations/components/ConversationBubble";
+import { VersionWatcher } from "@/components/layout/VersionWatcher";
 
 export async function generateMetadata({
   params,
@@ -29,7 +30,7 @@ export async function generateMetadata({
     title: t("rootTitle"),
     description: t("rootDesc"),
     manifest: "/manifest.webmanifest",
-    icons: { icon: "/favicon.svg" },
+    icons: { icon: "/favicon.png", apple: "/favicon.png" },
     openGraph: {
       type: "website",
       siteName: "Only G Music",
@@ -80,6 +81,8 @@ export default async function LocaleLayout({
               <HideOnAdmin>
                 <ConversationBubble />
               </HideOnAdmin>
+              {/* Aviso de versión nueva tras un deploy (recarga a un clic). */}
+              <VersionWatcher />
             </PreciosProvider>
           </AuthProvider>
         </NextIntlClientProvider>

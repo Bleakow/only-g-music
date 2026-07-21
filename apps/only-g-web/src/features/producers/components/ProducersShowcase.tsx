@@ -163,11 +163,14 @@ export function ProducersShowcase() {
             </div>
           </div>
 
-          {/* Espaciador: da el recorrido de scroll para la animación de la capa */}
-          <div className="producer-spacer h-[220vh]" aria-hidden="true" />
+          {/* Espaciador: da el recorrido de scroll para la animación de la capa.
+              Acortado (antes 220vh) para que el "HOLD" de la foto no se sienta como
+              scroll muerto. El `-mt` del editorial baja en proporción (M ≈ 0.4·H+12)
+              para mantener el crossfade alineado con la salida de la foto. */}
+          <div className="producer-spacer h-[150vh]" aria-hidden="true" />
 
           {/* Editorial: sube por DETRÁS de la capa (-mt) para el crossfade limpio */}
-          <div className="bg-ink relative z-10 -mt-[100vh] px-6 pt-12 pb-28 sm:px-12">
+          <div className="bg-ink relative z-10 -mt-[72vh] px-6 pt-12 pb-28 sm:px-12">
             <ProducerEditorial producer={p} />
           </div>
         </section>

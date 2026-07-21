@@ -3,6 +3,7 @@
  * en una futura app nativa). No importar nada de UI ni de Firebase aquí.
  */
 import type { GNotesMembership } from "./gnotes-membership";
+import type { Pase } from "./pase";
 
 /**
  * Roles del sistema. Un usuario puede tener VARIOS a la vez (p. ej. el admin
@@ -61,6 +62,11 @@ export interface UserAccount {
   /** Membresía de G Notes (IA sin límite). La escribe SOLO el servidor al
    *  confirmar el pago; el cliente la lee para mostrar el estado. */
   gnotesPremium?: GNotesMembership;
+
+  /** Pase activo (paquete: G Notes + perfil + vales de producción/video). Lo
+   *  escribe SOLO el servidor (Function al confirmar el pago, o el admin al dar
+   *  cortesía); el cliente lo lee para mostrar el estado y los vales. */
+  pase?: Pase;
 }
 
 /** Datos del perfil capturados al registrarse como artista (prellenan el editor). */

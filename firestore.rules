@@ -89,16 +89,16 @@ service cloud.firestore {
         && request.resource.data.roles.size() == 1
         && request.resource.data.roles[0] == 'cliente';
 
-      // El cliente puede actualizar SU doc, pero NO tocar `roles` ni
-      // `gnotesPremium` (el entitlement de la membresía G Notes): eso solo lo
-      // escribe el servidor (Admin SDK / Functions al confirmar el pago), que
-      // ignora estas reglas. Sin este freeze, un usuario se auto-regalaría IA
-      // sin límite escribiendo su propio doc.
+      // El cliente puede actualizar SU doc, pero NO tocar `roles`, `gnotesPremium`
+      // (membresía G Notes) ni `pase` (paquete con producción/video): esos solo
+      // los escribe el servidor (Admin SDK / Functions al confirmar el pago, o el
+      // admin al dar cortesía), que ignora estas reglas. Sin este freeze, un
+      // usuario se auto-regalaría IA sin límite o un pase escribiendo su doc.
       allow update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.roles == resource.data.roles
         && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['gnotesPremium']);
+              .hasAny(['gnotesPremium', 'pase']);
 
       allow delete: if false;
 

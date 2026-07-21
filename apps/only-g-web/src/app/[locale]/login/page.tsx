@@ -18,7 +18,7 @@ import {
   createConvenioRequest,
   getMyPendingConvenio,
 } from "@/features/convenios/lib/convenio-repo";
-import { FacebookIcon } from "@/components/icons";
+import { FacebookIcon, EyeIcon, EyeOffIcon } from "@/components/icons";
 import { Alert } from "@/components/ui/Alert";
 
 type Mode = "login" | "register" | "reset";
@@ -70,6 +70,7 @@ function LoginForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -82,6 +83,7 @@ function LoginForm() {
     setMode(m);
     setError(null);
     setResetSent(false);
+    setPasswordConfirm("");
   }
 
   // Tras un alta (email o social): si el usuario eligió productor/beatmaker,
@@ -124,6 +126,10 @@ function LoginForm() {
         await sendPasswordReset(email);
         setResetSent(true);
       } else if (isRegister) {
+        if (password !== passwordConfirm) {
+          setError(t("login.passwordMismatch"));
+          return;
+        }
         const authUser = await registerWithEmail(email, password, name);
         await afterAuth(authUser);
       } else {
@@ -272,27 +278,47 @@ function LoginForm() {
                   required
                 />
                 {!isReset && (
-                  <div className="flex flex-col gap-1.5">
-                    <Field
-                      label={t("login.password")}
-                      type="password"
-                      value={password}
-                      onChange={setPassword}
-                      autoComplete={
-                        isRegister ? "new-password" : "current-password"
-                      }
-                      required
-                    />
-                    {!isRegister && (
-                      <button
-                        type="button"
-                        onClick={() => switchMode("reset")}
-                        className="text-silver-300 hover:text-amethyst-200 self-end text-xs underline-offset-4 hover:underline"
-                      >
-                        {t("login.forgot")}
-                      </button>
+                  <>
+                    <div className="flex flex-col gap-1.5">
+                      <PasswordField
+                        label={t("login.password")}
+                        value={password}
+                        onChange={setPassword}
+                        autoComplete={
+                          isRegister ? "new-password" : "current-password"
+                        }
+                        showLabel={t("login.showPassword")}
+                        hideLabel={t("login.hidePassword")}
+                      />
+                      {!isRegister && (
+                        <button
+                          type="button"
+                          onClick={() => switchMode("reset")}
+                          className="text-silver-300 hover:text-amethyst-200 self-end text-xs underline-offset-4 hover:underline"
+                        >
+                          {t("login.forgot")}
+                        </button>
+                      )}
+                    </div>
+                    {isRegister && password.length > 0 && (
+                      <div className="flex flex-col gap-1.5">
+                        <PasswordField
+                          label={t("login.passwordConfirm")}
+                          value={passwordConfirm}
+                          onChange={setPasswordConfirm}
+                          autoComplete="new-password"
+                          showLabel={t("login.showPassword")}
+                          hideLabel={t("login.hidePassword")}
+                        />
+                        {passwordConfirm.length > 0 &&
+                          password !== passwordConfirm && (
+                            <span className="text-xs text-rose-300">
+                              {t("login.passwordMismatch")}
+                            </span>
+                          )}
+                      </div>
                     )}
-                  </div>
+                  </>
                 )}
 
                 {error && <Alert tone="error">{error}</Alert>}
@@ -436,6 +462,57 @@ function Field({
         required={required}
         className="text-silver-50 focus:border-amethyst-300 focus:ring-amethyst-300/80 rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 transition outline-none focus:ring-1"
       />
+    </label>
+  );
+}
+
+/** Campo de contraseña con botón para mostrar/ocultar el texto. Cada instancia
+ * gestiona su propia visibilidad, así el toggle de la contraseña y el de su
+ * confirmación son independientes. */
+function PasswordField({
+  label,
+  value,
+  onChange,
+  autoComplete,
+  showLabel,
+  hideLabel,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  autoComplete?: string;
+  showLabel: string;
+  hideLabel: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="text-silver-300 text-xs tracking-[2px] uppercase">
+        {label}
+      </span>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          autoComplete={autoComplete}
+          required
+          className="text-silver-50 focus:border-amethyst-300 focus:ring-amethyst-300/80 w-full rounded-lg border border-white/15 bg-black/30 py-2.5 pr-11 pl-4 transition outline-none focus:ring-1"
+        />
+        <button
+          type="button"
+          onClick={() => setShow((s) => !s)}
+          aria-label={show ? hideLabel : showLabel}
+          aria-pressed={show}
+          className="text-silver-400 hover:text-silver-100 absolute inset-y-0 right-0 flex items-center px-3 transition"
+        >
+          {show ? (
+            <EyeOffIcon className="size-5" />
+          ) : (
+            <EyeIcon className="size-5" />
+          )}
+        </button>
+      </div>
     </label>
   );
 }

@@ -19,6 +19,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
+import { activarPase, esPaseTipo, type PaseTipo } from "@only-g/shared-types/pase";
 
 initializeApp();
 const db = getFirestore();
@@ -41,6 +42,12 @@ const COMISION_BEAT = 0.2;
 const PRECIO_GNOTES = 12000;
 /** Meses de vigencia de la membresía G Notes — sync con GNOTES_DURACION_MESES (dominio). */
 const GNOTES_DURACION_MESES = 1;
+/** Precios de los PASES en COP — sync con dominio (DEFAULTS). */
+const PRECIO_LITE_PASS = 80000;
+const PRECIO_GOLDEN_PASS = 350000;
+const PRECIO_PREMIUM_PASS = 600000;
+/** Meses de vigencia de la parte temporal de un pase — sync con PASE_DURACION_MESES. */
+const PASE_DURACION_MESES = 1;
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -523,6 +530,11 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   if (refKind === "gnotes") {
     return await confirmarPagoGNotes(convRef, conv);
   }
+  // Pago de un PASE (paquete): concede todos sus beneficios, registra el ingreso
+  // y cierra el hilo.
+  if (refKind === "pase") {
+    return await confirmarPagoPase(convRef, conv);
+  }
   if (refKind !== "premium") {
     throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
   }
@@ -788,6 +800,123 @@ async function confirmarPagoGNotes(
 }
 
 /**
+ * Concede un PASE a `uid`: añade a `batch` las escrituras de los beneficios
+ * TEMPORALES (membresía G Notes +1 mes; y, si el usuario ya tiene perfil de
+ * artista, su premium +1 mes) y el registro `users/{uid}.pase` con el tier y los
+ * VALES de servicio (producción/video) pendientes. El asiento contable NO va aquí
+ * (solo lo añade la COMPRA; la cortesía no factura). El caller commitea el batch.
+ */
+async function concederPase(
+  batch: FirebaseFirestore.WriteBatch,
+  uid: string,
+  tipo: PaseTipo,
+  now: number,
+  cortesia: boolean,
+): Promise<void> {
+  const userRef = db.doc(`users/${uid}`);
+  const gExpira = new Date(now);
+  gExpira.setMonth(gExpira.getMonth() + GNOTES_DURACION_MESES);
+  batch.set(
+    userRef,
+    {
+      gnotesPremium: { activo: true, since: now, expiresAt: gExpira.getTime() },
+      pase: activarPase(tipo, now, cortesia),
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  // Perfil de artista premium (+1 mes, alineado con la vigencia del pase). Solo
+  // si el usuario YA tiene perfil vinculado; si no, el beneficio queda implícito
+  // en el `pase` (el admin lo ve y lo aplica al crear el perfil): no se pierde.
+  const slug = (await userRef.get()).data()?.artistSlug;
+  if (typeof slug === "string" && slug) {
+    const pExpira = new Date(now);
+    pExpira.setMonth(pExpira.getMonth() + PASE_DURACION_MESES);
+    batch.set(
+      db.doc(`artistProfiles/${slug}`),
+      {
+        premium: { activo: true, since: now, expiresAt: pExpira.getTime() },
+        updatedAt: FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+}
+
+/**
+ * Confirma el pago de un PASE (SOLO admin, vía confirmPayment). El tier viaja en
+ * `conv.ref.id` ("lite"|"golden"|"premium"). Concede todos los beneficios del
+ * pase, registra el ingreso (`fuente: "pase"`, id determinista por chat →
+ * idempotente), cierra el hilo y avisa al usuario. El ingreso se factura por lo
+ * que el comprador VIO y TRANSFIRIÓ (`conv.pago.monto`), con el precio de config
+ * como fallback.
+ */
+async function confirmarPagoPase(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+): Promise<{ ok: true }> {
+  const payerUid = Array.isArray(conv.participants)
+    ? (conv.participants[0] as string | undefined)
+    : undefined;
+  if (!payerUid) {
+    throw new HttpsError("failed-precondition", "Pago sin pagador.");
+  }
+  const tipo = conv.ref?.id;
+  if (!esPaseTipo(tipo)) {
+    throw new HttpsError("failed-precondition", "Pase no reconocido.");
+  }
+  const clientName =
+    (await db.doc(`users/${payerUid}`).get()).data()?.displayName ?? null;
+
+  const { precioLitePass, precioGoldenPass, precioPremiumPass } =
+    await getComercial();
+  const precioBase =
+    tipo === "lite"
+      ? precioLitePass
+      : tipo === "golden"
+        ? precioGoldenPass
+        : precioPremiumPass;
+  const montoIngresado =
+    typeof conv.pago?.monto === "number" &&
+    Number.isInteger(conv.pago.monto) &&
+    conv.pago.monto > 0
+      ? conv.pago.monto
+      : precioBase;
+
+  const now = Date.now();
+  const conversationId = convRef.id;
+  const batch = db.batch();
+  await concederPase(batch, payerUid, tipo, now, false);
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: montoIngresado,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Asiento contable (id determinista por chat → idempotente ante retry).
+  batch.set(db.doc(`transactions/pase_${conversationId}`), {
+    uid: payerUid,
+    clientName,
+    concepto: `Pase ${tipo}`,
+    amount: montoIngresado,
+    fecha: now,
+    estado: "confirmada",
+    fuente: "pase",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(`Pago confirmado: ${conversationId} → pase ${tipo} ${payerUid}`);
+  await notify(payerUid, "pase-activado", { pase: tipo }, "/suscripciones");
+  return { ok: true };
+}
+
+/**
  * Config comercial server-authoritative: precios y comisiones leídos de DOS docs
  * (`comercialConfig/comisiones` + `comercialConfig/precios`, partidos por
  * visibilidad de lectura — ver firestore.rules) con FALLBACK a las constantes del
@@ -807,6 +936,9 @@ async function getComercial(): Promise<{
   precioMembresia: number;
   precioPerfil: number;
   precioGNotes: number;
+  precioLitePass: number;
+  precioGoldenPass: number;
+  precioPremiumPass: number;
   comisionProductor: number | null;
   comisionProductorPorSede: Record<string, number>;
 }> {
@@ -844,6 +976,9 @@ async function getComercial(): Promise<{
     precioMembresia: precio(pre.precioMembresia, PRECIO_MEMBRESIA),
     precioPerfil: precio(pre.precioPerfil, PRECIO_PERFIL),
     precioGNotes: precio(pre.precioGNotes, PRECIO_GNOTES),
+    precioLitePass: precio(pre.precioLitePass, PRECIO_LITE_PASS),
+    precioGoldenPass: precio(pre.precioGoldenPass, PRECIO_GOLDEN_PASS),
+    precioPremiumPass: precio(pre.precioPremiumPass, PRECIO_PREMIUM_PASS),
     comisionProductor: enRango(com.comisionProductor)
       ? com.comisionProductor
       : null,
@@ -1719,6 +1854,73 @@ export const adminAssignProductor = onCall(
     return { ok: true };
   },
 );
+
+/**
+ * Activa un PASE de CORTESÍA a un usuario (SOLO admin). Concede todos los
+ * beneficios del pase SIN cobrar (no genera asiento contable). El admin lo usa
+ * desde la ventana de Roles para regalar un mes. `tipo` = lite|golden|premium.
+ */
+export const activarPaseCortesia = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+
+  const targetUid = request.data?.targetUid;
+  const tipo = request.data?.tipo;
+  if (typeof targetUid !== "string" || !targetUid) {
+    throw new HttpsError("invalid-argument", "Falta el usuario.");
+  }
+  if (!esPaseTipo(tipo)) {
+    throw new HttpsError("invalid-argument", "Pase no reconocido.");
+  }
+  const userRef = db.doc(`users/${targetUid}`);
+  if (!(await userRef.get()).exists) {
+    throw new HttpsError("not-found", "El usuario no existe.");
+  }
+
+  const now = Date.now();
+  const batch = db.batch();
+  await concederPase(batch, targetUid, tipo, now, true); // cortesía → sin asiento
+  await batch.commit();
+
+  logger.info(`Pase ${tipo} (cortesía) activado a ${targetUid}`);
+  await notify(targetUid, "pase-activado", { pase: tipo }, "/suscripciones");
+  return { ok: true };
+});
+
+/**
+ * Marca un VALE del pase como ENTREGADO (SOLO admin): cuando el estudio cumple la
+ * producción o el video incluidos en el pase. `vale` = "produccion" | "video".
+ * Idempotente (vuelve a poner `usado: true`); guarda `entregadoAt`.
+ */
+export const marcarValeEntregado = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+
+  const targetUid = request.data?.targetUid;
+  const vale = request.data?.vale;
+  if (typeof targetUid !== "string" || !targetUid) {
+    throw new HttpsError("invalid-argument", "Falta el usuario.");
+  }
+  if (vale !== "produccion" && vale !== "video") {
+    throw new HttpsError("invalid-argument", "Vale no reconocido.");
+  }
+  const userRef = db.doc(`users/${targetUid}`);
+  const pase = (await userRef.get()).data()?.pase as
+    | Record<string, unknown>
+    | undefined;
+  if (!pase || !pase[vale]) {
+    throw new HttpsError(
+      "failed-precondition",
+      "El usuario no tiene ese vale en su pase.",
+    );
+  }
+
+  await userRef.update({
+    [`pase.${vale}.usado`]: true,
+    [`pase.${vale}.entregadoAt`]: Date.now(),
+  });
+
+  logger.info(`Vale ${vale} marcado entregado para ${targetUid}`);
+  return { ok: true };
+});
 
 /**
  * Proyección de usuarios por sus UIDs (SOLO admin). El cliente no puede leer

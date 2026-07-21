@@ -372,41 +372,43 @@ export function Hero() {
       {/* Contenido que se revela al terminar la máscara */}
       <div
         id="hero-reveal"
-        className="pointer-events-none fixed inset-0 z-[2] flex flex-col items-center px-6 pb-10 sm:px-12"
+        className="pointer-events-none fixed inset-0 z-[2] flex flex-col items-center px-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:px-12 sm:pb-10"
       >
-        <div className="flex flex-1 flex-col items-center justify-start gap-5 pt-[22vh] text-center sm:pt-[20vh]">
-          <h2 className="reveal-item font-narrow invisible text-5xl leading-[0.95] font-bold tracking-tight text-white uppercase sm:text-7xl">
+        <div className="flex flex-1 flex-col items-center justify-start gap-4 pt-[13svh] text-center sm:gap-5 sm:pt-[20vh]">
+          <h2 className="reveal-item font-narrow invisible text-[2.7rem] leading-[0.95] font-bold tracking-tight text-white uppercase sm:text-7xl">
             {t("heroHeadline")}{" "}
             <span className="from-amethyst-300 to-amethyst-500 bg-gradient-to-r bg-clip-text text-transparent">
               {t("heroHeadlineAccent")}
             </span>
           </h2>
-          <p className="reveal-item text-silver-400 invisible text-xs tracking-[4px] uppercase sm:text-sm">
+          <p className="reveal-item text-silver-400 invisible text-[0.65rem] tracking-[4px] uppercase sm:text-sm">
             {t("tagline")}
           </p>
-          <div className="flex flex-col items-center gap-3 sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
+          {/* Móvil: rejilla 2×2 compacta (botones pequeños) para que quepan sin
+              superponerse con la barra de Safari. Desde sm: fila que se ajusta. */}
+          <div className="grid w-full max-w-[20rem] grid-cols-2 gap-2.5 sm:flex sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4">
             <button
               type="button"
               onClick={scrollToWork}
-              className="reveal-item btn-amethyst pointer-events-auto invisible rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase"
+              className="reveal-item btn-amethyst pointer-events-auto invisible rounded-full px-4 py-2.5 text-xs font-semibold tracking-[1.5px] uppercase sm:px-8 sm:py-3 sm:text-sm sm:tracking-[2px]"
             >
               {t("explore")}
             </button>
             <Link
               href="/artistas"
-              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-4 py-2.5 text-center text-xs tracking-[1.5px] uppercase transition hover:bg-white/5 sm:px-8 sm:py-3 sm:text-sm sm:tracking-[2px]"
             >
               {t("artists")}
             </Link>
             <Link
               href="/cotizar"
-              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+              className="reveal-item border-silver-300/40 text-silver-100 hover:border-silver-100 pointer-events-auto invisible rounded-full border px-4 py-2.5 text-center text-xs tracking-[1.5px] uppercase transition hover:bg-white/5 sm:px-8 sm:py-3 sm:text-sm sm:tracking-[2px]"
             >
               {t("quote")}
             </Link>
             <Link
               href="/comprar"
-              className="reveal-item btn-outline pointer-events-auto invisible rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
+              className="reveal-item btn-outline pointer-events-auto invisible rounded-full px-4 py-2.5 text-center text-xs tracking-[1.5px] uppercase sm:px-8 sm:py-3 sm:text-sm sm:tracking-[2px]"
             >
               {t("buy")}
             </Link>

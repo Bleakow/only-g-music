@@ -70,7 +70,8 @@ export type PagoConcepto =
   | "reserva"
   | "beat"
   | "pedido"
-  | "gnotes";
+  | "gnotes"
+  | "pase";
 
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
@@ -102,7 +103,14 @@ export interface Conversation {
   status: ConversationStatus;
   /** Enlace opcional a la entidad de contexto. */
   ref?: {
-    kind: "quote" | "booking" | "premium" | "beat" | "pedido" | "gnotes";
+    kind:
+      | "quote"
+      | "booking"
+      | "premium"
+      | "beat"
+      | "pedido"
+      | "gnotes"
+      | "pase";
     id: string;
   };
   /** Estado del pago (solo `type === "pago"`). */

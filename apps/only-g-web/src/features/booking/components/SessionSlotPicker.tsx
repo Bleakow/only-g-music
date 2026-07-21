@@ -26,6 +26,15 @@ function to12h(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+/** "HH:mm" + minutos → "HH:mm" (para calcular la hora de FIN de la sesión). */
+function addHhmm(hhmm: string, addMin: number): string {
+  const [h, m] = hhmm.split(":").map(Number);
+  const total = h * 60 + m + addMin;
+  const hh = Math.floor(total / 60) % 24;
+  const mm = total % 60;
+  return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
 /** Selección resuelta de una línea de sesión: lista para volcar en
  *  `PedidoLineaInput` (start/durationMin/slotCtx). */
 export interface SessionSlotValue {
@@ -193,6 +202,12 @@ export function SessionSlotPicker({
   const dispNoDefinida = !loading && !disp;
   const selectedOfertados = selectedDay ? ofertados(selectedDay) : [];
   const selectedTomados = selectedDay ? tomados(selectedDay) : {};
+  // Casillas que OCUPARÁ la reserva desde el inicio elegido (TODAS las horas, no
+  // solo la de llegada) — se resaltan para dejar claro el rango al comprador.
+  const coveredSlots = startSlot
+    ? slotsCubiertos(startSlot, requiredHours * 60)
+    : [];
+  const endSlot = startSlot ? addHhmm(startSlot, requiredHours * 60) : null;
 
   return (
     <div>
@@ -292,7 +307,8 @@ export function SessionSlotPicker({
                     disabled={disabled}
                     onClick={() => pick(selectedDay, slot)}
                     data-active={startSlot === slot}
-                    className="enabled:hover:border-amethyst-300 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/15 rounded-lg border border-white/15 py-2.5 text-sm tabular-nums transition disabled:cursor-not-allowed disabled:opacity-30 data-[active=true]:text-white"
+                    data-covered={coveredSlots.includes(slot) && slot !== startSlot}
+                    className="enabled:hover:border-amethyst-300 data-[covered=true]:border-amethyst-400/50 data-[covered=true]:bg-amethyst-500/10 data-[covered=true]:text-amethyst-100 data-[active=true]:border-amethyst-400 data-[active=true]:bg-amethyst-500/25 rounded-lg border border-white/15 py-2.5 text-sm tabular-nums transition disabled:cursor-not-allowed disabled:opacity-30 data-[active=true]:text-white"
                   >
                     {to12h(slot)}
                   </button>
@@ -303,11 +319,13 @@ export function SessionSlotPicker({
         )}
       </div>
 
-      {selectedDay && startSlot && (
-        <p className="text-silver-300 mt-3 text-sm">
-          {t("compraWizard.slotSelected", {
+      {selectedDay && startSlot && endSlot && (
+        <p className="text-silver-200 mt-3 text-sm">
+          {t("compraWizard.slotSelectedRange", {
             date: `${selectedDay} ${monthName}`,
-            time: to12h(startSlot),
+            start: to12h(startSlot),
+            end: to12h(endSlot),
+            hours: requiredHours,
           })}
         </p>
       )}

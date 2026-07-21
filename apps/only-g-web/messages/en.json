@@ -69,6 +69,7 @@
     "myBeats": "My beats",
     "availability": "Availability",
     "myPayouts": "My payouts",
+    "subscriptions": "Subscriptions",
     "settings": "Settings",
     "logout": "Log out"
   },
@@ -159,6 +160,29 @@
     "renovar": "Renew a month",
     "activa": "Active · unlimited AI ✦",
     "vence": "Renews on {fecha}."
+  },
+  "pases": {
+    "eyebrow": "Memberships",
+    "title": "Subscriptions",
+    "intro": "Pick a pass and level up your career: AI songwriting, your artist profile, and pro production.",
+    "porMes": "/ month",
+    "popular": "Popular",
+    "suscribirse": "Subscribe",
+    "actual": "Your current pass",
+    "tuPase": "You have the {pase}",
+    "activoHasta": "active until {fecha}",
+    "valePendiente": "pending delivery",
+    "valeEntregado": "delivered",
+    "incluye": {
+      "gnotes": "G Notes · unlimited AI (1 month)",
+      "perfil": "Artist profile (1 month)",
+      "produccionArtista": "Full production for one artist",
+      "produccionGrupo": "Full production for a group",
+      "video": "Professional video"
+    },
+    "lite": { "nombre": "Lite Pass" },
+    "golden": { "nombre": "Golden Pass" },
+    "premium": { "nombre": "Premium Pass" }
   },
   "datosPago": {
     "title": "Payout details",
@@ -538,7 +562,11 @@
     "syncNote": "Beatmaker and producer are partners: no membership fee, and their profile syncs with these tabs.",
     "errorSelfAdmin": "You can't remove your own admin role.",
     "errorGuardar": "Couldn't save the roles.",
-    "errorBuscar": "Search failed."
+    "errorBuscar": "Search failed.",
+    "paseTitulo": "Activate pass (courtesy)",
+    "paseNota": "Grants the pass for free, no charge. Applied instantly.",
+    "paseOtorgado": "{pase} activated ✓",
+    "paseError": "Couldn't activate the pass."
   },
   "adminConvenios": {
     "title": "Agreement requests",
@@ -693,6 +721,9 @@
       "membresia": "Membership price (monthly)",
       "perfil": "Artist profile price",
       "gnotes": "G Notes price (monthly, unlimited AI)",
+      "litePass": "Lite pass (G Notes + profile)",
+      "goldenPass": "Golden pass (+ 1 production)",
+      "premiumPass": "Premium pass (+ group + video)",
       "grabacionTitle": "Recording (hourly)",
       "grabacionBase": "Base (covers 2 hours)",
       "grabacionHoraExtra": "Extra hour (after the 2nd)",
@@ -1823,6 +1854,10 @@
         "titulo": "G Notes premium active",
         "cuerpo": "Your G Notes membership is active: unlimited AI for a month."
       },
+      "pase-activado": {
+        "titulo": "Pass activated",
+        "cuerpo": "Your {pase} pass is now active. Check your benefits in Subscriptions."
+      },
       "convenio-solicitado": {
         "titulo": "New partnership request",
         "cuerpo": "{nombre} requested a {tipo} partnership."
@@ -1977,7 +2012,8 @@
       "reserva": "Session booking",
       "beat": "Beat purchase",
       "pedido": "Production order",
-      "gnotes": "G Notes membership"
+      "gnotes": "G Notes membership",
+      "pase": "Pass (bundle)"
     }
   }
 }

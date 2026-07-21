@@ -11,7 +11,8 @@ export type TransaccionFuente =
   | "premium"
   | "membresia"
   | "beat"
-  | "gnotes";
+  | "gnotes"
+  | "pase";
 
 export interface Transaccion {
   id: string;

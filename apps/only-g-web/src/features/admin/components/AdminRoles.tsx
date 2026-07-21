@@ -8,11 +8,13 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { SpinnerIcon } from "@/components/icons";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { Role } from "@only-g/shared-types/user";
+import { PASE_TIPOS, type PaseTipo } from "@only-g/shared-types/pase";
 import {
   adminSearchUsers,
   adminSetRoles,
   type AdminUserHit,
 } from "../lib/admin-users-repo";
+import { activarPaseCortesia } from "@/features/pases/lib/pases-repo";
 import { AdminPageHeader, adminCard, adminInner, adminInput } from "./admin-ui";
 
 /** Todos los roles asignables desde este panel, en el orden en que se listan. */
@@ -50,6 +52,10 @@ export function AdminRoles() {
   const [selectedRoles, setSelectedRoles] = useState<Role[]>([]);
   const [savingUid, setSavingUid] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [grantingPase, setGrantingPase] = useState<PaseTipo | null>(null);
+  const [paseMsg, setPaseMsg] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
 
   // Búsqueda con debounce; vacío no dispara llamada (evita listar a todos).
   useEffect(() => {
@@ -84,6 +90,26 @@ export function AdminRoles() {
     setEditTarget(u);
     setSelectedRoles(u.roles.filter(isRole));
     setModalError(null);
+    setPaseMsg(null);
+  }
+
+  /** Activa un pase de cortesía (gratis) al usuario en edición. */
+  async function otorgarPase(tipo: PaseTipo) {
+    if (!editTarget || grantingPase) return;
+    setGrantingPase(tipo);
+    setPaseMsg(null);
+    try {
+      await activarPaseCortesia(editTarget.uid, tipo);
+      setPaseMsg({
+        ok: true,
+        text: t("adminRoles.paseOtorgado", { pase: t(`pases.${tipo}.nombre`) }),
+      });
+    } catch (e) {
+      console.error("[admin-roles] pase:", e);
+      setPaseMsg({ ok: false, text: t("adminRoles.paseError") });
+    } finally {
+      setGrantingPase(null);
+    }
   }
 
   function toggleRole(role: Role) {
@@ -240,6 +266,42 @@ export function AdminRoles() {
               </button>
             );
           })}
+        </div>
+
+        {/* Activar un PASE de cortesía (gratis) al usuario. Independiente de
+            guardar roles: se aplica al instante vía Cloud Function. */}
+        <div className="mt-6 border-t border-white/10 pt-4">
+          <p className="text-silver-300 text-xs font-semibold tracking-[1px] uppercase">
+            {t("adminRoles.paseTitulo")}
+          </p>
+          <p className="text-silver-500 mt-1 text-xs">
+            {t("adminRoles.paseNota")}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {PASE_TIPOS.map((tipo) => (
+              <button
+                key={tipo}
+                type="button"
+                disabled={!!grantingPase}
+                onClick={() => otorgarPase(tipo)}
+                className="bg-amethyst-500/15 text-amethyst-100 ring-amethyst-400/30 hover:bg-amethyst-500/25 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 transition ring-inset disabled:opacity-40"
+              >
+                {grantingPase === tipo && (
+                  <SpinnerIcon className="size-3.5 animate-spin" />
+                )}
+                {t(`pases.${tipo}.nombre`)}
+              </button>
+            ))}
+          </div>
+          {paseMsg && (
+            <p
+              className={`mt-3 text-xs ${
+                paseMsg.ok ? "text-emerald-300" : "text-red-300"
+              }`}
+            >
+              {paseMsg.text}
+            </p>
+          )}
         </div>
 
         {modalError && (

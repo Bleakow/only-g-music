@@ -504,6 +504,11 @@ export function CompraWizard() {
                                 <span className="text-silver-400 ml-1 text-xs">
                                   {unitLabel(s)}
                                 </span>
+                                {s.slug === "grabacion" && (
+                                  <span className="text-amethyst-200/90 text-xs font-semibold">
+                                    · {t("compraWizard.minHoursHint")}
+                                  </span>
+                                )}
                               </div>
                               <span className="text-sm font-semibold text-white">
                                 {formatCOP(serviceLines[0]?.subtotal ?? 0)}
@@ -595,7 +600,7 @@ export function CompraWizard() {
               {sessionLines.map((l) => (
                 <div
                   key={l.key}
-                  className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 sm:p-5"
+                  className="rounded-2xl border border-white/10 bg-ink/80 p-4 backdrop-blur-md sm:p-5"
                 >
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <div>
@@ -660,10 +665,15 @@ export function CompraWizard() {
               <fieldset className={LABEL}>
                 <span className={LABEL_TEXT}>
                   {t("compraWizard.labelArtists")}
+                  {personas === "1" && ` · ${t("compraWizard.optional")}`}
                 </span>
-                {personas !== "1" && (
+                {personas !== "1" ? (
                   <span className="text-amethyst-200 text-xs">
                     {t("compraWizard.artistsRequiredHint")}
+                  </span>
+                ) : (
+                  <span className="text-silver-400 text-xs">
+                    {t("compraWizard.artistsOptionalHint")}
                   </span>
                 )}
                 <ArtistPicker value={collabs} onChange={setCollabs} />

@@ -37,6 +37,10 @@ function PersonIcon({ className = "" }: { className?: string }) {
  *  (derecha); por eso su anclaje y el origen del reveal van a la izquierda. */
 const WRAP_LEFT = "fixed top-4 left-[5.5rem] z-[105] sm:top-5 sm:left-28";
 const WRAP_RIGHT = "fixed top-4 right-[5.5rem] z-[105] sm:top-5 sm:right-28";
+// Sin sesión NO hay campanita → el avatar ocupa el sitio de la campanita (el
+// borde), no el desplazado. Debe coincidir con los WRAP_* de NotificationBell.
+const EDGE_LEFT = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
+const EDGE_RIGHT = "fixed top-4 right-6 z-[105] sm:top-5 sm:right-12";
 
 // Opción del menú: borde sutil (le da definición y ayuda a leer el texto sobre
 // fondos con foto). Hover = borde amatista + barrido + leve deslizamiento.
@@ -83,7 +87,15 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
     router.push("/");
   }
 
-  const wrap = align === "right" ? WRAP_RIGHT : WRAP_LEFT;
+  // Con sesión: desplazado (deja sitio a la campanita). Sin sesión: en el borde,
+  // ocupando el lugar de la campanita ausente.
+  const wrap = user
+    ? align === "right"
+      ? WRAP_RIGHT
+      : WRAP_LEFT
+    : align === "right"
+      ? EDGE_RIGHT
+      : EDGE_LEFT;
 
   return (
     <div ref={ref} className={wrap}>
@@ -243,6 +255,13 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
                       {t("userMenu.myPayouts")}
                     </Link>
                   )}
+                  <Link
+                    href="/suscripciones"
+                    onClick={() => setOpen(false)}
+                    className={ITEM}
+                  >
+                    {t("userMenu.subscriptions")}
+                  </Link>
                   <Link
                     href="/cuenta"
                     onClick={() => setOpen(false)}

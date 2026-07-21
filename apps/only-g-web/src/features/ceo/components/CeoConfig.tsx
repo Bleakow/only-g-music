@@ -80,6 +80,9 @@ export function CeoConfig() {
   const [precioMembresia, setPrecioMembresia] = useState("");
   const [precioPerfil, setPrecioPerfil] = useState("");
   const [precioGNotes, setPrecioGNotes] = useState("");
+  const [precioLitePass, setPrecioLitePass] = useState("");
+  const [precioGoldenPass, setPrecioGoldenPass] = useState("");
+  const [precioPremiumPass, setPrecioPremiumPass] = useState("");
   // Servicios de estudio (grabación por horas + mezcla por tramo de personas).
   const [precioGrabacionBase, setPrecioGrabacionBase] = useState("");
   const [precioGrabacionHoraExtra, setPrecioGrabacionHoraExtra] = useState("");
@@ -119,6 +122,9 @@ export function CeoConfig() {
         setPrecioMembresia(String(cfg.precios.precioMembresia));
         setPrecioPerfil(String(cfg.precios.precioPerfil));
         setPrecioGNotes(String(cfg.precios.precioGNotes));
+        setPrecioLitePass(String(cfg.precios.precioLitePass));
+        setPrecioGoldenPass(String(cfg.precios.precioGoldenPass));
+        setPrecioPremiumPass(String(cfg.precios.precioPremiumPass));
         setPrecioGrabacionBase(String(cfg.precios.precioGrabacionBase));
         setPrecioGrabacionHoraExtra(String(cfg.precios.precioGrabacionHoraExtra));
         setRecargoGrabacion2(String(cfg.precios.recargoGrabacion2));
@@ -198,6 +204,9 @@ export function CeoConfig() {
       const membresia = Number(precioMembresia);
       const perfil = Number(precioPerfil);
       const gnotes = Number(precioGNotes);
+      const litePass = Number(precioLitePass);
+      const goldenPass = Number(precioGoldenPass);
+      const premiumPass = Number(precioPremiumPass);
       const grabBase = Number(precioGrabacionBase);
       const grabExtra = Number(precioGrabacionHoraExtra);
       const recargo2 = Number(recargoGrabacion2);
@@ -211,6 +220,9 @@ export function CeoConfig() {
         membresia,
         perfil,
         gnotes,
+        litePass,
+        goldenPass,
+        premiumPass,
         grabBase,
         grabExtra,
         mezcla1,
@@ -228,6 +240,9 @@ export function CeoConfig() {
         precioMembresia: membresia,
         precioPerfil: perfil,
         precioGNotes: gnotes,
+        precioLitePass: litePass,
+        precioGoldenPass: goldenPass,
+        precioPremiumPass: premiumPass,
         precioGrabacionBase: grabBase,
         precioGrabacionHoraExtra: grabExtra,
         recargoGrabacion2: recargo2,
@@ -394,6 +409,33 @@ export function CeoConfig() {
                   value={precioGNotes}
                   onChange={(v) => {
                     setPrecioGNotes(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioLitePass"
+                  label={t("precios.litePass")}
+                  value={precioLitePass}
+                  onChange={(v) => {
+                    setPrecioLitePass(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioGoldenPass"
+                  label={t("precios.goldenPass")}
+                  value={precioGoldenPass}
+                  onChange={(v) => {
+                    setPrecioGoldenPass(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioPremiumPass"
+                  label={t("precios.premiumPass")}
+                  value={precioPremiumPass}
+                  onChange={(v) => {
+                    setPrecioPremiumPass(v);
                     setPreciosMsg(null);
                   }}
                 />

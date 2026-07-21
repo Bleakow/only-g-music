@@ -4,6 +4,7 @@ import { alternatesFor } from "@/lib/seo";
 import { Link } from "@/i18n/navigation";
 import { services } from "@/features/services/data/services";
 import { isQuoteOnly, priceLabel, hasVariants } from "@only-g/shared-types/service";
+import { CatalogBackground } from "@/features/services/components/CatalogBackground";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -19,7 +20,8 @@ export default async function ServiciosPage() {
   const t = await getTranslations("servicesPage");
 
   return (
-    <main className="mx-auto min-h-dvh max-w-5xl px-6 pb-24 pt-28 sm:px-12">
+    <CatalogBackground>
+      <main className="mx-auto min-h-dvh max-w-5xl px-6 pb-24 pt-28 sm:px-12">
       <header className="mb-12">
         <p className="text-sm uppercase tracking-[4px] text-amethyst-300">
           {t("eyebrow")}
@@ -81,8 +83,7 @@ export default async function ServiciosPage() {
           );
         })}
       </div>
-
-      <p className="mt-10 text-xs text-silver-500">{t("disclaimer")}</p>
-    </main>
+      </main>
+    </CatalogBackground>
   );
 }

@@ -69,6 +69,7 @@
     "myBeats": "Mis beats",
     "availability": "Disponibilidad",
     "myPayouts": "Mis pagos",
+    "subscriptions": "Suscripciones",
     "settings": "Configuración",
     "logout": "Cerrar sesión"
   },
@@ -159,6 +160,29 @@
     "renovar": "Renovar un mes",
     "activa": "Activa · IA sin límite ✦",
     "vence": "Se renueva el {fecha}."
+  },
+  "pases": {
+    "eyebrow": "Membresías",
+    "title": "Suscripciones",
+    "intro": "Elige un pase y potencia tu carrera: escritura con IA, tu perfil de artista y producción profesional.",
+    "porMes": "/ mes",
+    "popular": "Popular",
+    "suscribirse": "Suscribirse",
+    "actual": "Tu pase actual",
+    "tuPase": "Tienes el {pase}",
+    "activoHasta": "activo hasta {fecha}",
+    "valePendiente": "pendiente de entrega",
+    "valeEntregado": "entregado",
+    "incluye": {
+      "gnotes": "G Notes · IA sin límite (1 mes)",
+      "perfil": "Perfil de artista (1 mes)",
+      "produccionArtista": "Producción completa para un artista",
+      "produccionGrupo": "Producción completa para un grupo",
+      "video": "Video profesional"
+    },
+    "lite": { "nombre": "Pase Lite" },
+    "golden": { "nombre": "Pase Golden" },
+    "premium": { "nombre": "Pase Premium" }
   },
   "datosPago": {
     "title": "Datos de pago",
@@ -538,7 +562,11 @@
     "syncNote": "Beatmaker y productor son socios: no pagan membresía y su perfil se sincroniza con estas pestañas.",
     "errorSelfAdmin": "No puedes quitarte tu propio rol de admin.",
     "errorGuardar": "No se pudieron guardar los roles.",
-    "errorBuscar": "No se pudo buscar."
+    "errorBuscar": "No se pudo buscar.",
+    "paseTitulo": "Activar pase (cortesía)",
+    "paseNota": "Concede el pase gratis, sin cobrar. Se aplica al instante.",
+    "paseOtorgado": "{pase} activado ✓",
+    "paseError": "No se pudo activar el pase."
   },
   "adminConvenios": {
     "title": "Solicitudes de convenio",
@@ -693,6 +721,9 @@
       "membresia": "Precio de membresía (mensual)",
       "perfil": "Precio del perfil de artista",
       "gnotes": "Precio de G Notes (mensual, IA sin límite)",
+      "litePass": "Pase Lite (G Notes + perfil)",
+      "goldenPass": "Pase Golden (+ 1 producción)",
+      "premiumPass": "Pase Premium (+ grupo + video)",
       "grabacionTitle": "Grabación (por horas)",
       "grabacionBase": "Base (cubre 2 horas)",
       "grabacionHoraExtra": "Hora extra (a partir de la 2ª)",
@@ -1823,6 +1854,10 @@
         "titulo": "G Notes premium activado",
         "cuerpo": "Tu membresía de G Notes ya está activa: IA sin límite por un mes."
       },
+      "pase-activado": {
+        "titulo": "Pase activado",
+        "cuerpo": "Tu pase {pase} ya está activo. Revisa tus beneficios en Suscripciones."
+      },
       "convenio-solicitado": {
         "titulo": "Nueva solicitud de convenio",
         "cuerpo": "{nombre} solicitó convenio de {tipo}."
@@ -1977,7 +2012,8 @@
       "reserva": "Reserva de sesión",
       "beat": "Compra de beat",
       "pedido": "Pedido de producción",
-      "gnotes": "Membresía G Notes"
+      "gnotes": "Membresía G Notes",
+      "pase": "Pase (paquete)"
     }
   }
 }

@@ -43,6 +43,10 @@ export interface Precios {
   precioPerfil: number;
   /** Precio de la membresía mensual de G Notes (IA sin límite). */
   precioGNotes: number;
+  /** Precios de los PASES (paquetes: G Notes + perfil + producción/video). */
+  precioLitePass: number;
+  precioGoldenPass: number;
+  precioPremiumPass: number;
 
   // ── Servicios de estudio (compra directa) ──────────────────────────────
   /** Grabación: base que cubre las 2h mínimas. */
@@ -81,6 +85,9 @@ export const DEFAULTS: ComercialConfig = {
     precioMembresia: 15000,
     precioPerfil: 80000,
     precioGNotes: 12000,
+    precioLitePass: 80000,
+    precioGoldenPass: 350000,
+    precioPremiumPass: 600000,
     precioGrabacionBase: 60000,
     precioGrabacionHoraExtra: 15000,
     recargoGrabacion2: 20000,
@@ -127,6 +134,9 @@ export function parsePrecios(
     precioMembresia: p("precioMembresia"),
     precioPerfil: p("precioPerfil"),
     precioGNotes: p("precioGNotes"),
+    precioLitePass: p("precioLitePass"),
+    precioGoldenPass: p("precioGoldenPass"),
+    precioPremiumPass: p("precioPremiumPass"),
     precioGrabacionBase: p("precioGrabacionBase"),
     precioGrabacionHoraExtra: p("precioGrabacionHoraExtra"),
     recargoGrabacion2: r("recargoGrabacion2"),

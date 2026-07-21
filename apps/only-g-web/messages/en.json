@@ -94,13 +94,17 @@
     "name": "Name",
     "email": "Email",
     "password": "Password",
+    "passwordConfirm": "Confirm password",
+    "passwordMismatch": "Passwords don't match.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "howJoin": "How are you joining?",
     "fnVisitante": "Just exploring",
     "fnCantante": "I'm a singer",
     "fnProductor": "I'm a producer",
     "fnBeatmaker": "I'm a beatmaker",
-    "artistHint": "After creating your account we'll take you to set up your artist profile (includes a payment).",
-    "fnProductorHint": "Offer productions from an Only G venue. Requires approval.",
+    "artistHint": "After creating your account we'll take you to set up your artist profile.",
+    "fnProductorHint": "Partner with Only G Music and offer your services from the app. Requires approval.",
     "fnBeatmakerHint": "Publish and sell your beats on the platform. Requires approval.",
     "convenioSaveFailed": "Your account was created, but we couldn't send your partnership request. Please try again in a moment.",
     "forgot": "Forgot your password?",
@@ -1355,6 +1359,8 @@
     "agendaIntro": "Choose the venue and, for each service that occupies the studio, the date and time.",
     "sessionHoursNeeded": "Needs {hours, plural, one {# consecutive hour} other {# consecutive hours}}",
     "slotSelected": "{date} · {time}",
+    "slotSelectedRange": "{date} · {start} to {end} ({hours, plural, one {# hour} other {# hours}} booked)",
+    "minHoursHint": "2 h minimum",
     "orderSummaryHeading": "Order summary",
     "totalToPay": "Total to pay",
     "labelName": "Name",
@@ -1380,6 +1386,8 @@
     "labelReferenceUrl": "Example URL (optional)",
     "labelArtists": "Featured artists",
     "artistsRequiredHint": "You chose more than one person: add the artists recording.",
+    "artistsOptionalHint": "Optional: only if you want to credit collaborators.",
+    "optional": "optional",
     "errorArtistsRequired": "Add the artists taking part in the recording.",
     "successHeading": "Order created!",
     "successBody": "Your order is pending payment ({itemCount, plural, one {# item} other {# items}}). Upload your payment proof to confirm it.",
@@ -1963,6 +1971,13 @@
     "backToAdmin": "← Admin panel",
     "title": "Pending payments",
     "empty": "No payments to review.",
-    "review": "Review"
+    "review": "Review",
+    "concepto": {
+      "premium": "Premium profile",
+      "reserva": "Session booking",
+      "beat": "Beat purchase",
+      "pedido": "Production order",
+      "gnotes": "G Notes membership"
+    }
   }
 }

@@ -33,7 +33,11 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
         className={`hover:border-amethyst-300/50 flex w-full items-center justify-between gap-3 rounded-xl p-4 text-left transition ${rowClassName}`}
       >
         <div className="min-w-0">
-          <p className="truncate font-semibold text-white">{c.ref?.id}</p>
+          <p className="truncate font-semibold text-white">
+            {c.pago?.concepto
+              ? t(`adminPagos.concepto.${c.pago.concepto}`)
+              : (c.ref?.id ?? "")}
+          </p>
           <p className="text-silver-400 text-sm">
             {formatCOP(c.pago?.monto ?? 0)}
             {c.pago?.metodo ? ` · ${t(`chat.metodos.${c.pago.metodo}`)}` : ""}

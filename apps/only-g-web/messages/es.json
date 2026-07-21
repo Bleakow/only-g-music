@@ -94,13 +94,17 @@
     "name": "Nombre",
     "email": "Correo",
     "password": "Contraseña",
+    "passwordConfirm": "Confirmar contraseña",
+    "passwordMismatch": "Las contraseñas no coinciden.",
+    "showPassword": "Mostrar contraseña",
+    "hidePassword": "Ocultar contraseña",
     "howJoin": "¿Cómo te unes?",
     "fnVisitante": "Solo explorar",
     "fnCantante": "Soy cantante",
     "fnProductor": "Soy productor",
     "fnBeatmaker": "Soy beatmaker",
-    "artistHint": "Tras crear tu cuenta te llevamos a montar tu perfil de artista (incluye un pago).",
-    "fnProductorHint": "Ofrece producciones desde una sede de Only G. Requiere aprobación.",
+    "artistHint": "Tras crear tu cuenta te llevamos a montar tu perfil de artista.",
+    "fnProductorHint": "Haz un convenio con Only G Music y ofrece tus servicios desde la app. Requiere aprobación.",
     "fnBeatmakerHint": "Publica y vende tus beats en la plataforma. Requiere aprobación.",
     "convenioSaveFailed": "Tu cuenta se creó, pero no pudimos enviar tu solicitud de convenio. Vuelve a intentarlo en un momento.",
     "forgot": "¿Olvidaste tu contraseña?",
@@ -1355,6 +1359,8 @@
     "agendaIntro": "Elige la sede y, para cada servicio que ocupa el estudio, la fecha y la hora.",
     "sessionHoursNeeded": "Necesita {hours, plural, one {# hora seguida} other {# horas seguidas}}",
     "slotSelected": "{date} · {time}",
+    "slotSelectedRange": "{date} · de {start} a {end} ({hours, plural, one {# hora} other {# horas}} reservadas)",
+    "minHoursHint": "mínimo 2 h",
     "orderSummaryHeading": "Resumen del pedido",
     "totalToPay": "Total a pagar",
     "labelName": "Nombre",
@@ -1380,6 +1386,8 @@
     "labelReferenceUrl": "URL de ejemplo (opcional)",
     "labelArtists": "Artistas que participan",
     "artistsRequiredHint": "Elegiste más de una persona: agrega los artistas que graban.",
+    "artistsOptionalHint": "Opcional: solo si quieres acreditar colaboradores.",
+    "optional": "opcional",
     "errorArtistsRequired": "Agrega los artistas que participan en la grabación.",
     "successHeading": "¡Pedido creado!",
     "successBody": "Tu pedido quedó pendiente de pago ({itemCount, plural, one {# ítem} other {# ítems}}). Sube el comprobante para confirmarlo.",
@@ -1963,6 +1971,13 @@
     "backToAdmin": "← Panel admin",
     "title": "Pagos pendientes",
     "empty": "No hay pagos por revisar.",
-    "review": "Revisar"
+    "review": "Revisar",
+    "concepto": {
+      "premium": "Perfil premium",
+      "reserva": "Reserva de sesión",
+      "beat": "Compra de beat",
+      "pedido": "Pedido de producción",
+      "gnotes": "Membresía G Notes"
+    }
   }
 }

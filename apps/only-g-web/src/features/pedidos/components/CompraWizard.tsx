@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { services } from "@/features/services/data/services";
 import {
@@ -18,16 +17,26 @@ import {
 } from "@only-g/shared-types/service";
 import {
   lineaTipoDe,
-  subtotalLinea,
   totalPedido,
   tieneSesion,
   type LineaTipo,
 } from "@only-g/shared-types/pedido";
+import {
+  subtotalServicio,
+  servicioVariaPorPersonas,
+  HORAS_MIN_GRABACION,
+  PERSONAS_TIERS,
+  type PersonasTier,
+} from "@only-g/shared-types/precios-servicios";
+import type { QuoteCollaborator } from "@only-g/shared-types/quote";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MinusIcon, PlusIcon, CheckIcon } from "@/components/icons";
 import { Alert } from "@/components/ui/Alert";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { glassSurface, glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import { usePrecios } from "@/features/pricing/components/PreciosProvider";
+import { useOnScreen } from "@/lib/use-on-screen";
+import { ArtistPicker } from "@/features/quotes/components/ArtistPicker";
 import {
   ServiceCard,
   ServiceCheckBadge,
@@ -37,6 +46,7 @@ import {
   type SessionSlotValue,
 } from "@/features/booking/components/SessionSlotPicker";
 import { createPedido, type PedidoLineaInput } from "../lib/pedidos-repo";
+import { PedidoPagoInline } from "./PedidoPagoInline";
 import { track } from "@/lib/firebase/analytics";
 import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
@@ -53,7 +63,7 @@ const PURCHASABLE = services.filter((s) =>
 const keyOf = (slug: string, variantId?: string) =>
   variantId ? `${slug}::${variantId}` : slug;
 
-type StepKey = "cart" | "agenda" | "contact";
+type StepKey = "cart" | "agenda" | "detalles" | "contact";
 
 const INPUT =
   "w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";
@@ -79,6 +89,10 @@ export function CompraWizard() {
   const reduce = useReducedMotion();
   const params = useSearchParams();
   const { user, account } = useAuth();
+  const precios = usePrecios();
+  // La barra flotante de "continuar" se oculta cuando el botón del final ya se ve.
+  const { ref: footerRef, onScreen: footerOnScreen } =
+    useOnScreen<HTMLDivElement>();
 
   const initialService = (() => {
     const slug = params.get("servicio");
@@ -129,6 +143,13 @@ export function CompraWizard() {
   const [error, setError] = useState<string | null>(null);
   const [doneId, setDoneId] = useState<string | null>(null);
 
+  // Nº de personas que graban/mezclan (fija el precio de grabación y mezcla).
+  const [personas, setPersonas] = useState<PersonasTier>("1");
+  // Info del tema (paso "detalles").
+  const [details, setDetails] = useState("");
+  const [referenceUrl, setReferenceUrl] = useState("");
+  const [collabs, setCollabs] = useState<QuoteCollaborator[]>([]);
+
   const lines: Line[] = [];
   for (const [key, qty] of Object.entries(cart)) {
     if (qty <= 0) continue;
@@ -141,7 +162,17 @@ export function CompraWizard() {
     if (variantId && !variant) continue;
     const p = variant ?? service;
     if (isQuoteOnly(p)) continue;
-    const precioUnitario = p.basePrice ?? 0;
+    // Precio real vía el helper de dominio: grabación (horas + recargo por
+    // personas), mezcla (precio exacto por tramo), beat/master (config CEO); el
+    // resto (renta) cae a basePrice × cantidad.
+    const subtotal = subtotalServicio({
+      slug: service.slug,
+      qty,
+      personas,
+      precios,
+      basePrice: p.basePrice ?? 0,
+    });
+    const precioUnitario = qty > 0 ? Math.round(subtotal / qty) : subtotal;
     lines.push({
       key,
       service,
@@ -150,7 +181,7 @@ export function CompraWizard() {
       tipo: lineaTipoDe(p.pricing),
       pricing: p.pricing,
       precioUnitario,
-      subtotal: subtotalLinea(precioUnitario, qty),
+      subtotal,
     });
   }
 
@@ -159,16 +190,26 @@ export function CompraWizard() {
   const hasSesion = tieneSesion(lines);
   const sessionLines = lines.filter((l) => l.tipo === "sesion");
   const allSlotsReady = sessionLines.every((l) => sessionPicks[l.key]);
+  // ¿Hay servicios cuyo precio varía por nº de personas (grabación/mezcla)?
+  const needsPersonas = lines.some((l) =>
+    servicioVariaPorPersonas(l.service.slug),
+  );
+  // ¿Hay trabajo sobre un tema (grabación/mezcla/máster) → pedir info + artistas?
+  const needsSongInfo = lines.some((l) =>
+    ["grabacion", "mezcla", "masterizacion"].includes(l.service.slug),
+  );
 
   const steps: StepKey[] = [
     "cart",
     ...(hasSesion ? (["agenda"] as const) : []),
+    ...(needsSongInfo ? (["detalles"] as const) : []),
     "contact",
   ];
   const stepIdx = Math.max(0, steps.indexOf(stepKey));
   const STEP_LABELS: Record<StepKey, string> = {
     cart: t("compraWizard.stepOrder"),
     agenda: t("compraWizard.stepAgenda"),
+    detalles: t("compraWizard.stepDetails"),
     contact: t("compraWizard.stepContact"),
   };
 
@@ -192,7 +233,8 @@ export function CompraWizard() {
     setCart((c) => {
       const next = { ...c };
       if (next[slug]) delete next[slug];
-      else next[slug] = 1;
+      // La grabación se factura mínimo 2h → arranca en el mínimo.
+      else next[slug] = slug === "grabacion" ? HORAS_MIN_GRABACION : 1;
       return next;
     });
   }
@@ -216,6 +258,11 @@ export function CompraWizard() {
     }
     if (stepKey === "agenda" && !allSlotsReady) {
       setError(t("compraWizard.errorMissingSlot"));
+      return;
+    }
+    // Si eligió más de 1 persona, debe declarar los artistas que participan.
+    if (stepKey === "detalles" && personas !== "1" && collabs.length === 0) {
+      setError(t("compraWizard.errorArtistsRequired"));
       return;
     }
     setStepKey(steps[Math.min(steps.length - 1, stepIdx + 1)]);
@@ -271,6 +318,10 @@ export function CompraWizard() {
         clientEmail: contactEmail.trim(),
         lineas,
         total,
+        personas: needsPersonas ? personas : undefined,
+        details: needsSongInfo ? details : undefined,
+        referenceUrl: needsSongInfo ? referenceUrl : undefined,
+        collaborators: collabs.length > 0 ? collabs : undefined,
       });
       track("pedido_submitted");
       setDoneId(id);
@@ -286,31 +337,12 @@ export function CompraWizard() {
 
   if (doneId) {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center px-6 text-center">
-        <div className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 flex size-16 items-center justify-center rounded-full border">
-          <CheckIcon className="size-8" />
-        </div>
-        <h1 className="font-narrow mt-6 text-4xl font-bold uppercase sm:text-5xl">
-          {t("compraWizard.successHeading")}
-        </h1>
-        <p className="text-silver-300 mt-3">
-          {t("compraWizard.successBody", { itemCount })}
-        </p>
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href={`/solicitudes/pedido/${doneId}`}
-            className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase"
-          >
-            {t("compraWizard.viewOrder")}
-          </Link>
-          <Link
-            href="/"
-            className="btn-outline rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
-          >
-            {t("compraWizard.goHome")}
-          </Link>
-        </div>
-      </main>
+      <PedidoPagoInline
+        pedidoId={doneId}
+        total={total}
+        uid={user?.uid ?? ""}
+        sede={sede}
+      />
     );
   }
 
@@ -442,7 +474,17 @@ export function CompraWizard() {
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setQty(s.slug, qty - 1)}
+                                  onClick={() =>
+                                    setQty(
+                                      s.slug,
+                                      s.slug === "grabacion"
+                                        ? Math.max(
+                                            HORAS_MIN_GRABACION,
+                                            qty - 1,
+                                          )
+                                        : qty - 1,
+                                    )
+                                  }
                                   className={STEPPER}
                                   aria-label={t("compraWizard.ariaRemoveOne")}
                                 >
@@ -464,7 +506,7 @@ export function CompraWizard() {
                                 </span>
                               </div>
                               <span className="text-sm font-semibold text-white">
-                                {formatCOP((s.basePrice ?? 0) * qty)}
+                                {formatCOP(serviceLines[0]?.subtotal ?? 0)}
                               </span>
                             </div>
                           )}
@@ -474,6 +516,33 @@ export function CompraWizard() {
                   );
                 })}
               </div>
+
+              {needsPersonas && (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <p className="text-silver-300 text-xs font-semibold tracking-[2px] uppercase">
+                    {t("compraWizard.personasLabel")}
+                  </p>
+                  <p className="text-silver-400 mt-1 text-xs">
+                    {t("compraWizard.personasHint")}
+                  </p>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {PERSONAS_TIERS.map((tier) => (
+                      <button
+                        key={tier}
+                        type="button"
+                        onClick={() => setPersonas(tier)}
+                        className={`rounded-lg border px-3 py-2 text-sm font-semibold transition ${
+                          personas === tier
+                            ? "border-amethyst-300 bg-amethyst-500/10 text-white"
+                            : "text-silver-200 border-white/15 bg-black/30 hover:border-white/40"
+                        }`}
+                      >
+                        {t(`compraWizard.personas_${tier}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {lines.length > 0 && (
                 <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm">
@@ -555,6 +624,50 @@ export function CompraWizard() {
                   />
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* -- Paso: detalles del tema (info + referencia + artistas) -- */}
+          {stepKey === "detalles" && (
+            <div className="flex flex-col gap-5">
+              <p className="text-silver-300">
+                {t("compraWizard.detailsIntro")}
+              </p>
+              <label className={LABEL}>
+                <span className={LABEL_TEXT}>
+                  {t("compraWizard.labelDetails")}
+                </span>
+                <textarea
+                  value={details}
+                  onChange={(e) => setDetails(e.target.value)}
+                  placeholder={t("compraWizard.detailsPlaceholder")}
+                  rows={4}
+                  className={`${INPUT} resize-y`}
+                />
+              </label>
+              <label className={LABEL}>
+                <span className={LABEL_TEXT}>
+                  {t("compraWizard.labelReferenceUrl")}
+                </span>
+                <input
+                  type="url"
+                  value={referenceUrl}
+                  onChange={(e) => setReferenceUrl(e.target.value)}
+                  placeholder="https://..."
+                  className={INPUT}
+                />
+              </label>
+              <fieldset className={LABEL}>
+                <span className={LABEL_TEXT}>
+                  {t("compraWizard.labelArtists")}
+                </span>
+                {personas !== "1" && (
+                  <span className="text-amethyst-200 text-xs">
+                    {t("compraWizard.artistsRequiredHint")}
+                  </span>
+                )}
+                <ArtistPicker value={collabs} onChange={setCollabs} />
+              </fieldset>
             </div>
           )}
 
@@ -664,7 +777,10 @@ export function CompraWizard() {
 
           {error && <Alert tone="error">{error}</Alert>}
 
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div
+            ref={footerRef}
+            className="mt-2 flex items-center justify-between gap-3"
+          >
             {stepIdx > 0 ? (
               <button
                 type="button"
@@ -693,8 +809,9 @@ export function CompraWizard() {
       </main>
 
       {/* -- Barra flotante para continuar (paso carrito) -- */}
+      {/* Se oculta cuando el botón real del final ya está en pantalla (no dos a la vez). */}
       <AnimatePresence>
-        {stepKey === "cart" && lines.length > 0 && (
+        {stepKey === "cart" && lines.length > 0 && !footerOnScreen && (
           <motion.div
             initial={reduce ? false : { y: 90, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}

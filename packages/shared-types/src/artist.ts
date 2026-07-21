@@ -40,6 +40,9 @@ export interface Artist {
   bio: string;
   /** URL del retrato (placeholder por ahora). Sirve de portada y de poster del vídeo. */
   image: string;
+  /** Retrato VERTICAL (art direction móvil). Las cards (aspect 4/5) lo prefieren
+   *  sobre el apaisado. Ausente = usar `image`. */
+  imageMobile?: string;
   /** Vídeo opcional para la portada de la card; se reproduce en hover (desktop) o al centrarse en pantalla (móvil). */
   video?: string;
   /** Color de acento para teñir su página (hex). */

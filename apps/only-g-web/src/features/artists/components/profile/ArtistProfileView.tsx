@@ -16,12 +16,7 @@ import {
 import type { SocialPlatform } from "@only-g/shared-types/artist";
 import { formatLocation } from "@only-g/shared-types/location";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeftIcon,
-  SettingsIcon,
-  VerifiedIcon,
-  EditIcon,
-} from "@/components/icons";
+import { ArrowLeftIcon, VerifiedIcon, EditIcon } from "@/components/icons";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SOCIAL_META } from "../../lib/socials";
@@ -31,6 +26,7 @@ import { ShareProfile } from "./ShareProfile";
 import { MembershipPayButton } from "./MembershipPayButton";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { PhotoViewer } from "./PhotoViewer";
+import { RelatedArtists } from "./RelatedArtists";
 
 /** Media destacada de la pantalla 2: clip en bucle mudo o foto. Si el video no
  *  carga (p.ej. un webm en un Safari antiguo), cae a la foto para no dejar hueco. */
@@ -222,11 +218,12 @@ export function ArtistProfileView({
             {t("artistProfile.back")}
           </GlassButton>
 
-          {/* Ajustes: mismo cristal nuestro que el de Atrás. */}
+          {/* Editar perfil (solo el dueño): entrada directa al editor desde el
+              propio perfil, con icono de lápiz para que se lea claro. */}
           {isOwner && (
             <GlassButton href="/artista/perfil">
-              <SettingsIcon className="size-4" />
-              {t("artistProfile.settings")}
+              <EditIcon className="size-4" />
+              {t("artistProfile.editProfile")}
             </GlassButton>
           )}
         </div>
@@ -423,6 +420,13 @@ export function ArtistProfileView({
         </section>
       )}
 
+      {/* Artistas relacionados / colaboradores (red interna) */}
+      {profile.relatedArtists && profile.relatedArtists.length > 0 && (
+        <RelatedArtists
+          slugs={profile.relatedArtists}
+          currentSlug={profile.slug}
+        />
+      )}
     </article>
   );
 }

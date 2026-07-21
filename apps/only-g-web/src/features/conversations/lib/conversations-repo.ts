@@ -206,6 +206,20 @@ export async function confirmarPago(conversationId: string): Promise<void> {
 }
 
 /**
+ * Rechaza el comprobante (SOLO admin): devuelve el pago a `comprobante_pendiente`
+ * y reabre el hilo para que el cliente reenvíe. No mueve dinero ni activa nada
+ * (a diferencia de confirmar) → basta un update de cliente; las reglas permiten
+ * al admin cualquier transición sobre la conversación.
+ */
+export async function rechazarPago(conversationId: string): Promise<void> {
+  await updateDoc(doc(db, COL, conversationId), {
+    "pago.estado": "comprobante_pendiente",
+    status: "abierto",
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
  * Pagos pendientes de revisión por el admin (chats de pago en `en_revision`).
  * Las reglas permiten al admin listar las conversaciones. Requiere índice
  * compuesto: type (==) + updatedAt (desc).

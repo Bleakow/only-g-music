@@ -5,6 +5,7 @@ import type {
 } from "@only-g/ai-services";
 import { geminiGenerate } from "@/features/ai/gemini";
 import { verifiedUid } from "@/lib/firebase/admin";
+import { consumeAiQuota } from "@/lib/firebase/entitlement";
 
 // Precursor del servicio @only-g/ai-engine: por ahora vive como route handler
 // de g-notes-web. Guarda la key server-side; el cliente nunca la ve.
@@ -33,6 +34,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json(stub(body));
 
+  // Gate freemium: consume 1 del cupo diario (miembro = sin límite). Si topó,
+  // devuelve `limited` para que el editor muestre el empujón a la membresía.
+  const quota = await consumeAiQuota(uid);
+  if (!quota.allowed) {
+    return json({ suggestion: "", source: "stub", limited: true, remaining: 0 });
+  }
+
   // Modelo elegido por el usuario (guardarraíl: solo gemini-*), si no el default.
   const model = body.model?.startsWith("gemini") ? body.model : MODEL;
   try {
@@ -44,7 +52,11 @@ export async function POST(req: NextRequest): Promise<Response> {
       maxOutputTokens: 48,
       temperature: 0.9,
     });
-    return json({ suggestion: text.trim(), source: "ai" });
+    return json({
+      suggestion: text.trim(),
+      source: "ai",
+      remaining: quota.remaining ?? undefined,
+    });
   } catch (err) {
     // Nunca romper la escritura por un fallo del modelo: degradar al stub.
     console.error("ai/complete:", err);

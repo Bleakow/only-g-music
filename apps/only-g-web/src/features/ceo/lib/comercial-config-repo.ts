@@ -16,6 +16,7 @@ import {
   esComisionValida,
   esGa4PropertyId,
   esPrecioValido,
+  esRecargoValido,
   parseAnalitica,
   parseComisiones,
   parsePrecios,
@@ -79,16 +80,34 @@ export async function updateComisiones(data: Comisiones): Promise<void> {
   await setDoc(COMISIONES_REF(), payload);
 }
 
-/** Actualiza los PRECIOS (SOLO CEO). Valida entero > 0 en cliente antes de escribir. */
+/** Actualiza los PRECIOS (SOLO CEO). Valida en cliente antes de escribir:
+ *  precios enteros > 0; recargos enteros >= 0 (un recargo SÍ puede ser 0). */
 export async function updatePrecios(data: Precios): Promise<void> {
-  const campos: [keyof Precios, number][] = [
+  // Precios estándar (> 0).
+  const precios: [keyof Precios, number][] = [
     ["precioBeat", data.precioBeat],
     ["precioMembresia", data.precioMembresia],
     ["precioPerfil", data.precioPerfil],
+    ["precioGrabacionBase", data.precioGrabacionBase],
+    ["precioGrabacionHoraExtra", data.precioGrabacionHoraExtra],
+    ["precioMezcla1", data.precioMezcla1],
+    ["precioMezcla2", data.precioMezcla2],
+    ["precioMezclaAgrupacion", data.precioMezclaAgrupacion],
+    ["precioMaster", data.precioMaster],
   ];
-  for (const [nombre, valor] of campos) {
+  for (const [nombre, valor] of precios) {
     if (!esPrecioValido(valor)) {
       throw new Error(`${nombre} debe ser un entero > 0.`);
+    }
+  }
+  // Recargos (>= 0).
+  const recargos: [keyof Precios, number][] = [
+    ["recargoGrabacion2", data.recargoGrabacion2],
+    ["recargoGrabacionAgrupacion", data.recargoGrabacionAgrupacion],
+  ];
+  for (const [nombre, valor] of recargos) {
+    if (!esRecargoValido(valor)) {
+      throw new Error(`${nombre} debe ser un entero >= 0.`);
     }
   }
   await setDoc(
@@ -97,6 +116,14 @@ export async function updatePrecios(data: Precios): Promise<void> {
       precioBeat: data.precioBeat,
       precioMembresia: data.precioMembresia,
       precioPerfil: data.precioPerfil,
+      precioGrabacionBase: data.precioGrabacionBase,
+      precioGrabacionHoraExtra: data.precioGrabacionHoraExtra,
+      recargoGrabacion2: data.recargoGrabacion2,
+      recargoGrabacionAgrupacion: data.recargoGrabacionAgrupacion,
+      precioMezcla1: data.precioMezcla1,
+      precioMezcla2: data.precioMezcla2,
+      precioMezclaAgrupacion: data.precioMezclaAgrupacion,
+      precioMaster: data.precioMaster,
       updatedAt: serverTimestamp(),
     },
     { merge: true },

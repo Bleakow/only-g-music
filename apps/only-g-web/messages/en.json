@@ -147,6 +147,15 @@
     "settingsSoon": "Soon you'll be able to adjust your preferences here.",
     "language": "Language"
   },
+  "gnotesPremium": {
+    "title": "G Notes premium",
+    "descripcion": "Unlimited AI for your writing: autocomplete and creative panel with no daily cap, in the G Notes editor.",
+    "porMes": "/ month",
+    "suscribirse": "Subscribe",
+    "renovar": "Renew a month",
+    "activa": "Active · unlimited AI ✦",
+    "vence": "Renews on {fecha}."
+  },
   "datosPago": {
     "title": "Payout details",
     "description": "Where does Only G pay you? These details are private: only you and the studio can see them.",
@@ -632,11 +641,19 @@
     "correo": "Contact email",
     "nota": "Note / instructions",
     "notaPh": "E.g., send the receipt in this chat.",
+    "breB": "Bre-B key",
+    "breBPh": "Your Bre-B key number or alias",
     "qr": "Payment QR",
     "qrUpload": "Upload QR",
     "save": "Save",
     "saved": "Saved ✓",
-    "errorSave": "Could not save. Please try again."
+    "errorSave": "Could not save. Please try again.",
+    "globalNota": "This is the default (global) method: used for G Notes, memberships, beats and any web payment. A sede can only set its own method for production payments.",
+    "copiarDesdeSede": "Copy data from a sede",
+    "copiarPlaceholder": "Choose a sede…",
+    "copiar": "Copy",
+    "copiado": "Data copied. Review and save.",
+    "sinSedesConPago": "No sede has its own payment details yet."
   },
   "ceoConfig": {
     "eyebrow": "CEO only",
@@ -668,7 +685,18 @@
       "desc": "The buyer sees these. They must match what is charged.",
       "beat": "Beat price",
       "membresia": "Membership price (monthly)",
-      "perfil": "Artist profile price"
+      "perfil": "Artist profile price",
+      "gnotes": "G Notes price (monthly, unlimited AI)",
+      "grabacionTitle": "Recording (hourly)",
+      "grabacionBase": "Base (covers 2 hours)",
+      "grabacionHoraExtra": "Extra hour (after the 2nd)",
+      "recargoGrabacion2": "Surcharge for 2 people",
+      "recargoGrabacionAgrupacion": "Surcharge for a group",
+      "mezclaTitle": "Mixing (per song)",
+      "mezcla1": "Mixing — 1 person",
+      "mezcla2": "Mixing — 2 people",
+      "mezclaAgrupacion": "Mixing — group",
+      "master": "Mastering (per song)"
     }
   },
   "ceoAnalitica": {
@@ -1256,10 +1284,13 @@
     "successHeading": "Request sent!",
     "successBody": "We received your order ({itemCount, plural, one {# item} other {# items}}). The Only G team will review it and send you a proposal with pricing and scope.",
     "goToAccount": "Go to my account",
+    "goToChat": "View my quote",
     "goHome": "Back to home",
     "modalVariantSubtitle": "Choose one or more options.",
     "ariaCloseModal": "Close",
     "variantAdd": "Add",
+    "variantSelected": "Selected",
+    "variantRemove": "Remove",
     "modalDone": "Done"
   },
   "bookingCalendar": {
@@ -1300,6 +1331,7 @@
   "compraWizard": {
     "stepOrder": "Cart",
     "stepAgenda": "Schedule",
+    "stepDetails": "The song",
     "stepContact": "Contact",
     "eyebrow": "Direct purchase",
     "heading": "Buy your services",
@@ -1335,6 +1367,18 @@
     "errorSessionExpired": "Your session expired. Please sign in again.",
     "errorSlotTaken": "That time slot is no longer available. Please choose another.",
     "errorSubmit": "Could not create the order. Check your connection and try again.",
+    "personasLabel": "How many people are recording?",
+    "personasHint": "Adjusts the price of recording and mixing based on the number of people.",
+    "personas_1": "1 person",
+    "personas_2": "2 people",
+    "personas_agrupacion": "Group",
+    "detailsIntro": "Tell us about the song so we can prepare your session.",
+    "labelDetails": "Song info",
+    "detailsPlaceholder": "Title, genre, references, notes for the engineer…",
+    "labelReferenceUrl": "Example URL (optional)",
+    "labelArtists": "Featured artists",
+    "artistsRequiredHint": "You chose more than one person: add the artists recording.",
+    "errorArtistsRequired": "Add the artists taking part in the recording.",
     "successHeading": "Order created!",
     "successBody": "Your order is pending payment ({itemCount, plural, one {# item} other {# items}}). Upload your payment proof to confirm it.",
     "viewOrder": "View my order",
@@ -1356,7 +1400,8 @@
     "genres": "Genres",
     "notFound": "Artist not found",
     "backToArtists": "See artists",
-    "profileSong": "Profile song"
+    "profileSong": "Profile song",
+    "relatedArtists": "Related artists"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -1579,6 +1624,24 @@
       "sectionTitle": "About you",
       "placeholder": "Tell your story, style, and milestones…"
     },
+    "aiBio": {
+      "button": "Improve bio with AI",
+      "hint": "Jot down a rough idea and AI drafts professional versions.",
+      "modalTitle": "Improve your bio",
+      "subtitle": "Pick the version that fits you best. You can regenerate or keep editing it afterwards.",
+      "generating": "Writing your bio…",
+      "variantLabel": "Version {n}",
+      "regenerate": "Regenerate",
+      "use": "Use this one",
+      "error": "Couldn't generate the bio. Try again."
+    },
+    "relatedArtists": {
+      "sectionTitle": "Related artists",
+      "hint": "Highlight the artists you collaborate or connect with. They'll show on your profile, linked to theirs.",
+      "searchPlaceholder": "Search an artist…",
+      "remove": "Remove {name}",
+      "empty": "No matches"
+    },
     "socials": {
       "sectionTitle": "Socials",
       "add": "Add social network",
@@ -1602,7 +1665,7 @@
     },
     "featured": {
       "sectionTitle": "Featured media",
-      "hint": "Shown next to your bio, instead of repeating your profile photo. Upload a short clip (5–8s: it loops, muted) or a photo that represents you: your group, a move, your vibe.",
+      "hint": "Upload a short clip or a photo that represents you: your group, a move, your vibe.",
       "upload": "Upload a video or a photo",
       "formats": "Video up to {maxSec}s or an image",
       "change": "Change",
@@ -1746,6 +1809,10 @@
         "titulo": "Profile expiring",
         "cuerpo": "Your profile expires in {dias} days."
       },
+      "gnotes-activado": {
+        "titulo": "G Notes premium active",
+        "cuerpo": "Your G Notes membership is active: unlimited AI for a month."
+      },
       "convenio-solicitado": {
         "titulo": "New partnership request",
         "cuerpo": "{nombre} requested a {tipo} partnership."
@@ -1870,10 +1937,25 @@
     "comingSoon": "Coming soon",
     "copy": "Copy",
     "copied": "Copied",
+    "breB": "Bre-B key",
+    "qrExpand": "Enlarge",
+    "qrDownload": "Download QR",
+    "qrTitle": "Payment QR",
     "noInfo": "The team will share payment details via chat.",
     "confirmButton": "I confirm I received {monto} · Confirm payment",
+    "rejectButton": "Reject",
     "confirmError": "Could not confirm the payment. Please try again.",
     "startError": "Could not start the payment. Please try again."
+  },
+  "pedidoPago": {
+    "eyebrow": "Last step",
+    "heading": "Pay your order",
+    "total": "Total to pay:",
+    "pay": "Go to payment",
+    "changeMethod": "Paying with {metodo} · Change method",
+    "hint": "Pick a method to see the QR and payment details.",
+    "validating": "Receipt sent. It's being validated; we'll notify you in the chat.",
+    "viewOrder": "View my order"
   },
   "adminPagos": {
     "backToAdmin": "← Admin panel",

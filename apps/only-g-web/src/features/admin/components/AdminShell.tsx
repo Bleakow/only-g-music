@@ -22,35 +22,35 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const t = useTranslations();
   const pathname = usePathname();
   const onDashboard = pathname === "/admin";
-  // El editor de perfil trae su propia foto full-bleed → quitar el fondo del panel
-  // aquí evita el "foto sobre foto" (queda el bg-ink oscuro de base).
-  const noBackdrop =
+  // El editor de perfil es full-bleed y trae su PROPIO chrome (foto a pantalla
+  // completa + barra inferior con "volver al panel"). No lo envolvemos en el
+  // shell: así la foto llega hasta el borde superior (sin el espacio en blanco del
+  // wrapper) y no se duplica el botón de volver.
+  const isProfileEditor =
     pathname.startsWith("/admin/perfiles/") && pathname.endsWith("/editar");
+  if (isProfileEditor) {
+    return <>{children}</>;
+  }
 
   return (
     <div className="bg-ink relative isolate min-h-dvh text-white">
       {/* Fondo compartido: imagen del estudio a pantalla completa (fija) y
           atenuada, DETRÁS de todas las pestañas. `isolate` la mantiene por encima
           del bg-ink y deja que el backdrop-blur de las cards la frostee. */}
-      {!noBackdrop && (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none fixed inset-0 -z-10"
-        >
-          <picture>
-            <source
-              media="(max-width: 640px)"
-              srcSet={`${HERO_IMG}/admin-panel-mobile.png`}
-            />
-            <img
-              src={`${HERO_IMG}/admin-panel.png`}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </picture>
-          <div className="from-ink/70 via-ink/40 to-ink/75 absolute inset-0 bg-gradient-to-b" />
-        </div>
-      )}
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10">
+        <picture>
+          <source
+            media="(max-width: 640px)"
+            srcSet={`${HERO_IMG}/admin-panel-mobile.png`}
+          />
+          <img
+            src={`${HERO_IMG}/admin-panel.png`}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        </picture>
+        <div className="from-ink/70 via-ink/40 to-ink/75 absolute inset-0 bg-gradient-to-b" />
+      </div>
 
       <GlassButton
         href={onDashboard ? "/" : "/admin"}

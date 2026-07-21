@@ -14,6 +14,8 @@ export function profileToArtist(p: ArtistProfile): Artist {
     genre: p.genre,
     bio: p.bio,
     image: p.photoURL,
+    // Retrato vertical (art direction móvil) para las cards; ausente = usa `image`.
+    imageMobile: p.photoURLMobile,
     accent: p.accent,
     city: p.city,
     role: "Artista",

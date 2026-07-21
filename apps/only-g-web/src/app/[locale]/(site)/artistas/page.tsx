@@ -3,6 +3,11 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { alternatesFor } from "@/lib/seo";
 import { ArtistsShowcase } from "@/features/artists/components/ArtistsShowcase";
 import { ArtistCtaButton } from "@/features/artists/components/ArtistCtaButton";
+import { CatalogBackground } from "@/features/services/components/CatalogBackground";
+import {
+  LISTA_ARTISTAS_BG_DESKTOP,
+  LISTA_ARTISTAS_BG_MOBILE,
+} from "@/features/services/data/services";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { ArrowLeftIcon } from "@/components/icons";
 
@@ -24,7 +29,11 @@ export default async function ArtistasPage() {
   const t = await getTranslations("artistsPage");
 
   return (
-    <main className="min-h-dvh pb-24">
+    <CatalogBackground
+      desktop={LISTA_ARTISTAS_BG_DESKTOP}
+      mobile={LISTA_ARTISTAS_BG_MOBILE}
+    >
+      <main className="min-h-dvh pb-24">
       {/* ── Cabecera editorial con resplandor amatista de marca ───────── */}
       <header className="relative overflow-hidden px-6 pt-6 pb-14 sm:px-12 sm:pb-20">
         {/* Backdrop: glow amatista (mismo lenguaje visual que el hero y el menú). */}
@@ -67,6 +76,7 @@ export default async function ArtistasPage() {
       <div className="px-6 sm:px-12">
         <ArtistsShowcase fallback={[]} />
       </div>
-    </main>
+      </main>
+    </CatalogBackground>
   );
 }

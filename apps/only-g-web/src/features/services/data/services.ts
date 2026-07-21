@@ -26,6 +26,15 @@ const img = (seed: string) => `${HERO}/${PHOTO[seed] ?? seed}`;
 export const CATALOG_BG_DESKTOP = `${HERO}/buy.png`;
 export const CATALOG_BG_MOBILE = `${HERO}/buy-mobile.png`;
 
+/** Fondo de la ventana "Mis cosas" (/solicitudes): la foto que antes usaba el
+ *  catálogo, ahora guardada con su propio nombre en Storage. */
+export const MIS_COSAS_BG_DESKTOP = `${HERO}/mis-cosas.png`;
+export const MIS_COSAS_BG_MOBILE = `${HERO}/mis-cosas-mobile.png`;
+
+/** Fondo de la lista de artistas (/artistas). */
+export const LISTA_ARTISTAS_BG_DESKTOP = `${HERO}/lista-artistas.png`;
+export const LISTA_ARTISTAS_BG_MOBILE = `${HERO}/lista-artistas-mobile.png`;
+
 export const services: Service[] = [
   {
     slug: "grabacion",
@@ -57,18 +66,21 @@ export const services: Service[] = [
     description: "Del beat al máster: producción integral del tema, a medida.",
     pricing: "a_cotizar",
     image: img("produccion"),
+    singleChoice: true,
     variants: [
       {
         id: "1-artista",
         name: "1 artista",
         description: "Producción para un solo artista.",
         pricing: "a_cotizar",
+        countable: false,
       },
       {
         id: "2-artistas",
         name: "2 artistas",
         description: "Colaboración o dúo.",
         pricing: "a_cotizar",
+        countable: false,
       },
       {
         id: "agrupacion",
@@ -111,7 +123,10 @@ export const services: Service[] = [
     slug: "beat",
     name: "Beat / instrumental",
     description: "Instrumental a medida o licencia exclusiva.",
-    pricing: "a_cotizar",
+    // Precio fijo → comprable en /comprar. El precio real lo pone la config del
+    // CEO (`precioBeat`); este basePrice es el fallback/etiqueta del catálogo.
+    pricing: "por_proyecto",
+    basePrice: 40000,
     image: img("beat"),
   },
 ];

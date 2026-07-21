@@ -44,7 +44,10 @@ import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { AudioTrimModal } from "./AudioTrimModal";
 import { VideoTrimModal } from "./VideoTrimModal";
 import { GalleryBento } from "./GalleryBento";
+import { BioAiModal } from "./BioAiModal";
+import { RelatedArtistsPicker } from "./RelatedArtistsPicker";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import { Button } from "@/components/ui/Button";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -72,6 +75,8 @@ import {
   RotateCwIcon,
   RotateCcwIcon,
   ArrowLeftIcon,
+  SparklesIcon,
+  DevicesIcon,
 } from "@/components/icons";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -125,6 +130,8 @@ function UploadButton({
   className,
   children,
   glass,
+  title,
+  ariaLabel,
 }: {
   accept: string;
   multiple?: boolean;
@@ -133,12 +140,20 @@ function UploadButton({
   className?: string;
   children: React.ReactNode;
   glass?: boolean;
+  title?: string;
+  ariaLabel?: string;
 }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
       {glass ? (
-        <GlassButton onClick={() => ref.current?.click()} disabled={disabled}>
+        <GlassButton
+          onClick={() => ref.current?.click()}
+          disabled={disabled}
+          className={className}
+          title={title}
+          ariaLabel={ariaLabel}
+        >
           {children}
         </GlassButton>
       ) : (
@@ -205,6 +220,10 @@ export function ProfileBuilder({
   const [location, setLocation] = useState<GeoLocation | null>(null);
   const [locOpen, setLocOpen] = useState(false);
   const [bio, setBio] = useState("");
+  // Colaboradores / artistas relacionados que el artista destaca (slugs).
+  const [relatedArtists, setRelatedArtists] = useState<string[]>([]);
+  // Modal "Mejorar biografía con IA".
+  const [showBioAi, setShowBioAi] = useState(false);
   const [accent, setAccent] = useState("#8b5cf6");
   const [startYear, setStartYear] = useState(CURRENT_YEAR);
   const [photoURL, setPhotoURL] = useState("");
@@ -268,6 +287,18 @@ export function ProfileBuilder({
     };
   }, [refreshAccount]);
 
+  // Editor inmersivo: frena el rebote de scroll (overscroll) del navegador móvil,
+  // que al llegar al fondo "regresaba" un poco hacia arriba. Scoped: se restaura
+  // al salir del editor para no afectar el pull-to-refresh del resto de la web.
+  useEffect(() => {
+    const el = document.documentElement;
+    const prev = el.style.overscrollBehaviorY;
+    el.style.overscrollBehaviorY = "contain";
+    return () => {
+      el.style.overscrollBehaviorY = prev;
+    };
+  }, []);
+
   useEffect(() => {
     if (!slug) {
       setLoaded(true);
@@ -287,6 +318,7 @@ export function ProfileBuilder({
           setCity(p.city ?? "");
           setLocation(p.location ?? null);
           setBio(p.bio);
+          setRelatedArtists(p.relatedArtists ?? []);
           setAccent(p.accent);
           setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
           setPhotoURL(p.photoURL);
@@ -335,6 +367,7 @@ export function ProfileBuilder({
       city: city.trim() || undefined,
       location: location ?? undefined,
       bio: bio.trim(),
+      relatedArtists,
       accent,
       photoURL,
       photoURLMobile: photoMobile || undefined,
@@ -396,6 +429,7 @@ export function ProfileBuilder({
     city,
     location,
     bio,
+    relatedArtists,
     accent,
     startYear,
     photoURL,
@@ -822,26 +856,42 @@ export function ProfileBuilder({
             )}
             <SaveIndicator state={saveState} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {!adminMode && mostrarRenovar && (
               <button
                 type="button"
                 onClick={renovar}
-                className="from-silver-100 to-amethyst-300 text-ink inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r px-4 py-1.5 text-sm font-semibold tracking-[1px] uppercase transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)]"
+                title={renovarLabel}
+                aria-label={renovarLabel}
+                className="from-silver-100 to-amethyst-300 text-ink inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r px-3 py-1.5 text-sm font-semibold tracking-[1px] uppercase transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)] sm:px-4"
               >
                 <RepeatIcon className="size-4" />
-                {renovarLabel}
+                <span className="hidden sm:inline">{renovarLabel}</span>
               </button>
             )}
             {adminMode || estadoPremium === "activo" ? (
-              <GlassButton href={`/artistas/${slug}`}>
+              <GlassButton
+                href={`/artistas/${slug}`}
+                className="!px-3 sm:!px-4"
+                title={t("profileBuilder.statusBar.viewProfile")}
+                ariaLabel={t("profileBuilder.statusBar.viewProfile")}
+              >
                 <EyeIcon className="size-4" />
-                {t("profileBuilder.statusBar.viewProfile")}
+                <span className="hidden sm:inline">
+                  {t("profileBuilder.statusBar.viewProfile")}
+                </span>
               </GlassButton>
             ) : (
-              <GlassButton onClick={() => setShowPublishGate(true)}>
+              <GlassButton
+                onClick={() => setShowPublishGate(true)}
+                className="!px-3 sm:!px-4"
+                title={t("profileBuilder.statusBar.viewProfile")}
+                ariaLabel={t("profileBuilder.statusBar.viewProfile")}
+              >
                 <EyeIcon className="size-4" />
-                {t("profileBuilder.statusBar.viewProfile")}
+                <span className="hidden sm:inline">
+                  {t("profileBuilder.statusBar.viewProfile")}
+                </span>
               </GlassButton>
             )}
           </div>
@@ -894,39 +944,49 @@ export function ProfileBuilder({
           </div>
         )}
 
-        {/* Foto puesta: un solo botón para cambiar (screen-aware) + ajustar +
-            gestionar la versión de la otra pantalla (mismos GlassButton que
-            Atrás/Ajustes). */}
+        {/* Controles de foto: SOLO iconos, todos el MISMO círculo (size-11), en la
+            esquina superior derecha del hero. Cambiar · Encuadrar · Otra pantalla. */}
         {photoURL && !adjusting && (
-          <div className="absolute top-20 right-4 z-20 flex max-w-[min(80vw,22rem)] flex-col items-end gap-2">
-            <div className="flex flex-wrap justify-end gap-2">
-              <UploadButton
-                glass
-                accept="image/*"
-                onFiles={onPhotoUpload}
-                disabled={uploading === "photo"}
-              >
-                {uploading === "photo" ? (
-                  <SpinnerIcon className="size-4 animate-spin" />
-                ) : (
-                  <ImageIcon className="size-4" />
-                )}
-                {t("profileBuilder.photo.change")}
-              </UploadButton>
-              <GlassButton onClick={() => setAdjusting(true)}>
-                <CropIcon className="size-4" />
-                {t("profileBuilder.photo.adjust")}
-              </GlassButton>
-              <GlassButton onClick={openOtherScreen}>
+          <div className="absolute top-4 right-4 z-20 flex justify-end gap-2">
+            <UploadButton
+              glass
+              accept="image/*"
+              onFiles={onPhotoUpload}
+              disabled={uploading === "photo"}
+              className="!size-11 !justify-center !p-0"
+              title={t("profileBuilder.photo.change")}
+              ariaLabel={t("profileBuilder.photo.change")}
+            >
+              {uploading === "photo" ? (
+                <SpinnerIcon className="size-4 animate-spin" />
+              ) : (
                 <ImageIcon className="size-4" />
-                {isMobileScreen
+              )}
+            </UploadButton>
+            <GlassButton
+              onClick={() => setAdjusting(true)}
+              className="!size-11 !justify-center !p-0"
+              title={t("profileBuilder.photo.adjust")}
+              ariaLabel={t("profileBuilder.photo.adjust")}
+            >
+              <CropIcon className="size-4" />
+            </GlassButton>
+            <GlassButton
+              onClick={openOtherScreen}
+              className="!size-11 !justify-center !p-0"
+              title={
+                isMobileScreen
                   ? t("profileBuilder.photoSync.manageDesktop")
-                  : t("profileBuilder.photoSync.manageMobile")}
-              </GlassButton>
-            </div>
-            <p className="max-w-xs rounded-lg bg-black/45 px-2.5 py-1 text-right text-[11px] leading-snug text-white/75 backdrop-blur">
-              {t("profileBuilder.photoSync.hint")}
-            </p>
+                  : t("profileBuilder.photoSync.manageMobile")
+              }
+              ariaLabel={
+                isMobileScreen
+                  ? t("profileBuilder.photoSync.manageDesktop")
+                  : t("profileBuilder.photoSync.manageMobile")
+              }
+            >
+              <DevicesIcon className="size-4" />
+            </GlassButton>
           </div>
         )}
 
@@ -1055,44 +1115,50 @@ export function ProfileBuilder({
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-[3px] uppercase">
-            {genres.map((g) => (
-              <span
-                key={g}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-black/30 px-3 py-1 backdrop-blur"
-                style={{ color: accent }}
-              >
-                {g}
-                <button
-                  type="button"
-                  onClick={() => setGenres(genres.filter((x) => x !== g))}
-                  aria-label={t("profileBuilder.identity.genreRemove", {
-                    value: g,
-                  })}
-                  className="text-white/50 transition hover:text-white"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <SearchableSelect
-              value=""
-              onChange={(v) => {
-                const g = v.trim();
-                if (g && !genres.includes(g)) setGenres([...genres, g]);
-              }}
-              options={GENRE_OPTIONS}
-              allowCustom
-              placement="top"
-              placeholder={t("profileBuilder.identity.genreAdd")}
-              searchPlaceholder={t("profileBuilder.identity.genreSearch")}
-              emptyText={t("profileBuilder.identity.genreEmpty")}
-              customLabel={(v) =>
-                t("profileBuilder.identity.genreCustom", { value: v })
-              }
-              ariaLabel={t("profileBuilder.identity.genreAdd")}
-              className={`${glassField} flex items-center justify-between gap-2`}
+            {/* Géneros: un SOLO control tipo multi-select — el input de añadir con
+                los chips seleccionados DENTRO (borrables ahí mismo), en vez de
+                desparramar un chip por cada género en la fila de identidad. */}
+            <div
+              className={`${glassField} flex max-w-full flex-wrap items-center gap-1.5 !rounded-2xl !px-2.5 !py-1.5`}
               style={{ color: accent }}
-            />
+            >
+              {genres.map((g) => (
+                <span
+                  key={g}
+                  className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold tracking-[1px]"
+                >
+                  {g}
+                  <button
+                    type="button"
+                    onClick={() => setGenres(genres.filter((x) => x !== g))}
+                    aria-label={t("profileBuilder.identity.genreRemove", {
+                      value: g,
+                    })}
+                    className="text-white/55 transition hover:text-white"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+              <SearchableSelect
+                value=""
+                onChange={(v) => {
+                  const g = v.trim();
+                  if (g && !genres.includes(g)) setGenres([...genres, g]);
+                }}
+                options={GENRE_OPTIONS}
+                allowCustom
+                placement="top"
+                placeholder={t("profileBuilder.identity.genreAdd")}
+                searchPlaceholder={t("profileBuilder.identity.genreSearch")}
+                emptyText={t("profileBuilder.identity.genreEmpty")}
+                customLabel={(v) =>
+                  t("profileBuilder.identity.genreCustom", { value: v })
+                }
+                ariaLabel={t("profileBuilder.identity.genreAdd")}
+                className="flex min-w-[5.5rem] flex-1 items-center justify-between gap-1.5 bg-transparent px-1.5 py-0.5 text-left"
+              />
+            </div>
             <button
               type="button"
               onClick={() => setLocOpen(true)}
@@ -1305,6 +1371,33 @@ export function ProfileBuilder({
           onChange={(e) => setBio(e.target.value)}
           placeholder={t("profileBuilder.bio.placeholder")}
           className="text-silver-100 min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed transition outline-none placeholder:text-white/30 focus:bg-white/10"
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setShowBioAi(true)}
+            disabled={!bio.trim()}
+          >
+            <SparklesIcon className="size-4" />
+            {t("profileBuilder.aiBio.button")}
+          </Button>
+          <p className="text-silver-400 text-xs">
+            {t("profileBuilder.aiBio.hint")}
+          </p>
+        </div>
+      </Block>
+
+      {/* Artistas relacionados / colaboradores: el artista destaca a mano otros
+          perfiles de la plataforma (red interna). */}
+      <Block title={t("profileBuilder.relatedArtists.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.relatedArtists.hint")}
+        </p>
+        <RelatedArtistsPicker
+          value={relatedArtists}
+          onChange={setRelatedArtists}
+          excludeSlug={slug}
         />
       </Block>
 
@@ -1520,6 +1613,17 @@ export function ProfileBuilder({
           onConfirm={onVideoTrimConfirm}
         />
       )}
+
+      <BioAiModal
+        open={showBioAi}
+        onClose={() => setShowBioAi(false)}
+        seed={bio}
+        name={artisticName}
+        city={city}
+        genres={genres}
+        startYear={Number(startYear) || undefined}
+        onAccept={(text) => setBio(text)}
+      />
 
       <GlassModal
         open={showPublishGate}

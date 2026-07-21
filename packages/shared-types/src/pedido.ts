@@ -13,6 +13,8 @@
  */
 import type { SedeId } from "./sede";
 import type { PricingModel } from "./service";
+import type { PersonasTier } from "./precios-servicios";
+import type { QuoteCollaborator } from "./quote";
 
 /**
  * Naturaleza de una línea del pedido:
@@ -64,6 +66,14 @@ export interface Pedido {
   lineas: PedidoLinea[];
   /** Suma de subtotales (COP). Server-authoritative al confirmar. */
   total: number;
+  /** Tramo de personas que graban/mezclan (fija el precio de grabación/mezcla). */
+  personas?: PersonasTier;
+  /** Info del tema (título, notas). Lo aporta el cliente al comprar. */
+  details?: string;
+  /** URL de referencia/ejemplo del tema (opcional). */
+  referenceUrl?: string;
+  /** Artistas que participan en la grabación (colaboradores enlazados). */
+  collaborators?: QuoteCollaborator[];
   /** Datos del cliente denormalizados (para tablas/finanzas del admin). */
   clientName?: string;
   clientEmail?: string;

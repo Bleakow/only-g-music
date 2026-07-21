@@ -34,6 +34,8 @@ import {
 } from "@only-g/shared-types/pedido";
 import type { PricingModel } from "@only-g/shared-types/service";
 import type { SedeId } from "@only-g/shared-types/sede";
+import type { PersonasTier } from "@only-g/shared-types/precios-servicios";
+import type { QuoteCollaborator } from "@only-g/shared-types/quote";
 import type { DaySlots } from "@/features/booking/lib/booking-repo";
 
 const PEDIDOS = "pedidos";
@@ -65,6 +67,10 @@ export interface CreatePedidoInput {
   clientEmail?: string;
   lineas: PedidoLineaInput[];
   total: number;
+  personas?: PersonasTier;
+  details?: string;
+  referenceUrl?: string;
+  collaborators?: QuoteCollaborator[];
 }
 
 function toPedido(id: string, data: DocumentData): Pedido {
@@ -74,6 +80,10 @@ function toPedido(id: string, data: DocumentData): Pedido {
     sede: data.sede,
     lineas: (data.lineas as PedidoLinea[]) ?? [],
     total: data.total ?? 0,
+    personas: data.personas ?? undefined,
+    details: data.details ?? undefined,
+    referenceUrl: data.referenceUrl ?? undefined,
+    collaborators: (data.collaborators as QuoteCollaborator[]) ?? undefined,
     clientName: data.clientName ?? undefined,
     clientEmail: data.clientEmail ?? undefined,
     paymentConversationId: data.paymentConversationId ?? undefined,
@@ -183,6 +193,12 @@ export async function createPedido(input: CreatePedidoInput): Promise<string> {
     };
     if (input.clientName) pedidoPayload.clientName = input.clientName;
     if (input.clientEmail) pedidoPayload.clientEmail = input.clientEmail;
+    if (input.personas) pedidoPayload.personas = input.personas;
+    if (input.details?.trim()) pedidoPayload.details = input.details.trim();
+    if (input.referenceUrl?.trim())
+      pedidoPayload.referenceUrl = input.referenceUrl.trim();
+    if (input.collaborators && input.collaborators.length > 0)
+      pedidoPayload.collaborators = input.collaborators;
     tx.set(pedidoRef, pedidoPayload);
   });
 

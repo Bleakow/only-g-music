@@ -433,6 +433,50 @@ export function StarIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Chispas — afford de "mejorar con IA". Trazo, hereda currentColor.
+export function SparklesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M12 3l1.9 4.6L18.5 9.5 13.9 11.4 12 16l-1.9-4.6L5.5 9.5l4.6-1.9L12 3Z" />
+      <path d="M19 14l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8.8-2Z" />
+      <path d="M5 14l.7 1.7 1.8.7-1.8.7L5 18.8l-.7-1.7-1.8-.7 1.8-.7L5 14Z" />
+    </svg>
+  );
+}
+
+// Dispositivos (monitor + móvil) — para gestionar la foto de la OTRA pantalla.
+export function DevicesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="2" y="4" width="14" height="10" rx="1.5" />
+      <path d="M2 18h10" />
+      <rect x="16" y="9" width="6" height="11" rx="1.5" />
+    </svg>
+  );
+}
+
+// Descargar (flecha hacia bandeja) — para bajar el QR de pago.
+export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M12 15V3" />
+    </svg>
+  );
+}
+
+// Llave — para la llave de pago Bre-B junto al QR.
+export function KeyIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="7.5" cy="15.5" r="5.5" />
+      <path d="m21 2-9.6 9.6" />
+      <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4" />
+    </svg>
+  );
+}
+
 export function ImageIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...strokeProps(props)}>

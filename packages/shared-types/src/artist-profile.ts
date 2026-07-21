@@ -347,6 +347,14 @@ export interface ArtistProfile {
   orden?: number;
   featured?: boolean;
 
+  /**
+   * Artistas relacionados / colaboradores que el ARTISTA destaca a mano (slugs de
+   * otros perfiles de la plataforma). Crea red interna en la vista pública. Se
+   * guardan solo slugs: nombre y foto se resuelven al render desde el perfil
+   * enlazado (nunca se duplican datos que se quedarían rancios).
+   */
+  relatedArtists?: string[];
+
   createdAt: number;
   updatedAt: number;
 }
@@ -399,4 +407,5 @@ export type EditableProfile = Pick<
   | "playerSize"
   | "socials"
   | "trajectoryStartYear"
+  | "relatedArtists"
 >;

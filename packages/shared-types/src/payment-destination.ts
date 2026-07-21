@@ -20,6 +20,9 @@ export interface DestinoPago {
   correo?: string;
   /** Usuario o enlace de PayPal. */
   paypal?: string;
+  /** Llave Bre-B (pago inmediato interbancario CO): número/alias que el cliente
+   *  usa para transferir. Dato global de la compañía; se muestra junto al QR. */
+  llaveBreB?: string;
   /** Instrucciones básicas adicionales (texto libre). */
   nota?: string;
 }
@@ -42,6 +45,8 @@ export interface InstruccionPago {
   valor?: string;
   /** QR de pago, si el destino lo trae. */
   qrUrl?: string;
+  /** Llave Bre-B (si está configurada). Se muestra junto al QR con icono de llave. */
+  llaveBreB?: string;
   /** Nota/instrucción libre. */
   nota?: string;
 }
@@ -55,17 +60,24 @@ export function instruccionPago(
   metodo: MetodoPago,
   destino: DestinoPago,
 ): InstruccionPago {
+  // La llave Bre-B es transversal (dato global de la compañía): se ofrece con
+  // cualquier método por si el cliente prefiere transferir por Bre-B.
   switch (metodo) {
     case "nequi":
       return {
         valor: destino.telefono,
         qrUrl: destino.qrUrl,
+        llaveBreB: destino.llaveBreB,
         nota: destino.nota,
       };
     case "paypal":
-      return { valor: destino.paypal ?? destino.correo, nota: destino.nota };
+      return {
+        valor: destino.paypal ?? destino.correo,
+        llaveBreB: destino.llaveBreB,
+        nota: destino.nota,
+      };
     default:
-      // efectivo (y tarjeta, que no llega aquí): solo la nota.
-      return { nota: destino.nota };
+      // efectivo (y tarjeta, que no llega aquí): la nota y, si existe, la llave.
+      return { llaveBreB: destino.llaveBreB, nota: destino.nota };
   }
 }

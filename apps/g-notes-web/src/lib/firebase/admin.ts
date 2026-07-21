@@ -12,10 +12,11 @@ import { getAuth } from "firebase-admin/auth";
  */
 const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-const app: App =
+/** App admin compartida (auth + firestore). Se reusa en `entitlement.ts`. */
+export const adminApp: App =
   getApps().length === 0 ? initializeApp({ projectId }) : getApps()[0];
 
-const adminAuth = getAuth(app);
+const adminAuth = getAuth(adminApp);
 
 /**
  * Extrae el ID token del header `Authorization: Bearer <token>` y lo verifica.

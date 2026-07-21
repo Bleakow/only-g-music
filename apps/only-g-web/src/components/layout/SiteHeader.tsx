@@ -10,13 +10,19 @@ export function SiteHeader() {
   const t = useTranslations();
   const pathname = usePathname();
   const router = useRouter();
-  // En la lista de artistas y en los perfiles el logo de Inicio sobra (el perfil
-  // tiene su propia navegación: Atrás + Ajustes).
+  // En la lista de artistas y en los perfiles (de artista y de productor) el logo
+  // de Inicio sobra: el perfil trae su propia navegación (su botón "Atrás").
   const hideLogo =
-    pathname === "/artistas" || pathname.startsWith("/artistas/");
-  // En el flujo de compra / cotización, en vez del logo de Inicio va un botón
-  // "Atrás" que devuelve a donde el usuario venía (misma posición del logo).
-  const showBack = pathname === "/comprar" || pathname === "/cotizar";
+    pathname === "/artistas" ||
+    pathname.startsWith("/artistas/") ||
+    pathname.startsWith("/productores/");
+  // El editor del propio perfil es una pantalla inmersiva: en vez del logo va un
+  // botón "Atrás" y se oculta la hamburguesa (su navegación vive en la barra).
+  const isProfileEdit = pathname === "/artista/perfil";
+  // En el flujo de compra / cotización (y el editor de perfil), en vez del logo de
+  // Inicio va un botón "Atrás" que devuelve a donde el usuario venía.
+  const showBack =
+    pathname === "/comprar" || pathname === "/cotizar" || isProfileEdit;
 
   return (
     <>
@@ -55,7 +61,8 @@ export function SiteHeader() {
         )
       )}
 
-      <SiteMenu />
+      {/* El editor de perfil no muestra la hamburguesa: solo el botón Atrás. */}
+      {!isProfileEdit && <SiteMenu />}
     </>
   );
 }

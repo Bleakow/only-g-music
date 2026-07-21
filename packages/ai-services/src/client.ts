@@ -1,4 +1,6 @@
 import type {
+  BioRequest,
+  BioResponse,
   CompletionRequest,
   CompletionResponse,
   CreativeRequest,
@@ -61,6 +63,20 @@ export function createAiClient(opts: AiClientOptions = {}) {
       });
       if (!res.ok) throw new Error(`ai/tools ${res.status}`);
       return (await res.json()) as CreativeResponse;
+    },
+
+    async improveBio(
+      req: BioRequest,
+      signal?: AbortSignal,
+    ): Promise<BioResponse> {
+      const res = await doFetch(`${base}/api/ai/bio`, {
+        method: "POST",
+        headers: await headers(),
+        body: JSON.stringify(req),
+        signal,
+      });
+      if (!res.ok) throw new Error(`ai/bio ${res.status}`);
+      return (await res.json()) as BioResponse;
     },
   };
 }

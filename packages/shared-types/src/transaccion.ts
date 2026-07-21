@@ -6,7 +6,12 @@
  */
 
 /** Origen del ingreso. */
-export type TransaccionFuente = "reserva" | "premium" | "membresia" | "beat";
+export type TransaccionFuente =
+  | "reserva"
+  | "premium"
+  | "membresia"
+  | "beat"
+  | "gnotes";
 
 export interface Transaccion {
   id: string;

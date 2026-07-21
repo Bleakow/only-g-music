@@ -102,6 +102,12 @@ const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
     href: "/admin/beats",
     Icon: MusicIcon,
   },
+  {
+    key: "cuentas",
+    sub: "quickCuentasSub",
+    href: "/admin/cuentas",
+    Icon: FinanceIcon,
+  },
 ];
 
 /**
@@ -339,70 +345,77 @@ export function AdminDashboard() {
                 />
               </section>
 
-              {/* Accesos rápidos */}
-              <section className={`${OUTER} order-1 lg:order-2 lg:col-span-2`}>
-                <GlassSheen />
-                <div className="relative">
-                  <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
-                    {t("adminDashboard.quickTitle")}
-                  </h2>
-                  <div className="mt-4 grid grid-cols-2 gap-2.5">
-                    {quickItems.map(({ key, sub, href, Icon }) => (
-                      <Link
-                        key={key}
-                        href={href}
-                        className={`group flex flex-col gap-2 rounded-xl ${INNER} p-3 transition hover:bg-black/35 hover:ring-white/25`}
-                      >
-                        <span className="text-amethyst-200 flex size-9 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/15 ring-inset">
-                          <Icon className="size-5" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-white">
-                            {t(`adminNav.${key}`)}
-                          </span>
-                          <span className="text-silver-400 block truncate text-[0.7rem]">
-                            {t(`adminDashboard.${sub}`)}
-                          </span>
-                        </span>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </section>
-
-              {/* Actividad reciente */}
-              <section className={`${OUTER} order-4 lg:col-span-2`}>
-                <GlassSheen />
-                <div className="relative">
-                  <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
-                    {t("adminDashboard.activityTitle")}
-                  </h2>
-                  {activity.length === 0 ? (
-                    <p className="text-silver-400 mt-3 text-sm">
-                      {t("adminDashboard.noActivity")}
-                    </p>
-                  ) : (
-                    <ul className="mt-3 flex flex-col gap-2">
-                      {activity.map(({ id, Icon, text, at }) => (
-                        <li
-                          key={id}
-                          className={`${INNER} flex items-center gap-3 rounded-xl p-2.5`}
+              {/* Columna izquierda (accesos + actividad). En MÓVIL es
+                  `contents` → cada tarjeta conserva su orden intercalado
+                  (accesos → stats → reservas → actividad). En DESKTOP es una
+                  columna flex del grid: apilan con su gap y el espacio sobrante
+                  cae ABAJO (junto a reservas), sin hueco entre ambas. */}
+              <div className="contents lg:order-2 lg:col-span-2 lg:row-span-2 lg:flex lg:flex-col lg:gap-4">
+                {/* Accesos rápidos */}
+                <section className={`${OUTER} order-1`}>
+                  <GlassSheen />
+                  <div className="relative">
+                    <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
+                      {t("adminDashboard.quickTitle")}
+                    </h2>
+                    <div className="mt-4 grid grid-cols-2 gap-2.5">
+                      {quickItems.map(({ key, sub, href, Icon }) => (
+                        <Link
+                          key={key}
+                          href={href}
+                          className={`group flex flex-col gap-2 rounded-xl ${INNER} p-3 transition hover:bg-black/35 hover:ring-white/25`}
                         >
-                          <span className="text-silver-300 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/12 ring-inset">
-                            <Icon className="size-4" />
+                          <span className="text-amethyst-200 flex size-9 items-center justify-center rounded-lg bg-white/[0.06] ring-1 ring-white/15 ring-inset">
+                            <Icon className="size-5" />
                           </span>
-                          <span className="text-silver-200 min-w-0 flex-1 truncate text-sm">
-                            {text}
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-white">
+                              {t(`adminNav.${key}`)}
+                            </span>
+                            <span className="text-silver-400 block truncate text-[0.7rem]">
+                              {t(`adminDashboard.${sub}`)}
+                            </span>
                           </span>
-                          <span className="text-silver-500 shrink-0 text-xs">
-                            {fechaCorta(at, locale)}
-                          </span>
-                        </li>
+                        </Link>
                       ))}
-                    </ul>
-                  )}
-                </div>
-              </section>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Actividad reciente */}
+                <section className={`${OUTER} order-4`}>
+                  <GlassSheen />
+                  <div className="relative">
+                    <h2 className="font-narrow text-lg font-bold tracking-wide text-white uppercase">
+                      {t("adminDashboard.activityTitle")}
+                    </h2>
+                    {activity.length === 0 ? (
+                      <p className="text-silver-400 mt-3 text-sm">
+                        {t("adminDashboard.noActivity")}
+                      </p>
+                    ) : (
+                      <ul className="mt-3 flex flex-col gap-2">
+                        {activity.map(({ id, Icon, text, at }) => (
+                          <li
+                            key={id}
+                            className={`${INNER} flex items-center gap-3 rounded-xl p-2.5`}
+                          >
+                            <span className="text-silver-300 flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.05] ring-1 ring-white/12 ring-inset">
+                              <Icon className="size-4" />
+                            </span>
+                            <span className="text-silver-200 min-w-0 flex-1 truncate text-sm">
+                              {text}
+                            </span>
+                            <span className="text-silver-500 shrink-0 text-xs">
+                              {fechaCorta(at, locale)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              </div>
 
               {/* Reservas activas */}
               <section

@@ -9,19 +9,14 @@ import {
   updateQuoteStatus,
 } from "@/features/quotes/lib/quotes-repo";
 import { getReservaById } from "@/features/booking/lib/booking-repo";
-import {
-  ensureSupportConversation,
-  createPaymentConversation,
-} from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
+import { ensureSupportConversation } from "@/features/conversations/lib/conversations-repo";
+import { PagoInlinePanel } from "@/features/conversations/components/PagoInlinePanel";
 import { ConversationView } from "@/features/conversations/components/ConversationView";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 import { Button } from "@/components/ui/Button";
 import { sedes } from "@/features/sedes/data/sedes";
 import { formatCOP } from "@only-g/shared-types/service";
 import { insigniaDePuntos, type Insignia } from "@only-g/shared-types/artist-profile";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import type { QuoteRequest } from "@only-g/shared-types/quote";
 import type { Reserva } from "@only-g/shared-types/booking";
 import { badgeClass } from "../lib/estados";
@@ -39,7 +34,7 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
   const [busy, setBusy] = useState(false);
   const [convId, setConvId] = useState<string | null>(null);
   const [insignia, setInsignia] = useState<Insignia | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const [pagoEnviado, setPagoEnviado] = useState(false);
 
   const parent = tipo === "cotizacion" ? "quotes" : "bookings";
   const ownerUid = quote?.uid ?? reserva?.uid ?? null;
@@ -95,25 +90,6 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
       active = false;
     };
   }, [account?.artistSlug]);
-
-  // Arranca el pago de la reserva: abre un chat de pago propio (tipo `pago`) y la
-  // burbuja. El comprobante y la confirmación viven en ese hilo (PagoPanel).
-  async function iniciarPagoReserva(metodo: MetodoPago) {
-    if (!reserva) return;
-    setShowPicker(false);
-    try {
-      const cid = await createPaymentConversation({
-        uid: reserva.uid,
-        concepto: "reserva",
-        ref: { kind: "booking", id: reserva.id },
-        metodo,
-        monto: reserva.amount ?? 0,
-      });
-      openConversation(cid);
-    } catch (e) {
-      console.error("[reserva] iniciarPago:", e);
-    }
-  }
 
   // El cliente acepta/rechaza la propuesta del estudio. `aceptada` → una Cloud
   // Function genera la Reserva (con el precio propuesto, server-authoritative).
@@ -288,33 +264,29 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </p>
       )}
 
-      {/* Acción: pago de la reserva → abre un chat de pago propio */}
-      {reserva && reserva.estado === "pendiente_pago" && (
+      {/* Acción: pago de la reserva → panel de pago INLINE (QR + llave Bre-B +
+          subir comprobante en la MISMA ventana, sin abrir la burbuja de chat). */}
+      {reserva && reserva.estado === "pendiente_pago" && !pagoEnviado && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
           <h2 className="font-narrow text-xl font-bold text-white uppercase">
             {t("solicitudDetail.payment")}
           </h2>
-          <p className="text-silver-300 mt-2 text-sm">
+          <p className="text-silver-300 mt-2 mb-4 text-sm">
             {t("solicitudDetail.paymentStartHint")}
           </p>
-          <Button
-            className="btn-amethyst mt-3"
-            onClick={() => setShowPicker(true)}
-          >
-            {t("solicitudDetail.pay")}
-          </Button>
+          <PagoInlinePanel
+            uid={reserva.uid}
+            concepto="reserva"
+            pagoRef={{ kind: "booking", id: reserva.id }}
+            monto={reserva.amount ?? 0}
+            sede={reserva.sede}
+            insignia={insignia}
+            onSent={() => setPagoEnviado(true)}
+          />
         </section>
       )}
 
-      {showPicker && (
-        <PaymentMethodPicker
-          onPick={iniciarPagoReserva}
-          onClose={() => setShowPicker(false)}
-          insignia={insignia}
-        />
-      )}
-
-      {reserva && reserva.estado === "pago_en_revision" && (
+      {reserva && (pagoEnviado || reserva.estado === "pago_en_revision") && (
         <p className="mt-6 rounded-lg border border-sky-400/30 bg-sky-400/10 px-4 py-3 text-sm text-sky-100">
           {t("solicitudDetail.receiptUnderReview")}
         </p>

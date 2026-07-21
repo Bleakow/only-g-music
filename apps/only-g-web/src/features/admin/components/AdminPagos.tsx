@@ -3,19 +3,21 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { subscribePendingPayments } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
 import { formatCOP } from "@only-g/shared-types/service";
 import type { Conversation } from "@only-g/shared-types/conversation";
 import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
+import { AdminPagoDetail } from "./AdminPagoDetail";
 
 /**
- * Lista de PAGOS PENDIENTES de revisión (chats de pago en `en_revision`). Cada
- * uno abre la burbuja en su conversación, donde el admin ve el comprobante y
- * confirma (botón en PagoPanel → Cloud Function confirmPayment).
+ * Lista de PAGOS PENDIENTES de revisión (chats de pago en `en_revision`). Al
+ * seleccionar uno se abre su detalle INLINE (`AdminPagoDetail`, modal en la misma
+ * ventana) con el comprobante y los botones de confirmar/rechazar — antes abría
+ * la burbuja de chat, donde el detalle quedaba recortado.
  */
 export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useTranslations();
   const [pagos, setPagos] = useState<Conversation[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => subscribePendingPayments(setPagos), []);
 
@@ -29,7 +31,7 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
     <li key={c.id}>
       <button
         type="button"
-        onClick={() => openConversation(c.id)}
+        onClick={() => setSelectedId(c.id)}
         className={`hover:border-amethyst-300/50 flex w-full items-center justify-between gap-3 rounded-xl p-4 text-left transition ${rowClassName}`}
       >
         <div className="min-w-0">
@@ -50,6 +52,15 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
     </li>
   ));
 
+  // Detalle inline (modal). Único para ambos usos (embebido/standalone).
+  const detail = (
+    <AdminPagoDetail
+      id={selectedId}
+      onClose={() => setSelectedId(null)}
+      onResolved={() => setSelectedId(null)}
+    />
+  );
+
   if (embedded) {
     return (
       <div>
@@ -62,6 +73,7 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
         ) : (
           <ul className="mt-8 flex flex-col gap-3">{rows}</ul>
         )}
+        {detail}
       </div>
     );
   }
@@ -71,6 +83,8 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
       <AdminPageHeader
         eyebrow={t("adminDashboard.eyebrow")}
         title={t("adminPagos.title")}
+        info={t("adminPagos.intro")}
+        infoKey="pagos"
       />
 
       <div className="px-6 sm:px-10">
@@ -82,6 +96,7 @@ export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
           </div>
         )}
       </div>
+      {detail}
     </main>
   );
 }

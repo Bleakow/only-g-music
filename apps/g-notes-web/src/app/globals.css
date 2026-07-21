@@ -78,6 +78,22 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+/* Feedback de botones (en @layer base para que las utilidades hover:* de cada
+   botón puedan sobreescribir). Tailwind v4 dejó de poner `cursor: pointer` en
+   <button> por defecto → se sentían "muertos"; lo restauramos, y damos un hover
+   sutil (realce del cristal) a toda acción que no defina el suyo propio. */
+@layer base {
+  button:not(:disabled),
+  [role="button"],
+  a[href] {
+    cursor: pointer;
+  }
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover {
+    background-color: color-mix(in oklab, white 8%, transparent);
+  }
+}
+
 /* Superficie de cristal reutilizable (versión ligera del glassSurface de Only G) */
 .glass {
   background: color-mix(in oklab, var(--color-ink-panel) 72%, transparent);

@@ -107,18 +107,158 @@ function textoWhatsAppAdmin(
 ): string {
   switch (evento) {
     case "cotizacion-nueva":
-      return `🟣 *Nueva cotización* de ${params.cliente ?? "un cliente"}.`;
+      return [
+        "🟣 *Nueva solicitud de cotización*",
+        "",
+        `👤 Cliente: ${params.cliente ?? "un cliente"}`,
+        params.servicio ? `🎬 Servicio: ${params.servicio}` : "",
+        params.telefono ? `📞 Tel: ${params.telefono}` : "",
+        params.detalle ? `📝 ${params.detalle}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
     case "pago-por-revisar":
+      // El texto RICO lo arma `textoWhatsAppCompra` y llega por `whatsAppText`;
+      // esto es solo el fallback si se llamara sin él.
       return `💸 *Pago por revisar*: ${params.cliente ?? "un cliente"} — ${params.monto ?? ""}.`;
     case "perfil-artista-creado":
-      return `🎤 *Nuevo perfil de artista*: ${params.nombre ?? ""}.`;
+      return [
+        "🎤 *Nuevo perfil de artista*",
+        "",
+        `👤 ${params.nombre ?? ""}`,
+        params.generos ? `🎵 Géneros: ${params.generos}` : "",
+        params.ciudad ? `📍 ${params.ciudad}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
     case "gasto-recurrente-por-confirmar":
-      return `📅 *Gasto recurrente por confirmar*: ${params.concepto ?? ""}.`;
+      return [
+        "📅 *Gasto recurrente por confirmar*",
+        "",
+        `🧾 ${params.concepto ?? ""}`,
+        params.monto ? `💰 ${params.monto}` : "",
+      ]
+        .filter(Boolean)
+        .join("\n");
     case "convenio-solicitado":
-      return `🤝 *Nueva solicitud de convenio* (${params.tipo ?? ""}) de ${params.nombre ?? "un usuario"}.`;
+      return `🤝 *Nueva solicitud de convenio* (${params.tipo ?? ""})\n\n👤 ${params.nombre ?? "un usuario"}`;
     default:
       return "🔔 Nuevo evento en Only G.";
   }
+}
+
+/** Tramo de personas → etiqueta legible (los "acompañantes" de la sesión). */
+function personasLabel(tier: unknown): string | null {
+  if (tier === "1") return "1 persona (solista)";
+  if (tier === "2") return "2 personas";
+  if (tier === "agrupacion") return "Agrupación";
+  return null;
+}
+
+/**
+ * Texto RICO de WhatsApp para un "pago por revisar", según lo comprado: pedido
+ * (ítems + día/hora de sesión + personas + colaboradores + tema), reserva, beat,
+ * o membresía/perfil/pase. Con datos REALES y formato profesional. Best-effort:
+ * si la entidad no está, cae a un resumen simple.
+ */
+async function textoWhatsAppCompra(
+  conv: FirebaseFirestore.DocumentData,
+  clientName: string,
+): Promise<string> {
+  const kind = conv.ref?.kind as string | undefined;
+  const id = conv.ref?.id as string | undefined;
+  const monto = fmtCOP(conv.pago?.monto);
+
+  if (kind === "pedido" && id) {
+    const p = (await db.doc(`pedidos/${id}`).get()).data();
+    if (p) {
+      const lineas = Array.isArray(p.lineas)
+        ? (p.lineas as FirebaseFirestore.DocumentData[])
+        : [];
+      const items =
+        lineas
+          .map((l) => {
+            const cant =
+              typeof l.cantidad === "number" && l.cantidad > 1
+                ? ` ×${l.cantidad}`
+                : "";
+            return `   • ${l.serviceName}${cant} — ${fmtCOP(l.subtotal)}`;
+          })
+          .join("\n") || "   • (sin líneas)";
+      const sesiones = lineas
+        .filter((l) => l.start)
+        .map((l) => fmtFecha(l.start))
+        .join(" · ");
+      const personas = personasLabel(p.personas);
+      const colabs =
+        Array.isArray(p.collaborators) && p.collaborators.length
+          ? (p.collaborators as { name?: string }[])
+              .map((c) => c.name)
+              .filter(Boolean)
+              .join(", ")
+          : null;
+      const out = [
+        "💸 *Pago por revisar — Pedido de producción*",
+        "",
+        `👤 Cliente: ${clientName}`,
+        "🎶 Ítems:",
+        items,
+      ];
+      if (personas) out.push(`👥 Personas: ${personas}`);
+      if (colabs) out.push(`🤝 Colaboradores: ${colabs}`);
+      if (sesiones) out.push(`📅 Sesión: ${sesiones}`);
+      if (typeof p.details === "string" && p.details.trim()) {
+        out.push(`📝 Tema: ${p.details.trim().slice(0, 140)}`);
+      }
+      out.push(`💰 Total: ${monto}`);
+      return out.join("\n");
+    }
+  }
+
+  if (kind === "booking" && id) {
+    const r = (await db.doc(`bookings/${id}`).get()).data();
+    if (r) {
+      const out = [
+        "💸 *Pago por revisar — Reserva de sesión*",
+        "",
+        `👤 Cliente: ${clientName}`,
+        `🎬 Servicio: ${r.serviceName ?? "—"}`,
+      ];
+      if (r.start) out.push(`📅 Sesión: ${fmtFecha(r.start)}`);
+      if (r.sede) out.push(`📍 Sede: ${r.sede}`);
+      out.push(`💰 Monto: ${monto}`);
+      return out.join("\n");
+    }
+  }
+
+  if (kind === "beat" && id) {
+    const b = (await db.doc(`beats/${id}`).get()).data();
+    return [
+      "💸 *Pago por revisar — Compra de beat*",
+      "",
+      `👤 Cliente: ${clientName}`,
+      `🎧 Beat: ${b?.titulo ?? "—"}`,
+      b?.beatmakerNombre ? `🎹 Beatmaker: ${b.beatmakerNombre}` : "",
+      `💰 Monto: ${monto}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  const label =
+    kind === "premium"
+      ? "Perfil premium"
+      : kind === "gnotes"
+        ? "Membresía G Notes"
+        : kind === "pase"
+          ? `Pase ${id ?? ""}`.trim()
+          : "Compra";
+  return [
+    `💸 *Pago por revisar — ${label}*`,
+    "",
+    `👤 Cliente: ${clientName}`,
+    `💰 Monto: ${monto}`,
+  ].join("\n");
 }
 
 /**
@@ -130,11 +270,14 @@ async function notifyAdmins(
   evento: NotifEvento,
   params: Record<string, string | number>,
   ruta: string,
+  whatsAppText?: string,
 ): Promise<void> {
   const uids = await adminUids();
   await Promise.all(uids.map((uid) => notify(uid, evento, params, ruta)));
+  // La notificación in-app usa evento+params (traduce el cliente). El WhatsApp
+  // usa el texto RICO si se pasó (compras), o el genérico del catálogo.
   await notifyAdminWhatsApp(
-    textoWhatsAppAdmin(evento, params) + deepLink(ruta),
+    (whatsAppText ?? textoWhatsAppAdmin(evento, params)) + deepLink(ruta),
   );
 }
 
@@ -2283,7 +2426,12 @@ export const onQuoteCreated = onDocumentCreated(
     if (!q) return;
     await notifyAdmins(
       "cotizacion-nueva",
-      { cliente: q.contactName ?? "Un cliente" },
+      {
+        cliente: q.contactName ?? "Un cliente",
+        servicio: typeof q.serviceName === "string" ? q.serviceName : "",
+        telefono: typeof q.contactPhone === "string" ? q.contactPhone : "",
+        detalle: typeof q.details === "string" ? q.details.slice(0, 140) : "",
+      },
       `/admin/cotizacion/${event.params.id}`,
     );
   },
@@ -2341,10 +2489,12 @@ export const onPaymentUnderReview = onDocumentUpdated(
         ? ((await db.doc(`users/${payerUid}`).get()).data()?.displayName ??
           "Un cliente")
         : "Un cliente";
+      const waCompra = await textoWhatsAppCompra(after, clientName);
       await notifyAdmins(
         "pago-por-revisar",
         { cliente: clientName, monto: fmtCOP(after.pago?.monto) },
         "/admin/pagos",
+        waCompra,
       );
     }
   },
@@ -2402,7 +2552,11 @@ export const onArtistProfileCreated = onDocumentCreated(
 
     await notifyAdmins(
       "perfil-artista-creado",
-      { nombre: p.artisticName ?? event.params.slug },
+      {
+        nombre: p.artisticName ?? event.params.slug,
+        generos: Array.isArray(p.genres) ? p.genres.join(", ") : "",
+        ciudad: typeof p.city === "string" ? p.city : "",
+      },
       "/admin/perfiles",
     );
   },
@@ -2499,7 +2653,10 @@ export const recordatorioGastosRecurrentes = onSchedule(
 
       await notifyAdmins(
         "gasto-recurrente-por-confirmar",
-        { concepto: m.concepto ?? "" },
+        {
+          concepto: m.concepto ?? "",
+          monto: typeof m.monto === "number" ? fmtCOP(m.monto) : "",
+        },
         "/admin/gastos",
       );
       await doc.ref.update({ avisadoConfirm: FieldValue.arrayUnion(key) });

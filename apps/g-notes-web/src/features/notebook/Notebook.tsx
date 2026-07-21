@@ -60,6 +60,10 @@ import { COMPACT_SELECT } from "@/components/ui";
 
 type SaveState = "idle" | "saving" | "saved";
 const AUTOSAVE_MS = 900;
+/** Only G Music (app hermana): para el enlace de "volver" del sidebar. */
+const ONLY_G_URL =
+  process.env.NEXT_PUBLIC_ONLY_G_URL ??
+  "https://only-g-music--only-g-music-745ca.us-east4.hosted.app";
 
 const MODEL_OPTIONS: SelectOption[] = AI_MODELS.map((m) => ({
   value: m.id,
@@ -339,6 +343,16 @@ export function Notebook() {
           onRequestDelete={setPendingDelete}
         />
 
+        {/* Volver al ecosistema: G Notes es una app hermana de Only G Music. */}
+        <a
+          href={ONLY_G_URL}
+          className={`${glassSurfaceSoft} mt-auto flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-medium text-silver-300 transition hover:text-amethyst-200`}
+        >
+          <span aria-hidden className="text-sm">
+            ←
+          </span>
+          Volver a Only G Music
+        </a>
       </aside>
 
       {sidebarOpen && (

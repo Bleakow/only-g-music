@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { Service } from "@only-g/shared-types/service";
-import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import { GlassSheen } from "@/components/ui/glass";
 import { CheckIcon } from "@/components/icons";
 
 /**
@@ -41,7 +41,7 @@ export function ServiceCard({
 }) {
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl ${glassSurfaceSoft} transition hover:ring-white/35 ${className}`}
+      className={`group relative overflow-hidden rounded-2xl bg-ink/70 shadow-[0_10px_34px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.25)] ring-1 ring-white/12 ring-inset backdrop-blur-xl transition hover:ring-white/35 ${className}`}
     >
       {active && (
         <span

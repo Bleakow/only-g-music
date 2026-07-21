@@ -3,6 +3,7 @@
  * No importar UI ni Firebase aquí.
  */
 import type { DestinoPago } from "./payment-destination";
+import type { SedeOverrides } from "./service";
 
 // `SedeId` es el id de CUALQUIER sede: las de la semilla estática y las que
 // el admin crea desde el panel (persistidas en Firestore, `sedes/{id}`). Ya
@@ -28,6 +29,12 @@ export interface Sede {
   slots: string[];
   /** Productores asignados a la sede (1–2 ids; se llenará en fases de roles). */
   productores: string[];
+  /**
+   * Overrides de catálogo PARA ESTA SEDE (indexados por slug de servicio): puede
+   * desactivar servicios o cambiar precios. Nombre/foto siguen siendo globales.
+   * Ausente = usa los valores por defecto de cada servicio.
+   */
+  serviceOverrides?: SedeOverrides;
 }
 
 /** Forma para CREAR una sede nueva: `productores` arranca vacío si se omite. */

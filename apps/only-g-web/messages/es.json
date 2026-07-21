@@ -7,6 +7,7 @@
     "events": "Eventos",
     "beats": "Beats",
     "home": "Inicio",
+    "back": "Atrás",
     "openMenu": "Abrir menú",
     "closeMenu": "Cerrar menú",
     "menuLabel": "Menú principal",
@@ -146,6 +147,15 @@
     "settingsSoon": "Pronto podrás ajustar tus preferencias aquí.",
     "language": "Idioma"
   },
+  "gnotesPremium": {
+    "title": "G Notes premium",
+    "descripcion": "IA sin límite para tu escritura: autocompletado y panel creativo sin tope diario, en el escritor G Notes.",
+    "porMes": "/ mes",
+    "suscribirse": "Suscribirme",
+    "renovar": "Renovar un mes",
+    "activa": "Activa · IA sin límite ✦",
+    "vence": "Se renueva el {fecha}."
+  },
   "datosPago": {
     "title": "Datos de pago",
     "description": "¿A dónde te paga Only G? Estos datos son privados: solo tú y el estudio los ven.",
@@ -208,9 +218,11 @@
     "pendiente_pago": "Pendiente de pago",
     "pago_en_revision": "Pago en revisión",
     "confirmada": "Confirmada",
+    "confirmado": "Confirmado",
     "en_curso": "En curso",
     "completada": "Completada",
     "cancelada": "Cancelada",
+    "cancelado": "Cancelado",
     "expirada": "Expirada",
     "programada": "Programada",
     "finalizada": "Finalizada"
@@ -226,7 +238,11 @@
     "seeServices": "Ver servicios",
     "noQuotes": "Aún no tienes cotizaciones.",
     "requestOne": "Solicitar una",
-    "quoteFallback": "Cotización"
+    "quoteFallback": "Cotización",
+    "pedidos": "Mis pedidos",
+    "noPedidos": "Aún no tienes pedidos.",
+    "buyServices": "Comprar servicios",
+    "pedidoFallback": "Pedido"
   },
   "solicitudDetail": {
     "notFound": "Solicitud no encontrada",
@@ -251,6 +267,12 @@
     "rejectProposal": "Rechazar",
     "quoteAcceptedNote": "Aceptaste la propuesta. Tu reserva se generará en breve — revísala en \"Mis solicitudes\".",
     "conversation": "Conversación"
+  },
+  "pedidoDetail": {
+    "title": "Pedido",
+    "total": "Total: {amount}",
+    "confirmedNote": "Tu pago fue confirmado. Todas las reservas de este pedido quedaron confirmadas — revísalas en \"Mis solicitudes\".",
+    "cancelledNote": "Este pedido fue cancelado."
   },
   "thread": {
     "empty": "Aún no hay mensajes. Escribe para hablar con el estudio.",
@@ -298,6 +320,7 @@
     "artists": "Artistas",
     "quote": "Cotizar producción",
     "book": "Agendar cita",
+    "buy": "Comprar",
     "meetProducers": "Conoce a los productores",
     "scrollHint": "Desliza",
     "ourArtists": "Nuestros artistas",
@@ -346,6 +369,7 @@
     "chooseOptions": "Elegir opciones",
     "requestQuote": "Solicitar cotización",
     "book": "Agendar",
+    "buy": "Comprar",
     "disclaimer": "* Tarifas de referencia (placeholder). Se ajustarán con los precios reales de Only G."
   },
   "productionsPage": {
@@ -617,11 +641,19 @@
     "correo": "Correo de contacto",
     "nota": "Nota / instrucciones",
     "notaPh": "Ej.: envía el comprobante en este mismo chat.",
+    "breB": "Llave Bre-B",
+    "breBPh": "Número o alias de tu llave Bre-B",
     "qr": "QR de pago",
     "qrUpload": "Subir QR",
     "save": "Guardar",
     "saved": "Guardado ✓",
-    "errorSave": "No se pudo guardar. Inténtalo de nuevo."
+    "errorSave": "No se pudo guardar. Inténtalo de nuevo.",
+    "globalNota": "Este es el método por defecto (global): se usa para G Notes, membresías, beats y cualquier pago de la web. Una sede solo puede tener método propio para pagos de producción.",
+    "copiarDesdeSede": "Copiar datos de una sede",
+    "copiarPlaceholder": "Elige una sede…",
+    "copiar": "Copiar",
+    "copiado": "Datos copiados. Revisa y guarda.",
+    "sinSedesConPago": "Ninguna sede tiene datos de pago propios todavía."
   },
   "ceoConfig": {
     "eyebrow": "Solo CEO",
@@ -653,7 +685,18 @@
       "desc": "Los ve el comprador. Deben coincidir con lo que se cobra.",
       "beat": "Precio por beat",
       "membresia": "Precio de membresía (mensual)",
-      "perfil": "Precio del perfil de artista"
+      "perfil": "Precio del perfil de artista",
+      "gnotes": "Precio de G Notes (mensual, IA sin límite)",
+      "grabacionTitle": "Grabación (por horas)",
+      "grabacionBase": "Base (cubre 2 horas)",
+      "grabacionHoraExtra": "Hora extra (a partir de la 2ª)",
+      "recargoGrabacion2": "Recargo por 2 personas",
+      "recargoGrabacionAgrupacion": "Recargo por agrupación",
+      "mezclaTitle": "Mezcla (por canción)",
+      "mezcla1": "Mezcla — 1 persona",
+      "mezcla2": "Mezcla — 2 personas",
+      "mezclaAgrupacion": "Mezcla — agrupación",
+      "master": "Masterización (por canción)"
     }
   },
   "ceoAnalitica": {
@@ -1241,10 +1284,13 @@
     "successHeading": "¡Solicitud enviada!",
     "successBody": "Recibimos tu pedido ({itemCount, plural, one {# ítem} other {# ítems}}). El equipo de Only G lo revisará y te enviará una propuesta con precio y alcance.",
     "goToAccount": "Ir a mi cuenta",
+    "goToChat": "Ver mi cotización",
     "goHome": "Volver al inicio",
     "modalVariantSubtitle": "Elige una o varias opciones.",
     "ariaCloseModal": "Cerrar",
     "variantAdd": "Agregar",
+    "variantSelected": "Seleccionado",
+    "variantRemove": "Quitar",
     "modalDone": "Listo"
   },
   "bookingCalendar": {
@@ -1282,6 +1328,62 @@
       "placeholder": "Elige servicio, día y hora"
     }
   },
+  "compraWizard": {
+    "stepOrder": "Carrito",
+    "stepAgenda": "Agenda",
+    "stepDetails": "El tema",
+    "stepContact": "Contacto",
+    "eyebrow": "Compra directa",
+    "heading": "Compra tus servicios",
+    "stepIndicator": "Paso {step} de {total} · {stepName}",
+    "step1Intro": "Elige los servicios que quieres comprar y ajusta las cantidades. Precio fijo, un solo pago.",
+    "ariaRemoveOne": "Quitar uno",
+    "ariaAddOne": "Agregar uno",
+    "changeOptions": "Agregar / cambiar opciones",
+    "variantsCta": "Varias opciones →",
+    "variantCount": "{count, plural, one {# opción} other {# opciones}}",
+    "modalVariantSubtitle": "Elige una o varias opciones.",
+    "variantAdd": "Agregar",
+    "modalDone": "Listo",
+    "cartSummary": "{items, plural, one {# ítem} other {# ítems}} · {lines, plural, one {# línea} other {# líneas}}",
+    "total": "Total:",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "labelVenue": "Sede",
+    "agendaIntro": "Elige la sede y, para cada servicio que ocupa el estudio, la fecha y la hora.",
+    "sessionHoursNeeded": "Necesita {hours, plural, one {# hora seguida} other {# horas seguidas}}",
+    "slotSelected": "{date} · {time}",
+    "orderSummaryHeading": "Resumen del pedido",
+    "totalToPay": "Total a pagar",
+    "labelName": "Nombre",
+    "labelEmail": "Correo",
+    "labelPhone": "Teléfono / WhatsApp (opcional)",
+    "submit": "Confirmar pedido",
+    "sending": "Enviando…",
+    "errorEmptyCart": "Agrega al menos un servicio a tu carrito.",
+    "errorMissingSlot": "Elige fecha y hora para cada servicio de sesión.",
+    "errorMissingContact": "Necesitamos tu nombre y tu correo.",
+    "errorMissingVenue": "Elige una sede.",
+    "errorSessionExpired": "Tu sesión expiró. Inicia sesión de nuevo.",
+    "errorSlotTaken": "Ese horario ya no está disponible. Elige otro.",
+    "errorSubmit": "No se pudo crear el pedido. Revisa tu conexión e inténtalo de nuevo.",
+    "personasLabel": "¿Cuántas personas graban?",
+    "personasHint": "Ajusta el precio de la grabación y la mezcla según el número de personas.",
+    "personas_1": "1 persona",
+    "personas_2": "2 personas",
+    "personas_agrupacion": "Agrupación",
+    "detailsIntro": "Cuéntanos del tema para preparar tu sesión.",
+    "labelDetails": "Info del tema",
+    "detailsPlaceholder": "Título, género, referencias, notas para el ingeniero…",
+    "labelReferenceUrl": "URL de ejemplo (opcional)",
+    "labelArtists": "Artistas que participan",
+    "artistsRequiredHint": "Elegiste más de una persona: agrega los artistas que graban.",
+    "errorArtistsRequired": "Agrega los artistas que participan en la grabación.",
+    "successHeading": "¡Pedido creado!",
+    "successBody": "Tu pedido quedó pendiente de pago ({itemCount, plural, one {# ítem} other {# ítems}}). Sube el comprobante para confirmarlo.",
+    "viewOrder": "Ver mi pedido",
+    "goHome": "Volver al inicio"
+  },
   "artistProfile": {
     "back": "Atrás",
     "settings": "Ajustes",
@@ -1298,7 +1400,8 @@
     "genres": "Géneros",
     "notFound": "Artista no encontrado",
     "backToArtists": "Ver artistas",
-    "profileSong": "Canción del perfil"
+    "profileSong": "Canción del perfil",
+    "relatedArtists": "Artistas relacionados"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -1521,6 +1624,24 @@
       "sectionTitle": "Sobre ti",
       "placeholder": "Cuenta tu historia, estilo e hitos…"
     },
+    "aiBio": {
+      "button": "Mejorar biografía con IA",
+      "hint": "Escribe una idea suelta y la IA te propone versiones profesionales.",
+      "modalTitle": "Mejora tu biografía",
+      "subtitle": "Elige la versión que más te representa. Puedes regenerar o seguir editándola después.",
+      "generating": "Escribiendo tu biografía…",
+      "variantLabel": "Versión {n}",
+      "regenerate": "Regenerar",
+      "use": "Usar esta",
+      "error": "No se pudo generar la biografía. Inténtalo de nuevo."
+    },
+    "relatedArtists": {
+      "sectionTitle": "Artistas relacionados",
+      "hint": "Destaca a los artistas con los que colaboras o te relacionas. Aparecerán en tu perfil con enlace al suyo.",
+      "searchPlaceholder": "Busca un artista…",
+      "remove": "Quitar a {name}",
+      "empty": "Sin coincidencias"
+    },
     "socials": {
       "sectionTitle": "Redes",
       "add": "Añadir red social",
@@ -1544,7 +1665,7 @@
     },
     "featured": {
       "sectionTitle": "Media destacada",
-      "hint": "Aparece junto a tu biografía, en lugar de repetir tu foto de perfil. Sube un clip corto (5–8 s: se reproduce en bucle y sin sonido) o una foto que te represente: tu agrupación, un movimiento, tu esencia.",
+      "hint": "Sube un clip corto o una foto que te represente: tu agrupación, un movimiento, tu esencia.",
       "upload": "Sube un video o una foto",
       "formats": "Video de hasta {maxSec} s o una imagen",
       "change": "Cambiar",
@@ -1688,6 +1809,10 @@
         "titulo": "Perfil por renovar",
         "cuerpo": "Tu perfil vence en {dias} días."
       },
+      "gnotes-activado": {
+        "titulo": "G Notes premium activado",
+        "cuerpo": "Tu membresía de G Notes ya está activa: IA sin límite por un mes."
+      },
       "convenio-solicitado": {
         "titulo": "Nueva solicitud de convenio",
         "cuerpo": "{nombre} solicitó convenio de {tipo}."
@@ -1735,6 +1860,8 @@
     "quoteMessage": "Necesitas una cuenta para solicitar una cotización de producción.",
     "bookTitle": "Inicia sesión para agendar",
     "bookMessage": "Necesitas una cuenta para reservar tu sesión en el estudio.",
+    "buyTitle": "Inicia sesión para comprar",
+    "buyMessage": "Necesitas una cuenta para comprar servicios de Only G.",
     "artistTitle": "Perfil de artista",
     "artistNewMessage": "Inicia sesión para crear tu perfil de artista.",
     "artistEditMessage": "Inicia sesión para crear o editar tu perfil de artista.",
@@ -1810,10 +1937,25 @@
     "comingSoon": "Próximamente",
     "copy": "Copiar",
     "copied": "Copiado",
+    "breB": "Llave Bre-B",
+    "qrExpand": "Ampliar",
+    "qrDownload": "Descargar QR",
+    "qrTitle": "QR de pago",
     "noInfo": "La administración te compartirá los datos de pago por el chat.",
     "confirmButton": "Autorizo haber recibido {monto} · Confirmar pago",
+    "rejectButton": "Rechazar",
     "confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo.",
     "startError": "No se pudo iniciar el pago. Inténtalo de nuevo."
+  },
+  "pedidoPago": {
+    "eyebrow": "Último paso",
+    "heading": "Paga tu pedido",
+    "total": "Total a pagar:",
+    "pay": "Ir a pagar",
+    "changeMethod": "Pagando con {metodo} · Cambiar método",
+    "hint": "Elige un método para ver el QR y los datos de pago.",
+    "validating": "Comprobante enviado. Se está validando; te notificaremos por el chat.",
+    "viewOrder": "Ver mi pedido"
   },
   "adminPagos": {
     "backToAdmin": "← Panel admin",

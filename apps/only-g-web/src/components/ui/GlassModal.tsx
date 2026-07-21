@@ -36,6 +36,13 @@ export function GlassModal({
   const panelRef = useRef<HTMLDivElement>(null);
   useEffect(() => setMounted(true), []);
 
+  // `onClose` en una ref: si estuviera en las deps del efecto de abajo, un
+  // `onClose` inline (nuevo en cada render del padre) re-ejecutaría el efecto en
+  // cada tecleo y `panelRef.focus()` le robaría el foco al input (teclado que se
+  // cierra tras un carácter). Con la ref, el efecto solo depende de `open`.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
@@ -46,7 +53,7 @@ export function GlassModal({
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== "Tab") return;
@@ -81,7 +88,9 @@ export function GlassModal({
       // Restaura el foco a quien lo tenía antes de abrir (el disparador).
       prevFocus?.focus?.();
     };
-  }, [open, onClose]);
+    // Solo `open`: el efecto se monta al abrir y se limpia al cerrar. `onClose`
+    // va por ref (arriba) para no re-ejecutarlo en cada render.
+  }, [open]);
 
   if (!mounted) return null;
 

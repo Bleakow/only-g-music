@@ -14,12 +14,17 @@ export function GlassButton({
   children,
   className,
   disabled,
+  title,
+  ariaLabel,
 }: {
   href?: string;
   onClick?: () => void;
   children: ReactNode;
   className?: string;
   disabled?: boolean;
+  /** Tooltip nativo + accesibilidad para botones icon-only (sin texto visible). */
+  title?: string;
+  ariaLabel?: string;
 }) {
   const cls = `group ${glassSurface} inline-flex min-h-11 items-center gap-2 self-start rounded-full px-4 py-2 text-sm uppercase tracking-[3px] text-white/90 transition hover:scale-105 hover:text-white active:scale-95 ${
     disabled ? "pointer-events-none opacity-40" : ""
@@ -34,13 +39,20 @@ export function GlassButton({
 
   if (href) {
     return (
-      <Link href={href} className={cls}>
+      <Link href={href} className={cls} title={title} aria-label={ariaLabel}>
         {inner}
       </Link>
     );
   }
   return (
-    <button type="button" onClick={onClick} disabled={disabled} className={cls}>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cls}
+      title={title}
+      aria-label={ariaLabel}
+    >
       {inner}
     </button>
   );

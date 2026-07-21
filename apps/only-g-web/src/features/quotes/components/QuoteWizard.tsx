@@ -21,7 +21,11 @@ import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Alert } from "@/components/ui/Alert";
 import { GlassModal } from "@/components/ui/GlassModal";
-import { glassSurface, GlassSheen } from "@/components/ui/glass";
+import { glassSurface, glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import {
+  ServiceCard,
+  ServiceCheckBadge,
+} from "@/features/services/components/ServiceCard";
 import { ArtistPicker } from "./ArtistPicker";
 import { createQuoteRequest } from "../lib/quotes-repo";
 import { track } from "@/lib/firebase/analytics";
@@ -34,15 +38,23 @@ import type { Sede, SedeId } from "@only-g/shared-types/sede";
 import { sedes as seedSedes } from "@/features/sedes/data/sedes";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
+import { useOnScreen } from "@/lib/use-on-screen";
 
 const TOTAL = 3;
+
+// Catálogo COTIZABLE: solo servicios de alcance variable (a medida). Excluye los
+// de precio fijo (grabación, mezcla, máster) — esos van por compra directa
+// (/comprar). Con variantes, se incluye si AL MENOS una es a-cotizar (p. ej. renta
+// "varios días"); las variantes comprables se filtran dentro del modal.
+const QUOTABLE = services.filter((s) =>
+  hasVariants(s) ? (s.variants ?? []).some((v) => isQuoteOnly(v)) : isQuoteOnly(s),
+);
 
 const INPUT =
   "w-full rounded-lg border border-white/15 bg-black/30 px-4 py-2.5 text-silver-50 outline-none transition focus:border-amethyst-300 focus:ring-1 focus:ring-amethyst-300/80";
 const LABEL = "flex flex-col gap-1.5 text-left";
 const LABEL_TEXT = "text-xs uppercase tracking-[2px] text-silver-300";
-const STEPPER =
-  "flex size-10 items-center justify-center rounded-full border border-white/25 text-silver-100 transition hover:border-amethyst-300 hover:text-white";
+const STEPPER = `${glassSurfaceSoft} flex size-10 items-center justify-center rounded-full text-silver-100 transition hover:text-white hover:ring-amethyst-300/70`;
 
 type Line = {
   key: string;
@@ -54,11 +66,29 @@ type Line = {
 const keyOf = (slug: string, variantId?: string) =>
   variantId ? `${slug}::${variantId}` : slug;
 
+/** ¿La variante admite contador (+/-)? Ausente = sí; los tramos "1/2 artistas" no. */
+const variantEsContable = (v: ServiceVariant) => v.countable !== false;
+
+/**
+ * Variantes que se muestran en el modal de COTIZACIÓN. La renta de estudio se
+ * cotiza por DÍAS (1 día / varios días) igual que en compra → solo la variante
+ * "dia" (con contador de días). El resto de servicios: sus variantes a-cotizar.
+ */
+const variantsCotizables = (s: Service): ServiceVariant[] => {
+  if (s.slug === "renta-estudio") {
+    return (s.variants ?? []).filter((v) => v.id === "dia");
+  }
+  return (s.variants ?? []).filter((v) => isQuoteOnly(v));
+};
+
 export function QuoteWizard() {
   const t = useTranslations();
   const reduce = useReducedMotion();
   const params = useSearchParams();
   const { user, account } = useAuth();
+  // La barra flotante de "continuar" se oculta cuando el botón del final ya se ve.
+  const { ref: footerRef, onScreen: footerOnScreen } =
+    useOnScreen<HTMLDivElement>();
 
   const STEPS = [
     t("quoteWizard.stepOrder"),
@@ -68,7 +98,7 @@ export function QuoteWizard() {
 
   const initialService = (() => {
     const slug = params.get("servicio");
-    return slug ? services.find((s) => s.slug === slug) : undefined;
+    return slug ? QUOTABLE.find((s) => s.slug === slug) : undefined;
   })();
 
   const [step, setStep] = useState(1);
@@ -139,7 +169,7 @@ export function QuoteWizard() {
   for (const [key, qty] of Object.entries(cart)) {
     if (qty <= 0) continue;
     const [slug, variantId] = key.split("::");
-    const service = services.find((s) => s.slug === slug);
+    const service = QUOTABLE.find((s) => s.slug === slug);
     if (!service) continue;
     const variant = variantId
       ? service.variants?.find((v) => v.id === variantId)
@@ -155,12 +185,27 @@ export function QuoteWizard() {
   const itemCount = lines.reduce((n, l) => n + l.qty, 0);
 
   const modalService = modalSlug
-    ? (services.find((s) => s.slug === modalSlug) ?? null)
+    ? (QUOTABLE.find((s) => s.slug === modalSlug) ?? null)
     : null;
 
   function setQty(key: string, qty: number) {
     setCart((c) => {
       const next = { ...c };
+      if (qty <= 0) delete next[key];
+      else next[key] = Math.min(qty, 99);
+      return next;
+    });
+  }
+
+  /** Elige una variante de un servicio de ELECCIÓN ÚNICA (p. ej. producción):
+   *  al marcar una, se quitan las otras del mismo servicio. */
+  function selectExclusive(service: Service, key: string, qty: number) {
+    setCart((c) => {
+      const next = { ...c };
+      for (const v of service.variants ?? []) {
+        const k = keyOf(service.slug, v.id);
+        if (k !== key) delete next[k];
+      }
       if (qty <= 0) delete next[key];
       else next[key] = Math.min(qty, 99);
       return next;
@@ -262,14 +307,14 @@ export function QuoteWizard() {
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Link
-            href="/cuenta"
-            className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+            href={`/solicitudes/cotizacion/${doneId}`}
+            className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase"
           >
-            {t("quoteWizard.goToAccount")}
+            {t("quoteWizard.goToChat")}
           </Link>
           <Link
             href="/"
-            className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+            className="btn-outline rounded-full px-8 py-3 text-sm tracking-[2px] uppercase"
           >
             {t("quoteWizard.goHome")}
           </Link>
@@ -321,7 +366,7 @@ export function QuoteWizard() {
             <div className="flex flex-col gap-4">
               <p className="text-silver-300">{t("quoteWizard.step1Intro")}</p>
               <div className="grid gap-4 sm:grid-cols-2">
-                {services.map((s) => {
+                {QUOTABLE.map((s) => {
                   const variantsCard = hasVariants(s);
                   const serviceLines = lines.filter(
                     (l) => l.service.slug === s.slug,
@@ -332,139 +377,122 @@ export function QuoteWizard() {
                     : qty > 0;
 
                   return (
-                    <div
+                    <ServiceCard
                       key={s.slug}
-                      className={`overflow-hidden rounded-2xl border transition ${
-                        active
-                          ? "border-amethyst-300 bg-amethyst-500/10 shadow-[0_0_20px_rgba(139,92,246,0.18)]"
-                          : "border-white/10 bg-white/[0.03] hover:border-white/25"
-                      }`}
+                      service={s}
+                      active={active}
+                      priceLabel={
+                        variantsCard
+                          ? active
+                            ? t("quoteWizard.variantCount", {
+                                count: serviceLines.length,
+                              })
+                            : t("quoteWizard.variantsCta")
+                          : priceLabel(s)
+                      }
+                      onSelect={() =>
+                        variantsCard ? setModalSlug(s.slug) : toggle(s.slug)
+                      }
+                      indicator={
+                        !variantsCard ? (
+                          <ServiceCheckBadge active={active} />
+                        ) : undefined
+                      }
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          variantsCard ? setModalSlug(s.slug) : toggle(s.slug)
-                        }
-                        className="block w-full text-left"
-                      >
-                        {s.image && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={s.image}
-                            alt=""
-                            className="h-40 w-full object-cover"
-                          />
-                        )}
-                        <div className="flex items-start gap-3 p-4">
-                          <span className="block flex-1">
-                            <span className="font-narrow block text-xl leading-tight font-bold text-white uppercase">
-                              {s.name}
-                            </span>
-                            <span className="text-silver-300 mt-1 block text-sm">
-                              {s.description}
-                            </span>
-                            <span className="text-amethyst-200 mt-2 block text-sm font-semibold">
-                              {variantsCard
-                                ? active
-                                  ? t("quoteWizard.variantCount", {
-                                      count: serviceLines.length,
-                                    })
-                                  : t("quoteWizard.variantsCta")
-                                : priceLabel(s)}
-                            </span>
-                          </span>
-                          {!variantsCard && (
-                            <span
-                              className={`flex size-6 shrink-0 items-center justify-center rounded-full border transition ${
-                                active
-                                  ? "border-amethyst-300 bg-amethyst-300 text-ink"
-                                  : "border-white/30 text-transparent"
-                              }`}
-                            >
-                              <CheckIcon className="size-4" />
-                            </span>
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Controles de cantidad / variantes */}
-                      {variantsCard && active && (
-                        <div className="flex flex-col gap-2 border-t border-white/10 p-4 pt-3">
-                          {serviceLines.map((l) => (
-                            <div
-                              key={l.key}
-                              className="flex items-center justify-between gap-2"
-                            >
-                              <span className="text-silver-100 truncate text-sm">
-                                {l.variant!.name}
-                              </span>
+                      {active && (
+                        <>
+                          {variantsCard ? (
+                            <div className="flex flex-col gap-2">
+                              {serviceLines.map((l) => (
+                                <div
+                                  key={l.key}
+                                  className="flex items-center justify-between gap-2"
+                                >
+                                  <span className="text-silver-100 truncate text-sm">
+                                    {l.variant!.name}
+                                  </span>
+                                  {variantEsContable(l.variant!) ? (
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => setQty(l.key, l.qty - 1)}
+                                        className={STEPPER}
+                                        aria-label={t(
+                                          "quoteWizard.ariaRemoveOne",
+                                        )}
+                                      >
+                                        <MinusIcon className="size-4" />
+                                      </button>
+                                      <span className="min-w-[2ch] text-center text-sm font-semibold text-white">
+                                        {l.qty}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setQty(l.key, l.qty + 1)}
+                                        className={STEPPER}
+                                        aria-label={t("quoteWizard.ariaAddOne")}
+                                      >
+                                        <PlusIcon className="size-4" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => setQty(l.key, 0)}
+                                      aria-label={t(
+                                        "quoteWizard.variantRemove",
+                                      )}
+                                      className="text-silver-400 shrink-0 rounded-full px-2 py-1 text-xs transition hover:text-white"
+                                    >
+                                      {t("quoteWizard.variantRemove")}
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => setModalSlug(s.slug)}
+                                className="text-amethyst-300 hover:text-amethyst-200 self-start py-2 text-sm font-semibold transition"
+                              >
+                                {t("quoteWizard.changeOptions")}
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setQty(l.key, l.qty - 1)}
+                                  onClick={() => setQty(s.slug, qty - 1)}
                                   className={STEPPER}
                                   aria-label={t("quoteWizard.ariaRemoveOne")}
                                 >
                                   <MinusIcon className="size-4" />
                                 </button>
-                                <span className="min-w-[2ch] text-center text-sm font-semibold text-white">
-                                  {l.qty}
+                                <span className="min-w-[2ch] text-center font-semibold text-white">
+                                  {qty}
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => setQty(l.key, l.qty + 1)}
+                                  onClick={() => setQty(s.slug, qty + 1)}
                                   className={STEPPER}
                                   aria-label={t("quoteWizard.ariaAddOne")}
                                 >
                                   <PlusIcon className="size-4" />
                                 </button>
+                                <span className="text-silver-400 ml-1 text-xs">
+                                  {unitLabel(s)}
+                                </span>
                               </div>
+                              <span className="text-sm font-semibold text-white">
+                                {isQuoteOnly(s)
+                                  ? t("solicitudDetail.toQuote")
+                                  : formatCOP((s.basePrice ?? 0) * qty)}
+                              </span>
                             </div>
-                          ))}
-                          <button
-                            type="button"
-                            onClick={() => setModalSlug(s.slug)}
-                            className="text-amethyst-300 hover:text-amethyst-200 self-start py-2 text-sm font-semibold transition"
-                          >
-                            {t("quoteWizard.changeOptions")}
-                          </button>
-                        </div>
+                          )}
+                        </>
                       )}
-
-                      {!variantsCard && active && (
-                        <div className="flex items-center justify-between border-t border-white/10 p-4 pt-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setQty(s.slug, qty - 1)}
-                              className={STEPPER}
-                              aria-label={t("quoteWizard.ariaRemoveOne")}
-                            >
-                              <MinusIcon className="size-4" />
-                            </button>
-                            <span className="min-w-[2ch] text-center font-semibold text-white">
-                              {qty}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setQty(s.slug, qty + 1)}
-                              className={STEPPER}
-                              aria-label={t("quoteWizard.ariaAddOne")}
-                            >
-                              <PlusIcon className="size-4" />
-                            </button>
-                            <span className="text-silver-400 ml-1 text-xs">
-                              {unitLabel(s)}
-                            </span>
-                          </div>
-                          <span className="text-sm font-semibold text-white">
-                            {isQuoteOnly(s)
-                              ? t("solicitudDetail.toQuote")
-                              : formatCOP((s.basePrice ?? 0) * qty)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    </ServiceCard>
                   );
                 })}
               </div>
@@ -666,12 +694,15 @@ export function QuoteWizard() {
 
           {error && <Alert tone="error">{error}</Alert>}
 
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div
+            ref={footerRef}
+            className="mt-2 flex items-center justify-between gap-3"
+          >
             {step > 1 ? (
               <button
                 type="button"
                 onClick={back}
-                className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-6 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+                className="btn-outline rounded-full px-6 py-3 text-sm tracking-[2px] uppercase"
               >
                 {t("quoteWizard.back")}
               </button>
@@ -682,7 +713,7 @@ export function QuoteWizard() {
             <button
               type="submit"
               disabled={busy}
-              className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase disabled:cursor-not-allowed disabled:opacity-60"
             >
               {busy
                 ? t("quoteWizard.sending")
@@ -695,8 +726,9 @@ export function QuoteWizard() {
       </main>
 
       {/* -- Barra flotante para continuar (paso 1): avanzar sin llegar al fondo */}
+      {/* Se oculta cuando el botón real del final ya está en pantalla (no dos a la vez). */}
       <AnimatePresence>
-        {step === 1 && lines.length > 0 && (
+        {step === 1 && lines.length > 0 && !footerOnScreen && (
           <motion.div
             initial={reduce ? false : { y: 90, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -743,9 +775,10 @@ export function QuoteWizard() {
           </p>
 
           <div className="mt-5 flex max-h-[55svh] flex-col gap-3 overflow-y-auto">
-            {modalService.variants.map((v) => {
+            {variantsCotizables(modalService).map((v) => {
                 const key = keyOf(modalService.slug, v.id);
                 const qty = cart[key] ?? 0;
+                const contable = variantEsContable(v);
                 return (
                   <div
                     key={v.id}
@@ -770,12 +803,16 @@ export function QuoteWizard() {
                       {qty === 0 ? (
                         <button
                           type="button"
-                          onClick={() => setQty(key, 1)}
-                          className="border-amethyst-400/60 text-amethyst-200 hover:border-amethyst-300 hover:bg-amethyst-500/10 shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition hover:text-white"
+                          onClick={() =>
+                            modalService.singleChoice
+                              ? selectExclusive(modalService, key, 1)
+                              : setQty(key, 1)
+                          }
+                          className="btn-outline shrink-0 rounded-full px-4 py-2 text-sm font-semibold"
                         >
                           {t("quoteWizard.variantAdd")}
                         </button>
-                      ) : (
+                      ) : contable ? (
                         <div className="flex items-center gap-2">
                           <button
                             type="button"
@@ -797,6 +834,15 @@ export function QuoteWizard() {
                             <PlusIcon className="size-4" />
                           </button>
                         </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setQty(key, 0)}
+                          className="border-amethyst-300/50 bg-amethyst-500/10 text-amethyst-200 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition hover:text-white"
+                        >
+                          <CheckIcon className="size-4" />
+                          {t("quoteWizard.variantSelected")}
+                        </button>
                       )}
                     </div>
                   </div>

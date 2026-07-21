@@ -6,8 +6,10 @@ import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { listQuotesByUser } from "@/features/quotes/lib/quotes-repo";
 import { listReservasByUser } from "@/features/booking/lib/booking-repo";
+import { listPedidosByUser } from "@/features/pedidos/lib/pedidos-repo";
 import type { QuoteRequest } from "@only-g/shared-types/quote";
 import type { Reserva } from "@only-g/shared-types/booking";
+import type { Pedido } from "@only-g/shared-types/pedido";
 import { formatCOP } from "@only-g/shared-types/service";
 import { badgeClass, fechaCorta } from "../lib/estados";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -51,12 +53,44 @@ function ReservaCard({
   );
 }
 
+function PedidoCard({
+  p,
+  locale,
+  statusLabel,
+  fallback,
+}: {
+  p: Pedido;
+  locale: string;
+  statusLabel: string;
+  fallback: string;
+}) {
+  return (
+    <li>
+      <Link
+        href={`/solicitudes/pedido/${p.id}`}
+        className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-white/25"
+      >
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-white">
+            {p.lineas.map((l) => l.serviceName).join(", ") || fallback}
+          </p>
+          <p className="text-silver-400 text-sm">
+            {fechaCorta(p.createdAt, locale)} · {formatCOP(p.total)}
+          </p>
+        </div>
+        <Badge estado={p.estado} label={statusLabel} />
+      </Link>
+    </li>
+  );
+}
+
 export function SolicitudesList() {
   const { user } = useAuth();
   const t = useTranslations();
   const locale = useLocale();
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [reservas, setReservas] = useState<Reserva[]>([]);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,11 +98,16 @@ export function SolicitudesList() {
     if (!user) return;
     let active = true;
     setLoading(true);
-    Promise.all([listQuotesByUser(user.uid), listReservasByUser(user.uid)])
-      .then(([q, r]) => {
+    Promise.all([
+      listQuotesByUser(user.uid),
+      listReservasByUser(user.uid),
+      listPedidosByUser(user.uid),
+    ])
+      .then(([q, r, p]) => {
         if (!active) return;
         setQuotes(q);
         setReservas(r);
+        setPedidos(p);
         setLoading(false);
       })
       .catch((e) => {
@@ -143,6 +182,37 @@ export function SolicitudesList() {
                     r={r}
                     locale={locale}
                     statusLabel={t(`status.${r.estado}`)}
+                  />
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Mis pedidos (compra directa) */}
+          <section className="mt-10">
+            <h2 className="font-narrow text-2xl font-bold text-white uppercase">
+              {t("solicitudes.pedidos")}
+            </h2>
+            {pedidos.length === 0 ? (
+              <p className="text-silver-400 mt-2">
+                {t("solicitudes.noPedidos")}{" "}
+                <Link
+                  href="/comprar"
+                  className="text-amethyst-300 underline-offset-4 hover:underline"
+                >
+                  {t("solicitudes.buyServices")}
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="mt-4 flex flex-col gap-3">
+                {pedidos.map((p) => (
+                  <PedidoCard
+                    key={p.id}
+                    p={p}
+                    locale={locale}
+                    statusLabel={t(`status.${p.estado}`)}
+                    fallback={t("solicitudes.pedidoFallback")}
                   />
                 ))}
               </ul>

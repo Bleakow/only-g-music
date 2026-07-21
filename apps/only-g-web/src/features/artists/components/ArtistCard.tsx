@@ -50,6 +50,10 @@ export function ArtistCard({ artist }: { artist: Artist }) {
       ? t("roles.beatmaker")
       : "");
 
+  // La card es vertical (4/5): preferimos el retrato móvil del artista; si no
+  // tiene versión vertical, cae a la principal.
+  const cardImage = artist.imageMobile || artist.image;
+
   return (
     <Link
       ref={cardRef}
@@ -63,7 +67,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
         <video
           ref={videoRef}
           src={artist.video}
-          poster={artist.image}
+          poster={cardImage}
           muted
           loop
           playsInline
@@ -72,7 +76,7 @@ export function ArtistCard({ artist }: { artist: Artist }) {
         />
       ) : (
         <Image
-          src={artist.image}
+          src={cardImage}
           alt={t("artistProfile.portraitAlt", { name: artist.name })}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"

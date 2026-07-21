@@ -3,6 +3,7 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { Button, glassSurfaceMenu } from "@only-g/ui";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { VinylLoader } from "@/components/loaders/VinylLoader";
 import {
   authErrorMessage,
   loginWithEmail,
@@ -30,16 +31,9 @@ export function LoginGate({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <span
-          className="size-6 animate-spin rounded-full border-2 border-amethyst-500/30 border-t-amethyst-300"
-          aria-label="Cargando"
-        />
-      </div>
-    );
-  }
+  // Durante el arranque / handoff SSO (Only G → G Notes) mostramos el vinilo,
+  // no un spinner pelado: es la misma pantalla de carga del ecosistema.
+  if (loading) return <VinylLoader />;
 
   if (user) return <>{children}</>;
 

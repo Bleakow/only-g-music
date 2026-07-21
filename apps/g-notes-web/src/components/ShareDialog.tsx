@@ -160,7 +160,25 @@ export function ShareDialog({ open, title, body, genre, onClose }: Props) {
         className={`${glassSurfaceMenu} w-full max-w-sm rounded-2xl p-5`}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-base font-semibold text-silver-50">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full text-silver-300 transition hover:bg-white/10 hover:text-white"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+
+        <h2 className="pr-8 text-base font-semibold text-silver-50">
           Compartir la letra
         </h2>
         <p className="mt-1 text-sm text-silver-300">

@@ -37,6 +37,10 @@ const MEMBRESIA_DURACION_MESES = 1;
 const PRECIO_BEAT = 40000;
 /** Comisión FIJA de la plataforma por venta de beat — sync con COMISION_BEAT (dominio). */
 const COMISION_BEAT = 0.2;
+/** Precio de la membresía mensual de G Notes en COP — sync con dominio (DEFAULTS). */
+const PRECIO_GNOTES = 12000;
+/** Meses de vigencia de la membresía G Notes — sync con GNOTES_DURACION_MESES (dominio). */
+const GNOTES_DURACION_MESES = 1;
 /** Horas sin pagar antes de expirar una reserva y liberar su slot. */
 const EXPIRY_HORAS = 48;
 /** Minutos de gracia antes del auto-inicio (sync con GRACIA_AUTO_INICIO_MIN). */
@@ -509,6 +513,16 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   if (refKind === "beat") {
     return await confirmarPagoBeat(convRef, conv, refId);
   }
+  // Pago de PEDIDO: confirma el pedido y TODAS sus reservas (cada una dispara
+  // onBookingConfirmed) y cierra el hilo.
+  if (refKind === "pedido") {
+    return await confirmarPagoPedido(convRef, conv, refId);
+  }
+  // Pago de MEMBRESÍA G NOTES: activa la membresía mensual (IA sin límite),
+  // registra el ingreso y cierra el hilo.
+  if (refKind === "gnotes") {
+    return await confirmarPagoGNotes(convRef, conv);
+  }
   if (refKind !== "premium") {
     throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
   }
@@ -625,6 +639,155 @@ async function confirmarPagoReserva(
 }
 
 /**
+ * Confirma el pago de un PEDIDO (SOLO admin, vía confirmPayment). Un pedido agrupa
+ * varias reservas (sus líneas); confirmar el pago las pasa TODAS a `confirmada` en
+ * un batch — cada transición dispara onBookingConfirmed (sesión + payout por
+ * reserva) — y cierra el chat de pago. NO escribe en `transactions`: el ingreso lo
+ * DERIVA /admin/finanzas de las reservas confirmadas (igual que una reserva suelta).
+ */
+async function confirmarPagoPedido(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+  pedidoId: string,
+): Promise<{ ok: true }> {
+  const pedidoRef = db.doc(`pedidos/${pedidoId}`);
+  const pedido = (await pedidoRef.get()).data();
+  if (!pedido) throw new HttpsError("not-found", "Pedido inexistente.");
+  if (
+    pedido.estado !== "pago_en_revision" &&
+    pedido.estado !== "pendiente_pago"
+  ) {
+    throw new HttpsError(
+      "failed-precondition",
+      "El pedido no está listo para confirmar.",
+    );
+  }
+
+  const reservaIds: string[] = Array.isArray(pedido.lineas)
+    ? pedido.lineas
+        .map((l: FirebaseFirestore.DocumentData) => l?.reservaId)
+        .filter((x: unknown): x is string => typeof x === "string")
+    : [];
+
+  const batch = db.batch();
+  batch.update(pedidoRef, {
+    estado: "confirmado",
+    confirmedAt: FieldValue.serverTimestamp(),
+  });
+  for (const rid of reservaIds) {
+    // Solo confirma las que están listas (idempotente / defensivo).
+    batch.update(db.doc(`bookings/${rid}`), {
+      estado: "confirmada",
+      confirmedAt: FieldValue.serverTimestamp(),
+    });
+  }
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: conv.pago?.monto ?? pedido.total ?? 0,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(
+    `Pago de pedido confirmado: ${convRef.id} → pedido ${pedidoId} (${reservaIds.length} reservas)`,
+  );
+  // La notificación al cliente la dispara onBookingConfirmed de cada reserva.
+  return { ok: true };
+}
+
+/**
+ * Confirma el pago de la MEMBRESÍA de G NOTES (SOLO admin, vía confirmPayment).
+ * Activa/renueva `users/{payerUid}.gnotesPremium` (mensual → la IA de G Notes
+ * deja de tener tope diario), registra el asiento del ingreso (`fuente:
+ * "gnotes"`), cierra el hilo y avisa al usuario.
+ *
+ * El pagador es el ÚNICO participante del hilo (`participants[0]`), igual que en
+ * premium/beat. El ingreso se factura por lo que el comprador VIO y TRANSFIRIÓ
+ * (`conv.pago.monto`, congelado al crear el chat), con `precioGNotes` de config
+ * solo como fallback — así el asiento coincide con el mensaje de confirmación.
+ *
+ * Idempotencia: el guard `conv.pago?.estado === "confirmado"` en confirmPayment
+ * corta el retry antes de llegar aquí; además el asiento usa un id DETERMINISTA
+ * por `conversationId`, así una doble confirmación sobrescribe en vez de duplicar
+ * el ingreso.
+ */
+async function confirmarPagoGNotes(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+): Promise<{ ok: true }> {
+  const payerUid = Array.isArray(conv.participants)
+    ? (conv.participants[0] as string | undefined)
+    : undefined;
+  if (!payerUid) {
+    throw new HttpsError("failed-precondition", "Pago sin pagador.");
+  }
+  const clientName =
+    (await db.doc(`users/${payerUid}`).get()).data()?.displayName ?? null;
+
+  const { precioGNotes } = await getComercial();
+  const montoIngresado =
+    typeof conv.pago?.monto === "number" &&
+    Number.isInteger(conv.pago.monto) &&
+    conv.pago.monto > 0
+      ? conv.pago.monto
+      : precioGNotes;
+
+  const now = Date.now();
+  const expira = new Date(now);
+  expira.setMonth(expira.getMonth() + GNOTES_DURACION_MESES);
+  const gnotesPremium = {
+    activo: true,
+    since: now,
+    expiresAt: expira.getTime(),
+  };
+
+  const conversationId = convRef.id;
+  const batch = db.batch();
+  // `merge` (no `update`): el doc de usuario existe (ensureUserAccount), pero
+  // merge es robusto y NO pisa el resto de campos (roles, displayName, …).
+  batch.set(
+    db.doc(`users/${payerUid}`),
+    { gnotesPremium, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: montoIngresado,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Asiento contable (id determinista por chat → idempotente ante retry).
+  batch.set(db.doc(`transactions/gnotes_${conversationId}`), {
+    uid: payerUid,
+    clientName,
+    concepto: "Membresía G Notes",
+    amount: montoIngresado,
+    fecha: now,
+    estado: "confirmada",
+    fuente: "gnotes",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(
+    `Pago confirmado: ${conversationId} → G Notes membership ${payerUid}`,
+  );
+  await notify(payerUid, "gnotes-activado", {}, "/solicitudes");
+  return { ok: true };
+}
+
+/**
  * Config comercial server-authoritative: precios y comisiones leídos de DOS docs
  * (`comercialConfig/comisiones` + `comercialConfig/precios`, partidos por
  * visibilidad de lectura — ver firestore.rules) con FALLBACK a las constantes del
@@ -643,6 +806,7 @@ async function getComercial(): Promise<{
   comisionBeat: number;
   precioMembresia: number;
   precioPerfil: number;
+  precioGNotes: number;
   comisionProductor: number | null;
   comisionProductorPorSede: Record<string, number>;
 }> {
@@ -679,6 +843,7 @@ async function getComercial(): Promise<{
     comisionBeat: comision(com.comisionBeat, COMISION_BEAT),
     precioMembresia: precio(pre.precioMembresia, PRECIO_MEMBRESIA),
     precioPerfil: precio(pre.precioPerfil, PRECIO_PERFIL),
+    precioGNotes: precio(pre.precioGNotes, PRECIO_GNOTES),
     comisionProductor: enRango(com.comisionProductor)
       ? com.comisionProductor
       : null,
@@ -1926,6 +2091,14 @@ export const onPaymentUnderReview = onDocumentUpdated(
         const b = (await bRef.get()).data();
         if (b?.estado === "pendiente_pago") {
           await bRef.update({ estado: "pago_en_revision" });
+        }
+      }
+      // Pedido: refleja el comprobante en el estado del pedido (server-side).
+      if (after.ref?.kind === "pedido" && typeof after.ref?.id === "string") {
+        const pRef = db.doc(`pedidos/${after.ref.id}`);
+        const p = (await pRef.get()).data();
+        if (p?.estado === "pendiente_pago") {
+          await pRef.update({ estado: "pago_en_revision" });
         }
       }
       const payerUid = Array.isArray(after.participants)

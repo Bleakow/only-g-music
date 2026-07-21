@@ -6,6 +6,7 @@ import type {
 } from "@only-g/ai-services";
 import { geminiGenerate } from "@/features/ai/gemini";
 import { verifiedUid } from "@/lib/firebase/admin";
+import { consumeAiQuota } from "@/lib/firebase/entitlement";
 
 export const runtime = "nodejs";
 
@@ -46,6 +47,13 @@ export async function POST(req: NextRequest): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json(stub(body));
 
+  // Gate freemium: consume 1 del cupo diario (miembro = sin límite). Si topó,
+  // devuelve `limited` y sin opciones para que el panel muestre el empujón.
+  const quota = await consumeAiQuota(uid);
+  if (!quota.allowed) {
+    return json({ op: body.op, suggestions: [], source: "stub", limited: true, remaining: 0 });
+  }
+
   // Modelo elegido por el usuario (guardarraíl: solo gemini-*), si no el default.
   const model = body.model?.startsWith("gemini") ? body.model : MODEL;
   try {
@@ -58,7 +66,12 @@ export async function POST(req: NextRequest): Promise<Response> {
       temperature: 1.0,
       json: true,
     });
-    return json({ op: body.op, suggestions: parseSuggestions(raw), source: "ai" });
+    return json({
+      op: body.op,
+      suggestions: parseSuggestions(raw),
+      source: "ai",
+      remaining: quota.remaining ?? undefined,
+    });
   } catch (err) {
     console.error("ai/tools:", err);
     return json(stub(body));

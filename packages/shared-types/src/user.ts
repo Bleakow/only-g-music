@@ -2,6 +2,7 @@
  * Entidad de dominio: Cuenta de usuario. Tipos puros y portables (reutilizables
  * en una futura app nativa). No importar nada de UI ni de Firebase aquí.
  */
+import type { GNotesMembership } from "./gnotes-membership";
 
 /**
  * Roles del sistema. Un usuario puede tener VARIOS a la vez (p. ej. el admin
@@ -56,6 +57,10 @@ export interface UserAccount {
   artistSlug?: string;
   /** Borrador capturado en el onboarding; prellena el editor del perfil. */
   artistDraft?: ArtistDraft;
+
+  /** Membresía de G Notes (IA sin límite). La escribe SOLO el servidor al
+   *  confirmar el pago; el cliente la lee para mostrar el estado. */
+  gnotesPremium?: GNotesMembership;
 }
 
 /** Datos del perfil capturados al registrarse como artista (prellenan el editor). */

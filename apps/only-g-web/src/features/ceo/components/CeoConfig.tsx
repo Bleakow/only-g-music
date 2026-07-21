@@ -9,6 +9,7 @@ import { SpinnerIcon } from "@/components/icons";
 import {
   esComisionValida,
   esPrecioValido,
+  esRecargoValido,
   type Comisiones,
 } from "@only-g/shared-types/comercial-config";
 import {
@@ -78,6 +79,17 @@ export function CeoConfig() {
   const [precioBeat, setPrecioBeat] = useState("");
   const [precioMembresia, setPrecioMembresia] = useState("");
   const [precioPerfil, setPrecioPerfil] = useState("");
+  const [precioGNotes, setPrecioGNotes] = useState("");
+  // Servicios de estudio (grabación por horas + mezcla por tramo de personas).
+  const [precioGrabacionBase, setPrecioGrabacionBase] = useState("");
+  const [precioGrabacionHoraExtra, setPrecioGrabacionHoraExtra] = useState("");
+  const [recargoGrabacion2, setRecargoGrabacion2] = useState("");
+  const [recargoGrabacionAgrupacion, setRecargoGrabacionAgrupacion] =
+    useState("");
+  const [precioMezcla1, setPrecioMezcla1] = useState("");
+  const [precioMezcla2, setPrecioMezcla2] = useState("");
+  const [precioMezclaAgrupacion, setPrecioMezclaAgrupacion] = useState("");
+  const [precioMaster, setPrecioMaster] = useState("");
   const [savingPrecios, setSavingPrecios] = useState(false);
   const [preciosMsg, setPreciosMsg] = useState<{
     ok: boolean;
@@ -106,6 +118,17 @@ export function CeoConfig() {
         setPrecioBeat(String(cfg.precios.precioBeat));
         setPrecioMembresia(String(cfg.precios.precioMembresia));
         setPrecioPerfil(String(cfg.precios.precioPerfil));
+        setPrecioGNotes(String(cfg.precios.precioGNotes));
+        setPrecioGrabacionBase(String(cfg.precios.precioGrabacionBase));
+        setPrecioGrabacionHoraExtra(String(cfg.precios.precioGrabacionHoraExtra));
+        setRecargoGrabacion2(String(cfg.precios.recargoGrabacion2));
+        setRecargoGrabacionAgrupacion(
+          String(cfg.precios.recargoGrabacionAgrupacion),
+        );
+        setPrecioMezcla1(String(cfg.precios.precioMezcla1));
+        setPrecioMezcla2(String(cfg.precios.precioMezcla2));
+        setPrecioMezclaAgrupacion(String(cfg.precios.precioMezclaAgrupacion));
+        setPrecioMaster(String(cfg.precios.precioMaster));
         setLoading(false);
       })
       .catch((e) => {
@@ -174,11 +197,29 @@ export function CeoConfig() {
       const beat = Number(precioBeat);
       const membresia = Number(precioMembresia);
       const perfil = Number(precioPerfil);
-      if (
-        !esPrecioValido(beat) ||
-        !esPrecioValido(membresia) ||
-        !esPrecioValido(perfil)
-      ) {
+      const gnotes = Number(precioGNotes);
+      const grabBase = Number(precioGrabacionBase);
+      const grabExtra = Number(precioGrabacionHoraExtra);
+      const recargo2 = Number(recargoGrabacion2);
+      const recargoAgr = Number(recargoGrabacionAgrupacion);
+      const mezcla1 = Number(precioMezcla1);
+      const mezcla2 = Number(precioMezcla2);
+      const mezclaAgr = Number(precioMezclaAgrupacion);
+      const master = Number(precioMaster);
+      const preciosOk = [
+        beat,
+        membresia,
+        perfil,
+        gnotes,
+        grabBase,
+        grabExtra,
+        mezcla1,
+        mezcla2,
+        mezclaAgr,
+        master,
+      ].every(esPrecioValido);
+      const recargosOk = [recargo2, recargoAgr].every(esRecargoValido);
+      if (!preciosOk || !recargosOk) {
         setPreciosMsg({ ok: false, text: t("errors.precioRango") });
         return;
       }
@@ -186,6 +227,15 @@ export function CeoConfig() {
         precioBeat: beat,
         precioMembresia: membresia,
         precioPerfil: perfil,
+        precioGNotes: gnotes,
+        precioGrabacionBase: grabBase,
+        precioGrabacionHoraExtra: grabExtra,
+        recargoGrabacion2: recargo2,
+        recargoGrabacionAgrupacion: recargoAgr,
+        precioMezcla1: mezcla1,
+        precioMezcla2: mezcla2,
+        precioMezclaAgrupacion: mezclaAgr,
+        precioMaster: master,
       });
       setPreciosMsg({ ok: true, text: t("saved") });
     } catch (e) {
@@ -335,6 +385,95 @@ export function CeoConfig() {
                   value={precioPerfil}
                   onChange={(v) => {
                     setPrecioPerfil(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioGNotes"
+                  label={t("precios.gnotes")}
+                  value={precioGNotes}
+                  onChange={(v) => {
+                    setPrecioGNotes(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+
+                <p className="text-silver-400 mt-2 text-xs font-semibold tracking-[2px] uppercase">
+                  {t("precios.grabacionTitle")}
+                </p>
+                <MoneyField
+                  id="precioGrabacionBase"
+                  label={t("precios.grabacionBase")}
+                  value={precioGrabacionBase}
+                  onChange={(v) => {
+                    setPrecioGrabacionBase(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioGrabacionHoraExtra"
+                  label={t("precios.grabacionHoraExtra")}
+                  value={precioGrabacionHoraExtra}
+                  onChange={(v) => {
+                    setPrecioGrabacionHoraExtra(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="recargoGrabacion2"
+                  label={t("precios.recargoGrabacion2")}
+                  value={recargoGrabacion2}
+                  onChange={(v) => {
+                    setRecargoGrabacion2(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="recargoGrabacionAgrupacion"
+                  label={t("precios.recargoGrabacionAgrupacion")}
+                  value={recargoGrabacionAgrupacion}
+                  onChange={(v) => {
+                    setRecargoGrabacionAgrupacion(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+
+                <p className="text-silver-400 mt-2 text-xs font-semibold tracking-[2px] uppercase">
+                  {t("precios.mezclaTitle")}
+                </p>
+                <MoneyField
+                  id="precioMezcla1"
+                  label={t("precios.mezcla1")}
+                  value={precioMezcla1}
+                  onChange={(v) => {
+                    setPrecioMezcla1(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioMezcla2"
+                  label={t("precios.mezcla2")}
+                  value={precioMezcla2}
+                  onChange={(v) => {
+                    setPrecioMezcla2(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioMezclaAgrupacion"
+                  label={t("precios.mezclaAgrupacion")}
+                  value={precioMezclaAgrupacion}
+                  onChange={(v) => {
+                    setPrecioMezclaAgrupacion(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioMaster"
+                  label={t("precios.master")}
+                  value={precioMaster}
+                  onChange={(v) => {
+                    setPrecioMaster(v);
                     setPreciosMsg(null);
                   }}
                 />

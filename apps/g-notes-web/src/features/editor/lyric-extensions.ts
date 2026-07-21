@@ -180,6 +180,17 @@ export const sectionHighlighter = ViewPlugin.fromClass(
   { decorations: (v) => v.decorations },
 );
 
+// Corrector del DISPOSITIVO: CodeMirror por defecto apaga autocorrect/
+// autocapitalize/spellcheck en el contenteditable. En un cuaderno de letras SÍ
+// los queremos: que el teclado del móvil corrija, capitalice el inicio de frase
+// y subraye faltas (como en cualquier bloc de notas). Sube el facet de atributos
+// del contenido con estos valores → sobrescriben los defaults de CM.
+const deviceCorrector = EditorView.contentAttributes.of({
+  autocorrect: "on",
+  autocapitalize: "sentences",
+  spellcheck: "true",
+});
+
 export const lyricExtensions = [
   lyricTheme,
   analysisField,
@@ -188,4 +199,5 @@ export const lyricExtensions = [
   placeholder("Escribe aquí tu primera línea…"),
   syllableGutter,
   sectionHighlighter,
+  deviceCorrector,
 ];

@@ -44,6 +44,7 @@ import {
 } from "@only-g/ui";
 import { AI_MODELS, DEFAULT_MODEL } from "@only-g/ai-services";
 import { loadModel, setModel } from "@/features/ai/model-store";
+import { AiQuotaStatus } from "@/features/ai/AiQuotaStatus";
 import {
   DEFAULT_FONT,
   LYRIC_FONTS,
@@ -453,6 +454,12 @@ export function Notebook() {
           onClose={() => setSelection(null)}
         />
 
+        {/* Cupo de IA (móvil): aviso de límite / contador, sobre la barra. Cuando
+            no hay nada que mostrar, AiQuotaStatus devuelve null y esta fila colapsa. */}
+        <div className="flex justify-center px-3 empty:hidden md:hidden">
+          <AiQuotaStatus />
+        </div>
+
         {/* Barra inferior MÓVIL (< md): deshacer/rehacer/compartir al alcance del
             pulgar + Asistente (modelo). Targets grandes para tocar. */}
         <div className="flex items-center gap-2 border-t border-silver-200/10 px-3 py-2 md:hidden">
@@ -515,6 +522,7 @@ export function Notebook() {
               sílabas por verso a la izquierda
             </span>
           )}
+          <AiQuotaStatus />
           {/* Preferencias (derecha): Asistente IA (modelo) + fuente de la letra.
               En móvil se ocultan las etiquetas; los selects quedan compactos. */}
           <div className="ml-auto flex shrink-0 items-center gap-3">

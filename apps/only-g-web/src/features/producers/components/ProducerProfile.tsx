@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { useRouter } from "@/i18n/navigation";
 import type { Producer } from "@only-g/shared-types/producer";
 import { formatLocation } from "@only-g/shared-types/location";
 import { ArrowLeftIcon } from "@/components/icons";
@@ -18,6 +18,7 @@ type State = "loading" | "ready" | "notfound";
  */
 export function ProducerProfile({ id }: { id: string }) {
   const t = useTranslations();
+  const router = useRouter();
   const [producer, setProducer] = useState<Producer | null>(null);
   const [state, setState] = useState<State>("loading");
 
@@ -39,15 +40,24 @@ export function ProducerProfile({ id }: { id: string }) {
     };
   }, [id]);
 
+  // Volver a DONDE se venía (la vitrina/lista desde donde se abrió el perfil), no
+  // a Inicio. Fallback a "/" si no hay historial (entrada directa por URL).
   const backLink = (
-    <Link
-      href="/"
+    <button
+      type="button"
+      onClick={() => {
+        if (typeof window !== "undefined" && window.history.length > 1) {
+          router.back();
+        } else {
+          router.push("/");
+        }
+      }}
       aria-label={t("producers.back")}
       className="text-silver-100 flex items-center gap-2 rounded-full border border-white/25 bg-black/40 px-4 py-2 text-sm backdrop-blur-sm transition hover:border-white hover:text-white"
     >
       <ArrowLeftIcon className="size-4" />
       {t("producers.back")}
-    </Link>
+    </button>
   );
 
   if (state === "loading") {

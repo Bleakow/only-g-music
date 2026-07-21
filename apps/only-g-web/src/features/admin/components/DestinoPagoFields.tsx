@@ -87,6 +87,12 @@ export function DestinoPagoFields({
         placeholder={t("adminConfigPagos.notaPh")}
         textarea
       />
+      <Field
+        label={t("adminConfigPagos.breB")}
+        value={value.llaveBreB ?? ""}
+        onChange={(v) => onChange({ llaveBreB: v })}
+        placeholder={t("adminConfigPagos.breBPh")}
+      />
       <div>
         <p className="text-silver-300 text-xs font-semibold tracking-[1px] uppercase">
           {t("adminConfigPagos.qr")}

@@ -11,6 +11,7 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { EditIcon } from "@/components/icons";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { LanguageSwitcher } from "@/components/layout/LanguageSwitcher";
+import { GNotesPremiumCard } from "@/features/gnotes/components/GNotesPremiumCard";
 import { hasAnyRole } from "@only-g/shared-types/user";
 
 function initials(name: string | null, email: string | null): string {
@@ -157,6 +158,9 @@ export default function CuentaPage() {
           </div>
         </section>
       )}
+
+      {/* G Notes premium — IA sin límite (todo usuario autenticado). */}
+      <GNotesPremiumCard />
 
       {/* Configuración */}
       <section className="mt-12">

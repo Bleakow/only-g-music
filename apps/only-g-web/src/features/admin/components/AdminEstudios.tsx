@@ -133,6 +133,7 @@ export function AdminEstudios() {
         telefono: p.telefono?.trim() || undefined,
         paypal: p.paypal?.trim() || undefined,
         correo: p.correo?.trim() || undefined,
+        llaveBreB: p.llaveBreB?.trim() || undefined,
         qrUrl: p.qrUrl || undefined,
         nota: p.nota?.trim() || undefined,
       };

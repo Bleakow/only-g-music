@@ -35,12 +35,32 @@ export interface Comisiones {
 
 /** Precios de catálogo/suscripción en COP (enteros > 0). VISIBLES al comprador. */
 export interface Precios {
-  /** Precio de catálogo estándar por beat. */
+  /** Precio de catálogo estándar por beat (también el "beat/instrumental" comprable). */
   precioBeat: number;
   /** Precio de la membresía mensual (toggle admin). */
   precioMembresia: number;
   /** Precio del perfil de artista / premium (2 meses). */
   precioPerfil: number;
+  /** Precio de la membresía mensual de G Notes (IA sin límite). */
+  precioGNotes: number;
+
+  // ── Servicios de estudio (compra directa) ──────────────────────────────
+  /** Grabación: base que cubre las 2h mínimas. */
+  precioGrabacionBase: number;
+  /** Grabación: precio por cada hora extra a partir de la 2ª. */
+  precioGrabacionHoraExtra: number;
+  /** Grabación: recargo cuando graban 2 personas (>= 0; puede ser 0). */
+  recargoGrabacion2: number;
+  /** Grabación: recargo cuando graba una agrupación (>= 0; puede ser 0). */
+  recargoGrabacionAgrupacion: number;
+  /** Mezcla por canción — 1 persona. */
+  precioMezcla1: number;
+  /** Mezcla por canción — 2 personas. */
+  precioMezcla2: number;
+  /** Mezcla por canción — agrupación. */
+  precioMezclaAgrupacion: number;
+  /** Masterización por canción (plano, no varía por personas). */
+  precioMaster: number;
 }
 
 /** Config comercial completa (lo que ve el CEO: comisiones internas + precios). */
@@ -56,7 +76,20 @@ export interface ComercialConfig {
  */
 export const DEFAULTS: ComercialConfig = {
   comisiones: { comisionBeat: 0.2 },
-  precios: { precioBeat: 40000, precioMembresia: 15000, precioPerfil: 80000 },
+  precios: {
+    precioBeat: 40000,
+    precioMembresia: 15000,
+    precioPerfil: 80000,
+    precioGNotes: 12000,
+    precioGrabacionBase: 60000,
+    precioGrabacionHoraExtra: 15000,
+    recargoGrabacion2: 20000,
+    recargoGrabacionAgrupacion: 40000,
+    precioMezcla1: 200000,
+    precioMezcla2: 260000,
+    precioMezclaAgrupacion: 340000,
+    precioMaster: 120000,
+  },
 };
 
 /** ¿Comisión válida? Fracción finita en [0, 1] (0%..100%). */
@@ -69,6 +102,11 @@ export function esPrecioValido(n: unknown): n is number {
   return typeof n === "number" && Number.isInteger(n) && n > 0;
 }
 
+/** ¿Recargo válido? Entero >= 0 (un recargo SÍ puede ser 0: "no cobra extra"). */
+export function esRecargoValido(n: unknown): n is number {
+  return typeof n === "number" && Number.isInteger(n) && n >= 0;
+}
+
 /**
  * Normaliza un doc `comercialConfig/precios` crudo a `Precios`, CLAMPEANDO cada
  * campo: si es inválido, rige el default. Nunca lanza — el display no puede
@@ -78,16 +116,25 @@ export function parsePrecios(
   raw: Record<string, unknown> | undefined,
 ): Precios {
   const d = DEFAULTS.precios;
+  // Precio estándar (> 0) con fallback al default.
+  const p = (k: keyof Precios): number =>
+    esPrecioValido(raw?.[k]) ? (raw![k] as number) : d[k];
+  // Recargo (>= 0) con fallback al default.
+  const r = (k: keyof Precios): number =>
+    esRecargoValido(raw?.[k]) ? (raw![k] as number) : d[k];
   return {
-    precioBeat: esPrecioValido(raw?.precioBeat)
-      ? (raw!.precioBeat as number)
-      : d.precioBeat,
-    precioMembresia: esPrecioValido(raw?.precioMembresia)
-      ? (raw!.precioMembresia as number)
-      : d.precioMembresia,
-    precioPerfil: esPrecioValido(raw?.precioPerfil)
-      ? (raw!.precioPerfil as number)
-      : d.precioPerfil,
+    precioBeat: p("precioBeat"),
+    precioMembresia: p("precioMembresia"),
+    precioPerfil: p("precioPerfil"),
+    precioGNotes: p("precioGNotes"),
+    precioGrabacionBase: p("precioGrabacionBase"),
+    precioGrabacionHoraExtra: p("precioGrabacionHoraExtra"),
+    recargoGrabacion2: r("recargoGrabacion2"),
+    recargoGrabacionAgrupacion: r("recargoGrabacionAgrupacion"),
+    precioMezcla1: p("precioMezcla1"),
+    precioMezcla2: p("precioMezcla2"),
+    precioMezclaAgrupacion: p("precioMezclaAgrupacion"),
+    precioMaster: p("precioMaster"),
   };
 }
 

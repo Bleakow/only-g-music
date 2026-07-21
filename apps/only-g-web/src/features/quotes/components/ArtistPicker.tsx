@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { searchArtists } from "@/features/artists/lib/artists-repo";
 import { CloseIcon } from "@/components/icons";
+import { glassSurfaceMenu, glassSurfaceSoft } from "@/components/ui/glass";
 import type { Artist } from "@only-g/shared-types/artist";
 import type { QuoteCollaborator } from "@only-g/shared-types/quote";
 
@@ -104,14 +105,16 @@ export function ArtistPicker({
             setShowAll(true);
             setOpen(true);
           }}
-          className="shrink-0 rounded-lg border border-amethyst-400/60 px-4 py-2.5 text-sm font-semibold uppercase tracking-[1px] text-amethyst-200 transition hover:border-amethyst-300 hover:bg-amethyst-500/10 hover:text-white"
+          className="btn-outline shrink-0 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-[1px]"
         >
           {t("artistPicker.seeAll")}
         </button>
       </div>
 
       {visible && (
-        <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl border border-white/10 bg-ink-soft p-1 shadow-2xl">
+        <div
+          className={`absolute top-full z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-xl p-1 ${glassSurfaceMenu}`}
+        >
           {loading ? (
             <p className="px-3 py-2 text-sm text-silver-400">
               {t("artistPicker.searching")}
@@ -153,7 +156,7 @@ export function ArtistPicker({
           {value.map((c) => (
             <span
               key={c.id}
-              className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-1.5 pr-2 text-sm text-silver-100"
+              className={`inline-flex items-center gap-2 rounded-full py-1 pl-1.5 pr-2 text-sm text-silver-100 ${glassSurfaceSoft}`}
             >
               {c.image ? (
                 // eslint-disable-next-line @next/next/no-img-element

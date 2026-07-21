@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import { QuoteWizard } from "@/features/quotes/components/QuoteWizard";
+import { CatalogBackground } from "@/features/services/components/CatalogBackground";
 
 export default function CotizarPage() {
   const t = useTranslations("guards");
@@ -12,9 +13,11 @@ export default function CotizarPage() {
       title={t("quoteTitle")}
       message={t("quoteMessage")}
     >
-      <Suspense fallback={<main className="min-h-dvh bg-ink" />}>
-        <QuoteWizard />
-      </Suspense>
+      <CatalogBackground>
+        <Suspense fallback={<main className="min-h-dvh bg-ink" />}>
+          <QuoteWizard />
+        </Suspense>
+      </CatalogBackground>
     </RequireAuth>
   );
 }

@@ -13,6 +13,8 @@ export type AnalyticsEvent =
   // Reserva
   | "booking_started" // entra al calendario de reserva
   | "booking_created" // confirma una reserva (pendiente_pago)
+  // Pedido (compra directa de servicios de precio fijo)
+  | "pedido_submitted" // crea un pedido (pendiente_pago)
   // Pago
   | "payment_proof_uploaded" // sube comprobante
   | "premium_pay_started" // inicia el pago de membresía
@@ -28,6 +30,7 @@ export const ANALYTICS_EVENTS: AnalyticsEvent[] = [
   "quote_submitted",
   "booking_started",
   "booking_created",
+  "pedido_submitted",
   "payment_proof_uploaded",
   "premium_pay_started",
   "artist_signup_started",

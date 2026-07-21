@@ -85,14 +85,14 @@ export function RequireAuth({
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <Link
               href={`/login?next=${encodeURIComponent(pathname)}`}
-              className="from-silver-100 to-amethyst-300 text-ink rounded-full bg-gradient-to-r px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
+              className="btn-amethyst rounded-full px-8 py-3 text-sm font-semibold tracking-[2px] uppercase transition"
             >
               {t("auth.login")}
             </Link>
             <button
               type="button"
               onClick={goBack}
-              className="border-silver-300/40 text-silver-100 hover:border-silver-100 rounded-full border px-8 py-3 text-sm tracking-[2px] uppercase transition hover:bg-white/5"
+              className="btn-outline rounded-full px-8 py-3 text-sm tracking-[2px] uppercase transition"
             >
               {t("auth.goBack")}
             </button>

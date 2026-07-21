@@ -89,9 +89,16 @@ service cloud.firestore {
         && request.resource.data.roles.size() == 1
         && request.resource.data.roles[0] == 'cliente';
 
+      // El cliente puede actualizar SU doc, pero NO tocar `roles` ni
+      // `gnotesPremium` (el entitlement de la membresía G Notes): eso solo lo
+      // escribe el servidor (Admin SDK / Functions al confirmar el pago), que
+      // ignora estas reglas. Sin este freeze, un usuario se auto-regalaría IA
+      // sin límite escribiendo su propio doc.
       allow update: if request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.roles == resource.data.roles;
+        && request.resource.data.roles == resource.data.roles
+        && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['gnotesPremium']);
 
       allow delete: if false;
 
@@ -324,6 +331,32 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Pedidos (compra directa multi-servicio) ──────────────────────
+    // Un pedido agrupa varias reservas (sus líneas) con UN pago. El cliente lo
+    // crea en 'pendiente_pago'; sus reservas viven en `bookings` (reglas de
+    // arriba). El cliente dueño solo puede enlazar la conversación de pago y
+    // subir el comprobante (pendiente_pago → pago_en_revision), sin tocar
+    // uid/total/lineas. Confirmar el pago (y con él todas las reservas) es
+    // server-authoritative vía la Cloud Function confirmPayment.
+    match /pedidos/{id} {
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.estado == 'pendiente_pago';
+
+      allow read: if isAdmin()
+        || (request.auth != null && resource.data.uid == request.auth.uid);
+
+      allow update: if isAdmin()
+        || (request.auth != null
+          && resource.data.uid == request.auth.uid
+          && resource.data.estado == 'pendiente_pago'
+          && request.resource.data.estado in ['pendiente_pago', 'pago_en_revision']
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['estado', 'comprobanteUrl', 'paymentConversationId']));
+
+      allow delete: if false;
+    }
+
     // (El chat de cada solicitud migró al modelo `conversations` — ver más abajo.
     // Las subcolecciones `messages` bajo quotes/bookings quedaron obsoletas.)
 
@@ -547,8 +580,10 @@ service cloud.firestore {
     // ── G Notes (biblioteca del escritor) ────────────────────────────
     // Un doc por usuario con SU biblioteca de composición (canciones, releases,
     // listas): gnotes/{uid}. Contenido PRIVADO del autor — solo él lee/escribe;
-    // ni el admin lo ve (son sus letras). No gatea por rol: el acceso al producto
-    // lo controla la app (LoginGate); el entitlement de membresía llega en M7.
+    // ni el admin lo ve (son sus letras). No gatea por membresía: el cuaderno es
+    // GRATIS para todo autenticado; la membresía (M7) solo quita el tope diario
+    // de IA (se valida server-side en /api/ai/*, no aquí). El conteo diario vive
+    // en gnotesUsage/{uid}_{fecha} (server-write, denegado al cliente por defecto).
     match /gnotes/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }

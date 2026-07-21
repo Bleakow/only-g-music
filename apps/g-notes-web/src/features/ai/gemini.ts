@@ -20,23 +20,36 @@ interface GeminiResponse {
 
 export async function geminiGenerate(opts: GeminiOptions): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${opts.model}:generateContent?key=${opts.apiKey}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
+  const buildBody = (thinking: Record<string, unknown>): string =>
+    JSON.stringify({
       systemInstruction: { parts: [{ text: opts.system }] },
       contents: [{ parts: [{ text: opts.prompt }] }],
       generationConfig: {
         maxOutputTokens: opts.maxOutputTokens,
         temperature: opts.temperature ?? 0.9,
-        // Desactiva el "thinking" (Gemini 2.5/3): sin él, los modelos que piensan
-        // gastaban todo el presupuesto razonando y devolvían vacío. Además, para
-        // autocompletado/panel queremos respuesta directa, rápida y barata.
-        thinkingConfig: { thinkingBudget: 0 },
+        ...thinking,
         ...(opts.json ? { responseMimeType: "application/json" } : {}),
       },
-    }),
-  });
+    });
+  const post = (body: string): Promise<Response> =>
+    fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body,
+    });
+
+  // Thinking al MÍNIMO: para autocompletado/panel queremos respuesta directa,
+  // rápida y barata. Gemini 3.x (a donde hoy apunta el alias `-latest`) lo
+  // controla con `thinkingLevel` ("low" = el mínimo); YA NO acepta el antiguo
+  // `thinkingBudget: 0`, que devuelve 400 "invalid argument".
+  let res = await post(buildBody({ thinkingConfig: { thinkingLevel: "low" } }));
+
+  // Resiliencia ante la DERIVA de la API de Gemini: si el modelo rechaza el
+  // control de thinking (400), se reintenta SIN él (formato universal). Así un
+  // futuro repunteo del alias `-latest` a otro modelo no vuelve a tumbar la IA.
+  if (res.status === 400) {
+    res = await post(buildBody({}));
+  }
 
   if (!res.ok) {
     const detail = (await res.text()).slice(0, 200);

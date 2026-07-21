@@ -308,7 +308,7 @@
     "conversationWithClient": "Conversación con el cliente"
   },
   "home": {
-    "tagline": "Productora musical · Barranquilla & Bogotá",
+    "tagline": "Productora musical",
     "kicker": "Compañía musical",
     "heroTitle": "El sonido es <br></br>visión",
     "heroSubtitle": "El arte comienza donde termina el <br></br>miedo a expresarse.",
@@ -487,7 +487,8 @@
     "quickArtistasSub": "Perfiles y contratos",
     "quickProductoresSub": "Gestión de productores",
     "quickEstudiosSub": "Salas y disponibilidad",
-    "quickPagosSub": "Métodos y datos",
+    "quickPagosSub": "Revisar comprobantes",
+    "quickDatosPagoSub": "A dónde te pagan (global)",
     "quickCotizacionesSub": "Solicitudes y envíos",
     "quickRolesSub": "Otorga y quita permisos",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
@@ -511,6 +512,7 @@
     "estudios": "Estudios",
     "cotizaciones": "Cotizaciones",
     "pagos": "Pagos",
+    "datosPago": "Datos de pago",
     "roles": "Roles",
     "convenios": "Convenios",
     "beats": "Beats",

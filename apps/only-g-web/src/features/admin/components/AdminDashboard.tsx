@@ -69,6 +69,12 @@ const QUICK: { key: string; sub: string; href: string; Icon: Icon }[] = [
     Icon: PaymentIcon,
   },
   {
+    key: "datosPago",
+    sub: "quickDatosPagoSub",
+    href: "/admin/config-pagos",
+    Icon: PaymentIcon,
+  },
+  {
     key: "cotizaciones",
     sub: "quickCotizacionesSub",
     href: "/admin/cotizaciones",

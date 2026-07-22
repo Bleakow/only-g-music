@@ -7,13 +7,11 @@ import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
 import { Button } from "@/components/ui/Button";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { hasAnyRole } from "@only-g/shared-types/user";
-import { toSlug } from "@only-g/shared-types/artist-profile";
 import { formatCOP } from "@only-g/shared-types/service";
-import { nuevoPedidoPerfil } from "@only-g/shared-types/profile-order";
+import { paseEstado } from "@only-g/shared-types/pase";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
-import { createReserva } from "@/features/booking/lib/booking-repo";
 import { track } from "@/lib/firebase/analytics";
-import { updateArtistPrivateData } from "@/features/auth/lib/user-repo";
+import { crearPerfilInicial } from "@/features/artists/lib/onboarding-repo";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 
@@ -46,6 +44,9 @@ const INPUT =
 export function ArtistOnboarding() {
   const { user, account, refreshAccount } = useAuth();
   const { precioPerfil } = usePrecios();
+  // Con pase activo el perfil nace PUBLICADO; si no, nace BORRADOR y paga al
+  // publicar. En ambos casos, crearlo al registrarse es GRATIS.
+  const paseActivo = paseEstado(account?.pase, Date.now()) === "activo";
   const router = useRouter();
   const t = useTranslations();
 
@@ -57,18 +58,45 @@ export function ArtistOnboarding() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Re-sincroniza la cuenta al entrar: si el alta se guardo en esta sesion, el
-  // contexto pudo quedar viejo (sin artistSlug) y provocar el bucle alta o perfil.
+  // Re-sincroniza la cuenta al entrar: si el alta se guardó en esta sesión, el
+  // contexto pudo quedar viejo (sin artistSlug) y provocar el bucle alta↔perfil.
   useEffect(() => {
     refreshAccount();
   }, [refreshAccount]);
 
-  // El alta se considera hecha cuando YA tienes `artistSlug` (datos guardados +
-  // pedido de pago creado). Tener el ROL `artista` NO basta -- si miraamos el rol
-  // se produce el bucle "ya eres artista" o "falta tu alta". El premium lo activa
-  // el pago confirmado, no el rol.
+  // Crea el perfil (borrador, o publicado si hay pase) SIN cobro y va al editor.
+  // El pago se pide al PUBLICAR desde el editor. Lo comparten el alta y la
+  // pantalla de "alta a medias".
+  async function crearPerfil(data: {
+    artisticName: string;
+    realName: string;
+    birthDate: string;
+    startYear: number;
+    photoURL: string;
+  }) {
+    setBusy(true);
+    setError(null);
+    try {
+      await crearPerfilInicial(data);
+      await refreshAccount();
+      track(
+        paseActivo
+          ? "artist_profile_created_with_pass"
+          : "artist_profile_submitted",
+      );
+      router.push("/artista/perfil");
+    } catch (err) {
+      console.error("[artist-onboarding] error:", err);
+      setError(t("artistOnboarding.errors.submitFailed"));
+      setBusy(false);
+    }
+  }
+
+  // Ya tiene alta: si es artista, al editor; si quedó a medias (slug sin perfil,
+  // del flujo viejo con cobro), termina de crearlo GRATIS ahora.
   if (account?.artistSlug) {
     const activo = hasAnyRole(account, ["artista"]);
+    const draft = account.artistDraft;
     return (
       <main className="mx-auto min-h-dvh max-w-lg px-6 pt-28 pb-24 text-center">
         <h1 className="font-narrow text-4xl font-bold uppercase">
@@ -79,14 +107,40 @@ export function ArtistOnboarding() {
             ? t("artistOnboarding.alreadyRegistered.activeBody")
             : t("artistOnboarding.alreadyRegistered.pendingBody")}
         </p>
-        <Link
-          href={activo ? "/artista/perfil" : "/solicitudes"}
-          className="from-silver-100 to-amethyst-300 text-ink mt-8 inline-flex rounded-full bg-gradient-to-r px-7 py-3 text-sm font-semibold tracking-[2px] uppercase"
-        >
-          {activo
-            ? t("artistOnboarding.alreadyRegistered.goToProfile")
-            : t("artistOnboarding.alreadyRegistered.viewPayment")}
-        </Link>
+        {error && (
+          <p
+            role="alert"
+            className="mx-auto mt-4 max-w-sm rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+          >
+            {error}
+          </p>
+        )}
+        {activo || !draft ? (
+          <Link
+            href={activo ? "/artista/perfil" : "/solicitudes"}
+            className="from-silver-100 to-amethyst-300 text-ink mt-8 inline-flex rounded-full bg-gradient-to-r px-7 py-3 text-sm font-semibold tracking-[2px] uppercase"
+          >
+            {activo
+              ? t("artistOnboarding.alreadyRegistered.goToProfile")
+              : t("artistOnboarding.alreadyRegistered.viewPayment")}
+          </Link>
+        ) : (
+          <Button
+            onClick={() =>
+              crearPerfil({
+                artisticName: draft.artisticName,
+                realName: account.realName ?? "",
+                birthDate: account.birthDate ?? "",
+                startYear: draft.trajectoryStartYear,
+                photoURL: draft.photoURL,
+              })
+            }
+            loading={busy}
+            className="mt-8"
+          >
+            {t("artistOnboarding.submit")}
+          </Button>
+        )}
       </main>
     );
   }
@@ -112,42 +166,13 @@ export function ArtistOnboarding() {
       return;
     }
 
-    setBusy(true);
-    try {
-      const slug = toSlug(artisticName);
-      if (!slug) {
-        setError(t("artistOnboarding.errors.invalidSlug"));
-        setBusy(false);
-        return;
-      }
-      await updateArtistPrivateData(user.uid, {
-        realName: realName.trim(),
-        birthDate,
-        artistSlug: slug,
-        artistDraft: {
-          artisticName: artisticName.trim(),
-          trajectoryStartYear: year,
-          photoURL: photo[0].url,
-        },
-      });
-      await refreshAccount();
-      const id = await createReserva(
-        nuevoPedidoPerfil({
-          uid: user.uid,
-          now: Date.now(),
-          artistSlug: slug,
-          clientName: account?.displayName ?? user.displayName ?? undefined,
-          clientEmail: account?.email ?? user.email ?? undefined,
-          precio: precioPerfil,
-        }),
-      );
-      track("artist_profile_submitted");
-      router.push(`/solicitudes/reserva/${id}`);
-    } catch (err) {
-      console.error("[artist-onboarding] error:", err);
-      setError(t("artistOnboarding.errors.submitFailed"));
-      setBusy(false);
-    }
+    await crearPerfil({
+      artisticName: artisticName.trim(),
+      realName: realName.trim(),
+      birthDate,
+      startYear: year,
+      photoURL: photo[0].url,
+    });
   }
 
   return (
@@ -166,13 +191,19 @@ export function ArtistOnboarding() {
 
       <div className="border-amethyst-300/30 bg-amethyst-500/10 mt-6 rounded-2xl border p-5">
         <p className="text-amethyst-200 text-xs tracking-[2px] uppercase">
-          {t("artistOnboarding.pricingLabel")}
+          {paseActivo
+            ? t("artistOnboarding.paseLabel")
+            : t("artistOnboarding.pricingLabel")}
         </p>
         <p className="font-narrow mt-1 text-3xl font-bold text-white">
-          {formatCOP(precioPerfil)}
+          {paseActivo
+            ? t("artistOnboarding.paseGratis")
+            : formatCOP(precioPerfil)}
         </p>
         <p className="text-silver-400 mt-1 text-sm">
-          {t("artistOnboarding.pricingNote")}
+          {paseActivo
+            ? t("artistOnboarding.paseNota")
+            : t("artistOnboarding.pricingNote")}
         </p>
       </div>
 

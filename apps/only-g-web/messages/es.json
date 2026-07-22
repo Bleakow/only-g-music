@@ -1464,15 +1464,18 @@
     "alreadyRegistered": {
       "title": "Ya tienes tu alta",
       "activeBody": "Tu perfil de artista está activo. Edítalo cuando quieras.",
-      "pendingBody": "Tu perfil se activará cuando el estudio confirme tu pago. Mientras tanto, sigue el estado en tus solicitudes.",
+      "pendingBody": "Tienes un alta a medias. Termina de crear tu perfil — es gratis; pagas solo cuando quieras publicarlo.",
       "goToProfile": "Ir a mi perfil",
       "viewPayment": "Ver mi pago"
     },
     "eyebrow": "Perfil de artista",
     "heroTitle": "Sé parte del roster",
     "heroParagraph": "Crea tu perfil público: tu CV musical con foto, frase, redes y tus mejores temas en YouTube/Spotify, con URL y código QR para compartir. Vigencia de 2 meses, renovable. Tu nombre real y fecha de nacimiento quedan <strong>privados</strong>.",
-    "pricingLabel": "Costo del perfil (2 meses)",
-    "pricingNote": "Tras enviar, subes el comprobante en el chat y el estudio confirma el pago para activar tu perfil.",
+    "pricingLabel": "Al publicar tu perfil",
+    "pricingNote": "Créalo y edítalo GRATIS. Este pago se te pide solo cuando quieras publicarlo en la vitrina; tu perfil queda guardado hasta entonces.",
+    "paseLabel": "Tu pase",
+    "paseGratis": "Incluido",
+    "paseNota": "Tu pase publica tu perfil al instante, sin pago.",
     "fields": {
       "artisticName": {
         "label": "Nombre artístico",
@@ -1493,7 +1496,8 @@
         "label": "Foto de perfil (obligatoria)"
       }
     },
-    "submit": "Continuar al pago →",
+    "submit": "Crear mi perfil",
+    "submitPase": "Crear mi perfil",
     "errors": {
       "missingRequired": "Completa nombre artístico, nombre real y fecha de nacimiento.",
       "invalidYear": "El año de inicio debe estar entre 1950 y {year}.",

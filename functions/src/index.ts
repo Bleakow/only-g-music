@@ -2061,6 +2061,109 @@ export const activarPaseCortesia = onCall({ region: REGION }, async (request) =>
 });
 
 /**
+ * Crea el perfil de artista al registrarse, GRATIS y como BORRADOR: el cobro NO
+ * va aquí, sino al PUBLICAR (premium) desde el editor — así el artista guarda su
+ * perfil y solo paga cuando quiere hacerlo visible. Otorga el rol `artista`, fija
+ * el slug + los datos privados y guarda el perfil. Si el usuario YA tiene un PASE
+ * activo, el perfil nace PUBLICADO (premium del pase); si no, nace borrador.
+ * Server-authoritative (el cliente no puede tocar roles).
+ */
+export const crearPerfilInicial = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
+
+  const d = request.data ?? {};
+  const artisticName =
+    typeof d.artisticName === "string" ? d.artisticName.trim() : "";
+  const realName = typeof d.realName === "string" ? d.realName.trim() : "";
+  const birthDate = typeof d.birthDate === "string" ? d.birthDate : "";
+  const photoURL = typeof d.photoURL === "string" ? d.photoURL : "";
+  const startYear = Number(d.startYear) || new Date().getFullYear();
+  if (!artisticName) {
+    throw new HttpsError("invalid-argument", "Falta el nombre artístico.");
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "El usuario no existe.");
+  }
+  const u = userSnap.data() ?? {};
+  const now = Date.now();
+
+  // Pase vigente (opcional): con pase, el perfil nace PUBLICADO (premium del
+  // pase, alineado a su vigencia); sin pase, nace BORRADOR y paga al publicar.
+  const pase = u.pase as { activo?: boolean; expiresAt?: number } | undefined;
+  const paseVigente =
+    !!pase?.activo && typeof pase.expiresAt === "number" && pase.expiresAt > now;
+  const premium = paseVigente
+    ? { activo: true, since: now, expiresAt: pase.expiresAt as number }
+    : null;
+  // Slug: si ya tiene uno (alta a medias) y su perfil NO existe todavía, lo
+  // reusa (cubre a los que quedaron atascados en el cobro); si el perfil YA
+  // existe, aborta; si no tiene slug, genera uno único.
+  let slug: string;
+  const existingSlug = typeof u.artistSlug === "string" ? u.artistSlug : "";
+  if (existingSlug) {
+    if ((await db.doc(`artistProfiles/${existingSlug}`).get()).exists) {
+      throw new HttpsError("already-exists", "Ya tienes un perfil.");
+    }
+    slug = existingSlug;
+  } else {
+    const base = slugify(artisticName) || "artista";
+    slug = base;
+    let n = 2;
+    while ((await db.doc(`artistProfiles/${slug}`).get()).exists) {
+      slug = `${base}-${n++}`;
+    }
+  }
+
+  // Disciplinas/socio de los roles FINALES (espejo de adminLinkProfile).
+  const currentRoles = Array.isArray(u.roles) ? (u.roles as string[]) : [];
+  const finalRoles = [...new Set([...currentRoles, "artista"])];
+  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+  const socio =
+    finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+
+  const batch = db.batch();
+  batch.set(db.doc(`artistProfiles/${slug}`), {
+    uid,
+    artisticName,
+    tagline: "",
+    genre: "",
+    bio: "",
+    accent: "#8b5cf6",
+    photoURL,
+    gallery: [],
+    tracks: [],
+    socials: {},
+    trajectoryStartYear: startYear,
+    puntos: 0,
+    // Borrador (premium null → paga al publicar) o publicado (premium del pase).
+    premium,
+    disciplines: disciplines.length ? disciplines : ["artista"],
+    socio,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  // No pisa realName/birthDate si no vienen (un usuario atascado ya los tenía).
+  const userUpdate: Record<string, unknown> = {
+    artistSlug: slug,
+    roles: FieldValue.arrayUnion("artista"),
+  };
+  if (realName) userUpdate.realName = realName;
+  if (birthDate) userUpdate.birthDate = birthDate;
+  batch.update(userRef, userUpdate);
+  await batch.commit();
+
+  logger.info(
+    `Perfil ${slug} creado (${premium ? "publicado con pase" : "borrador"}) para ${uid}`,
+  );
+  return { slug };
+});
+
+/**
  * Marca un VALE del pase como ENTREGADO (SOLO admin): cuando el estudio cumple la
  * producción o el video incluidos en el pase. `vale` = "produccion" | "video".
  * Idempotente (vuelve a poner `usado: true`); guarda `entregadoAt`.

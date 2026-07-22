@@ -21,6 +21,7 @@ export type AnalyticsEvent =
   // Artista
   | "artist_signup_started" // entra a "soy artista"
   | "artist_profile_submitted" // crea/paga el perfil
+  | "artist_profile_created_with_pass" // crea el perfil GRATIS con un pase activo
   // Beatmaker
   | "beatmaker_profile_created"; // alta self-serve del perfil de beatmaker (sin pago)
 
@@ -35,5 +36,6 @@ export const ANALYTICS_EVENTS: AnalyticsEvent[] = [
   "premium_pay_started",
   "artist_signup_started",
   "artist_profile_submitted",
+  "artist_profile_created_with_pass",
   "beatmaker_profile_created",
 ];

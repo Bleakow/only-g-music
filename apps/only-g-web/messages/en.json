@@ -1464,15 +1464,18 @@
     "alreadyRegistered": {
       "title": "You're already registered",
       "activeBody": "Your artist profile is active. Edit it whenever you want.",
-      "pendingBody": "Your profile will be activated once the studio confirms your payment. In the meantime, track the status in your requests.",
+      "pendingBody": "You have an unfinished sign-up. Finish creating your profile — it's free; you only pay when you want to publish it.",
       "goToProfile": "Go to my profile",
       "viewPayment": "View my payment"
     },
     "eyebrow": "Artist profile",
     "heroTitle": "Join the roster",
     "heroParagraph": "Create your public profile: your music CV with photo, bio, social links, and your best tracks on YouTube/Spotify — with a URL and QR code to share. Valid for 2 months, renewable. Your real name and birth date stay <strong>private</strong>.",
-    "pricingLabel": "Profile cost (2 months)",
-    "pricingNote": "After submitting, upload your payment receipt in the chat and the studio will confirm it to activate your profile.",
+    "pricingLabel": "When you publish",
+    "pricingNote": "Create and edit it for FREE. This payment is only requested when you want to publish it to the showcase; your profile stays saved until then.",
+    "paseLabel": "Your pass",
+    "paseGratis": "Included",
+    "paseNota": "Your pass publishes your profile instantly, no payment.",
     "fields": {
       "artisticName": {
         "label": "Artist name",
@@ -1493,7 +1496,8 @@
         "label": "Profile photo (required)"
       }
     },
-    "submit": "Continue to payment →",
+    "submit": "Create my profile",
+    "submitPase": "Create my profile",
     "errors": {
       "missingRequired": "Please fill in your artist name, full name, and date of birth.",
       "invalidYear": "Career start year must be between 1950 and {year}.",

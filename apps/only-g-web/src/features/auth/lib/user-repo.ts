@@ -36,6 +36,7 @@ function toAccount(uid: string, data: DocumentData): UserAccount {
     artistSlug: data.artistSlug ?? undefined,
     artistDraft: (data.artistDraft as ArtistDraft) ?? undefined,
     gnotesPremium: data.gnotesPremium ?? undefined,
+    pase: data.pase ?? undefined,
   };
 }
 

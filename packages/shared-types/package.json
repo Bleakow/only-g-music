@@ -11,9 +11,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:native": "tsgo -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
   }
 }

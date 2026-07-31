@@ -11,6 +11,9 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "typecheck:native": "tsgo -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -41,12 +44,14 @@
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "country-state-city": "^3.2.1",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
     "prettier": "^3.6.2",
     "prettier-plugin-tailwindcss": "^0.6.0",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.10"
   }
 }

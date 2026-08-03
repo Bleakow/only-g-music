@@ -71,7 +71,9 @@ export type PagoConcepto =
   | "beat"
   | "pedido"
   | "gnotes"
-  | "pase";
+  | "pase"
+  /** Membresía de organización de un colectivo + sus cupos de artista (§07). */
+  | "colectivo";
 
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
@@ -110,7 +112,9 @@ export interface Conversation {
       | "beat"
       | "pedido"
       | "gnotes"
-      | "pase";
+      | "pase"
+      /** `id` = slug del colectivo. */
+      | "colectivo";
     id: string;
   };
   /** Estado del pago (solo `type === "pago"`). */

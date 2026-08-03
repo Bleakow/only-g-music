@@ -12,11 +12,38 @@ import {
   DEFAULT_PLAYER_Y,
   DEFAULT_PLAYER_SIZE,
   GALLERY_SPAN_CLASS,
+  GALLERY_GRID,
+  formatCompact,
+  featuredMediaItems,
 } from "@only-g/shared-types/artist-profile";
 import type { SocialPlatform } from "@only-g/shared-types/artist";
 import { formatLocation } from "@only-g/shared-types/location";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, VerifiedIcon, EditIcon } from "@/components/icons";
+import {
+  ArrowLeftIcon,
+  VerifiedIcon,
+  EditIcon,
+  ChatIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  ClockIcon,
+  LockIcon,
+} from "@/components/icons";
+import {
+  isSectionOn,
+  type SectionId,
+} from "@only-g/shared-types/profile-sections";
+import { ProfileChip } from "./ProfileChip";
+import { DisciplineTags } from "./DisciplineTags";
+import {
+  CategoriasSection,
+  FichaTecnicaSection,
+  GenerosBaileSection,
+  MarcasSection,
+  ReconocimientosSection,
+  TrayectoriaSection,
+} from "./RoleSections";
+import { ContactBeatmakerButton } from "@/features/beats/components/ContactBeatmakerButton";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { SOCIAL_META } from "../../lib/socials";
@@ -27,70 +54,69 @@ import { MembershipPayButton } from "./MembershipPayButton";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { PhotoViewer } from "./PhotoViewer";
 import { RelatedArtists } from "./RelatedArtists";
+import { StatsCards } from "./StatsCards";
+import { FeaturedMediaPlayer } from "./FeaturedMediaPlayer";
+import { FollowButton } from "./FollowButton";
+import { ProfileColectivos } from "./ProfileColectivos";
+import { trackVisita } from "../../lib/metrics-client";
+import {
+  ProfileMetricsProvider,
+  useTrackSocialClick,
+} from "./ProfileMetricsContext";
+import { openChat } from "@/features/conversations/lib/open-conversation";
 
-/** Media destacada de la pantalla 2: clip en bucle mudo o foto. Si el video no
- *  carga (p.ej. un webm en un Safari antiguo), cae a la foto para no dejar hueco. */
-function FeaturedVisual({
-  media,
-  photoURL,
-  name,
-}: {
-  media: ArtistProfile["featuredMedia"];
-  photoURL: string;
-  name: string;
-}) {
-  const [failed, setFailed] = useState(false);
-  if (media && media.type === "video" && !failed) {
-    return (
-      <video
-        src={media.url}
-        autoPlay
-        loop
-        muted
-        playsInline
-        aria-label={name}
-        onError={() => setFailed(true)}
-        className="absolute inset-0 h-full w-full object-cover object-center"
-      />
-    );
-  }
-  const src = media && media.type === "image" ? media.url : photoURL;
-  if (!src) return null;
-  return (
-    <Image
-      src={src}
-      alt={name}
-      fill
-      sizes="(max-width: 768px) 100vw, 45vw"
-      className={
-        media?.type === "image"
-          ? "object-cover object-center"
-          : "object-cover object-top"
-      }
-    />
-  );
-}
-
-function Socials({ socials }: { socials: ArtistProfile["socials"] }) {
-  const entries = Object.entries(socials).filter(
+/**
+ * Redes sociales (§04): las que tienen nº de seguidores (manual del artista o
+ * automático de YouTube/Spotify) van PRIMERO como tarjeta con el conteo; las demás,
+ * como icono simple al final.
+ */
+function Socials({ profile }: { profile: ArtistProfile }) {
+  const t = useTranslations("artistProfile");
+  const countClick = useTrackSocialClick();
+  const entries = Object.entries(profile.socials).filter(
     ([key, url]) => SOCIAL_META[key as SocialPlatform] && url && url !== "#",
-  );
+  ) as [SocialPlatform, string][];
   if (entries.length === 0) return null;
+
+  // El conteo por red: primero el manual del artista, si no el auto de socialStats.
+  const countOf = (k: SocialPlatform): number | null => {
+    const manual = profile.manualFollowers?.[k];
+    if (typeof manual === "number" && manual > 0) return manual;
+    const auto = profile.socialStats?.followers?.[k];
+    return typeof auto === "number" && auto > 0 ? auto : null;
+  };
+  const withCount = entries.filter(([k]) => countOf(k) !== null);
+  const plain = entries.filter(([k]) => countOf(k) === null);
+
+  // Todas con el MISMO estilo de tarjeta (cohesión): icono + nombre. Las que tienen
+  // conteo añaden la línea de seguidores; las demás muestran solo el nombre (o
+  // "Seguir"). Las de conteo van primero.
   return (
-    <div className="flex flex-wrap gap-4">
-      {entries.map(([key, url]) => {
-        const { label, Icon } = SOCIAL_META[key as SocialPlatform];
+    <div className="flex flex-wrap gap-3">
+      {[...withCount, ...plain].map(([key, url]) => {
+        const { label, Icon } = SOCIAL_META[key];
+        const n = countOf(key);
         return (
           <a
             key={key}
             href={url}
-            aria-label={label}
             target="_blank"
             rel="noreferrer"
-            className={`${glassSurfaceSoft} group flex size-12 items-center justify-center rounded-full text-white/80 transition hover:text-white`}
+            onClick={() => countClick(key)}
+            aria-label={n !== null ? `${label}: ${n}` : label}
+            className="bg-ink-panel group flex min-w-[150px] items-center gap-3 rounded-2xl border border-white/10 px-5 py-3.5 text-white/85 transition hover:border-white/25 hover:text-white"
           >
-            <GlassSheen />
-            <Icon className="relative size-5" />
+            <Icon className="size-6 shrink-0" />
+            <span className="flex flex-col leading-tight">
+              <span className="text-xs font-bold tracking-wide uppercase">
+                {label}
+              </span>
+              <span className="text-silver-400 text-[0.7rem]">
+                {n !== null
+                  ? t("followersCount", { count: formatCompact(n) })
+                  : t("visitProfile")}
+              </span>
+            </span>
           </a>
         );
       })}
@@ -159,6 +185,23 @@ export function ArtistProfileView({
     return () => ro.disconnect();
   }, [profile.playerY, profile.playerSize, profile.entryTrackUrl]);
 
+  // Cuenta UNA visita por pestaña, sin contar al dueño. Va contra la API de
+  // métricas (server-side): allí se deduce el país y se agrega por día, y de
+  // paso el cliente deja de poder escribir contadores directamente.
+  useEffect(() => {
+    trackVisita(profile.slug, isOwner);
+  }, [profile.slug, isOwner]);
+
+  // §05 — qué secciones se pintan. El artista las enciende y apaga en el gestor
+  // del editor; las que su etiqueta no desbloquea no salen aunque estén en `prefs`.
+  const on = (id: SectionId) =>
+    isSectionOn(id, profile.sectionPrefs, profile.disciplines);
+
+  // Beatmaker que NO canta: su llamada a la acción es otra (ver más abajo).
+  const disciplinas = profile.disciplines ?? [];
+  const esBeatmakerPuro =
+    disciplinas.includes("beatmaker") && !disciplinas.includes("artista");
+
   const now = Date.now();
   const isPremium = premiumEstado(profile.premium, now) === "activo";
   const anios =
@@ -171,11 +214,14 @@ export function ArtistProfileView({
       : profile.genre
         ? [profile.genre]
         : [];
-  const ciudad = formatLocation(profile.location) || profile.city;
-  // En el hero, hasta 3 géneros; el resto se listan como chips más abajo.
-  const meta = [...generos.slice(0, 3), ciudad].filter(Boolean).join(" · ");
+  // Sobre la foto solo va la ciudad: los géneros tienen su propia sección más
+  // abajo y repetirlos aquí solo cargaba la portada.
+  const meta = formatLocation(profile.location) || profile.city;
 
   return (
+    // El provider de métricas envuelve SOLO el perfil público: los mismos
+    // reproductores dentro del editor no cuentan (allí no hay provider).
+    <ProfileMetricsProvider slug={profile.slug} isOwner={isOwner}>
     <article className="relative min-h-dvh">
       {/* Pantalla 1: foto + identidad + acciones */}
       <section
@@ -195,24 +241,28 @@ export function ArtistProfileView({
               fill
               priority
               sizes="100vw"
-              className={`object-cover ${profile.photoURLMobile ? "hidden sm:block" : ""}`}
+              className="hidden object-cover sm:block"
               style={{
                 transform: photoTransformCss(profile.photoTransform),
                 transformOrigin: "center",
               }}
             />
-            {profile.photoURLMobile && (
-              <Image
-                src={profile.photoURLMobile}
-                alt={t("artistProfile.portraitAlt", {
-                  name: profile.artisticName,
-                })}
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover sm:hidden"
-              />
-            )}
+            {/* Móvil: su propia imagen si la hay, y SIEMPRE su propio encuadre —
+                el marco es vertical, así que el encuadre de PC no sirve aquí. */}
+            <Image
+              src={profile.photoURLMobile || profile.photoURL}
+              alt={t("artistProfile.portraitAlt", {
+                name: profile.artisticName,
+              })}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover sm:hidden"
+              style={{
+                transform: photoTransformCss(profile.photoTransformMobile),
+                transformOrigin: "center",
+              }}
+            />
           </>
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-800 to-neutral-950" />
@@ -237,26 +287,31 @@ export function ArtistProfileView({
         </div>
 
         <div ref={identityRef} className="absolute inset-x-0 bottom-0 p-6 sm:p-12">
+          {/* Sobre la foto: el sello de verificado, las ARTES que maneja y la
+              ciudad. Los géneros y la trayectoria tienen su sitio más abajo. */}
           <div className="mb-3 flex flex-wrap items-center gap-2">
             {isPremium && (
-              <span className="border-amethyst-300/50 bg-amethyst-500/15 text-amethyst-200 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold tracking-[2px] uppercase">
-                <VerifiedIcon className="size-4" />
+              <ProfileChip
+                accent={profile.accent}
+                icon={<VerifiedIcon className="size-4" />}
+              >
                 {t("artistProfile.verified")}
-              </span>
+              </ProfileChip>
             )}
-            {anios !== null && (
-              <span className="rounded-full border border-white/15 px-3 py-1 text-xs tracking-[2px] text-white/70 uppercase">
-                {t("artistProfile.yearsCareer", { count: anios })}
-              </span>
-            )}
+            <DisciplineTags
+              disciplines={profile.disciplines}
+              accent={profile.accent}
+            />
           </div>
 
-          <p
-            className="text-sm font-bold tracking-[4px] uppercase"
-            style={{ color: profile.accent }}
-          >
-            {meta}
-          </p>
+          {meta && (
+            <p
+              className="text-sm font-bold tracking-[4px] uppercase"
+              style={{ color: profile.accent }}
+            >
+              {meta}
+            </p>
+          )}
           <h1 className="font-narrow text-6xl leading-[0.9] font-bold text-white uppercase drop-shadow-[0_2px_12px_#000] sm:text-8xl">
             {profile.artisticName}
           </h1>
@@ -265,12 +320,7 @@ export function ArtistProfileView({
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-3">
-            <Link
-              href={`/cotizar?colaborador=${profile.slug}`}
-              className="from-silver-100 to-amethyst-300 text-ink inline-flex min-h-11 items-center rounded-full bg-gradient-to-r px-7 py-3 text-sm font-semibold tracking-[2px] uppercase transition hover:shadow-[0_0_22px_rgba(139,92,246,0.55)]"
-            >
-              {t("artistProfile.quoteWith", { name: profile.artisticName })}
-            </Link>
+            <FollowButton profile={profile} />
             <LikeButton slug={profile.slug} />
             <ShareProfile
               slug={profile.slug}
@@ -292,7 +342,7 @@ export function ArtistProfileView({
         </div>
 
         {/* Reproductor SOBRE la foto — sin marco, blanco, posición/tamaño libres */}
-        {profile.entryTrackUrl && profile.playerOverlay !== false && (
+        {on("reproductor") && profile.entryTrackUrl && profile.playerOverlay !== false && (
           <div
             ref={playerRef}
             className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 ${PLAYER_SIZE_W[profile.playerSize ?? DEFAULT_PLAYER_SIZE]}`}
@@ -312,102 +362,246 @@ export function ArtistProfileView({
         )}
       </section>
 
-      {/* Canción de fondo — variante en tarjeta debajo (si NO va sobre la foto) */}
-      {profile.entryTrackUrl && profile.playerOverlay === false && (
-        <ProfileAudioPlayer
-          src={profile.entryTrackUrl}
-          accent={profile.accent}
-          autoPlay
-        />
-      )}
-
-      {/* Pantalla 2: foto + bio + redes */}
-      <section className="mx-auto grid max-w-6xl gap-10 px-6 py-20 md:grid-cols-2 md:items-end md:gap-16 md:py-28">
-        <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
-          <FeaturedVisual
-            media={profile.featuredMedia}
-            photoURL={profile.photoURL}
-            name={profile.artisticName}
-          />
-        </div>
-
-        <div className="md:pb-6">
-          <p
-            className="font-narrow text-sm font-bold tracking-[4px] uppercase"
-            style={{ color: profile.accent }}
-          >
-            {t("artistProfile.about", { name: profile.artisticName })}
-          </p>
-          <p className="text-silver-100 [&::first-letter]:font-narrow [&::first-letter]:text-amethyst-300 mt-5 text-xl leading-relaxed sm:text-[1.6rem] sm:leading-[1.6] [&::first-letter]:float-left [&::first-letter]:mr-3 [&::first-letter]:text-7xl [&::first-letter]:leading-[0.7] [&::first-letter]:font-bold">
-            {profile.bio}
-          </p>
-          {generos.length > 3 && (
-            <div className="mt-8">
-              <p
-                className="font-narrow text-sm font-bold tracking-[4px] uppercase"
-                style={{ color: profile.accent }}
-              >
-                {t("artistProfile.genres")}
-              </p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {generos.map((g) => (
-                  <span
-                    key={g}
-                    className="rounded-full border border-white/15 px-3 py-1 text-sm text-white/80"
-                  >
-                    {g}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="mt-10">
-            <Socials socials={profile.socials} />
+      {/* ── Contenido: secciones apiladas según el .pen (§04) ──────────── */}
+      <div className="bg-ink relative z-10">
+        {/* Canción de fondo — variante en tarjeta (si NO va sobre la foto) */}
+        {on("reproductor") && profile.entryTrackUrl && profile.playerOverlay === false && (
+          <div className="mx-auto max-w-400 px-6 pt-10">
+            <ProfileAudioPlayer
+              src={profile.entryTrackUrl}
+              accent={profile.accent}
+              autoPlay
+            />
           </div>
-        </div>
-      </section>
+        )}
 
-      {/* Galería */}
-      {profile.gallery.length > 0 && (
-        <section className="mx-auto max-w-6xl px-6 pb-20">
-          <div className="flex items-center gap-3">
-            <h2 className="font-narrow text-2xl font-bold tracking-wide uppercase">
-              {t("artistProfile.gallery")}
-            </h2>
-            {isOwner && (
+        {/* Barra de acciones: Mensaje · Cotizar (reubicado) · Métricas (próximamente) */}
+        <div className="mx-auto max-w-400 px-6 pt-12 sm:pt-16">
+          {/* Móvil: Mensaje + Cotizar iguales arriba (grid 2), Métricas full-width
+              abajo. Escritorio: los tres en línea. */}
+          <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
+            <button
+              type="button"
+              onClick={() => openChat()}
+              className={`${glassSurfaceSoft} relative flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-bold tracking-[2px] text-white/90 uppercase transition hover:text-white sm:w-auto`}
+            >
+              <GlassSheen />
+              <ChatIcon className="relative size-5" />
+              <span className="relative">{t("artistProfile.actionMessage")}</span>
+            </button>
+            {/* CTA según la etiqueta: al talento EN ESCENA se le cotiza una
+                fecha; a un beatmaker se le escribe para encargarle un beat.
+                Ofrecerle "Cotizar" una agenda no tenía sentido. */}
+            {esBeatmakerPuro ? (
+              <ContactBeatmakerButton
+                beatmakerUid={profile.uid}
+                beatmakerNombre={profile.artisticName}
+                className="w-full sm:w-auto"
+              />
+            ) : (
               <Link
-                href="/artista/perfil"
-                aria-label={t("artistProfile.editProfile")}
-                className="hover:border-amethyst-300/70 inline-flex size-9 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:text-white"
+                href={`/cotizar?colaborador=${profile.slug}`}
+                className="from-amethyst-400 to-amethyst-600 ring-amethyst-300/40 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-linear-to-b px-8 text-sm font-bold tracking-[2px] text-white uppercase shadow-[0_6px_22px_rgba(124,58,237,0.5)] ring-1 ring-inset transition hover:brightness-110 sm:w-auto"
               >
-                <EditIcon className="size-4" />
+                <CalendarIcon className="size-5" />
+                {t("artistProfile.quote")}
+              </Link>
+            )}
+            {/* Métricas: para el dueño siempre; para el resto, solo si el
+                artista las hizo públicas. Con enlace compartido se entra por la
+                URL con token, no por este botón. */}
+            {on("metricas") &&
+              (isOwner || profile.metricsVisibility === "publico") && (
+              <Link
+                href={`/artistas/${profile.slug}/metricas`}
+                className="bg-amethyst-500/10 text-amethyst-200 ring-amethyst-300/40 hover:bg-amethyst-500/20 col-span-2 flex min-h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-bold tracking-[2px] uppercase ring-1 ring-inset transition hover:text-white sm:col-span-1 sm:w-auto"
+              >
+                <ChartBarIcon className="size-5" />
+                {t("artistProfile.actionMetrics")}
+                {isOwner && profile.metricsVisibility !== "publico" && (
+                  <LockIcon
+                    className="size-3.5 text-white/40"
+                    aria-label={t("artistProfile.metricsPrivate")}
+                  />
+                )}
               </Link>
             )}
           </div>
-          <div className="mt-6 grid auto-rows-[120px] grid-cols-2 gap-3 sm:auto-rows-[160px] sm:grid-cols-4">
-            {profile.gallery.map((item, i) => (
-              <button
-                type="button"
-                key={item.url}
-                onClick={() => setViewerIndex(i)}
-                aria-label={t("artistProfile.viewPhoto", { n: i + 1 })}
-                className={`group relative overflow-hidden rounded-xl border border-white/10 bg-neutral-950 ${GALLERY_SPAN_CLASS[item.span]}`}
-              >
-                <Image
-                  src={item.url}
-                  alt={t("artistProfile.galleryPhotoAlt", {
-                    name: profile.artisticName,
-                    n: i + 1,
-                  })}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 25vw"
-                  className="object-cover transition duration-500 group-hover:scale-105"
-                />
-              </button>
-            ))}
-          </div>
+        </div>
+
+        {/* Estadísticas — 4 tarjetas */}
+        <section className="mx-auto max-w-400 px-6 pt-14">
+          <h2 className="font-narrow mb-6 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+            {t("artistProfile.sectionStats")}
+          </h2>
+          <StatsCards profile={profile} />
         </section>
-      )}
+
+        {/* Media destacada — player principal + lista de clips */}
+        {on("mediaDestacada") && (
+        <section className="mx-auto max-w-400 px-6 pt-16">
+          <h2 className="font-narrow mb-6 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+            {t("artistProfile.sectionFeatured")}
+          </h2>
+          <FeaturedMediaPlayer
+            items={featuredMediaItems(
+              profile.featuredMediaList,
+              profile.featuredMedia,
+            )}
+            photoURL={profile.photoURL}
+            name={profile.artisticName}
+            accent={profile.accent}
+          />
+        </section>
+        )}
+
+        {/* Galería + Temas: dos paneles con BORDE y alto fijo (scroll interno).
+            La galería usa la MISMA grid del editor (GALLERY_GRID) → el bento se ve
+            idéntico a como el artista lo armó. Cada panel obedece a su sección,
+            y si el artista apaga las dos, la fila entera desaparece. */}
+        {((on("galeria") && profile.gallery.length > 0) ||
+          (on("canciones") && profile.tracks.length > 0)) && (
+          <div className="mx-auto max-w-400 px-6 pt-16">
+            <div
+              className={`grid gap-8 ${
+                on("galeria") &&
+                profile.gallery.length > 0 &&
+                on("canciones") &&
+                profile.tracks.length > 0
+                  ? "lg:grid-cols-2"
+                  : ""
+              }`}
+            >
+              {on("galeria") && profile.gallery.length > 0 && (
+                <div>
+                  <div className="mb-5 flex items-center gap-3">
+                    <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+                      {t("artistProfile.gallery")}
+                    </h2>
+                    {isOwner && (
+                      <Link
+                        href="/artista/perfil"
+                        aria-label={t("artistProfile.editProfile")}
+                        className="hover:border-amethyst-300/70 inline-flex size-9 items-center justify-center rounded-full border border-white/20 text-white/70 transition hover:text-white"
+                      >
+                        <EditIcon className="size-4" />
+                      </Link>
+                    )}
+                  </div>
+                  <div className="max-h-[620px] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <div className={GALLERY_GRID}>
+                      {profile.gallery.map((item, i) => (
+                        <button
+                          type="button"
+                          key={item.url}
+                          onClick={() => setViewerIndex(i)}
+                          aria-label={t("artistProfile.viewPhoto", { n: i + 1 })}
+                          className={`group relative overflow-hidden rounded-xl border border-white/10 bg-neutral-950 ${GALLERY_SPAN_CLASS[item.span]}`}
+                        >
+                          <Image
+                            src={item.url}
+                            alt={t("artistProfile.galleryPhotoAlt", {
+                              name: profile.artisticName,
+                              n: i + 1,
+                            })}
+                            fill
+                            sizes="(max-width: 1024px) 45vw, 22vw"
+                            className="object-cover transition duration-500 group-hover:scale-105"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {on("canciones") && profile.tracks.length > 0 && (
+                <div>
+                  <h2 className="font-narrow mb-5 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+                    {t("artistProfile.topTracks")}
+                  </h2>
+                  <div className="max-h-[620px] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    <TrackPlayers tracks={profile.tracks} />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Descripción — SOBRE MÍ. La TRAYECTORIA vive aquí, como chip sobre el
+            párrafo: da contexto a la historia en vez de competir con la foto. */}
+        {on("sobreMi") && (
+        <section className="mx-auto max-w-400 px-6 pt-16">
+          <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+            {t("artistProfile.aboutMe")}
+          </h2>
+          {anios !== null && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <ProfileChip
+                accent={profile.accent}
+                icon={<ClockIcon className="size-4" />}
+              >
+                {t("artistProfile.yearsCareer", { count: anios })}
+              </ProfileChip>
+            </div>
+          )}
+          <p className="text-silver-200 mt-5 max-w-3xl text-lg leading-relaxed sm:text-xl">
+            {profile.bio}
+          </p>
+        </section>
+        )}
+
+        {/* ── Secciones por ETIQUETA (§05) ──────────────────────────────
+            Cada una obedece a su interruptor del gestor Y solo aparece si tiene
+            datos: el gestor dice si está permitida, el contenido si hay algo. */}
+        {on("fichaTecnica") && <FichaTecnicaSection profile={profile} />}
+        {on("portafolio") && <CategoriasSection profile={profile} />}
+        {on("generosBaile") && <GenerosBaileSection profile={profile} />}
+        {on("trayectoria") && <TrayectoriaSection profile={profile} />}
+        {on("reconocimientos") && <ReconocimientosSection profile={profile} />}
+        {on("portafolio") && <MarcasSection profile={profile} />}
+
+        {/* Colectivos (solo la sección; backend en su fase) */}
+        <div className="pt-16">
+          <ProfileColectivos profile={profile} isOwner={isOwner} />
+        </div>
+
+        {/* Géneros musicales */}
+        {on("generosMusicales") && generos.length > 0 && (
+          <section className="mx-auto max-w-400 px-6 pb-4">
+            <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+              {t("artistProfile.genres")}
+            </h2>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              {generos.map((g) => (
+                <ProfileChip key={g} accent={profile.accent}>
+                  {g}
+                </ProfileChip>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Redes sociales */}
+        {on("redes") && (
+          <section className="mx-auto max-w-400 px-6 py-14">
+            <h2 className="font-narrow mb-6 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+              {t("artistProfile.sectionSocials")}
+            </h2>
+            <Socials profile={profile} />
+          </section>
+        )}
+
+        {/* Artistas relacionados / colaboradores (red interna) */}
+        {on("relacionados") &&
+          profile.relatedArtists &&
+          profile.relatedArtists.length > 0 && (
+          <RelatedArtists
+            slugs={profile.relatedArtists}
+            currentSlug={profile.slug}
+          />
+        )}
+      </div>
 
       {viewerIndex !== null && (
         <PhotoViewer
@@ -417,24 +611,7 @@ export function ArtistProfileView({
           onNavigate={setViewerIndex}
         />
       )}
-
-      {/* Más sonadas */}
-      {profile.tracks.length > 0 && (
-        <section className="mx-auto max-w-3xl px-6 pb-24">
-          <h2 className="font-narrow text-2xl font-bold tracking-wide uppercase">
-            {t("artistProfile.topTracks")}
-          </h2>
-          <TrackPlayers tracks={profile.tracks} />
-        </section>
-      )}
-
-      {/* Artistas relacionados / colaboradores (red interna) */}
-      {profile.relatedArtists && profile.relatedArtists.length > 0 && (
-        <RelatedArtists
-          slugs={profile.relatedArtists}
-          currentSlug={profile.slug}
-        />
-      )}
     </article>
+    </ProfileMetricsProvider>
   );
 }

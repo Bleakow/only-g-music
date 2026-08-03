@@ -8,6 +8,7 @@ import { platformsDisponibles, trackEmbed } from "../../lib/embeds";
 import { claimAudio, subscribeAudio } from "../../lib/audio-bus";
 import { PlayIcon, PauseIcon, SpotifyIcon, YouTubeIcon } from "@/components/icons";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
+import { useTrackPlay } from "./ProfileMetricsContext";
 
 /** Ecualizador decorativo: marca el tema activo con barras que laten. */
 function Equalizer({ animate }: { animate: boolean }) {
@@ -40,6 +41,7 @@ function Equalizer({ animate }: { animate: boolean }) {
 export function TrackPlayers({ tracks }: { tracks: ProfileTrack[] }) {
   const t = useTranslations();
   const reduce = useReducedMotion();
+  const countPlay = useTrackPlay();
   const plataformas = platformsDisponibles(tracks);
   const [platform, setPlatform] = useState<TrackPlatform>(
     plataformas[0] ?? "spotify",
@@ -62,6 +64,11 @@ export function TrackPlayers({ tracks }: { tracks: ProfileTrack[] }) {
       if (next !== null) claimAudio("track"); // reclamamos el turno de audio
       return next;
     });
+    // Abrir el embed cuenta como reproducción. Matiz importante para leer bien
+    // el dato: los iframes de YouTube/Spotify no nos dicen si le dieron al play
+    // de verdad, así que esto mide INTENCIÓN, no escucha confirmada. Por eso se
+    // guarda con su `origen` y no se mezcla con los reproductores propios.
+    if (openIdx !== i) countPlay(platform, tracks[i]?.title);
   }
 
   if (plataformas.length === 0) {

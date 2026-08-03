@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
 import { IconButton } from "@/components/ui/IconButton";
+import { DockIconButton } from "@/components/ui/DockIconButton";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BellIcon, CheckIcon } from "@/components/icons";
 import type { Notificacion } from "@only-g/shared-types/notification";
@@ -30,8 +31,16 @@ const WRAP_RIGHT = "fixed top-4 right-6 z-[105] sm:top-5 sm:right-12";
  */
 export function NotificationBell({
   align = "left",
+  docked = false,
+  bare = false,
 }: {
   align?: "left" | "right";
+  /** En un dock: sin wrapper `fixed` (vive en el flujo del contenedor). El panel
+   *  sigue anclado al viewport (cae desde arriba). */
+  docked?: boolean;
+  /** En el dock: `bare` = icono pelado (DockIconButton, desktop); si no, círculo
+   *  (IconButton, como en móvil). */
+  bare?: boolean;
 }) {
   const { user } = useAuth();
   const t = useTranslations();
@@ -114,23 +123,40 @@ export function NotificationBell({
     }
   }
 
-  const wrap = align === "right" ? WRAP_RIGHT : WRAP_LEFT;
+  const wrap = docked ? "relative" : align === "right" ? WRAP_RIGHT : WRAP_LEFT;
 
   return (
     <div ref={ref} className={wrap}>
-      <IconButton
-        onClick={() => setOpen((v) => !v)}
-        aria-label={t("notificaciones.title")}
-        aria-expanded={open}
-        active={open}
-      >
-        <BellIcon className="size-5" />
-        {count > 0 && (
-          <span className="bg-amethyst-400 text-ink absolute -top-0.5 -right-0.5 flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold ring-2 ring-black/50">
-            {count > 9 ? "9+" : count}
-          </span>
-        )}
-      </IconButton>
+      {/* Dock desktop: icono pelado. Dock móvil / resto: IconButton con círculo. */}
+      {docked && bare ? (
+        <DockIconButton
+          onClick={() => setOpen((v) => !v)}
+          aria-label={t("notificaciones.title")}
+          aria-expanded={open}
+          className={open ? "bg-white/10 text-white" : ""}
+        >
+          <BellIcon className="size-5" />
+          {count > 0 && (
+            <span className="bg-amethyst-400 text-ink absolute -top-0.5 -right-0.5 flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold ring-2 ring-black/50">
+              {count > 9 ? "9+" : count}
+            </span>
+          )}
+        </DockIconButton>
+      ) : (
+        <IconButton
+          onClick={() => setOpen((v) => !v)}
+          aria-label={t("notificaciones.title")}
+          aria-expanded={open}
+          active={open}
+        >
+          <BellIcon className="size-5" />
+          {count > 0 && (
+            <span className="bg-amethyst-400 text-ink absolute -top-0.5 -right-0.5 flex min-w-[1.1rem] items-center justify-center rounded-full px-1 text-[0.65rem] font-bold ring-2 ring-black/50">
+              {count > 9 ? "9+" : count}
+            </span>
+          )}
+        </IconButton>
+      )}
 
       <AnimatePresence>
         {open && (

@@ -7,7 +7,6 @@ import { useAuth } from "@/features/auth/components/AuthProvider";
 import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import { getProfileBySlug } from "../../lib/artist-profile-repo";
 import { ArtistProfileView } from "./ArtistProfileView";
-import { BeatmakerProfileView } from "./BeatmakerProfileView";
 
 /**
  * Carga el perfil real desde Firestore con fallback al artista semilla (que el
@@ -43,12 +42,11 @@ export function ArtistProfileLoader({
   }, [slug]);
 
   if (profile) {
-    // "Beatmaker puro" → vista minimal dedicada. Un usuario cantante+beatmaker
-    // (disciplines incluye 'artista') conserva la vista de cantante completa.
-    const disc = profile.disciplines ?? [];
-    const esBeatmakerPuro =
-      disc.includes("beatmaker") && !disc.includes("artista");
-    if (esBeatmakerPuro) return <BeatmakerProfileView profile={profile} />;
+    // TODOS los perfiles usan la misma vista. Antes había una bifurcación a una
+    // `BeatmakerProfileView` minimal, que dejaba al beatmaker sin editar, sin
+    // métricas y sin galería. Ya no hace falta: con las secciones por etiqueta
+    // (§05), un beatmaker puro simplemente no desbloquea reproductor/canciones/
+    // géneros, y sí su tienda — el mismo perfil se adapta solo.
     return (
       <ArtistProfileView
         profile={profile}

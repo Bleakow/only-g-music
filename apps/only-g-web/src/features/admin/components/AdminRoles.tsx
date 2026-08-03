@@ -26,6 +26,8 @@ const ALL_ROLES: Role[] = [
   "beatmaker",
   "modelo",
   "bailarin",
+  "dj",
+  "presentador",
 ];
 
 function isRole(value: string): value is Role {

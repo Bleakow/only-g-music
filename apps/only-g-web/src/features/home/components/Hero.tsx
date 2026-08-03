@@ -38,16 +38,26 @@ export function Hero() {
   // CTA "Explorar": efecto scramble/decode (GSAP). Se dispara al MONTAR (entrada)
   // y en cada HOVER. Respeta prefers-reduced-motion (deja el texto tal cual).
   const exploreRef = useRef<HTMLSpanElement>(null);
-  const runScramble = useCallback(() => {
-    const el = exploreRef.current;
+  const servicesRef = useRef<HTMLSpanElement>(null);
+  // Descifrado reutilizable: scramblea el texto de un <span>. Respeta
+  // prefers-reduced-motion (deja el texto tal cual).
+  const scrambleTo = useCallback((el: HTMLElement | null, text: string) => {
     if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches)
       return;
     gsap.to(el, {
       duration: 0.9,
       ease: "none",
-      scrambleText: { text: t("exploreWork"), chars: "upperCase", speed: 0.5 },
+      scrambleText: { text, chars: "upperCase", speed: 0.5 },
     });
-  }, [t]);
+  }, []);
+  const runScramble = useCallback(
+    () => scrambleTo(exploreRef.current, t("exploreWork")),
+    [scrambleTo, t],
+  );
+  const runServicesScramble = useCallback(
+    () => scrambleTo(servicesRef.current, t("servicesCta")),
+    [scrambleTo, t],
+  );
 
   // Las entradas del Hero (cascada de textos + redes + scramble de la CTA)
   // arrancan cuando el InitialLoader TERMINA, no al montar — si no, se ejecutan
@@ -56,8 +66,28 @@ export function Hero() {
   const [introReady, setIntroReady] = useState(false);
   useEffect(() => onIntroReady(() => setIntroReady(true)), []);
   useEffect(() => {
-    if (introReady) runScramble();
-  }, [introReady, runScramble]);
+    if (introReady) {
+      runScramble();
+      runServicesScramble();
+    }
+  }, [introReady, runScramble, runServicesScramble]);
+
+  // El logo superior-centrado DESCIENDE desde arriba y se fija en su punto, al
+  // terminar el loader. `gsap.context` + revert = seguro ante el doble-montaje de
+  // StrictMode (si no, `gsap.from` deja el logo invisible en dev).
+  useEffect(() => {
+    if (!introReady) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const ctx = gsap.context(() => {
+      gsap.from("#hero-key-logo", {
+        top: "-22%",
+        opacity: 0,
+        duration: 1.4,
+        ease: "power2.out",
+      });
+    });
+    return () => ctx.revert();
+  }, [introReady]);
 
   useEffect(() => {
     // El logo de la máscara sube más en DESKTOP (aislado arriba); en móvil se
@@ -259,24 +289,47 @@ export function Hero() {
               br: () => <br className="sm:hidden" />,
             })}
           </p>
-          <button
-            type="button"
-            onClick={scrollToWork}
-            onMouseEnter={runScramble}
-            className={`group ${glassSurfaceSoft} text-silver-100 pointer-events-auto mt-8 inline-flex min-h-11 w-fit items-center rounded-full px-6 text-sm tracking-[2px] uppercase transition hover:scale-[1.03] hover:text-white hover:ring-amethyst-300/50 active:scale-95`}
-          >
-            <GlassSheen />
-            {/* Ghost invisible que reserva el ancho final: evita que el pill
-                "salte" mientras el texto se descifra (scramble mantiene el largo). */}
-            <span className="relative inline-grid">
-              <span aria-hidden className="invisible col-start-1 row-start-1">
-                {t("exploreWork")}
-              </span>
-              <span ref={exploreRef} className="col-start-1 row-start-1">
-                {t("exploreWork")}
-              </span>
-            </span>
-          </button>
+          {/* CTA de la 1ª pantalla: EXPLORAR + SERVICIOS, MISMO tratamiento glass
+              (sheen + scale + scramble en hover). Cada uno en su PROPIO contenedor
+              con ancho reservado (ghost) → el descifrado/scale NO reflowa ni empuja
+              al vecino. Ambos dentro de #hero-intro → se desvanecen juntos al bajar. */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="w-fit">
+              <button
+                type="button"
+                onClick={scrollToWork}
+                onMouseEnter={runScramble}
+                className={`group ${glassSurfaceSoft} text-silver-100 pointer-events-auto inline-flex min-h-11 w-fit items-center rounded-full px-6 text-sm tracking-[2px] uppercase transition hover:scale-[1.03] hover:text-white hover:ring-amethyst-300/50 active:scale-95`}
+              >
+                <GlassSheen />
+                <span className="relative inline-grid">
+                  <span aria-hidden className="invisible col-start-1 row-start-1">
+                    {t("exploreWork")}
+                  </span>
+                  <span ref={exploreRef} className="col-start-1 row-start-1">
+                    {t("exploreWork")}
+                  </span>
+                </span>
+              </button>
+            </div>
+            <div className="w-fit">
+              <Link
+                href="/servicios"
+                onMouseEnter={runServicesScramble}
+                className={`group ${glassSurfaceSoft} text-silver-100 pointer-events-auto inline-flex min-h-11 w-fit items-center rounded-full px-6 text-sm tracking-[2px] uppercase transition hover:scale-[1.03] hover:text-white hover:ring-amethyst-300/50 active:scale-95`}
+              >
+                <GlassSheen />
+                <span className="relative inline-grid">
+                  <span aria-hidden className="invisible col-start-1 row-start-1">
+                    {t("servicesCta")}
+                  </span>
+                  <span ref={servicesRef} className="col-start-1 row-start-1">
+                    {t("servicesCta")}
+                  </span>
+                </span>
+              </Link>
+            </div>
+          </div>
         </div>
 
         {/* Redes: enlazadas de verdad (SoundCloud queda de placeholder hasta tener
@@ -422,7 +475,7 @@ export function Hero() {
         <ProducerCardsStrip />
       </div>
 
-      <SiteMenu showAccount />
+      <SiteMenu />
     </div>
   );
 }

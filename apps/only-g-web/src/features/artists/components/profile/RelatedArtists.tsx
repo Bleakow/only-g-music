@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import type { Artist } from "@only-g/shared-types/artist";
 import { getVisibleProfiles } from "@/features/artists/lib/artist-profile-repo";
 import { profileToArtist } from "@/features/artists/lib/profile-display";
-import { ArtistGrid } from "@/features/artists/components/ArtistGrid";
+import { ArtistCard } from "@/features/artists/components/ArtistCard";
 
 /**
  * Sección pública "Artistas relacionados": los colaboradores que el artista
@@ -49,12 +49,20 @@ export function RelatedArtists({
   if (artists.length === 0) return null;
 
   return (
-    <section className="mx-auto max-w-6xl px-6 pb-20">
-      <h2 className="font-narrow text-2xl font-bold tracking-wide uppercase">
-        {t("relatedArtists")}
-      </h2>
-      <div className="mt-6">
-        <ArtistGrid artists={artists} />
+    <section className="mx-auto max-w-400 px-6 pt-4 pb-24">
+      <div className="mb-6 flex items-center gap-3">
+        <span className="from-amethyst-400 to-amethyst-600 h-8 w-1.5 rounded-full bg-linear-to-b" />
+        <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
+          {t("relatedArtists")}
+        </h2>
+      </div>
+      {/* Fila horizontal desplazable de cards grandes — más llamativa que el grid. */}
+      <div className="flex gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {artists.map((a) => (
+          <div key={a.slug} className="w-56 shrink-0 sm:w-64">
+            <ArtistCard artist={a} />
+          </div>
+        ))}
       </div>
     </section>
   );

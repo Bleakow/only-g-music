@@ -368,6 +368,36 @@ service cloud.firestore {
     // su página antes de que el estudio active el rol/premium. NUNCA toca
     // uid/slug/puntos/premium (eso lo maneja admin/Functions). `published` es la
     // intención del artista; la visibilidad real exige published + premium.
+    // ── Colectivos (§07): sellos, movimientos, agrupaciones y academias ──
+    // Lectura PÚBLICA (la vitrina y el enlace directo son públicos, igual que
+    // los perfiles de artista). Escritura solo del dueño o sus co-admins.
+    match /colectivos/{slug} {
+      function esGestor() {
+        return request.auth != null
+          && (resource.data.ownerUid == request.auth.uid
+              || (resource.data.get('adminUids', []).hasAny([request.auth.uid])));
+      }
+
+      allow read: if true;
+
+      // Crear: cualquiera autenticado puede fundar un colectivo, pero SOLO a su
+      // propio nombre y sin auto-otorgarse curaduría de la vitrina.
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() > 0
+        && !request.resource.data.keys().hasAny(['orden']);
+
+      // Editar: dueño o co-admin. `ownerUid` y `orden` quedan fuera de su
+      // alcance — cederlo o colarse en la curaduría no es una edición normal.
+      allow update: if isAdmin()
+        || (esGestor()
+          && !request.resource.data.diff(resource.data).affectedKeys()
+              .hasAny(['ownerUid', 'orden', 'createdAt']));
+
+      allow delete: if isAdmin() || esGestor();
+    }
+
     match /artistProfiles/{slug} {
       allow read: if true;
 
@@ -380,7 +410,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug == slug
           && request.resource.data.puntos == 0
           && request.resource.data.premium == null
-          && !request.resource.data.keys().hasAny(['orden', 'featured', 'disciplines', 'socio']));
+          && !request.resource.data.keys().hasAny(['orden', 'featured', 'disciplines', 'socio', 'searchIndex']));
 
       // El dueño edita su contenido, sin tocar campos sensibles ni la curaduría
       // de la vitrina (orden/featured = solo admin).
@@ -389,9 +419,35 @@ service cloud.firestore {
           && resource.data.uid == request.auth.uid
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt', 'orden', 'featured',
-                       'disciplines', 'socio']));
+                       'disciplines', 'socio', 'searchIndex', 'socialStats', 'visitas',
+                       'metricsVisibility']));
+      // NOTA: antes existía aquí una excepción que dejaba a cualquier visitante
+      // (incluso anónimo) sumar +1 a `visitas`. Se retiró: ahora las visitas las
+      // registra la API `/api/metricas/[slug]` con el Admin SDK, así que el
+      // cliente ya no necesita —ni puede— escribir contadores.
+      // `metricsVisibility` también es server-only: cambiarlo abre/cierra el
+      // acceso a las métricas, así que pasa por su endpoint, no por un update
+      // directo desde el navegador.
 
       allow delete: if isAdmin();
+
+      // ── Métricas del perfil ────────────────────────────────────────────
+      // CERRADAS a cal y canto para el cliente, en los dos sentidos:
+      //  · Escritura: solo la API de registro (Admin SDK) suma contadores; si el
+      //    navegador pudiera escribir, cualquiera se fabricaría 100K visitas.
+      //  · Lectura: pasa por la API, que es quien sabe si eres el dueño, si el
+      //    token del enlace compartido es válido o si el perfil las hizo
+      //    públicas. Meter esa decisión en las reglas obligaría a exponer el
+      //    token en un documento legible, que es justo lo que hay que evitar.
+      match /metrics/{docId} {
+        allow read, write: if false;
+      }
+
+      // Datos privados del perfil (hoy: el token del enlace de métricas).
+      // Nunca sale al cliente; lo lee y lo rota la API con el Admin SDK.
+      match /private/{docId} {
+        allow read, write: if false;
+      }
 
       // Likes: un doc por usuario, solo el suyo (el conteo se deriva del tamaño).
       match /likes/{uid} {

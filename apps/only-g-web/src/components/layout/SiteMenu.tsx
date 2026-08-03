@@ -7,8 +7,6 @@ import Image from "next/image";
 import type { Artist } from "@only-g/shared-types/artist";
 import { getFeaturedProfiles } from "@/features/artists/lib/artist-profile-repo";
 import { profileToArtist } from "@/features/artists/lib/profile-display";
-import { UserMenu } from "@/features/auth/components/UserMenu";
-import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import styles from "./SiteMenu.module.css";
 
@@ -20,13 +18,7 @@ const NAV = [
   { href: "/beats", key: "beats" },
 ] as const;
 
-export function SiteMenu({
-  showAccount = false,
-}: {
-  /** Campanita + avatar SOLO cuando es true (la ventana principal). El resto de
-   *  la web muestra únicamente la hamburguesa. */
-  showAccount?: boolean;
-}) {
+export function SiteMenu() {
   const [open, setOpen] = useState(false);
   const [hovered, setHovered] = useState<Artist | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -114,6 +106,11 @@ export function SiteMenu({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Avisar al dock de acciones (AccountDock) para que se oculte con el menú abierto.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("ogm:menu", { detail: open }));
+  }, [open]);
+
   // Ruleta de destacados (móvil): avanza/retrocede un destacado. CLAMP (sin wrap)
   // para que la rueda se traslade linealmente y no salte al llegar a los extremos.
   // Sin efecto si hay menos de 2 (no hay entre qué alternar).
@@ -143,16 +140,6 @@ export function SiteMenu({
           <span />
           <span />
         </button>
-      )}
-
-      {/* Campanita + menú de cuenta (avatar/login): SOLO en la ventana principal
-          (el Hero pasa showAccount). Ocultos también con el menú grande o el
-          visor de fotos abiertos. */}
-      {showAccount && !open && !viewerOpen && (
-        <>
-          <NotificationBell />
-          <UserMenu />
-        </>
       )}
 
       <div className={`${styles.overlay} ${open ? styles.open : ""}`}>

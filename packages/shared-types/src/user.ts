@@ -17,7 +17,9 @@ export type Role =
   | "artista"
   | "beatmaker"
   | "modelo"
-  | "bailarin";
+  | "bailarin"
+  | "dj"
+  | "presentador";
 
 /** Rol por defecto al crear una cuenta nueva (se registra como cliente/fan). */
 export const DEFAULT_ROLES: Role[] = ["cliente"];
@@ -34,6 +36,8 @@ export const TALENT_ROLES: Role[] = [
   "beatmaker",
   "modelo",
   "bailarin",
+  "dj",
+  "presentador",
 ];
 
 export interface UserAccount {

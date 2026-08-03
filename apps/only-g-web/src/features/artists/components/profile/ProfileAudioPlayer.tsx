@@ -12,6 +12,7 @@ import {
   ForwardIcon,
 } from "@/components/icons";
 import { claimAudio, subscribeAudio } from "../../lib/audio-bus";
+import { useTrackPlay } from "./ProfileMetricsContext";
 
 export const PLAYER_SIZE_W: Record<PlayerSize, string> = {
   sm: "w-52",
@@ -48,6 +49,7 @@ export function ProfileAudioPlayer({
   autoPlay?: boolean;
 }) {
   const t = useTranslations("artistProfile");
+  const countPlay = useTrackPlay();
   const resolvedTitle = title ?? t("profileSong");
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -351,6 +353,9 @@ export function ProfileAudioPlayer({
         onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
         onPlay={() => {
           setPlaying(true);
+          // Cuenta también el autoplay: para el artista, que suene al entrar es
+          // una reproducción de su tema igual que si le dieran al play.
+          countPlay("intro", title);
           claimAudio("profile");
         }}
         onPause={() => setPlaying(false)}

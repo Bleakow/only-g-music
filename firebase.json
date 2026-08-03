@@ -9,7 +9,7 @@
   "functions": {
     "source": "functions",
     "predeploy": [
-      "pnpm --filter @only-g/shared-types build",
+      "npm --prefix packages/shared-types run build",
       "npm --prefix \"$RESOURCE_DIR\" run build"
     ]
   }

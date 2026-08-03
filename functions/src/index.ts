@@ -10,15 +10,19 @@ import {
   onDocumentCreated,
   onDocumentDeleted,
   onDocumentUpdated,
+  onDocumentWritten,
 } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
+import { buildSearchIndex, needsReindex } from "./artist-index";
+import { buildSocialStats } from "./social-stats";
 // SOLO el TIPO (se borra al compilar). NO importar VALORES del paquete: functions
 // se compila con tsc sin bundler y el paquete exporta `.ts` fuente → un import de
 // valor haría `require` de un .ts en runtime y fallaría el deploy. Por eso el
@@ -30,6 +34,15 @@ const db = getFirestore();
 
 /** Región: junto a la base de datos (los triggers de Firestore la exigen). */
 const REGION = "southamerica-east1";
+/** Key de Gemini para el indexado de perfiles (búsqueda IA). Secret: se
+ *  configura con `firebase functions:secrets:set GEMINI_API_KEY`. Sin ella, el
+ *  indexado es un no-op silencioso (deploy sin romper nada). */
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+/** Keys de estadísticas sociales (seguidores YT/Spotify). Secrets; sin ellas el
+ *  refresco es un no-op silencioso. Configurar con `functions:secrets:set`. */
+const YOUTUBE_API_KEY = defineSecret("YOUTUBE_API_KEY");
+const SPOTIFY_CLIENT_ID = defineSecret("SPOTIFY_CLIENT_ID");
+const SPOTIFY_CLIENT_SECRET = defineSecret("SPOTIFY_CLIENT_SECRET");
 /** Mantener en sync con `src/domain/profile-order.ts`. */
 const PRECIO_PERFIL = 80000;
 /** Meses de vigencia del premium — sync con PREMIUM_DURACION_MESES (dominio). */
@@ -46,10 +59,18 @@ const COMISION_BEAT = 0.2;
 const PRECIO_GNOTES = 12000;
 /** Meses de vigencia de la membresía G Notes — sync con GNOTES_DURACION_MESES (dominio). */
 const GNOTES_DURACION_MESES = 1;
+/** Meses de vigencia de la membresía de un COLECTIVO (§07). Mensual, como el mockup. */
+const COLECTIVO_DURACION_MESES = 1;
+/** Cupos mínimos — sync con CUPOS_MINIMOS del dominio (functions no importa valores). */
+const COLECTIVO_CUPOS_MINIMOS = 2;
+const COLECTIVO_CUPOS_MAXIMOS = 100;
 /** Precios de los PASES en COP — sync con dominio (DEFAULTS). */
 const PRECIO_LITE_PASS = 80000;
 const PRECIO_GOLDEN_PASS = 350000;
 const PRECIO_PREMIUM_PASS = 600000;
+/** Fallbacks del colectivo — sync con los defaults de `comercial-config`. */
+const PRECIO_COLECTIVO = 120000;
+const PRECIO_CUPO_COLECTIVO = 25000;
 /** Meses de vigencia de la parte temporal de un pase — sync con PASE_DURACION_MESES. */
 const PASE_DURACION_MESES = 1;
 /** ¿El tier es uno de los 3 válidos? (inline: functions no importa valores del paquete). */
@@ -686,6 +707,11 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   if (refKind === "pase") {
     return await confirmarPagoPase(convRef, conv);
   }
+  // Pago de la MEMBRESÍA de un COLECTIVO: activa sus cupos de artista, registra
+  // el ingreso y cierra el hilo.
+  if (refKind === "colectivo") {
+    return await confirmarPagoColectivo(convRef, conv, refId);
+  }
   if (refKind !== "premium") {
     throw new HttpsError("failed-precondition", "Tipo de pago no soportado.");
   }
@@ -951,6 +977,254 @@ async function confirmarPagoGNotes(
 }
 
 /**
+ * Reasigna el DUEÑO de un perfil de artista (SOLO admin).
+ *
+ * Existe para reparar los perfiles que quedaron con el `uid` equivocado por el
+ * fallo de reserva de slug (dos altas de nombre parecido pisaban el mismo
+ * documento). Sin esto habría que editar Firestore a mano, campo por campo, con
+ * el riesgo de dejar `users` y `artistProfiles` descuadrados entre sí.
+ *
+ * Hace las tres escrituras en una transacción:
+ *   1. `artistProfiles/{slug}.uid` → el dueño correcto
+ *   2. `users/{nuevoUid}.artistSlug` → el slug (+ rol artista)
+ *   3. `users/{uidAnterior}.artistSlug` → se limpia SOLO si apuntaba a este
+ *      slug, para que esa persona pueda crear el suyo sin chocar.
+ */
+export const adminReasignarPerfil = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+
+    const slug = request.data?.slug;
+    const nuevoUid = request.data?.nuevoUid;
+    if (typeof slug !== "string" || !slug) {
+      throw new HttpsError("invalid-argument", "Falta el slug del perfil.");
+    }
+    if (typeof nuevoUid !== "string" || !nuevoUid) {
+      throw new HttpsError("invalid-argument", "Falta el uid del nuevo dueño.");
+    }
+
+    const profileRef = db.doc(`artistProfiles/${slug}`);
+    const nuevoUserRef = db.doc(`users/${nuevoUid}`);
+
+    const resultado = await db.runTransaction(async (tx) => {
+      const [profSnap, userSnap] = await Promise.all([
+        tx.get(profileRef),
+        tx.get(nuevoUserRef),
+      ]);
+      if (!profSnap.exists) {
+        throw new HttpsError("not-found", "Ese perfil no existe.");
+      }
+      if (!userSnap.exists) {
+        throw new HttpsError("not-found", "Ese usuario no existe.");
+      }
+
+      const uidAnterior = profSnap.data()?.uid as string | undefined;
+      if (uidAnterior === nuevoUid) {
+        return { slug, uidAnterior, sinCambios: true };
+      }
+
+      // El dueño anterior solo se limpia si su `artistSlug` apunta AQUÍ: si ya
+      // tiene otro perfil, no se le toca.
+      let limpiado = false;
+      if (uidAnterior) {
+        const antRef = db.doc(`users/${uidAnterior}`);
+        const antSnap = await tx.get(antRef);
+        if (antSnap.exists && antSnap.data()?.artistSlug === slug) {
+          tx.update(antRef, { artistSlug: FieldValue.delete() });
+          limpiado = true;
+        }
+      }
+
+      tx.update(profileRef, {
+        uid: nuevoUid,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      tx.update(nuevoUserRef, {
+        artistSlug: slug,
+        roles: FieldValue.arrayUnion("artista"),
+      });
+      return { slug, uidAnterior, limpiado, sinCambios: false };
+    });
+
+    logger.info(
+      `Perfil ${slug} reasignado a ${nuevoUid} (antes: ${resultado.uidAnterior ?? "sin dueño"})`,
+    );
+    return resultado;
+  },
+);
+
+/**
+ * Reserva un slug de perfil de artista y crea el documento, TODO dentro de una
+ * transacción.
+ *
+ * POR QUÉ UNA TRANSACCIÓN. Antes esto era un `while` de lecturas sueltas
+ * seguido de un `batch.set`. Entre comprobar "el slug está libre" y escribirlo
+ * cabe otra alta: dos personas con nombre parecido leían "libre" a la vez y la
+ * segunda SOBRESCRIBÍA el documento de la primera —incluido su `uid`—, así que
+ * una persona se quedaba con el perfil de otra y la víctima dejaba de ser dueña
+ * del suyo (sin botón de editar, sin métricas: todo depende de `uid`).
+ *
+ * Dentro de la transacción se releen los candidatos y solo se escribe si sigue
+ * libre; si alguien se adelantó, Firestore reintenta la transacción entera.
+ *
+ * `preferido` es el slug base (o el que el usuario ya tenía reservado). Si está
+ * ocupado por OTRO, se prueban sufijos `-2`, `-3`… hasta `MAX_INTENTOS`.
+ */
+const MAX_INTENTOS_SLUG = 20;
+
+async function reservarSlug(
+  uid: string,
+  preferido: string,
+  esSlugPropio: boolean,
+  perfil: Record<string, unknown>,
+  userRef: FirebaseFirestore.DocumentReference,
+  userUpdate: Record<string, unknown>,
+): Promise<string> {
+  return await db.runTransaction(async (tx) => {
+    let elegido: string | null = null;
+
+    for (let n = 1; n <= MAX_INTENTOS_SLUG; n++) {
+      const candidato = n === 1 ? preferido : `${preferido}-${n}`;
+      const snap = await tx.get(db.doc(`artistProfiles/${candidato}`));
+      if (!snap.exists) {
+        elegido = candidato;
+        break;
+      }
+      // Ocupado. Si es del propio usuario (alta a medias que reintenta), vale;
+      // si es de otro, se sigue buscando en vez de pisarlo.
+      if (esSlugPropio && n === 1 && snap.data()?.uid === uid) {
+        elegido = candidato;
+        break;
+      }
+    }
+
+    if (!elegido) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "No pudimos generar una dirección libre para tu perfil.",
+      );
+    }
+
+    tx.set(db.doc(`artistProfiles/${elegido}`), {
+      ...perfil,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(userRef, { ...userUpdate, artistSlug: elegido });
+    return elegido;
+  });
+}
+
+/**
+ * Confirma el pago de la membresía de un COLECTIVO (§07): activa sus cupos de
+ * artista, registra el ingreso y cierra el hilo.
+ *
+ * Los CUPOS se calculan a partir del monto realmente transferido, no de un campo
+ * que mande el cliente: `(monto − cuota) / precioCupo`. Así, aunque alguien
+ * manipulara la petición, solo obtiene los cupos que pagó.
+ *
+ * RENOVAR acumula: si la membresía sigue viva, el mes nuevo se suma al tiempo
+ * que quedaba en vez de reiniciarlo — pagar antes de tiempo no debe castigar.
+ */
+async function confirmarPagoColectivo(
+  convRef: ReturnType<typeof db.doc>,
+  conv: FirebaseFirestore.DocumentData,
+  slug: string,
+): Promise<{ ok: true }> {
+  const payerUid = Array.isArray(conv.participants)
+    ? (conv.participants[0] as string | undefined)
+    : undefined;
+  if (!payerUid) {
+    throw new HttpsError("failed-precondition", "Pago sin pagador.");
+  }
+
+  const colectivoRef = db.doc(`colectivos/${slug}`);
+  const colectivo = (await colectivoRef.get()).data();
+  if (!colectivo) {
+    throw new HttpsError("not-found", "Colectivo inexistente.");
+  }
+
+  const { precioColectivo, precioCupoColectivo } = await getComercial();
+  const montoIngresado =
+    typeof conv.pago?.monto === "number" &&
+    Number.isInteger(conv.pago.monto) &&
+    conv.pago.monto > 0
+      ? conv.pago.monto
+      : precioColectivo + COLECTIVO_CUPOS_MINIMOS * precioCupoColectivo;
+
+  // Cupos derivados del dinero, acotados. Si el precio por cupo fuera 0 (el CEO
+  // puede ponerlo a cero), se cae al mínimo en vez de dividir por cero.
+  const cupos =
+    precioCupoColectivo > 0
+      ? Math.max(
+          COLECTIVO_CUPOS_MINIMOS,
+          Math.min(
+            COLECTIVO_CUPOS_MAXIMOS,
+            Math.floor((montoIngresado - precioColectivo) / precioCupoColectivo),
+          ),
+        )
+      : COLECTIVO_CUPOS_MINIMOS;
+
+  const now = Date.now();
+  // Si sigue vigente, se ACUMULA sobre lo que quedaba.
+  const vigenteHasta =
+    typeof colectivo.membresia?.expiresAt === "number" &&
+    colectivo.membresia.expiresAt > now
+      ? colectivo.membresia.expiresAt
+      : now;
+  const expira = new Date(vigenteHasta);
+  expira.setMonth(expira.getMonth() + COLECTIVO_DURACION_MESES);
+
+  const clientName =
+    (await db.doc(`users/${payerUid}`).get()).data()?.displayName ?? null;
+  const conversationId = convRef.id;
+
+  const batch = db.batch();
+  batch.set(
+    colectivoRef,
+    {
+      membresia: {
+        cupos,
+        expiresAt: expira.getTime(),
+        ultimoPago: montoIngresado,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
+  batch.update(convRef, {
+    "pago.estado": "confirmado",
+    status: "cerrado",
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+  batch.set(convRef.collection("messages").doc(), {
+    from: "sistema",
+    tipo: "pago_confirmado",
+    monto: montoIngresado,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  // Asiento contable con id determinista por chat → idempotente ante reintentos.
+  batch.set(db.doc(`transactions/colectivo_${conversationId}`), {
+    uid: payerUid,
+    clientName,
+    concepto: `Membresía colectivo — ${colectivo.nombre ?? slug}`,
+    amount: montoIngresado,
+    fecha: now,
+    estado: "confirmada",
+    fuente: "colectivo",
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  await batch.commit();
+
+  logger.info(
+    `Pago confirmado: ${conversationId} → colectivo ${slug} (${cupos} cupos)`,
+  );
+  await notify(payerUid, "colectivo-activado", {}, `/colectivos/${slug}`);
+  return { ok: true };
+}
+
+/**
  * Concede un PASE a `uid`: añade a `batch` las escrituras de los beneficios
  * TEMPORALES (membresía G Notes +1 mes; y, si el usuario ya tiene perfil de
  * artista, su premium +1 mes) y el registro `users/{uid}.pase` con el tier y los
@@ -1113,6 +1387,8 @@ async function getComercial(): Promise<{
   precioLitePass: number;
   precioGoldenPass: number;
   precioPremiumPass: number;
+  precioColectivo: number;
+  precioCupoColectivo: number;
   comisionProductor: number | null;
   comisionProductorPorSede: Record<string, number>;
 }> {
@@ -1153,6 +1429,11 @@ async function getComercial(): Promise<{
     precioLitePass: precio(pre.precioLitePass, PRECIO_LITE_PASS),
     precioGoldenPass: precio(pre.precioGoldenPass, PRECIO_GOLDEN_PASS),
     precioPremiumPass: precio(pre.precioPremiumPass, PRECIO_PREMIUM_PASS),
+    precioColectivo: precio(pre.precioColectivo, PRECIO_COLECTIVO),
+    precioCupoColectivo: precio(
+      pre.precioCupoColectivo,
+      PRECIO_CUPO_COLECTIVO,
+    ),
     comisionProductor: enRango(com.comisionProductor)
       ? com.comisionProductor
       : null,
@@ -1941,14 +2222,6 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
     );
   }
 
-  // Slug único (server-side).
-  const base = slugify(artisticName) || "artista";
-  let slug = base;
-  let n = 2;
-  while ((await db.doc(`artistProfiles/${slug}`).get()).exists) {
-    slug = `${base}-${n++}`;
-  }
-
   // Deriva disciplines/socio de los roles FINALES (los actuales + 'artista'),
   // para que un socio (beatmaker/productor) nazca visible sin membresía y en su
   // pestaña — en vez de forzar socio:false y dejarlo fuera de la vitrina.
@@ -1961,31 +2234,33 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
   const socio =
     finalRoles.includes("beatmaker") || finalRoles.includes("productor");
 
-  const batch = db.batch();
-  batch.set(db.doc(`artistProfiles/${slug}`), {
-    uid: targetUid,
-    artisticName,
-    tagline: "",
-    genre: "",
-    bio: "",
-    accent: "#8b5cf6",
-    photoURL: "",
-    gallery: [],
-    tracks: [],
-    socials: {},
-    trajectoryStartYear: new Date().getFullYear(),
-    puntos: 0,
-    premium: null,
-    disciplines: disciplines.length ? disciplines : ["artista"],
-    socio,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-  batch.update(userRef, {
-    artistSlug: slug,
-    roles: FieldValue.arrayUnion("artista"),
-  });
-  await batch.commit();
+  // Reserva atómica del slug (ver `reservarSlug`): antes eran lecturas sueltas
+  // + `batch.set`, y dos vinculaciones del mismo nombre podían pisar el mismo
+  // documento y dejar a un usuario con el perfil de otro.
+  const slug = await reservarSlug(
+    targetUid,
+    slugify(artisticName) || "artista",
+    false,
+    {
+      uid: targetUid,
+      artisticName,
+      tagline: "",
+      genre: "",
+      bio: "",
+      accent: "#8b5cf6",
+      photoURL: "",
+      gallery: [],
+      tracks: [],
+      socials: {},
+      trajectoryStartYear: new Date().getFullYear(),
+      puntos: 0,
+      premium: null,
+      disciplines: disciplines.length ? disciplines : ["artista"],
+      socio,
+    },
+    userRef,
+    { roles: FieldValue.arrayUnion("artista") },
+  );
 
   logger.info(`Perfil ${slug} vinculado a ${targetUid} (+rol artista)`);
   return { slug };
@@ -2102,20 +2377,14 @@ export const crearPerfilInicial = onCall({ region: REGION }, async (request) => 
   // Slug: si ya tiene uno (alta a medias) y su perfil NO existe todavía, lo
   // reusa (cubre a los que quedaron atascados en el cobro); si el perfil YA
   // existe, aborta; si no tiene slug, genera uno único.
-  let slug: string;
+  //
+  // La RESERVA del slug se hace dentro de una transacción (`reservarSlug`): la
+  // comprobación de "está libre" y la escritura tienen que ser atómicas o dos
+  // altas del mismo nombre pisan el mismo documento y una persona acaba con el
+  // perfil de otra.
   const existingSlug = typeof u.artistSlug === "string" ? u.artistSlug : "";
-  if (existingSlug) {
-    if ((await db.doc(`artistProfiles/${existingSlug}`).get()).exists) {
-      throw new HttpsError("already-exists", "Ya tienes un perfil.");
-    }
-    slug = existingSlug;
-  } else {
-    const base = slugify(artisticName) || "artista";
-    slug = base;
-    let n = 2;
-    while ((await db.doc(`artistProfiles/${slug}`).get()).exists) {
-      slug = `${base}-${n++}`;
-    }
+  if (existingSlug && (await db.doc(`artistProfiles/${existingSlug}`).get()).exists) {
+    throw new HttpsError("already-exists", "Ya tienes un perfil.");
   }
 
   // Disciplinas/socio de los roles FINALES (espejo de adminLinkProfile).
@@ -2126,36 +2395,38 @@ export const crearPerfilInicial = onCall({ region: REGION }, async (request) => 
   const socio =
     finalRoles.includes("beatmaker") || finalRoles.includes("productor");
 
-  const batch = db.batch();
-  batch.set(db.doc(`artistProfiles/${slug}`), {
-    uid,
-    artisticName,
-    tagline: "",
-    genre: "",
-    bio: "",
-    accent: "#8b5cf6",
-    photoURL,
-    gallery: [],
-    tracks: [],
-    socials: {},
-    trajectoryStartYear: startYear,
-    puntos: 0,
-    // Borrador (premium null → paga al publicar) o publicado (premium del pase).
-    premium,
-    disciplines: disciplines.length ? disciplines : ["artista"],
-    socio,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
   // No pisa realName/birthDate si no vienen (un usuario atascado ya los tenía).
   const userUpdate: Record<string, unknown> = {
-    artistSlug: slug,
     roles: FieldValue.arrayUnion("artista"),
   };
   if (realName) userUpdate.realName = realName;
   if (birthDate) userUpdate.birthDate = birthDate;
-  batch.update(userRef, userUpdate);
-  await batch.commit();
+
+  const slug = await reservarSlug(
+    uid,
+    existingSlug || slugify(artisticName) || "artista",
+    Boolean(existingSlug),
+    {
+      uid,
+      artisticName,
+      tagline: "",
+      genre: "",
+      bio: "",
+      accent: "#8b5cf6",
+      photoURL,
+      gallery: [],
+      tracks: [],
+      socials: {},
+      trajectoryStartYear: startYear,
+      puntos: 0,
+      // Borrador (premium null → paga al publicar) o publicado (premium del pase).
+      premium,
+      disciplines: disciplines.length ? disciplines : ["artista"],
+      socio,
+    },
+    userRef,
+    userUpdate,
+  );
 
   logger.info(
     `Perfil ${slug} creado (${premium ? "publicado con pase" : "borrador"}) para ${uid}`,
@@ -2331,6 +2602,8 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
     "beatmaker",
     "modelo",
     "bailarin",
+    "dj",
+    "presentador",
   ];
   const roles = [
     ...new Set(
@@ -2376,7 +2649,7 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
     // propio users.artistSlug apuntando al perfil de OTRA persona; sin este check,
     // sincronizar aquí pisaría el perfil de una víctima.
     if (profSnap.exists && profSnap.data()?.uid === targetUid) {
-      const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
+      const TALENT = ["artista", "beatmaker", "modelo", "bailarin", "dj", "presentador"];
       const disciplines = roles.filter((r) => TALENT.includes(r));
       const socio = roles.includes("beatmaker") || roles.includes("productor");
       batch.update(profRef, {
@@ -2664,6 +2937,155 @@ export const onArtistProfileCreated = onDocumentCreated(
     );
   },
 );
+
+/**
+ * Indexado para la BÚSQUEDA IA del directorio (§03): al crearse o editarse un
+ * perfil, si cambiaron sus fuentes (foto/audio/texto) Gemini multimodal genera su
+ * ficha `searchIndex` (apariencia + voz + temática). GUARDA DE BUCLE: escribir la
+ * ficha NO cambia las fuentes, así que `needsReindex` vuelve false y el trigger no
+ * se reindexa a sí mismo. No-op silencioso sin GEMINI_API_KEY (deploy sin romper).
+ */
+export const indexArtistProfile = onDocumentWritten(
+  {
+    document: "artistProfiles/{slug}",
+    region: REGION,
+    secrets: [GEMINI_API_KEY],
+    // Descarga de fotos/audio + Gemini multimodal: más memoria y tiempo que un
+    // trigger normal.
+    memory: "512MiB",
+    timeoutSeconds: 120,
+  },
+  async (event) => {
+    const after = event.data?.after;
+    if (!after?.exists) return; // borrado del perfil
+    const p = after.data();
+    if (!p || !needsReindex(p)) return; // sin cambios en las fuentes → nada que hacer
+    const apiKey = GEMINI_API_KEY.value();
+    if (!apiKey) {
+      logger.info("[index] sin GEMINI_API_KEY, se omite el indexado");
+      return;
+    }
+    try {
+      const idx = await buildSearchIndex(p, apiKey);
+      if (idx) {
+        await after.ref.update({ searchIndex: idx });
+        logger.info(`[index] ficha generada para ${event.params.slug}`);
+      }
+    } catch (e) {
+      logger.error(`[index] fallo indexando ${event.params.slug}`, e);
+    }
+  },
+);
+
+/**
+ * Backfill del índice: reindexa los perfiles existentes (los que aún no tienen
+ * `searchIndex` o cuyas fuentes cambiaron). Solo admin. En serie para no saturar la
+ * cuota de Gemini; `force:true` reindexará todos. Devuelve cuántos procesó.
+ */
+export const reindexArtistProfiles = onCall(
+  {
+    region: REGION,
+    secrets: [GEMINI_API_KEY],
+    memory: "512MiB",
+    timeoutSeconds: 540,
+  },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const apiKey = GEMINI_API_KEY.value();
+    if (!apiKey) {
+      throw new HttpsError("failed-precondition", "Falta GEMINI_API_KEY.");
+    }
+    const force = (request.data as { force?: boolean })?.force === true;
+    const snap = await db.collection("artistProfiles").get();
+    let indexed = 0;
+    let skipped = 0;
+    for (const doc of snap.docs) {
+      const p = doc.data();
+      if (!force && !needsReindex(p)) {
+        skipped++;
+        continue;
+      }
+      try {
+        const idx = await buildSearchIndex(p, apiKey);
+        if (idx) {
+          await doc.ref.update({ searchIndex: idx });
+          indexed++;
+        } else {
+          skipped++;
+        }
+      } catch (e) {
+        logger.error(`[index] backfill falló en ${doc.id}`, e);
+      }
+    }
+    logger.info(`[index] backfill: ${indexed} indexados, ${skipped} omitidos`);
+    return { indexed, skipped, total: snap.size };
+  },
+);
+
+/**
+ * Refresco DIARIO de estadísticas sociales: lee seguidores de YouTube/Spotify de
+ * cada perfil que tenga esas redes y cachea `socialStats`. No-op sin keys.
+ */
+export const refreshSocialStats = onSchedule(
+  {
+    schedule: "every 24 hours",
+    region: REGION,
+    secrets: [YOUTUBE_API_KEY, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET],
+    memory: "256MiB",
+    timeoutSeconds: 540,
+  },
+  async () => {
+    await runSocialStatsRefresh();
+  },
+);
+
+/** Igual que el refresco diario, pero a demanda (solo admin). */
+export const refreshSocialStatsNow = onCall(
+  {
+    region: REGION,
+    secrets: [YOUTUBE_API_KEY, SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET],
+    memory: "256MiB",
+    timeoutSeconds: 540,
+  },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    return runSocialStatsRefresh();
+  },
+);
+
+/** Recorre los perfiles con YouTube/Spotify y actualiza su `socialStats`. */
+async function runSocialStatsRefresh(): Promise<{
+  updated: number;
+  total: number;
+}> {
+  const keys = {
+    youtubeApiKey: YOUTUBE_API_KEY.value() || undefined,
+    spotifyClientId: SPOTIFY_CLIENT_ID.value() || undefined,
+    spotifyClientSecret: SPOTIFY_CLIENT_SECRET.value() || undefined,
+  };
+  if (!keys.youtubeApiKey && !keys.spotifyClientId) {
+    logger.info("[socialStats] sin keys configuradas, se omite");
+    return { updated: 0, total: 0 };
+  }
+  const snap = await db.collection("artistProfiles").get();
+  const now = Date.now();
+  let updated = 0;
+  for (const doc of snap.docs) {
+    const socials = doc.data().socials as Record<string, unknown> | undefined;
+    if (!socials?.youtube && !socials?.spotify) continue;
+    try {
+      const stats = await buildSocialStats(socials, keys, now);
+      if (stats) {
+        await doc.ref.update({ socialStats: stats });
+        updated++;
+      }
+    } catch (e) {
+      logger.error(`[socialStats] fallo en ${doc.id}`, e);
+    }
+  }
+  logger.info(`[socialStats] actualizados ${updated}/${snap.size}`);
+  return { updated, total: snap.size };
+}
 
 /**
  * Nueva solicitud de convenio (productor/beatmaker) → avisa a los admin

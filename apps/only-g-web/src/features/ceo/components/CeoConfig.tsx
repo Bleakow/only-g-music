@@ -83,6 +83,8 @@ export function CeoConfig() {
   const [precioLitePass, setPrecioLitePass] = useState("");
   const [precioGoldenPass, setPrecioGoldenPass] = useState("");
   const [precioPremiumPass, setPrecioPremiumPass] = useState("");
+  const [precioColectivo, setPrecioColectivo] = useState("");
+  const [precioCupoColectivo, setPrecioCupoColectivo] = useState("");
   // Servicios de estudio (grabación por horas + mezcla por tramo de personas).
   const [precioGrabacionBase, setPrecioGrabacionBase] = useState("");
   const [precioGrabacionHoraExtra, setPrecioGrabacionHoraExtra] = useState("");
@@ -125,6 +127,8 @@ export function CeoConfig() {
         setPrecioLitePass(String(cfg.precios.precioLitePass));
         setPrecioGoldenPass(String(cfg.precios.precioGoldenPass));
         setPrecioPremiumPass(String(cfg.precios.precioPremiumPass));
+        setPrecioColectivo(String(cfg.precios.precioColectivo));
+        setPrecioCupoColectivo(String(cfg.precios.precioCupoColectivo));
         setPrecioGrabacionBase(String(cfg.precios.precioGrabacionBase));
         setPrecioGrabacionHoraExtra(String(cfg.precios.precioGrabacionHoraExtra));
         setRecargoGrabacion2(String(cfg.precios.recargoGrabacion2));
@@ -207,6 +211,8 @@ export function CeoConfig() {
       const litePass = Number(precioLitePass);
       const goldenPass = Number(precioGoldenPass);
       const premiumPass = Number(precioPremiumPass);
+      const colectivo = Number(precioColectivo);
+      const cupoColectivo = Number(precioCupoColectivo);
       const grabBase = Number(precioGrabacionBase);
       const grabExtra = Number(precioGrabacionHoraExtra);
       const recargo2 = Number(recargoGrabacion2);
@@ -223,6 +229,8 @@ export function CeoConfig() {
         litePass,
         goldenPass,
         premiumPass,
+        colectivo,
+        cupoColectivo,
         grabBase,
         grabExtra,
         mezcla1,
@@ -243,6 +251,8 @@ export function CeoConfig() {
         precioLitePass: litePass,
         precioGoldenPass: goldenPass,
         precioPremiumPass: premiumPass,
+        precioColectivo: colectivo,
+        precioCupoColectivo: cupoColectivo,
         precioGrabacionBase: grabBase,
         precioGrabacionHoraExtra: grabExtra,
         recargoGrabacion2: recargo2,
@@ -409,6 +419,24 @@ export function CeoConfig() {
                   value={precioGNotes}
                   onChange={(v) => {
                     setPrecioGNotes(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioColectivo"
+                  label={t("precios.colectivo")}
+                  value={precioColectivo}
+                  onChange={(v) => {
+                    setPrecioColectivo(v);
+                    setPreciosMsg(null);
+                  }}
+                />
+                <MoneyField
+                  id="precioCupoColectivo"
+                  label={t("precios.cupoColectivo")}
+                  value={precioCupoColectivo}
+                  onChange={(v) => {
+                    setPrecioCupoColectivo(v);
                     setPreciosMsg(null);
                   }}
                 />

@@ -52,6 +52,16 @@ import type { Role } from "@only-g/shared-types/user";
 const COLLECTION = "artistProfiles";
 
 /**
+ * Suma +1 a las visitas del perfil. La regla de Firestore solo permite ESTE
+ * incremento acotado (ni un campo más). Best-effort: si falla (offline, regla),
+ * no rompe la vista. El llamador dedup por sesión y NO cuenta al dueño.
+ */
+// `registrarVisita` vivía aquí y escribía `visitas` directamente desde el
+// navegador. Se retiró al montar las métricas (§04): ahora lo hace la API
+// `/api/metricas/[slug]` con el Admin SDK, que además deduce el país y agrega
+// por día. Las reglas ya no permiten esa escritura desde el cliente.
+
+/**
  * Normaliza la galería: acepta el formato nuevo (objetos {url, span}) y el viejo
  * (array de strings, que se mapea a tamaño cuadrado). Descarta entradas sin url.
  */
@@ -96,6 +106,26 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     photoURL: data.photoURL ?? "",
     photoURLMobile: data.photoURLMobile ?? undefined,
     photoTransform: (data.photoTransform as PhotoTransform) ?? undefined,
+    photoTransformMobile:
+      (data.photoTransformMobile as PhotoTransform) ?? undefined,
+    metricsVisibility:
+      (data.metricsVisibility as ArtistProfile["metricsVisibility"]) ??
+      undefined,
+    // §05 — secciones por etiqueta y sus datos. RECORDATORIO: este mapeo es una
+    // whitelist; un campo que no esté aquí "no existe" al leer el perfil.
+    sectionPrefs:
+      (data.sectionPrefs as ArtistProfile["sectionPrefs"]) ?? undefined,
+    sectionOrder:
+      (data.sectionOrder as ArtistProfile["sectionOrder"]) ?? undefined,
+    fichaTecnica:
+      (data.fichaTecnica as ArtistProfile["fichaTecnica"]) ?? undefined,
+    categorias: (data.categorias as string[]) ?? undefined,
+    reconocimientos:
+      (data.reconocimientos as ArtistProfile["reconocimientos"]) ?? undefined,
+    marcas: (data.marcas as string[]) ?? undefined,
+    generosBaile: (data.generosBaile as string[]) ?? undefined,
+    trayectoria:
+      (data.trayectoria as ArtistProfile["trayectoria"]) ?? undefined,
     gallery: toGallery(data.gallery),
     tracks: (data.tracks as ArtistProfile["tracks"]) ?? [],
     entryTrackUrl: data.entryTrackUrl ?? undefined,
@@ -121,6 +151,20 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     featuredMedia: (data.featuredMedia as FeaturedMedia) ?? undefined,
     relatedArtists: Array.isArray(data.relatedArtists)
       ? (data.relatedArtists as string[])
+      : undefined,
+    // Campos §04: sin mapearlos aquí se guardan en Firestore pero NUNCA se leen de
+    // vuelta → no aparecen en el perfil ni al recargar el editor.
+    featuredMediaList: Array.isArray(data.featuredMediaList)
+      ? (data.featuredMediaList as FeaturedMedia[])
+      : undefined,
+    manualFollowers:
+      (data.manualFollowers as ArtistProfile["manualFollowers"]) ?? undefined,
+    primarySocial:
+      (data.primarySocial as ArtistProfile["primarySocial"]) ?? undefined,
+    socialStats: (data.socialStats as ArtistProfile["socialStats"]) ?? undefined,
+    visitas: typeof data.visitas === "number" ? data.visitas : undefined,
+    colectivos: Array.isArray(data.colectivos)
+      ? (data.colectivos as ArtistProfile["colectivos"])
       : undefined,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
     updatedAt: data.updatedAt?.toMillis?.() ?? Date.now(),

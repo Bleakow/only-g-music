@@ -35,6 +35,8 @@ export type NotifEvento =
   | "gnotes-activado" // membresía G Notes activada → IA sin límite
   // Pases (paquetes)
   | "pase-activado" // pase activado (compra o cortesía) → beneficios concedidos
+  // Colectivos (sellos, movimientos, agrupaciones, academias)
+  | "colectivo-activado" // membresía del colectivo activada → cupos disponibles
   // Convenios (productor/beatmaker)
   | "convenio-solicitado" // nueva solicitud → admin
   | "convenio-aprobado" // el admin aprobó → se avisa al solicitante
@@ -58,6 +60,7 @@ export const NOTIF_EVENTOS: NotifEvento[] = [
   "perfil-por-renovar",
   "gnotes-activado",
   "pase-activado",
+  "colectivo-activado",
   "convenio-solicitado",
   "convenio-aprobado",
   "convenio-rechazado",
@@ -143,6 +146,10 @@ export const NOTIF_META: Record<NotifEvento, NotifEventoMeta> = {
   "pase-activado": {
     redirectBase: "/suscripciones",
     descripcion: "Tu pase fue activado (beneficios concedidos)",
+  },
+  "colectivo-activado": {
+    redirectBase: "/colectivos",
+    descripcion: "La membresía del colectivo fue activada (cupos disponibles)",
   },
   "convenio-solicitado": {
     redirectBase: "/admin/convenios",

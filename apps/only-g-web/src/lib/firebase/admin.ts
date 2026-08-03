@@ -1,5 +1,6 @@
 import { getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
 /**
  * Verificación de sesión SERVER-SIDE. Es la puerta que protege los endpoints de
@@ -17,6 +18,15 @@ const app: App =
   getApps().length === 0 ? initializeApp({ projectId }) : getApps()[0];
 
 const adminAuth = getAuth(app);
+
+/**
+ * Firestore con el Admin SDK (SOLO server-side). Lo usa la búsqueda IA para leer
+ * las fichas privadas de los perfiles (`searchIndex`) sin exponerlas al cliente.
+ * En Cloud Run / App Hosting toma la credencial por defecto (ADC); en local
+ * requeriría ADC o el emulador. La instancia es perezosa a nivel de query: crearla
+ * aquí no falla aunque no haya credencial hasta que se consulta.
+ */
+export const adminDb = getFirestore(app);
 
 /**
  * Extrae el ID token del header `Authorization: Bearer <token>` y lo verifica.

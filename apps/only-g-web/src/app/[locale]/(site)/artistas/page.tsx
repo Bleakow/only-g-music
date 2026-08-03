@@ -65,9 +65,6 @@ export default async function ArtistasPage() {
           <h1 className="font-narrow mt-3 text-6xl leading-[0.9] font-bold uppercase sm:text-8xl">
             {t("title")}
           </h1>
-          <p className="mt-4 max-w-xl text-base text-white/60 sm:text-lg">
-            {t("intro")}
-          </p>
           <ArtistCtaButton />
         </div>
       </header>

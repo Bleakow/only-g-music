@@ -11,6 +11,7 @@ import {
 } from "@/components/icons";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
+import { trackShare } from "../../lib/metrics-client";
 
 /**
  * Compartir el perfil: enlace directo + copiar + Web Share (móvil) + código QR
@@ -58,6 +59,7 @@ export function ShareProfile({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      trackShare(slug, "copy");
       setTimeout(() => setCopied(false), 1500);
     } catch {
       /* sin clipboard: el usuario puede copiar a mano */
@@ -68,6 +70,9 @@ export function ShareProfile({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({ title: name, url });
+        // Solo cuenta si NO lanzó: si el usuario cancela la hoja de compartir,
+        // `share()` rechaza y no hay nada que contar.
+        trackShare(slug, "native");
       } catch {
         /* el usuario canceló */
       }

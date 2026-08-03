@@ -38,11 +38,11 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   type GalleryItem,
   GALLERY_SPAN_CLASS,
+  GALLERY_GRID,
 } from "@only-g/shared-types/artist-profile";
 import { CloseIcon, ExpandIcon, MoveIcon } from "@/components/icons";
 
-const GRID =
-  "grid auto-rows-[110px] grid-cols-2 gap-3 sm:auto-rows-[150px] sm:grid-cols-4";
+const GRID = GALLERY_GRID;
 
 function Tile({
   item,

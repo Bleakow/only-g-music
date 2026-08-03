@@ -15,6 +15,7 @@ import { PreciosProvider } from "@/features/pricing/components/PreciosProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
 import { InitialLoader } from "@/components/loaders/InitialLoader";
 import { HideOnAdmin } from "@/components/layout/HideOnAdmin";
+import { AccountDock } from "@/components/layout/AccountDock";
 import { ConversationBubble } from "@/features/conversations/components/ConversationBubble";
 import { VersionWatcher } from "@/components/layout/VersionWatcher";
 
@@ -76,9 +77,11 @@ export default async function LocaleLayout({
               <GlobalErrorListener />
               <InitialLoader />
               {children}
-              {/* Dock de herramientas (chat + G Note). Aquí (no en (site)/layout)
-                  para que también salga en la home; se oculta en /admin. */}
+              {/* Dock de cuenta/acciones (avatar + campana + chat + G Notes) y el
+                  panel de chat. Aquí (no en (site)/layout) para que también salgan
+                  en la home; se ocultan en /admin (que trae su propia topbar). */}
               <HideOnAdmin>
+                <AccountDock />
                 <ConversationBubble />
               </HideOnAdmin>
               {/* Aviso de versión nueva tras un deploy (recarga a un clic). */}

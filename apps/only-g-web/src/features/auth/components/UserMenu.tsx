@@ -1,36 +1,34 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type SVGProps,
+} from "react";
+import { createPortal } from "react-dom";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { useAuth } from "./AuthProvider";
 import { hasAnyRole, hasRole } from "@only-g/shared-types/user";
 import { glassSurfaceMenu, GlassSheen } from "@/components/ui/glass";
-
-function initials(name: string | null, email: string | null): string {
-  const base = name?.trim() || email || "?";
-  const parts = base.split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return base.slice(0, 2).toUpperCase();
-}
-
-function PersonIcon({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden="true"
-    >
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" />
-    </svg>
-  );
-}
+import { Avatar } from "@/components/ui/Avatar";
+import {
+  ShieldCheckIcon,
+  UserRoundIcon,
+  AudioLinesIcon,
+  CalendarIcon,
+  WalletIcon,
+  FileCheckIcon,
+  CrownIcon,
+  LogOutIcon,
+  InboxIcon,
+  MusicIcon,
+  UserPlusIcon,
+  SettingsIcon,
+} from "@/components/icons";
 
 /** Posición fija en el extremo IZQUIERDO, a la derecha de la campanita. El menú
  *  hamburguesa vive en el lado opuesto (derecha). El panel abre hacia adentro
@@ -42,27 +40,102 @@ const WRAP_RIGHT = "fixed top-4 right-[5.5rem] z-[105] sm:top-5 sm:right-28";
 const EDGE_LEFT = "fixed top-4 left-6 z-[105] sm:top-5 sm:left-12";
 const EDGE_RIGHT = "fixed top-4 right-6 z-[105] sm:top-5 sm:right-12";
 
-// Opción del menú: borde sutil (le da definición y ayuda a leer el texto sobre
-// fondos con foto). Hover = borde amatista + barrido + leve deslizamiento.
-const ITEM =
-  "flex items-center rounded-lg border border-white/15 px-3 py-2.5 text-sm text-silver-100 transition-all duration-200 hover:border-amethyst-300/60 hover:bg-gradient-to-r hover:from-amethyst-500/25 hover:to-transparent hover:pl-4 hover:text-white";
+/** Envuelve el panel en un portal a <body> cuando `portal` es true (dock), para
+ *  sacarlo del `backdrop-filter` de la cápsula (un backdrop-filter anidado dentro
+ *  de otro queda anulado); si no, lo deja en su sitio. */
+function maybePortal(node: ReactNode, portal: boolean) {
+  if (!portal) return node;
+  if (typeof document === "undefined") return null;
+  return createPortal(node, document.body);
+}
 
-export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
+/** Cabecera de sección del menú (GESTIÓN / CUENTA). Estructura tomada del diseño. */
+function SectionLabel({ children }: { children: string }) {
+  return (
+    <p className="text-silver-500 px-3 pt-3 pb-1 text-[0.6rem] font-semibold tracking-[0.18em] uppercase">
+      {children}
+    </p>
+  );
+}
+
+/** Ítem del menú: icono + etiqueta. `highlight` = ítem destacado (amatista);
+ *  el resto usa borde sutil + barrido amatista en hover (legible sobre foto). */
+function MenuLink({
+  href,
+  icon: Icon,
+  label,
+  onClose,
+  highlight = false,
+}: {
+  href: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  label: string;
+  onClose: () => void;
+  highlight?: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      onClick={onClose}
+      className={`group flex items-center gap-2.5 rounded-[10px] border px-3 py-2.5 text-[0.84rem] transition-all duration-200 ${
+        highlight
+          ? "border-amethyst-300/40 bg-amethyst-500/10 hover:border-amethyst-300/70 hover:bg-amethyst-500/15 text-white"
+          : "hover:border-amethyst-300/60 hover:from-amethyst-500/25 text-silver-100 border-white/15 hover:bg-gradient-to-r hover:to-transparent hover:pl-4 hover:text-white"
+      }`}
+    >
+      <Icon
+        className={`size-[17px] shrink-0 ${
+          highlight
+            ? "text-amethyst-300"
+            : "text-silver-300 group-hover:text-silver-100"
+        }`}
+      />
+      <span className="flex-1 truncate">{label}</span>
+    </Link>
+  );
+}
+
+export function UserMenu({
+  align = "left",
+  docked = false,
+  avatarSize,
+}: {
+  align?: "left" | "right";
+  /** En un dock: sin wrapper `fixed` ni trigger absoluto; el avatar vive en el
+   *  flujo del contenedor y el panel cae DEBAJO (alineado según `align`). */
+  docked?: boolean;
+  /** Tamaño del avatar (dock desktop 34, dock móvil 44). Default: 34 en dock. */
+  avatarSize?: number;
+}) {
   const { user, account, loading, logout } = useAuth();
   const [open, setOpen] = useState(false);
   // `render` mantiene el panel montado durante la animación de CIERRE (se
   // desmonta en onAnimationEnd). Cerrado ⇒ desmontado ⇒ no tapa la campanita.
   const [render, setRender] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  // En el dock el panel se porta a <body>: guardamos su posición fija (desde el
+  // trigger) para poder colocarlo fuera de la cápsula.
+  const [coords, setCoords] = useState<{
+    top: number;
+    left?: number;
+    right?: number;
+  } | null>(null);
   const router = useRouter();
   const t = useTranslations();
+  const close = () => setOpen(false);
 
   // Cerrar el dropdown al hacer clic fuera.
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node))
-        setOpen(false);
+      const target = e.target as Node;
+      // El panel puede vivir en un portal (fuera de `ref`): hay que ignorarlo
+      // también, o cualquier clic dentro del menú lo cerraría.
+      if (ref.current?.contains(target)) return;
+      if (panelRef.current?.contains(target)) return;
+      setOpen(false);
     };
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
@@ -73,6 +146,32 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
   useEffect(() => {
     if (open) setRender(true);
   }, [open]);
+
+  // DOCK: el panel va por portal a <body>; su posición fija se calcula desde el
+  // trigger (avatar). Se recalcula al abrir y ante resize/scroll.
+  useEffect(() => {
+    if (!docked || !open) return;
+    const measure = () => {
+      const el = triggerRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setCoords(
+        align === "right"
+          ? {
+              top: r.bottom + 8,
+              right: Math.max(8, window.innerWidth - r.right),
+            }
+          : { top: r.bottom + 8, left: r.left },
+      );
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    return () => {
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [docked, open, align]);
 
   if (loading) return null;
 
@@ -87,236 +186,279 @@ export function UserMenu({ align = "left" }: { align?: "left" | "right" }) {
     router.push("/");
   }
 
-  // Con sesión: desplazado (deja sitio a la campanita). Sin sesión: en el borde,
-  // ocupando el lugar de la campanita ausente.
-  const wrap = user
-    ? align === "right"
-      ? WRAP_RIGHT
-      : WRAP_LEFT
+  // Con sesión: desplazado (deja sitio a la campanita). Sin sesión: en el borde.
+  // En dock: sin `fixed`, vive en el flujo del contenedor.
+  const wrap = docked
+    ? "relative"
+    : user
+      ? align === "right"
+        ? WRAP_RIGHT
+        : WRAP_LEFT
+      : align === "right"
+        ? EDGE_RIGHT
+        : EDGE_LEFT;
+
+  // Padding de la cabecera: fuera del dock, el avatar del trigger FLOTA sobre el
+  // panel (pl-16/pr-16 le reserva sitio). En dock, el avatar está en la cápsula,
+  // así que el panel no necesita ese hueco.
+  const headerPad = docked
+    ? "text-left"
     : align === "right"
-      ? EDGE_RIGHT
-      : EDGE_LEFT;
+      ? "pr-16 text-right"
+      : "pl-16 text-left";
 
   return (
     <div ref={ref} className={wrap}>
+      {/* Trigger = el Avatar. Fuera del dock abre con un reveal circular desde su
+          posición fija; en el dock queda en el flujo y el panel cae debajo. */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={user ? t("userMenu.account") : t("userMenu.access")}
         aria-expanded={open}
-        className={`text-silver-100 hover:border-amethyst-300 absolute top-0 z-20 flex size-11 items-center justify-center overflow-hidden rounded-full border border-white/25 bg-black/40 text-sm font-bold backdrop-blur-sm transition hover:text-white ${
-          align === "right" ? "right-0" : "left-0"
+        className={`focus-visible:ring-amethyst-300 z-20 rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:outline-none ${
+          docked
+            ? "relative flex size-11 items-center justify-center"
+            : `absolute top-0 ${align === "right" ? "right-0" : "left-0"}`
         }`}
       >
-        {user && photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo} alt="" className="h-full w-full object-cover" />
-        ) : user ? (
-          initials(name, email)
-        ) : (
-          <PersonIcon className="size-5" />
-        )}
+        <Avatar
+          src={user ? photo : null}
+          name={user ? name : null}
+          email={user ? email : null}
+          size={avatarSize ?? (docked ? 34 : 44)}
+        />
       </button>
 
-      {/* Panel del menú. Se monta con `render` (que sigue true durante el cierre)
-          y se DESMONTA en onAnimationEnd al cerrar → cerrado no existe en el DOM y
-          no puede robarle clics a la campanita vecina. Abre con
-          `animate-menu-reveal` (círculo que crece desde el avatar) y cierra con
-          `animate-menu-conceal` (se encoge de vuelta). El `backdrop-blur` del
-          cristal desenfoca bien: al acabar, el clip-path vuelve a `none`. */}
-      {render && (
-        <div
-          inert={!open}
-          onAnimationEnd={(e) => {
-            if (e.target === e.currentTarget && !open) setRender(false);
-          }}
-          className={`${glassSurfaceMenu} ${
-            open
-              ? align === "right"
-                ? "animate-menu-reveal-right"
-                : "animate-menu-reveal"
-              : align === "right"
-                ? "animate-menu-conceal-right pointer-events-none"
-                : "animate-menu-conceal pointer-events-none"
-          } absolute top-[-1rem] w-64 overflow-hidden rounded-2xl ${
-            align === "right" ? "right-[-1rem]" : "left-[-1rem]"
-          }`}
-        >
-          <GlassSheen />
-          {/* Gloss superior extra (más brillo de cristal). */}
-          <span className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent" />
-          {/* Sombra de texto heredada: las letras despegan del fondo. */}
-          <div className="relative [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
-            {user ? (
-              <>
-                {/* Nombre/correo a la DERECHA; el círculo (avatar) va a la
-                    izquierda, fuera del recorte, alineado con el trigger. */}
-                <div
-                  className={`border-b border-white/10 p-4 ${
-                    align === "right" ? "pr-16 text-right" : "pl-16 text-left"
-                  }`}
-                >
-                  <p className="truncate text-sm font-semibold text-white">
-                    {name ?? t("userMenu.user")}
-                  </p>
-                  <p className="text-silver-300 truncate text-xs">{email}</p>
-                </div>
-
-                {roles.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 px-4 pt-3">
-                    {roles.map((r) => (
-                      <span
-                        key={r}
-                        className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 rounded-full border px-2 py-0.5 text-[0.65rem] tracking-wide uppercase"
-                      >
-                        {t(`roles.${r}`)}
-                      </span>
-                    ))}
+      {/* Panel del menú. Se monta con `render` (sigue true durante el cierre) y se
+          DESMONTA en onAnimationEnd. En el DOCK se RENDERIZA POR PORTAL a <body>:
+          dentro de la cápsula (que tiene `backdrop-blur`) su propio
+          `backdrop-filter` quedaría ANULADO (backdrop-filter anidado no difumina)
+          y el texto no se leería. Fuera, el frost del dropdown funciona. En dock
+          espera a tener `coords` (posición fija medida desde el trigger). */}
+      {render &&
+        (!docked || !!coords) &&
+        maybePortal(
+          <div
+            ref={panelRef}
+            inert={!open}
+            onAnimationEnd={(e) => {
+              if (e.target === e.currentTarget && !open) setRender(false);
+            }}
+            // Posición forzada por estilo inline (glassSurfaceMenu trae `relative`):
+            // dock → `fixed` en las coords del trigger (portal); si no → `absolute`.
+            // El `backdropFilter` inline SUBE el frost (gana a `backdrop-blur-md`
+            // del token, sin conflicto de clases) para que las letras se lean.
+            style={
+              docked
+                ? {
+                    position: "fixed",
+                    top: coords?.top,
+                    left: coords?.left,
+                    right: coords?.right,
+                    backdropFilter: "blur(22px) saturate(140%)",
+                    WebkitBackdropFilter: "blur(22px) saturate(140%)",
+                  }
+                : {
+                    position: "absolute",
+                    backdropFilter: "blur(22px) saturate(140%)",
+                    WebkitBackdropFilter: "blur(22px) saturate(140%)",
+                  }
+            }
+            className={`${glassSurfaceMenu} ${
+              open
+                ? docked
+                  ? "animate-dock-reveal"
+                  : align === "right"
+                    ? "animate-menu-reveal-right"
+                    : "animate-menu-reveal"
+                : docked
+                  ? "animate-dock-conceal pointer-events-none"
+                  : align === "right"
+                    ? "animate-menu-conceal-right pointer-events-none"
+                    : "animate-menu-conceal pointer-events-none"
+            } w-64 overflow-hidden rounded-2xl ${
+              docked
+                ? `z-[120] ${align === "right" ? "origin-top-right" : "origin-top-left"}`
+                : `absolute top-[-1rem] ${align === "right" ? "right-[-1rem]" : "left-[-1rem]"}`
+            }`}
+          >
+            {/* Velo oscuro sutil: baja la luminancia del fondo para que el texto
+              blanco contraste (el blur difumina, pero no oscurece). Va DEBAJO del
+              sheen/gloss y del contenido. */}
+            <span className="pointer-events-none absolute inset-0 rounded-[inherit] bg-black/20" />
+            <GlassSheen />
+            {/* Gloss superior extra (más brillo de cristal). */}
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-white/15 to-transparent" />
+            {/* Sombra de texto heredada: las letras despegan del fondo. */}
+            <div className="relative [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
+              {user ? (
+                <>
+                  <div className={`border-b border-white/10 p-4 ${headerPad}`}>
+                    <p className="truncate text-sm font-semibold text-white">
+                      {name ?? t("userMenu.user")}
+                    </p>
+                    <p className="text-silver-300 truncate text-xs">{email}</p>
                   </div>
-                )}
 
-                <div className="flex flex-col gap-1.5 p-2.5">
-                  {/* Admin: Panel admin de primero; sin "Mis solicitudes" ni
-                      "Conviértete en artista" (flujos de cliente/artista). */}
-                  {hasAnyRole(account, ["admin"]) && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
-                    >
-                      {t("userMenu.adminPanel")}
-                    </Link>
+                  {roles.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 px-4 pt-3">
+                      {roles.map((r) => (
+                        <span
+                          key={r}
+                          className="border-amethyst-300/40 bg-amethyst-500/10 text-amethyst-200 rounded-full border px-2 py-0.5 text-[0.65rem] tracking-wide uppercase"
+                        >
+                          {t(`roles.${r}`)}
+                        </span>
+                      ))}
+                    </div>
                   )}
-                  {!hasAnyRole(account, ["admin"]) && (
-                    <Link
-                      href="/solicitudes"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
+
+                  <div className="flex flex-col p-2.5">
+                    {/* ── GESTIÓN (management, por rol) ── */}
+                    <SectionLabel>{t("userMenu.sectionManage")}</SectionLabel>
+                    <div className="flex flex-col gap-1.5">
+                      {hasAnyRole(account, ["admin"]) && (
+                        <MenuLink
+                          href="/admin/convenios"
+                          icon={FileCheckIcon}
+                          label={t("userMenu.convenios")}
+                          onClose={close}
+                          highlight
+                        />
+                      )}
+                      {hasAnyRole(account, ["admin"]) && (
+                        <MenuLink
+                          href="/admin"
+                          icon={ShieldCheckIcon}
+                          label={t("userMenu.adminPanel")}
+                          onClose={close}
+                        />
+                      )}
+                      {!hasAnyRole(account, ["admin"]) && (
+                        <MenuLink
+                          href="/solicitudes"
+                          icon={InboxIcon}
+                          label={t("userMenu.myRequests")}
+                          onClose={close}
+                        />
+                      )}
+                      {hasAnyRole(account, ["productor"]) && (
+                        <MenuLink
+                          href="/consola"
+                          icon={AudioLinesIcon}
+                          label={t("userMenu.console")}
+                          onClose={close}
+                        />
+                      )}
+                      {hasRole(account, "beatmaker") && (
+                        <MenuLink
+                          href="/beats/publicar"
+                          icon={MusicIcon}
+                          label={t("userMenu.myBeats")}
+                          onClose={close}
+                        />
+                      )}
+                      {hasAnyRole(account, ["productor", "admin"]) && (
+                        <MenuLink
+                          href="/disponibilidad"
+                          icon={CalendarIcon}
+                          label={t("userMenu.availability")}
+                          onClose={close}
+                        />
+                      )}
+                      {hasAnyRole(account, ["beatmaker", "productor"]) && (
+                        <MenuLink
+                          href="/mis-pagos"
+                          icon={WalletIcon}
+                          label={t("userMenu.myPayouts")}
+                          onClose={close}
+                        />
+                      )}
+                    </div>
+
+                    {/* ── CUENTA (personal) ── */}
+                    <SectionLabel>{t("userMenu.sectionAccount")}</SectionLabel>
+                    <div className="flex flex-col gap-1.5">
+                      {hasAnyRole(account, ["artista"]) ? (
+                        <MenuLink
+                          href={
+                            account?.artistSlug
+                              ? `/artistas/${account.artistSlug}`
+                              : "/artista/perfil"
+                          }
+                          icon={UserRoundIcon}
+                          label={t("userMenu.myArtistProfile")}
+                          onClose={close}
+                        />
+                      ) : (
+                        !hasAnyRole(account, ["admin"]) && (
+                          <MenuLink
+                            href="/artista/nuevo"
+                            icon={UserPlusIcon}
+                            label={t("userMenu.becomeArtist")}
+                            onClose={close}
+                          />
+                        )
+                      )}
+                      <MenuLink
+                        href="/suscripciones"
+                        icon={CrownIcon}
+                        label={t("userMenu.subscriptions")}
+                        onClose={close}
+                      />
+                      <MenuLink
+                        href="/cuenta"
+                        icon={SettingsIcon}
+                        label={t("userMenu.settings")}
+                        onClose={close}
+                      />
+                    </div>
+
+                    {/* Cerrar sesión — ítem propio al final (rojo). */}
+                    <button
+                      type="button"
+                      onClick={onLogout}
+                      className="group mt-2 flex items-center gap-2.5 rounded-[10px] border border-red-500/25 px-3 py-2.5 text-left text-[0.84rem] text-red-300 transition-all duration-200 hover:border-red-400/60 hover:bg-gradient-to-r hover:from-red-500/25 hover:to-transparent hover:text-red-200"
                     >
-                      {t("userMenu.myRequests")}
-                    </Link>
-                  )}
-                  {hasAnyRole(account, ["artista"]) ? (
+                      <LogOutIcon className="size-[17px] shrink-0" />
+                      <span className="flex-1">{t("userMenu.logout")}</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={`border-b border-white/10 p-4 ${headerPad}`}>
+                    <p className="text-sm font-semibold text-white">
+                      {t("userMenu.guestTitle")}
+                    </p>
+                    <p className="text-silver-300 text-xs">
+                      {t("userMenu.guestSubtitle")}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2 p-2.5">
                     <Link
-                      href={
-                        account?.artistSlug
-                          ? `/artistas/${account.artistSlug}`
-                          : "/artista/perfil"
-                      }
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
+                      href="/login?mode=register"
+                      onClick={close}
+                      className="from-silver-100 to-amethyst-300 text-ink block rounded-xl bg-gradient-to-r px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
                     >
-                      {t("userMenu.myArtistProfile")}
+                      {t("auth.createAccount")}
                     </Link>
-                  ) : (
-                    !hasAnyRole(account, ["admin"]) && (
-                      <Link
-                        href="/artista/nuevo"
-                        onClick={() => setOpen(false)}
-                        className={ITEM}
-                      >
-                        {t("userMenu.becomeArtist")}
-                      </Link>
-                    )
-                  )}
-                  {hasAnyRole(account, ["productor"]) && (
                     <Link
-                      href="/consola"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
+                      href="/login"
+                      onClick={close}
+                      className="text-silver-100 hover:border-amethyst-300/60 block rounded-xl border border-white/20 px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:bg-white/5 hover:text-white"
                     >
-                      {t("userMenu.console")}
+                      {t("auth.login")}
                     </Link>
-                  )}
-                  {hasRole(account, "beatmaker") && (
-                    <Link
-                      href="/beats/publicar"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
-                    >
-                      {t("userMenu.myBeats")}
-                    </Link>
-                  )}
-                  {hasAnyRole(account, ["productor", "admin"]) && (
-                    <Link
-                      href="/disponibilidad"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
-                    >
-                      {t("userMenu.availability")}
-                    </Link>
-                  )}
-                  {hasAnyRole(account, ["beatmaker", "productor"]) && (
-                    <Link
-                      href="/mis-pagos"
-                      onClick={() => setOpen(false)}
-                      className={ITEM}
-                    >
-                      {t("userMenu.myPayouts")}
-                    </Link>
-                  )}
-                  <Link
-                    href="/suscripciones"
-                    onClick={() => setOpen(false)}
-                    className={ITEM}
-                  >
-                    {t("userMenu.subscriptions")}
-                  </Link>
-                  <Link
-                    href="/cuenta"
-                    onClick={() => setOpen(false)}
-                    className={ITEM}
-                  >
-                    {t("userMenu.settings")}
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    className="flex w-full items-center rounded-lg border border-red-500/25 px-3 py-2.5 text-left text-sm text-red-300 transition-all duration-200 hover:border-red-400/60 hover:bg-gradient-to-r hover:from-red-500/25 hover:to-transparent hover:pl-4 hover:text-red-200"
-                  >
-                    {t("userMenu.logout")}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Cabecera junto al avatar del trigger (mismo layout que con
-                    sesión) → el avatar deja de "flotar" solo arriba. */}
-                <div
-                  className={`border-b border-white/10 p-4 ${
-                    align === "right" ? "pr-16 text-right" : "pl-16 text-left"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-white">
-                    {t("userMenu.guestTitle")}
-                  </p>
-                  <p className="text-silver-300 text-xs">
-                    {t("userMenu.guestSubtitle")}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-2 p-2.5">
-                  {/* Crear cuenta = CTA principal (gradiente); Iniciar sesión =
-                      secundario, ahora con el mismo estilo redondeado (no el viejo). */}
-                  <Link
-                    href="/login?mode=register"
-                    onClick={() => setOpen(false)}
-                    className="from-silver-100 to-amethyst-300 text-ink block rounded-xl bg-gradient-to-r px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
-                  >
-                    {t("auth.createAccount")}
-                  </Link>
-                  <Link
-                    href="/login"
-                    onClick={() => setOpen(false)}
-                    className="text-silver-100 hover:border-amethyst-300/60 block rounded-xl border border-white/20 px-3 py-2.5 text-center text-sm font-semibold transition-all duration-200 hover:bg-white/5 hover:text-white"
-                  >
-                    {t("auth.login")}
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>,
+          docked,
+        )}
     </div>
   );
 }

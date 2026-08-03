@@ -455,6 +455,201 @@ export function DevicesIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// ── Iconos de colectivos (§07) ───────────────────────────────────────────
+// Edificio — un SELLO (la casa que firma a los artistas).
+export function BuildingIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="3" y="3" width="8" height="18" rx="1" />
+      <rect x="13" y="8" width="8" height="13" rx="1" />
+      <path d="M6 7h2M6 11h2M6 15h2M16 12h2M16 16h2" />
+    </svg>
+  );
+}
+
+// Grupo redondo — una AGRUPACIÓN (banda, crew).
+export function UsersRoundIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="10" cy="8" r="4" />
+      <path d="M2 21a8 8 0 0 1 16 0" />
+      <path d="M19 16a5 5 0 0 1 3 4" />
+      <path d="M17.5 4.2a4 4 0 0 1 0 7.6" />
+    </svg>
+  );
+}
+
+// Birrete — una ACADEMIA.
+export function GraduationCapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M22 9 12 5 2 9l10 4 10-4Z" />
+      <path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5" />
+    </svg>
+  );
+}
+
+// Flecha derecha — "ver" una tarjeta.
+export function ArrowRightIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M5 12h14" />
+      <path d="m12 5 7 7-7 7" />
+    </svg>
+  );
+}
+
+// ── Iconos de las secciones del perfil (§05) ─────────────────────────────
+// Regla — ficha técnica de modelo (medidas, talla, calzado).
+export function RulerIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M21.3 8.7 8.7 21.3a1 1 0 0 1-1.4 0l-4.6-4.6a1 1 0 0 1 0-1.4L15.3 2.7a1 1 0 0 1 1.4 0l4.6 4.6a1 1 0 0 1 0 1.4Z" />
+      <path d="m7.5 10.5 2 2" />
+      <path d="m10.5 7.5 2 2" />
+      <path d="m13.5 4.5 2 2" />
+      <path d="m4.5 13.5 2 2" />
+    </svg>
+  );
+}
+
+// Galardón — reconocimientos y premios.
+export function AwardIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="12" cy="8" r="6" />
+      <path d="M15.5 13.5 17 22l-5-3-5 3 1.5-8.5" />
+    </svg>
+  );
+}
+
+// Bolsa — tienda de beats.
+export function ShoppingBagIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4H6Z" />
+      <path d="M3 6h18" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
+// Claqueta — media destacada y reel.
+export function FilmIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="2" y="3" width="20" height="18" rx="2" />
+      <path d="M7 3v18M17 3v18M2 12h20M2 7.5h5M2 16.5h5M17 7.5h5M17 16.5h5" />
+    </svg>
+  );
+}
+
+// Grupo — artistas relacionados / colaboradores.
+export function UsersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+// Hitos — trayectoria del artista.
+export function RouteIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="6" cy="19" r="3" />
+      <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+      <circle cx="18" cy="5" r="3" />
+    </svg>
+  );
+}
+
+// Asa de arrastre — reordenar secciones.
+export function GripVerticalIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)} strokeWidth="2.5" strokeLinecap="round">
+      <path d="M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01" />
+    </svg>
+  );
+}
+
+// Etiqueta — las "etiquetas" de talento que desbloquean secciones.
+export function TagIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.2 8.2a2 2 0 0 0 2.8 0l7.2-7.2a2 2 0 0 0 0-2.8Z" />
+      <circle cx="6.5" cy="6.5" r="1.5" />
+    </svg>
+  );
+}
+
+// Tendencia al alza / a la baja — variación de una métrica entre periodos.
+export function TrendingUpIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M22 7l-8.5 8.5-5-5L2 17" />
+      <path d="M16 7h6v6" />
+    </svg>
+  );
+}
+
+export function TrendingDownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M22 17l-8.5-8.5-5 5L2 7" />
+      <path d="M16 17h6v-6" />
+    </svg>
+  );
+}
+
+// Puntero con clic — clics del visitante hacia las redes del artista.
+export function PointerClickIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M9 9l5 12 1.8-5.2L21 14 9 9z" />
+      <path d="M7.2 2.2 8 5.1" />
+      <path d="m5.1 8-2.9-.8" />
+      <path d="M14 4.1 12 6" />
+      <path d="m6 12-1.9 2" />
+    </svg>
+  );
+}
+
+// Globo terráqueo — sección "¿desde dónde te ven?".
+export function GlobeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+    </svg>
+  );
+}
+
+// Monitor — versión ESCRITORIO de la foto de perfil.
+export function MonitorIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8" />
+      <path d="M12 17v4" />
+    </svg>
+  );
+}
+
+// Teléfono — versión MÓVIL de la foto de perfil.
+export function SmartphoneIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="6" y="2" width="12" height="20" rx="2.5" />
+      <path d="M11 18.5h2" />
+    </svg>
+  );
+}
+
 // Descargar (flecha hacia bandeja) — para bajar el QR de pago.
 export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -664,6 +859,215 @@ export function VerifiedIcon(props: SVGProps<SVGSVGElement>) {
         clipRule="evenodd"
         d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4.7 7.7-5.5 5.5a1 1 0 0 1-1.4 0l-2.5-2.5 1.4-1.4 1.8 1.8 4.8-4.8 1.4 1.4Z"
       />
+    </svg>
+  );
+}
+
+/* ── Iconos de menú (trazo) — añadidos para el rediseño del Avatar Dropdown ─── */
+
+// Escudo con check — Panel admin.
+export function ShieldCheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+// Persona (círculo) — Mi perfil de artista.
+export function UserRoundIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="12" cy="8" r="5" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </svg>
+  );
+}
+
+// Ondas de audio — Consola del productor.
+export function AudioLinesIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M2 10v3M6 6v11M10 3v18M14 8v7M18 5v13M22 10v3" />
+    </svg>
+  );
+}
+
+// Lupa — búsqueda del directorio.
+export function SearchIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+
+// Micrófono — disciplina Cantante.
+export function MicIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="9" y="2" width="6" height="11" rx="3" />
+      <path d="M5 10v1a7 7 0 0 0 14 0v-1" />
+      <path d="M12 18v4M8 22h8" />
+    </svg>
+  );
+}
+
+// Disco de vinilo — disciplina DJ.
+export function DiscIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M6.5 12A5.5 5.5 0 0 1 12 6.5" />
+      <path d="M17.5 12A5.5 5.5 0 0 1 12 17.5" />
+      <circle cx="12" cy="12" r="1.5" />
+    </svg>
+  );
+}
+
+// Megáfono — disciplina Presentador.
+export function MegaphoneIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="m3 11 18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </svg>
+  );
+}
+
+// Cámara — disciplina Modelo.
+export function CameraIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </svg>
+  );
+}
+
+// Movimiento (línea de actividad) — disciplina Bailarín.
+export function ActivityIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  );
+}
+
+// Cuadrícula — macro filtro "Todos".
+export function LayoutGridIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+    </svg>
+  );
+}
+
+// Controles deslizantes — macro filtro "Producción".
+export function SlidersIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M21 4h-8M7 4H3M21 12h-2M13 12H3M21 20h-6M9 20H3" />
+      <circle cx="9" cy="4" r="2" />
+      <circle cx="15" cy="12" r="2" />
+      <circle cx="11" cy="20" r="2" />
+    </svg>
+  );
+}
+
+// Barras — botón/ventana de Métricas.
+export function ChartBarIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M3 3v18h18" />
+      <path d="M8 17v-5M13 17V8M18 17v-9" />
+    </svg>
+  );
+}
+
+// Candado — indica funciones bloqueadas (p. ej. Métricas próximamente).
+export function LockIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+// Llama — "Unirse a un movimiento" (colectivos).
+export function FlameIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5Z" />
+    </svg>
+  );
+}
+
+// Calendario — Disponibilidad.
+export function CalendarIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M8 2v4M16 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+// Billetera — Mis pagos.
+export function WalletIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+      <path d="M18 12a2 2 0 0 0 0 4h3v-4Z" />
+    </svg>
+  );
+}
+
+// Documento con check — Convenios y permisos (acuerdo firmado).
+export function FileCheckIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v5h5" />
+      <path d="m9 15 2 2 4-4" />
+    </svg>
+  );
+}
+
+// Corona — Suscripciones.
+export function CrownIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7z" />
+      <path d="M5 20h14" />
+    </svg>
+  );
+}
+
+// Salida — Cerrar sesión.
+export function LogOutIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
+// Bandeja — Mis cosas / solicitudes.
+export function InboxIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+      <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </svg>
   );
 }

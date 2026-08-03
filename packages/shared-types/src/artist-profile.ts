@@ -18,6 +18,14 @@
 import type { SocialPlatform } from "./artist";
 import type { GeoLocation } from "./location";
 import type { Role } from "./user";
+import type { MetricsVisibility } from "./profile-metrics";
+import type { ColectivoTipo } from "./colectivo";
+import type { SectionId, SectionPrefs } from "./profile-sections";
+import type {
+  FichaTecnica,
+  Reconocimiento,
+  TrayectoriaItem,
+} from "./profile-role-data";
 
 // ── Insignia / Nivel (eje 1: reputación ganada) ─────────────────────────────
 
@@ -241,19 +249,250 @@ export const GALLERY_SPAN_CLASS: Record<GallerySpan, string> = {
   big: "col-span-2 row-span-2",
 };
 
+/**
+ * Grid del bento (clases Tailwind): la MISMA en el editor y en el perfil público,
+ * y con **2 columnas SIEMPRE** (móvil y escritorio) para que la disposición NO
+ * cambie entre dispositivos — solo escala el tamaño de las celdas. El tamaño de
+ * cada foto lo da GALLERY_SPAN_CLASS.
+ */
+export const GALLERY_GRID =
+  "grid auto-rows-[44vw] grid-cols-2 gap-3 sm:auto-rows-[220px]";
+
 // ── Media destacada (pantalla 2) ────────────────────────────────────────────
 
 /**
- * Media de la "pantalla 2" del perfil (junto a la bio). Un clip corto en bucle
- * (video) o una foto que represente al artista. `type` decide cómo se renderiza.
+ * Media de la "pantalla 2" del perfil (junto a la bio). Un clip (video) o foto que
+ * represente al artista. La media destacada admite VARIAS piezas: hasta 2 clips
+ * MUDOS en bucle (≤8s) o imágenes + 1 clip CON audio (≤30s). Los bailarines pueden
+ * subir hasta 4 mudos (más espacio para mostrar baile).
  */
 export interface FeaturedMedia {
   url: string;
   type: "video" | "image";
+  /**
+   * Solo videos: `true` = clip CON audio (≤30s, se reproduce con control del
+   * visitante). Ausente/`false` = clip MUDO en bucle (≤8s) o imagen.
+   */
+  withAudio?: boolean;
+  /** Texto descriptivo (título) del clip — se muestra en el player y en la lista. */
+  title?: string;
 }
 
-/** Duración máxima recomendada del clip destacado (segundos). */
+/** Duración máxima de un clip MUDO destacado (segundos). */
 export const FEATURED_VIDEO_MAX_SECONDS = 8;
+/** Duración máxima del clip CON audio destacado (segundos). */
+export const FEATURED_AUDIO_MAX_SECONDS = 30;
+/**
+ * Política de media destacada por disciplina:
+ * - General: 2 piezas MUDAS (clips ≤8s o imágenes) + 1 clip CON audio (≤30s) = 3.
+ * - Bailarines: hasta 5 clips, TODOS con audio y SIN límite de duración (el baile
+ *   necesita su música completa).
+ */
+export interface FeaturedMediaPolicy {
+  /** Máx. de piezas mudas (clips ≤8s o imágenes). */
+  maxSilent: number;
+  /** Máx. de clips con audio. */
+  maxAudio: number;
+  /** Duración máx. del clip con audio en segundos; `null` = sin límite. */
+  audioMaxSeconds: number | null;
+  /** Total de piezas permitidas (maxSilent + maxAudio). */
+  maxTotal: number;
+}
+
+/** Política de media destacada según disciplina (puro). */
+export function featuredMediaPolicy(
+  disciplines: Role[] | undefined,
+): FeaturedMediaPolicy {
+  if (disciplines?.includes("bailarin")) {
+    return { maxSilent: 0, maxAudio: 5, audioMaxSeconds: null, maxTotal: 5 };
+  }
+  return {
+    maxSilent: 2,
+    maxAudio: 1,
+    audioMaxSeconds: FEATURED_AUDIO_MAX_SECONDS,
+    maxTotal: 3,
+  };
+}
+
+/**
+ * Lista efectiva de media destacada: usa `featuredMediaList` si existe; si no, cae
+ * al campo antiguo `featuredMedia` (un solo item). Puro — evita duplicar la lógica
+ * de compatibilidad en vista y editor.
+ */
+export function featuredMediaItems(
+  list: FeaturedMedia[] | undefined,
+  single: FeaturedMedia | undefined,
+): FeaturedMedia[] {
+  if (list && list.length > 0) return list;
+  return single ? [single] : [];
+}
+
+// ── Índice de búsqueda IA (multimodal: apariencia + sonido + temática) ───────
+
+/**
+ * Firma de las fuentes indexables de un perfil. Si no coincide con la guardada en
+ * `searchIndex.sources`, la Cloud Function de indexado reindexa. Evita reindexar
+ * (y quemar cuota de Gemini) cuando el perfil cambia en algo que no afecta a la
+ * búsqueda.
+ */
+export interface ProfileIndexSources {
+  /** URL de la foto principal indexada. */
+  photo?: string;
+  /** URL del audio de intro indexado (Storage; alimenta el análisis de voz). */
+  audio?: string;
+  /** Hash del texto indexado (tagline + género(s) + bio + títulos de temas). */
+  text?: string;
+}
+
+/**
+ * Ficha semántica del perfil generada por IA (Gemini multimodal) para la búsqueda
+ * en lenguaje natural del directorio (§03). Se calcula UNA vez (Cloud Function al
+ * publicar/editar) a partir de las fotos, el audio de intro y el texto del perfil,
+ * y se guarda aquí. La búsqueda compara el query del visitante contra
+ * `description`/`tags` — NUNCA vuelve a mirar fotos ni audio.
+ *
+ * PRIVADO: server-controlled y NO se expone al cliente público (la búsqueda vive
+ * en el servidor y solo devuelve slugs). Los descriptores físicos son sensibles.
+ */
+export interface ProfileSearchIndex {
+  /** Descripción libre buscable: apariencia + estilo vocal + temática, en prosa. */
+  description: string;
+  /** Etiquetas cortas (pelo, ojos, complexión, género, tipo de voz, temas). */
+  tags: string[];
+  /** Apariencia física (derivada de las fotos). */
+  appearance?: string;
+  /** Cómo canta / estilo vocal (del audio de intro si lo hay; si no, del texto). */
+  sound?: string;
+  /** De qué habla / temática (de bio, títulos, género). */
+  themes?: string;
+  /** Firma de las fuentes indexadas: si cambia, hay que reindexar. */
+  sources: ProfileIndexSources;
+  /** epoch ms del indexado. */
+  indexedAt: number;
+  /** Modelo Gemini usado (trazabilidad). */
+  model: string;
+}
+
+/** Campos del perfil que alimentan el índice de búsqueda. */
+type IndexableProfile = Pick<
+  ArtistProfile,
+  "photoURL" | "entryTrackUrl" | "bio" | "genre" | "genres" | "tagline" | "tracks"
+>;
+
+/** Hash corto y estable (djb2) para firmar el texto indexable (puro). */
+function textSignature(s: string): string {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) ^ s.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(36);
+}
+
+/**
+ * Firma estable de las fuentes indexables (foto principal + audio de intro +
+ * texto buscable). La usa la Cloud Function para decidir si reindexar. Puro.
+ */
+export function searchSources(p: IndexableProfile): ProfileIndexSources {
+  const text = [
+    p.tagline,
+    p.genre,
+    ...(p.genres ?? []),
+    p.bio,
+    ...p.tracks.map((t) => t.title),
+  ]
+    .map((s) => s?.trim())
+    .filter(Boolean)
+    .join(" | ");
+  return {
+    photo: p.photoURL || undefined,
+    audio: p.entryTrackUrl || undefined,
+    text: textSignature(text),
+  };
+}
+
+/**
+ * ¿Cambiaron las fuentes desde el último indexado? `true` si nunca se indexó o si
+ * foto/audio/texto difieren de lo firmado en `searchIndex.sources`. Puro.
+ */
+export function needsReindex(
+  p: IndexableProfile & Pick<ArtistProfile, "searchIndex">,
+): boolean {
+  const prev = p.searchIndex?.sources;
+  if (!prev) return true;
+  const cur = searchSources(p);
+  return (
+    cur.photo !== prev.photo ||
+    cur.audio !== prev.audio ||
+    cur.text !== prev.text
+  );
+}
+
+// ── Estadísticas sociales ────────────────────────────────────────────────────
+
+/**
+ * Estadísticas del artista cacheadas en el perfil. Server-controlled: las calcula
+ * una Cloud Function programada leyendo las URLs de sus redes. Por ahora solo las
+ * plataformas fáciles por API pública (YouTube subs, Spotify followers); IG/TikTok/X
+ * exigen OAuth y llegan después. `visitas` es un contador propio (no de terceros).
+ */
+export interface SocialStats {
+  /** Seguidores por plataforma efectivamente leída. */
+  followers?: Partial<Record<SocialPlatform, number>>;
+  /** Suma de seguidores de las plataformas integradas (lo que se muestra). */
+  followersTotal?: number;
+  /** Reproducciones/vistas totales (hoy: vistas del canal de YouTube). */
+  plays?: number;
+  /** Plataformas que se pudieron leer — para pintar sus iconos junto al número. */
+  sources?: SocialPlatform[];
+  /** epoch ms del último refresco. */
+  updatedAt?: number;
+}
+
+/**
+ * Referencia a un colectivo (sello/grupo/movimiento) al que pertenece el artista.
+ * Denormalizada en el perfil SOLO para pintar la sección Colectivos. El dominio
+ * completo (entidad, membresía, aprobación) llega en su fase; por ahora el perfil
+ * lo lee y, si viene vacío, muestra un estado vacío.
+ */
+/**
+ * Referencia a un colectivo desde el perfil del artista: lo justo para pintar su
+ * tarjeta sin ir a buscar el documento entero.
+ *
+ * El `tipo` usa la MISMA taxonomía que la entidad `Colectivo` (§07). Antes tenía
+ * una propia (`"sello" | "grupo" | "movimiento"`) que se escribió meses antes de
+ * existir los colectivos de verdad; mantener dos vocabularios para la misma cosa
+ * garantizaba que tarde o temprano dejaran de cuadrar.
+ */
+export interface ColectivoRef {
+  /** Slug del colectivo — enlaza a `/colectivos/{slug}`. */
+  slug: string;
+  nombre: string;
+  tipo: ColectivoTipo;
+  /** Color de acento del logo/avatar (hex). */
+  accent?: string;
+  /** Papel dentro del colectivo (p. ej. "Fundador", "Miembro"). */
+  estado?: string;
+}
+
+/**
+ * Formatea un número a compacto para las tarjetas de stats: 972 → "972",
+ * 48720 → "48.7K", 9_400_000 → "9.4M", 2_100_000_000 → "2.1B". Puro.
+ */
+export function formatCompact(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  const units = [
+    { v: 1e9, s: "B" },
+    { v: 1e6, s: "M" },
+    { v: 1e3, s: "K" },
+  ];
+  for (const u of units) {
+    if (n >= u.v) {
+      const val = n / u.v;
+      const str =
+        val >= 100 ? String(Math.round(val)) : val.toFixed(1).replace(/\.0$/, "");
+      return str + u.s;
+    }
+  }
+  return String(Math.floor(n));
+}
 
 // ── Entidad ─────────────────────────────────────────────────────────────────
 
@@ -288,8 +527,39 @@ export interface ArtistProfile {
    * usa `photoURL` centrada. Evita que una foto horizontal se vea como franja.
    */
   photoURLMobile?: string;
-  /** Encuadre de la foto principal (zoom/pan/rotación). */
+  /**
+   * Quién puede ver las métricas del perfil. Server-only: cambiarlo abre o
+   * cierra el acceso, así que las reglas lo bloquean al cliente y solo se toca
+   * desde su endpoint. Si falta, se trata como `privado`.
+   */
+  metricsVisibility?: MetricsVisibility;
+
+  // ── §05 · Secciones dirigidas por etiqueta ───────────────────────────
+  /** Qué secciones ha encendido o apagado el artista (parcial: ver defaults). */
+  sectionPrefs?: SectionPrefs;
+  /** Orden elegido en el gestor. Lo que no esté aquí va al final. */
+  sectionOrder?: SectionId[];
+
+  /** Ficha técnica — etiqueta Modelo. */
+  fichaTecnica?: FichaTecnica;
+  /** Categorías de trabajo (Pasarela, Editorial…) — etiqueta Modelo. */
+  categorias?: string[];
+  /** Premios y portadas — etiqueta Modelo. */
+  reconocimientos?: Reconocimiento[];
+  /** Marcas con las que ha trabajado — etiqueta Modelo. */
+  marcas?: string[];
+  /** Géneros de baile — etiqueta Bailarín. */
+  generosBaile?: string[];
+  /** Hitos de carrera — etiqueta Bailarín. */
+  trayectoria?: TrayectoriaItem[];
+  /** Encuadre de la foto principal (zoom/pan/rotación). Aplica a ESCRITORIO. */
   photoTransform?: PhotoTransform;
+  /**
+   * Encuadre de la versión MÓVIL. Independiente del de escritorio porque el
+   * marco cambia de horizontal a vertical: el encuadre que funciona en 16:9 casi
+   * nunca funciona en 9:16. Si no se define, la foto móvil va sin transformar.
+   */
+  photoTransformMobile?: PhotoTransform;
   /**
    * Media destacada de la "pantalla 2" (junto a la bio). Reemplaza la repetición
    * de la foto de perfil: un clip corto (≤8s, en bucle mudo) o una foto que
@@ -297,6 +567,12 @@ export interface ArtistProfile {
    * sube nada, la pantalla 2 cae a `photoURL`.
    */
   featuredMedia?: FeaturedMedia;
+  /**
+   * Media destacada MÚLTIPLE (varias piezas). Reemplaza a `featuredMedia` (que
+   * queda como compat de perfiles viejos). Límites por disciplina: ver
+   * maxFeaturedSilent + FEATURED_AUDIO_MAX. Léelo con featuredMediaItems().
+   */
+  featuredMediaList?: FeaturedMedia[];
   /** Galería de mejores fotos artísticas (bento: cada foto con su tamaño). */
   gallery: GalleryItem[];
   /** Temas destacados (botones de reproducción YouTube/Spotify). */
@@ -314,6 +590,17 @@ export interface ArtistProfile {
 
   /** Links directos a todas sus redes. */
   socials: Partial<Record<SocialPlatform, string>>;
+  /**
+   * Seguidores INGRESADOS A MANO por el artista, por red (mientras no haya API/
+   * OAuth para leerlos automáticamente). Si una red tiene número, su botón se pinta
+   * como tarjeta con el conteo; si no, como icono simple. Editable por el dueño.
+   */
+  manualFollowers?: Partial<Record<SocialPlatform, number>>;
+  /**
+   * Red social PRINCIPAL: la que abre el botón "Seguir" del perfil. La elige el
+   * artista entre sus redes. Ausente = se usa la primera red disponible.
+   */
+  primarySocial?: SocialPlatform;
 
   /** Año en que empezó su trayectoria (los años se derivan). */
   trajectoryStartYear: number;
@@ -338,6 +625,30 @@ export interface ArtistProfile {
    * exime del pago de membresía (ver perfilVisible). Solo admin/Functions.
    */
   socio?: boolean;
+
+  /**
+   * Ficha semántica para la búsqueda IA del directorio (apariencia + sonido +
+   * temática). La calcula la Cloud Function de indexado a partir de fotos/audio/
+   * texto. Server-controlled y PRIVADA (no se expone al cliente). Ausente = aún
+   * no indexado. Ver ProfileSearchIndex.
+   */
+  searchIndex?: ProfileSearchIndex;
+
+  /**
+   * Estadísticas sociales cacheadas (seguidores de YouTube/Spotify). Las calcula
+   * una Cloud Function programada; server-only. Ausente = aún sin calcular.
+   */
+  socialStats?: SocialStats;
+  /**
+   * Visitas al perfil público (contador incremental). Lo suben los visitantes
+   * (regla acotada: solo +1 a este campo); el dueño no cuenta. Ausente = 0.
+   */
+  visitas?: number;
+  /**
+   * Colectivos (sellos/grupos/movimientos) a los que pertenece. Server-controlled
+   * (los gestiona el flujo de colectivos, en su fase). Ausente/vacío = sin colectivos.
+   */
+  colectivos?: ColectivoRef[];
 
   /**
    * Curaduría de la vitrina — SOLO admin (las reglas lo blindan):
@@ -397,7 +708,17 @@ export type EditableProfile = Pick<
   | "photoURL"
   | "photoURLMobile"
   | "photoTransform"
+  | "photoTransformMobile"
+  | "sectionPrefs"
+  | "sectionOrder"
+  | "fichaTecnica"
+  | "categorias"
+  | "reconocimientos"
+  | "marcas"
+  | "generosBaile"
+  | "trayectoria"
   | "featuredMedia"
+  | "featuredMediaList"
   | "gallery"
   | "tracks"
   | "entryTrackUrl"
@@ -406,6 +727,8 @@ export type EditableProfile = Pick<
   | "playerY"
   | "playerSize"
   | "socials"
+  | "manualFollowers"
+  | "primarySocial"
   | "trajectoryStartYear"
   | "relatedArtists"
 >;

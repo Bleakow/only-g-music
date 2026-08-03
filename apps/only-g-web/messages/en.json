@@ -58,7 +58,9 @@
     "artista": "Singer",
     "beatmaker": "Beatmaker",
     "modelo": "Model",
-    "bailarin": "Dancer"
+    "bailarin": "Dancer",
+    "dj": "DJ",
+    "presentador": "Host"
   },
   "userMenu": {
     "account": "Account menu",
@@ -66,6 +68,9 @@
     "guestTitle": "Your account",
     "guestSubtitle": "Sign in or create an account",
     "user": "User",
+    "sectionManage": "Manage",
+    "sectionAccount": "Account",
+    "convenios": "Agreements & roles",
     "myRequests": "My activity",
     "myArtistProfile": "My artist profile",
     "becomeArtist": "Become an artist",
@@ -351,6 +356,7 @@
     "heroHeadline": "We produce your",
     "heroHeadlineAccent": "next hit",
     "explore": "Explore",
+    "servicesCta": "Services",
     "artists": "Artists",
     "quote": "Quote a production",
     "quoteShort": "Quote",
@@ -392,7 +398,24 @@
     "tabTodos": "All",
     "tabCantantes": "Singers",
     "tabBeatmakers": "Beatmakers",
-    "segmentLabel": "Filter by discipline"
+    "segmentLabel": "Filter by discipline",
+    "searchPlaceholder": "Search by name, genre or city…",
+    "aiButton": "AI Search",
+    "aiHelper": "Filter, or ask the AI for what you imagine.",
+    "aiTry": "Try:",
+    "aiSuggestion1": "Afrobeat singers",
+    "aiSuggestion2": "Tall brunette",
+    "aiSearching": "Searching with AI…",
+    "aiResults": "AI results",
+    "clearSearch": "Clear",
+    "noResults": "No results",
+    "noResultsHint": "Try other words or change the filters.",
+    "macroTodos": "All",
+    "macroEscena": "On stage",
+    "macroProduccion": "Production",
+    "macroLabel": "Filter by area",
+    "roleLabel": "Filter by discipline",
+    "count": "{count, plural, =0 {No artists} one {# artist} other {# artists}}"
   },
   "servicesPage": {
     "metaTitle": "Services — Only G Music",
@@ -730,6 +753,8 @@
       "membresia": "Membership price (monthly)",
       "perfil": "Artist profile price",
       "gnotes": "G Notes price (monthly, unlimited AI)",
+      "colectivo": "Collective — monthly membership",
+      "cupoColectivo": "Collective — artist slot (monthly)",
       "litePass": "Lite pass (G Notes + profile)",
       "goldenPass": "Golden pass (+ 1 production)",
       "premiumPass": "Premium pass (+ group + video)",
@@ -1458,7 +1483,39 @@
     "notFound": "Artist not found",
     "backToArtists": "See artists",
     "profileSong": "Profile song",
-    "relatedArtists": "Related artists"
+    "relatedArtists": "Related artists",
+    "statFollowers": "Followers",
+    "statSingles": "Singles",
+    "statVisits": "Visits",
+    "statPlays": "Plays",
+    "follow": "Follow",
+    "quote": "Get a quote",
+    "actionMessage": "Message",
+    "actionMetrics": "Metrics",
+    "metricsPrivate": "Only you can see them",
+    "comingSoon": "Coming soon",
+    "sectionStats": "Stats",
+    "sectionFeatured": "Featured media",
+    "moreVideos": "More videos",
+    "noMoreVideos": "No more videos yet",
+    "withSound": "With sound",
+    "clipN": "Clip {n}",
+    "aboutMe": "About",
+    "sectionSocials": "Social networks",
+    "followersCount": "{count} followers",
+    "visitProfile": "View profile",
+    "sectionColectivos": "Collectives",
+    "colectivosSubtitle": "Labels, groups and movements you belong to.",
+    "colectivosEmpty": "You're not part of any collective yet.",
+    "colectivosNote": "Movements are open: you join instantly. Crews and labels need approval.",
+    "exploreColectivos": "Explore collectives",
+    "joinMovement": "Join a movement",
+    "requestGroup": "Request to join a group",
+    "colectivoTipo": {
+      "sello": "Label",
+      "grupo": "Group",
+      "movimiento": "Movement"
+    }
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -1602,24 +1659,30 @@
       "change": "Change photo",
       "adjust": "Crop / frame"
     },
-    "photoMobile": {
-      "add": "Mobile photo",
-      "changeShort": "Change mobile",
-      "remove": "Remove mobile",
-      "hint": "The main photo is shown on desktops and large screens. Upload a vertical version (optional) so it isn't badly cropped on phones.",
-      "setHint": "Mobile portrait photo added. The main one is used on desktops."
-    },
-    "photoSync": {
-      "titleMobile": "Mobile photo",
-      "titleDesktop": "Desktop photo",
-      "bodyMobile": "Use this same photo on mobile, or upload a vertical version?",
-      "bodyDesktop": "Use this same photo on desktop, or upload a horizontal version?",
-      "useSame": "Use this one",
-      "uploadVertical": "Upload vertical",
-      "uploadHorizontal": "Upload horizontal",
-      "manageMobile": "Mobile version",
-      "manageDesktop": "Desktop version",
-      "hint": "The photo adapts to each screen. Reuse the same one or set a version per screen."
+    "screenPreview": {
+      "desktop": "Desktop",
+      "mobile": "Mobile",
+      "groupLabel": "Screen",
+      "adjustHere": "Reframe your {label} photo",
+      "previewOn": "See how it looks on {label}",
+      "titleDesktop": "Your photo on desktop",
+      "titleMobile": "Your photo on mobile",
+      "hintDesktop": "This is how your photo gets cropped on big screens. Move it or zoom until it looks right.",
+      "hintMobile": "On phones the frame is vertical, so the crop changes. Adjust it here or upload a vertical photo.",
+      "hintAfterUpload": "You changed your photo. Adjust how it looks on this screen, or upload a different one just for it.",
+      "photoAlt": "Preview of your profile photo",
+      "dragHint": "Drag the photo to reframe",
+      "zoom": "Zoom",
+      "zoomIn": "Zoom in",
+      "zoomOut": "Zoom out",
+      "rotate": "Rotate",
+      "rotateLeft": "Rotate left",
+      "rotateRight": "Rotate right",
+      "reset": "Reset",
+      "uploadVertical": "Upload vertical photo",
+      "uploadHorizontal": "Upload horizontal photo",
+      "done": "Done",
+      "close": "Close"
     },
     "location": {
       "title": "Location",
@@ -1627,6 +1690,7 @@
     },
     "photoAdjust": {
       "hint": "Drag the photo to reframe · adjust zoom and rotation in steps",
+      "editingScreen": "{label} framing",
       "zoom": "Zoom",
       "rotate": "Rotate",
       "rotate90": "90°",
@@ -1647,15 +1711,38 @@
       "genreCustom": "Use \"{value}\"",
       "cityPlaceholder": "City",
       "startYearTitle": "Start year",
+      "startYearLabel": "Career",
+      "startYearSince": "Since",
+      "startYearYears": "{count, plural, =0 {your first year} one {# year} other {# years}}",
       "artisticNameLabel": "Artist name",
       "artisticNamePlaceholder": "Tap to type your name",
       "taglinePlaceholder": "+ Add your tagline"
     },
+    "accent": {
+      "label": "Accent",
+      "open": "Change your profile's accent color",
+      "pick": "Pick your color",
+      "custom": "Custom color"
+    },
+    "disciplines": {
+      "sectionTitle": "What you do",
+      "hint": "Your crafts on Only G. They show as tags on your profile. To change them, message the team."
+    },
+    "genres": {
+      "sectionTitle": "Genres",
+      "hint": "The genres you move in. They show on your profile and help people find you."
+    },
     "player": {
+      "sectionTitle": "Player",
+      "sectionHint": "The song that plays when someone lands on your profile. Place it anywhere over your photo and pick its size.",
+      "controlsLabel": "Set up your player",
       "dragHandleAriaLabel": "Drag to move the player",
       "hideAriaLabel": "Hide from photo (move below)",
       "showOnPhoto": "Show on photo",
-      "recenter": "Recenter player"
+      "recenter": "Recenter",
+      "recenterTitle": "Send the player back to the center of your photo",
+      "hintOverlay": "Drag the player over your photo to move it, and use S · M · L for its size.",
+      "hintBelow": "Your player now sits below the photo. Put it back on top whenever you want."
     },
     "song": {
       "add": "Add a background track",
@@ -1707,7 +1794,12 @@
       "sectionTitle": "Socials",
       "add": "Add social network",
       "linkPlaceholder": "{label} link",
-      "remove": "Remove {label}"
+      "remove": "Remove {label}",
+      "followersPlaceholder": "Followers",
+      "followersAria": "Followers on {label}",
+      "followersHint": "Optional",
+      "followersPreview": "Shows as {value}",
+      "markPrimary": "Set {label} as primary (the Follow button link)"
     },
     "gallery": {
       "sectionTitle": "Gallery ({count}/{limit})",
@@ -1718,23 +1810,38 @@
     },
     "tracks": {
       "sectionTitle": "Top tracks",
+      "hint": "Add your singles with their YouTube or Spotify link. They play right inside your profile.",
+      "empty": "You haven't added any tracks yet.",
       "titlePlaceholder": "Track {n} title",
       "removeAriaLabel": "Remove track",
       "youtubePlaceholder": "YouTube link",
       "spotifyPlaceholder": "Spotify link",
+      "youtubeAria": "Track's YouTube link",
+      "spotifyAria": "Track's Spotify link",
       "addButton": "Add track"
     },
     "featured": {
       "sectionTitle": "Featured media",
-      "hint": "Upload a short clip or a photo that represents you: your group, a move, your vibe.",
+      "hint": "Upload short clips or photos that represent you: your group, a move, your vibe.",
       "upload": "Upload a video or a photo",
       "formats": "Video up to {maxSec}s or an image",
       "change": "Change",
-      "remove": "Remove"
+      "remove": "Remove",
+      "withAudio": "With audio",
+      "addSilent": "Add muted clip ({max})",
+      "addAudio": "Add clip with audio",
+      "titleLabel": "Clip title",
+      "titlePlaceholder": "Give it a title (optional)",
+      "emptyCta": "Upload your first clip",
+      "emptyHint": "A short video or a photo. It's the first thing people see after your cover.",
+      "listTitle": "Your clips ({count}/{max})",
+      "listEmpty": "No clips yet.",
+      "clipN": "Clip {n}"
     },
     "videoTrim": {
       "title": "Trim video",
       "hint": "Drag the window to pick the segment (max {max}s). It loops, muted.",
+      "hintNoLimit": "Drag the window to pick the segment. Audio is kept.",
       "loading": "Loading video…",
       "length": "Length: {value}",
       "preview": "Preview",
@@ -1878,6 +1985,10 @@
         "titulo": "Pass activated",
         "cuerpo": "Your {pase} pass is now active. Check your benefits in Subscriptions."
       },
+      "colectivo-activado": {
+        "titulo": "Collective active",
+        "cuerpo": "Your collective's membership is active. Its slots are ready: start adding artists."
+      },
       "convenio-solicitado": {
         "titulo": "New partnership request",
         "cuerpo": "{nombre} requested a {tipo} partnership."
@@ -1941,6 +2052,356 @@
     "eyebrow": "Booking",
     "title": "Book your session",
     "intro": "Choose service, venue, date and time. Sessions in Barranquilla (Atlántico) and Bogotá."
+  },
+  "colectivoPanel": {
+    "title": "Collective panel",
+    "subtitle": "{tipo} · control panel",
+    "back": "Back to the collective",
+    "viewPublic": "View public page",
+    "denied": "This panel isn't yours",
+    "deniedHint": "Only the founder and their admins can open it.",
+    "soon": "Soon",
+    "cancel": "Cancel",
+    "save": "Save",
+    "done": "Done",
+    "invite": "Invite artist",
+    "rolePlaceholder": "Their role (Founder, Member…)",
+    "featured": "Show on the collective's cover",
+    "rosterEmpty": "Nobody here yet. Invite your first artist.",
+    "slotsFree": "{count, plural, =0 {No free slots} one {1 free slot} other {# free slots}}",
+    "membershipInactive": "Activate the membership to add artists.",
+    "membersModalHint": "Pick the artists in your collective. You have {libres} slots left.",
+    "slotsModalHint": "You have {cupos} slots, {libres} unused. Add more if you need room.",
+    "addSlots": "Slots to add",
+    "less": "Remove a slot",
+    "more": "Add a slot",
+    "newTotal": "You'd have {cupos} slots for ${total} a month.",
+    "payRenew": "Go to payment",
+    "kpi": {
+      "members": "Members",
+      "membersOf": "of {cupos} slots",
+      "slots": "Free slots",
+      "slotsSub": "ready to invite",
+      "quotes": "Quotes",
+      "income": "This month's income"
+    },
+    "membership": {
+      "activa": "Membership active",
+      "vencida": "Membership expired",
+      "ninguna": "No membership"
+    },
+    "roster": {
+      "sello": "Label artists",
+      "movimiento": "Movement members",
+      "agrupacion": "Members",
+      "academia": "Teachers and talent"
+    },
+    "quickAccess": "Quick access",
+    "access": {
+      "members": "Members",
+      "membersSub": "Manage your roster",
+      "slots": "Slots and invites",
+      "slotsSub": "Make room in your collective",
+      "identity": "Identity",
+      "identitySub": "Name, city and colour",
+      "finance": "Finances",
+      "financeSub": "Collective income and payments",
+      "metrics": "Comparative metrics",
+      "metricsSub": "Compare your artists",
+      "quotes": "Quotes",
+      "quotesSub": "Collective bookings"
+    },
+    "identity": {
+      "name": "Name",
+      "city": "City",
+      "description": "Description",
+      "color": "Colour"
+    }
+  },
+  "crearColectivo": {
+    "title": "Create collective",
+    "subtitle": "Bring your people together under one name and give them their own page.",
+    "back": "Back",
+    "continue": "Continue",
+    "step1": "Type",
+    "step2": "Identity",
+    "step3": "Membership",
+    "s1": {
+      "title": "What kind of collective are you creating?",
+      "hint": "It sets how your page reads and which sections it gets.",
+      "desc": {
+        "sello": "You sign artists and release their music under your name.",
+        "movimiento": "An open current: anyone can join in.",
+        "agrupacion": "A fixed band or crew, with set members.",
+        "academia": "You train talent and showcase your teachers and students."
+      }
+    },
+    "s2": {
+      "title": "Collective identity",
+      "hint": "This is how people will find and recognise you.",
+      "name": "Name",
+      "namePlaceholder": "Type the name",
+      "url": "Web address",
+      "urlHint": "Built from the name, but you can change it.",
+      "discipline": "Discipline",
+      "city": "City",
+      "cityPlaceholder": "Barranquilla",
+      "description": "Description",
+      "descriptionPlaceholder": "Tell people what the collective is about, what you're after and what you've done…",
+      "accent": "Colour"
+    },
+    "s3": {
+      "title": "Membership and slots",
+      "hint": "A collective runs on a monthly organisation membership. Buy the artist slots you need: they cap how many members it can hold.",
+      "slots": "Artist slots",
+      "slotsCount": "{count, plural, one {# slot} other {# slots}}",
+      "less": "Remove a slot",
+      "more": "Add a slot",
+      "slotsNote": "You can add more slots later from the collective's panel.",
+      "summary": "Summary",
+      "planLine": "Collective membership",
+      "slotsLine": "{count, plural, one {# artist slot} other {# artist slots}}",
+      "total": "Total",
+      "perMonth": "/ month",
+      "cta": "Create collective",
+      "note": "Your collective is created and published right away. Payment is arranged over chat with the team."
+    },
+    "errors": {
+      "slugTaken": "That address is taken. Try another one.",
+      "create": "We couldn't create the collective. Try again."
+    }
+  },
+  "colectivos": {
+    "home": "Home",
+    "eyebrow": "OGM Directory",
+    "title": "Collectives",
+    "intro": "Labels, movements, crews and academies — find the ones moving the scene and join them.",
+    "create": "Create collective",
+    "filterType": "Filter by type",
+    "disciplineLabel": "Discipline:",
+    "searchPlaceholder": "Search by name or city…",
+    "view": "View",
+    "memberCount": "{count, plural, =0 {No members} one {1 member} other {# members}}",
+    "backToList": "Collectives",
+    "contact": "Contact",
+    "share": "Share",
+    "manage": "Manage",
+    "about": "About us",
+    "noMembers": "This collective has no members yet.",
+    "notFound": "Collective not found",
+    "notFoundHint": "It may have changed its name, or it may no longer exist.",
+    "emptyTitle": "No collectives yet",
+    "emptyHint": "Be the first to start one and bring your people together under one name.",
+    "emptyFiltered": "Nothing here",
+    "emptyFilteredHint": "Try another type, another discipline, or fewer words in the search.",
+    "tipo": {
+      "todos": "All",
+      "sello": "Label",
+      "movimiento": "Movement",
+      "agrupacion": "Crew",
+      "academia": "Academy"
+    },
+    "tipoPlural": {
+      "sello": "Labels",
+      "movimiento": "Movements",
+      "agrupacion": "Crews",
+      "academia": "Academies"
+    },
+    "disciplina": {
+      "musica": "Music",
+      "modelaje": "Modeling",
+      "baile": "Dance",
+      "academia": "Academy"
+    },
+    "cifra": {
+      "miembros": "Members",
+      "seguidores": "Followers",
+      "reproducciones": "Plays",
+      "lanzamientos": "Releases",
+      "eventos": "Events"
+    },
+    "perfil": {
+      "sello": {
+        "cta": "Follow label",
+        "cifras": "The label in numbers",
+        "miembros": "Label artists",
+        "lanzamientos": "Featured releases"
+      },
+      "movimiento": {
+        "cta": "Join the movement",
+        "cifras": "The movement in numbers",
+        "miembros": "Featured members",
+        "lanzamientos": "Biggest tracks"
+      },
+      "agrupacion": {
+        "cta": "Follow crew",
+        "cifras": "The crew in numbers",
+        "miembros": "Members",
+        "lanzamientos": "Biggest tracks"
+      },
+      "academia": {
+        "cta": "I want to study here",
+        "cifras": "The academy in numbers",
+        "miembros": "Teachers and talent",
+        "lanzamientos": "Featured showcases"
+      }
+    }
+  },
+  "roleSections": {
+    "fichaTecnica": "Stats sheet",
+    "fichaHint": "Your measurements and features. It's the first thing a brand or agency looks at.",
+    "categorias": "Categories",
+    "categoriasHint": "The kind of work you do.",
+    "categoriasPlaceholder": "Type one and press Enter",
+    "marcas": "Brands and collaborations",
+    "marcasHint": "Who you've worked with. Just the name.",
+    "marcasPlaceholder": "Brand name, then Enter",
+    "generosBaile": "Dance styles",
+    "generosBaileHint": "The styles you've got down.",
+    "generosBailePlaceholder": "Type one and press Enter",
+    "trayectoria": "Career",
+    "trayectoriaHint": "Tours, shows, competitions — what you've done and when.",
+    "reconocimientos": "Awards",
+    "reconocimientosHint": "Prizes, covers and titles.",
+    "addHito": "Add milestone",
+    "addPremio": "Add award",
+    "suggestions": "Suggestions",
+    "remove": "Remove {value}",
+    "ficha": {
+      "altura": "Height",
+      "medidas": "Measurements",
+      "talla": "Size",
+      "calzado": "Shoe size",
+      "ojos": "Eyes",
+      "cabello": "Hair"
+    },
+    "fichaPlaceholder": {
+      "altura": "1.74 m",
+      "medidas": "90-60-90",
+      "talla": "M / 8",
+      "calzado": "38",
+      "ojos": "Brown",
+      "cabello": "Black"
+    },
+    "hito": {
+      "anio": "Year",
+      "titulo": "What it was",
+      "detalle": "Where or with whom (optional)",
+      "remove": "Remove from list",
+      "empty": "You haven't added anything yet."
+    }
+  },
+  "sections": {
+    "sectionTitle": "Your sections",
+    "sectionHint": "Build your profile from what actually represents you. Your tags decide what you can show.",
+    "tagsTitle": "Your tags",
+    "tagsHint": "Your tags unlock the sections available for your profile.",
+    "tagsEmpty": "You don't have tags yet. Message the team to get them assigned.",
+    "groupBase": "Base sections",
+    "groupBaseHint": "Always available",
+    "groupUnlocked": "Unlocked by your tags",
+    "groupUnlockedHint": "Turn them on or hide them",
+    "groupLocked": "Locked",
+    "groupLockedHint": "They need a tag you don't have yet",
+    "baseCaption": "Base section",
+    "requiresTag": "Needs the {tag} tag",
+    "requestTag": "Request it",
+    "item": {
+      "sobreMi": "About me",
+      "galeria": "Photo gallery",
+      "redes": "Social networks",
+      "metricas": "Profile metrics",
+      "mediaDestacada": "Featured media",
+      "relacionados": "Related artists",
+      "reproductor": "Auto player",
+      "canciones": "Featured songs",
+      "generosMusicales": "Music genres",
+      "portafolio": "Extended portfolio",
+      "fichaTecnica": "Stats sheet",
+      "reconocimientos": "Awards",
+      "tiendaBeats": "Beat store",
+      "generosBaile": "Dance styles",
+      "trayectoria": "Career",
+      "reelPresentaciones": "Hosting reel"
+    }
+  },
+  "metrics": {
+    "title": "Your profile metrics",
+    "subtitle": "{name} · artist profile",
+    "back": "Back to profile",
+    "backToProfile": "Back to profile",
+    "retry": "Try again",
+    "rangeLabel": "Period",
+    "rangeDays": "{days} days",
+    "vsPrevious": "Compared with the previous period",
+    "kpiVisits": "Profile visits",
+    "kpiPlays": "Plays",
+    "kpiShares": "Shares",
+    "kpiSocialClicks": "Social clicks",
+    "geoTitle": "Where are they watching from?",
+    "geoSubtitle": "Visits by country · last {days} days",
+    "legendLess": "Fewer",
+    "legendMore": "More",
+    "mapSoon": "The map lands in the next release",
+    "topCountries": "Top countries",
+    "emptyCountries": "We don't know where they're watching from yet.",
+    "visitsOverTime": "Visits over time",
+    "visitsOverTimeSub": "One point per day · last {days} days",
+    "visitsChartAria": "Visits chart for the last {days} days",
+    "clicksBySocial": "Clicks by social network",
+    "emptySocial": "Nobody has jumped to your socials from here yet.",
+    "topSongs": "Most played songs",
+    "topSongsSub": "Played from your artist profile",
+    "emptySongs": "Your tracks haven't been played yet.",
+    "sharesTitle": "Shares",
+    "sharesHint": "People who shared your profile. Yours don't count.",
+    "emptyShares": "Nobody has shared your profile yet.",
+    "allTime": "All time: {visits} visits · {plays} plays",
+    "visibilityPrivate": "Only visible to you",
+    "visibilityLink": "Visible with the link",
+    "visibilityPublic": "Public metrics",
+    "deniedTitle": "Private metrics",
+    "deniedBody": "This artist hasn't made their metrics public. If someone sent you a link, open it in full — it's missing the part that grants access.",
+    "errorTitle": "We couldn't load your metrics",
+    "errorBody": "Something failed while fetching them. Check your connection and try again.",
+    "mapAria": "World map showing visits from {count} countries",
+    "channel": {
+      "whatsapp": "WhatsApp",
+      "copy": "Link copied",
+      "native": "Share menu",
+      "instagram": "Instagram",
+      "x": "X",
+      "facebook": "Facebook",
+      "otros": "Other"
+    },
+    "share": {
+      "button": "Share",
+      "open": "Choose who sees your metrics",
+      "title": "Who sees your metrics?",
+      "intro": "By default only you can see them. You can hand a link to whoever you want, or leave them open to everyone.",
+      "linkLabel": "Your link",
+      "linkPending": "Generating your link…",
+      "copy": "Copy",
+      "copied": "Copied",
+      "rotate": "Generate a new link",
+      "rotateHint": "The previous link stops working right away.",
+      "error": "We couldn't save the change. Try again.",
+      "done": "Done",
+      "option": {
+        "privado": {
+          "title": "Only me",
+          "body": "Nobody else can open them, not even with the link."
+        },
+        "enlace": {
+          "title": "Anyone with the link",
+          "body": "Handy for sending them to a label, a brand or your manager. It doesn't show on your profile."
+        },
+        "publico": {
+          "title": "Everyone",
+          "body": "The \"Metrics\" button shows on your profile for anyone who visits."
+        }
+      }
+    }
   },
   "meta": {
     "rootTitle": "Only G Music",

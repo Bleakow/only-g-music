@@ -47,6 +47,13 @@ export interface Precios {
   precioLitePass: number;
   precioGoldenPass: number;
   precioPremiumPass: number;
+  /**
+   * Membresía MENSUAL de un colectivo (§07): sellos, movimientos, agrupaciones
+   * y academias. Es la cuota de la organización, aparte de los cupos.
+   */
+  precioColectivo: number;
+  /** Precio de CADA cupo de artista dentro de un colectivo (mensual). */
+  precioCupoColectivo: number;
 
   // ── Servicios de estudio (compra directa) ──────────────────────────────
   /** Grabación: base que cubre las 2h mínimas. */
@@ -88,6 +95,8 @@ export const DEFAULTS: ComercialConfig = {
     precioLitePass: 80000,
     precioGoldenPass: 350000,
     precioPremiumPass: 600000,
+    precioColectivo: 120000,
+    precioCupoColectivo: 25000,
     precioGrabacionBase: 60000,
     precioGrabacionHoraExtra: 15000,
     recargoGrabacion2: 20000,
@@ -137,6 +146,8 @@ export function parsePrecios(
     precioLitePass: p("precioLitePass"),
     precioGoldenPass: p("precioGoldenPass"),
     precioPremiumPass: p("precioPremiumPass"),
+    precioColectivo: p("precioColectivo"),
+    precioCupoColectivo: p("precioCupoColectivo"),
     precioGrabacionBase: p("precioGrabacionBase"),
     precioGrabacionHoraExtra: p("precioGrabacionHoraExtra"),
     recargoGrabacion2: r("recargoGrabacion2"),

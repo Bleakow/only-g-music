@@ -18,3 +18,12 @@ export function openConversation(conversationId: string): void {
     }),
   );
 }
+
+/** Evento para abrir el chat SIN hilo concreto (el inbox), desde el dock global. */
+export const OPEN_CHAT_EVENT = "ogm:open-chat";
+
+/** Abre la burbuja en la lista de conversaciones (sin hilo activo). */
+export function openChat(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(OPEN_CHAT_EVENT));
+}

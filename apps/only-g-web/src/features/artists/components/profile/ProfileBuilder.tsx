@@ -19,6 +19,8 @@ import {
   type FeaturedMedia,
   type Premium,
   FEATURED_VIDEO_MAX_SECONDS,
+  featuredMediaItems,
+  featuredMediaPolicy,
   DEFAULT_PHOTO_TRANSFORM,
   DEFAULT_PLAYER_X,
   DEFAULT_PLAYER_Y,
@@ -29,8 +31,22 @@ import {
   photoTransformCss,
   premiumEstado,
 } from "@only-g/shared-types/artist-profile";
+import type { Role } from "@only-g/shared-types/user";
+import {
+  isSectionOn,
+  type SectionId,
+  type SectionPrefs,
+} from "@only-g/shared-types/profile-sections";
+import type {
+  FichaTecnica,
+  Reconocimiento,
+  TrayectoriaItem,
+} from "@only-g/shared-types/profile-role-data";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import {
+  openChat,
+  openConversation,
+} from "@/features/conversations/lib/open-conversation";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
 import type { MetodoPago } from "@only-g/shared-types/payment-method";
@@ -42,10 +58,26 @@ import {
 import { SocialPalette } from "./SocialPalette";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { AudioTrimModal } from "./AudioTrimModal";
-import { VideoTrimModal } from "./VideoTrimModal";
 import { GalleryBento } from "./GalleryBento";
 import { BioAiModal } from "./BioAiModal";
 import { RelatedArtistsPicker } from "./RelatedArtistsPicker";
+import { ProfileChip, ProfileChipField } from "./ProfileChip";
+import { AccentColorPicker } from "./AccentColorPicker";
+import { SectionManager } from "./SectionManager";
+import {
+  ChipListEditor,
+  FichaTecnicaEditor,
+  HitosEditor,
+  LIMITES,
+  MarcasEditor,
+  CATEGORIAS_MODELO,
+  GENEROS_BAILE,
+  categoriaColor,
+} from "./RoleSectionsEditor";
+import { FeaturedMediaEditor } from "./FeaturedMediaEditor";
+import { PhotoScreenPreview, type ScreenTarget } from "./PhotoScreenPreview";
+import { StepButton, clampNum as clamp } from "./StepButton";
+import { UploadButton } from "./UploadButton";
 import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { Button } from "@/components/ui/Button";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -53,7 +85,10 @@ import { GlassModal } from "@/components/ui/GlassModal";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { SearchableSelect } from "@/components/ui/SearchableSelect";
 import { LocationPicker } from "@/features/location/components/LocationPicker";
-import { formatLocation, type GeoLocation } from "@only-g/shared-types/location";
+import {
+  formatLocation,
+  type GeoLocation,
+} from "@only-g/shared-types/location";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { MUSIC_GENRES } from "../../data/genres";
 import {
@@ -76,7 +111,11 @@ import {
   RotateCcwIcon,
   ArrowLeftIcon,
   SparklesIcon,
-  DevicesIcon,
+  ClockIcon,
+  MonitorIcon,
+  SmartphoneIcon,
+  YouTubeIcon,
+  SpotifyIcon,
 } from "@/components/icons";
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -119,68 +158,6 @@ const newTrack = (): EditorTrack => ({
 });
 
 type SaveState = "idle" | "saving" | "saved" | "error";
-
-/** Botón que abre un selector de archivos oculto y entrega los File elegidos.
- *  `glass` lo renderiza como GlassButton (mismo estilo que Atrás/Ajustes). */
-function UploadButton({
-  accept,
-  multiple,
-  disabled,
-  onFiles,
-  className,
-  children,
-  glass,
-  title,
-  ariaLabel,
-}: {
-  accept: string;
-  multiple?: boolean;
-  disabled?: boolean;
-  onFiles: (files: File[]) => void;
-  className?: string;
-  children: React.ReactNode;
-  glass?: boolean;
-  title?: string;
-  ariaLabel?: string;
-}) {
-  const ref = useRef<HTMLInputElement>(null);
-  return (
-    <>
-      {glass ? (
-        <GlassButton
-          onClick={() => ref.current?.click()}
-          disabled={disabled}
-          className={className}
-          title={title}
-          ariaLabel={ariaLabel}
-        >
-          {children}
-        </GlassButton>
-      ) : (
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => ref.current?.click()}
-          className={className}
-        >
-          {children}
-        </button>
-      )}
-      <input
-        ref={ref}
-        type="file"
-        accept={accept}
-        multiple={multiple}
-        hidden
-        onChange={(e) => {
-          const files = Array.from(e.target.files ?? []);
-          e.target.value = "";
-          if (files.length) onFiles(files);
-        }}
-      />
-    </>
-  );
-}
 
 /**
  * Editor in-place del perfil de artista (WYSIWYG). En vez de un formulario, se
@@ -230,14 +207,31 @@ export function ProfileBuilder({
   // Foto vertical opcional para móvil (art direction). La principal es para PC.
   const [photoMobile, setPhotoMobile] = useState("");
   // Media destacada (pantalla 2, junto a la bio): clip corto o foto.
-  const [featuredMedia, setFeaturedMedia] = useState<FeaturedMedia | null>(null);
+  const [featuredList, setFeaturedList] = useState<FeaturedMedia[]>([]);
+  // Clip que se está viendo en el hueco del player del editor.
+  const [featuredActive, setFeaturedActive] = useState(0);
+  // Qué secciones ha encendido/apagado el artista (§05).
+  const [sectionPrefs, setSectionPrefs] = useState<SectionPrefs>({});
+  // §05 — datos de las secciones que desbloquean las etiquetas de talento.
+  const [fichaTecnica, setFichaTecnica] = useState<FichaTecnica>({});
+  const [categorias, setCategorias] = useState<string[]>([]);
+  const [marcas, setMarcas] = useState<string[]>([]);
+  const [generosBaile, setGenerosBaile] = useState<string[]>([]);
+  const [trayectoria, setTrayectoria] = useState<TrayectoriaItem[]>([]);
+  const [reconocimientos, setReconocimientos] = useState<Reconocimiento[]>([]);
+  // Disciplinas (solo lectura) para calcular la política de media destacada.
+  const [disciplines, setDisciplines] = useState<Role[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   const [songURL, setSongURL] = useState("");
   // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
   // sube es el FRAGMENTO, no este archivo.
   const [trimFile, setTrimFile] = useState<File | null>(null);
-  // Video de media destacada pendiente de recortar (abre el VideoTrimModal).
-  const [videoTrimFile, setVideoTrimFile] = useState<File | null>(null);
+  // Video de media destacada pendiente de recortar (abre el VideoTrimModal). Guarda
+  // si el clip pendiente lleva audio → define el modo del recortador.
+  const [videoTrim, setVideoTrim] = useState<{
+    file: File;
+    withAudio: boolean;
+  } | null>(null);
   // Confirmación antes de quitar la canción (acción destructiva).
   const [confirmRemoveSong, setConfirmRemoveSong] = useState(false);
   // Aviso de "publica tu perfil" al intentar verlo sin membresía vigente.
@@ -250,21 +244,32 @@ export function ProfileBuilder({
   const [socials, setSocials] = useState<
     Partial<Record<SocialPlatform, string>>
   >({});
+  const [manualFollowers, setManualFollowers] = useState<
+    Partial<Record<SocialPlatform, number>>
+  >({});
+  const [primarySocial, setPrimarySocial] = useState<SocialPlatform | null>(
+    null,
+  );
 
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [uploading, setUploading] = useState<string | null>(null);
   const [premiumData, setPremiumData] = useState<Premium | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Encuadre POR PANTALLA: el marco pasa de 16:9 a 9:19.5, así que el encuadre
+  // que funciona en escritorio casi nunca funciona en móvil.
   const [pt, setPt] = useState<PhotoTransform>(DEFAULT_PHOTO_TRANSFORM);
+  const [ptMobile, setPtMobile] = useState<PhotoTransform>(
+    DEFAULT_PHOTO_TRANSFORM,
+  );
   const [adjusting, setAdjusting] = useState(false);
   // Detecta la pantalla actual (mismo corte que el perfil público: 640px/sm)
   // para saber a qué slot va la primera foto subida.
   const isMobileScreen = useMediaQuery("(max-width: 639.98px)");
-  // Modal de sincronización: pide confirmar/encuadrar la foto para la OTRA
-  // pantalla (la que no se acaba de subir). `target` = esa otra pantalla.
-  const [syncPrompt, setSyncPrompt] = useState<{
-    url: string;
-    target: "desktop" | "mobile";
+  // Vista previa de la foto en la OTRA pantalla: solo la foto dentro del marco
+  // de esa resolución. `justUploaded` cambia el copy a "acabas de cambiarla".
+  const [screenPreview, setScreenPreview] = useState<{
+    target: ScreenTarget;
+    justUploaded: boolean;
   } | null>(null);
   const dragRef = useRef({
     active: false,
@@ -323,8 +328,19 @@ export function ProfileBuilder({
           setStartYear(p.trajectoryStartYear || CURRENT_YEAR);
           setPhotoURL(p.photoURL);
           setPhotoMobile(p.photoURLMobile ?? "");
-          setFeaturedMedia(p.featuredMedia ?? null);
+          setFeaturedList(
+            featuredMediaItems(p.featuredMediaList, p.featuredMedia),
+          );
+          setDisciplines(p.disciplines ?? []);
+          setSectionPrefs(p.sectionPrefs ?? {});
+          setFichaTecnica(p.fichaTecnica ?? {});
+          setCategorias(p.categorias ?? []);
+          setMarcas(p.marcas ?? []);
+          setGenerosBaile(p.generosBaile ?? []);
+          setTrayectoria(p.trayectoria ?? []);
+          setReconocimientos(p.reconocimientos ?? []);
           setPt(p.photoTransform ?? DEFAULT_PHOTO_TRANSFORM);
+          setPtMobile(p.photoTransformMobile ?? DEFAULT_PHOTO_TRANSFORM);
           setGallery(p.gallery);
           setSongURL(p.entryTrackUrl ?? "");
           setPlayerOverlay(p.playerOverlay ?? true);
@@ -333,6 +349,8 @@ export function ProfileBuilder({
           setPlayerSize(p.playerSize ?? DEFAULT_PLAYER_SIZE);
           setTracks(p.tracks.map((t) => ({ ...t, _id: `t${trackSeq++}` })));
           setSocials(p.socials);
+          setManualFollowers(p.manualFollowers ?? {});
+          setPrimarySocial(p.primarySocial ?? null);
           setPremiumData(p.premium);
           setPuntos(p.puntos ?? 0);
         } else if (!adminMode && account?.artistDraft) {
@@ -359,6 +377,14 @@ export function ProfileBuilder({
       const trimmed = v?.trim();
       if (trimmed) cleanSocials[k as SocialPlatform] = trimmed;
     }
+    // Seguidores manuales: solo de redes que quedaron con link y con nº positivo.
+    const cleanFollowers: Partial<Record<SocialPlatform, number>> = {};
+    for (const [k, n] of Object.entries(manualFollowers)) {
+      const key = k as SocialPlatform;
+      if (cleanSocials[key] && typeof n === "number" && n > 0) {
+        cleanFollowers[key] = Math.round(n);
+      }
+    }
     return {
       artisticName: artisticName.trim(),
       tagline: tagline.trim(),
@@ -372,7 +398,19 @@ export function ProfileBuilder({
       photoURL,
       photoURLMobile: photoMobile || undefined,
       photoTransform: pt,
-      featuredMedia: featuredMedia ?? undefined,
+      photoTransformMobile: ptMobile,
+      sectionPrefs,
+      // §05 — se guardan SIEMPRE, aunque la sección esté apagada: apagar una
+      // sección la oculta, no borra lo que el artista escribió. Al volver a
+      // encenderla, sus datos siguen ahí.
+      fichaTecnica,
+      categorias,
+      marcas,
+      generosBaile,
+      trayectoria,
+      reconocimientos,
+      featuredMedia: undefined,
+      featuredMediaList: featuredList,
       gallery,
       tracks: tracks
         .filter((t) => t.title.trim())
@@ -387,6 +425,12 @@ export function ProfileBuilder({
       playerY: Math.round(playerY),
       playerSize,
       socials: cleanSocials,
+      manualFollowers: cleanFollowers,
+      // Solo si la red principal sigue teniendo link.
+      primarySocial:
+        primarySocial && cleanSocials[primarySocial]
+          ? primarySocial
+          : undefined,
       trajectoryStartYear: Number(startYear) || CURRENT_YEAR,
     };
   }
@@ -435,8 +479,16 @@ export function ProfileBuilder({
     photoURL,
     photoMobile,
     pt,
+    ptMobile,
+    sectionPrefs,
+    fichaTecnica,
+    categorias,
+    marcas,
+    generosBaile,
+    trayectoria,
+    reconocimientos,
     gallery,
-    featuredMedia,
+    featuredList,
     songURL,
     playerOverlay,
     playerX,
@@ -444,6 +496,8 @@ export function ProfileBuilder({
     playerSize,
     tracks,
     socials,
+    manualFollowers,
+    primarySocial,
     ready,
     slug,
     user,
@@ -468,9 +522,22 @@ export function ProfileBuilder({
     return out;
   }
 
+  // Pantalla que se está editando ahora mismo (el hero es WYSIWYG de ESTA).
+  const currentScreen: ScreenTarget = isMobileScreen ? "mobile" : "desktop";
+  const otherScreen: ScreenTarget = isMobileScreen ? "desktop" : "mobile";
+  /** Foto que se ve en una pantalla. Móvil cae a la principal si no tiene propia. */
+  const photoFor = (s: ScreenTarget) =>
+    s === "mobile" ? photoMobile || photoURL : photoURL;
+  const transformFor = (s: ScreenTarget) => (s === "mobile" ? ptMobile : pt);
+  const setTransformFor = (s: ScreenTarget, next: PhotoTransform) =>
+    s === "mobile" ? setPtMobile(next) : setPt(next);
+  /** Actualiza (funcionalmente) el encuadre de la pantalla que se está editando. */
+  const patchTransform = (fn: (p: PhotoTransform) => PhotoTransform) =>
+    currentScreen === "mobile" ? setPtMobile(fn) : setPt(fn);
+
   // Subida principal, consciente de la pantalla. La foto va al slot de la
-  // pantalla actual; luego se ofrece configurar la OTRA pantalla (reusar la
-  // misma o subir una versión dedicada).
+  // pantalla actual y acto seguido se abre la vista previa de la OTRA: ahí se
+  // ajusta el encuadre para esa resolución o se sube una imagen distinta.
   async function onPhotoUpload(files: File[]) {
     setUploading("photo");
     setError(null);
@@ -480,19 +547,20 @@ export function ProfileBuilder({
       if (isMobileScreen) {
         setPhotoMobile(url);
         if (!photoURL) setPhotoURL(url); // la principal (escritorio) es obligatoria
-        setSyncPrompt({ url, target: "desktop" });
       } else {
         setPhotoURL(url);
-        setSyncPrompt({ url, target: "mobile" });
       }
+      setScreenPreview({ target: otherScreen, justUploaded: true });
     } finally {
       setUploading(null);
     }
   }
 
-  // Subir una foto DISTINTA para la otra pantalla (desde el modal de sync).
+  // Subir una foto DISTINTA dedicada a la pantalla que se está previsualizando.
+  // El preview sigue abierto para poder encuadrarla ahí mismo.
   async function onPhotoOther(files: File[]) {
-    const target = syncPrompt?.target;
+    const target = screenPreview?.target;
+    if (!target) return;
     setUploading("photoOther");
     setError(null);
     try {
@@ -500,16 +568,43 @@ export function ProfileBuilder({
       if (!url) return;
       if (target === "desktop") setPhotoURL(url);
       else setPhotoMobile(url);
+      setTransformFor(target, DEFAULT_PHOTO_TRANSFORM); // encuadre limpio
+      setScreenPreview({ target, justUploaded: false });
     } finally {
       setUploading(null);
-      setSyncPrompt(null);
     }
   }
 
-  // Media destacada (pantalla 2): acepta foto o clip corto. La foto sube directa;
-  // el video que excede duración (≤8s) o tamaño abre el recortador (VideoTrimModal),
-  // y el que ya cabe sube tal cual (sin re-encode, mejor calidad).
-  async function onFeaturedUpload(files: File[]) {
+  // Política de media destacada según disciplina (cuántos mudos / con audio).
+  const mediaPolicy = featuredMediaPolicy(disciplines);
+
+  // ¿Se le piden los datos de esta sección? Solo si su etiqueta la desbloquea Y
+  // la tiene encendida en el gestor — el editor no pregunta por lo que no se va
+  // a publicar.
+  const seccionActiva = (id: SectionId) =>
+    isSectionOn(id, sectionPrefs, disciplines);
+
+  function addFeatured(item: FeaturedMedia) {
+    // El clip recién añadido pasa al player: se ve lo que se acaba de subir.
+    setFeaturedActive(featuredList.length);
+    setFeaturedList((prev) => [...prev, item]);
+  }
+  function removeFeatured(i: number) {
+    setFeaturedList((prev) => prev.filter((_, idx) => idx !== i));
+    setFeaturedActive((a) => (a > i ? a - 1 : a === i ? 0 : a));
+  }
+  function setFeaturedTitle(i: number, title: string) {
+    setFeaturedList((prev) =>
+      prev.map((m, idx) =>
+        idx === i ? { ...m, title: title || undefined } : m,
+      ),
+    );
+  }
+
+  // Media destacada: sube foto o clip. `withAudio` decide el tipo de clip — mudo
+  // (≤8s, imágenes solo aquí) vs con audio (≤30s general; sin tope para bailarines).
+  // El que excede duración/tamaño abre el recortador; el que ya cabe sube tal cual.
+  async function onFeaturedUpload(files: File[], withAudio: boolean) {
     const file = files[0];
     if (!file || !user) return;
     const isVideo = file.type.startsWith("video/");
@@ -518,6 +613,7 @@ export function ProfileBuilder({
     setError(null);
 
     if (isImage) {
+      if (withAudio) return; // una imagen no puede ser el clip con audio
       if (file.size > MAX_MB * 1024 * 1024) {
         setError(
           t("profileBuilder.errors.fileTooLarge", {
@@ -530,41 +626,53 @@ export function ProfileBuilder({
       setUploading("featured");
       try {
         const u = await uploadUserFile(user.uid, file);
-        setFeaturedMedia({ url: u.url, type: "image" });
+        addFeatured({ url: u.url, type: "image" });
       } finally {
         setUploading(null);
       }
       return;
     }
 
-    // Video: ¿necesita recorte? (duración con tolerancia de 0.5s, o tamaño).
+    // Video: ¿necesita recorte? Duración según el modo (mudo 8s / audio 30s|libre) o tamaño.
+    const maxSec = withAudio
+      ? mediaPolicy.audioMaxSeconds
+      : FEATURED_VIDEO_MAX_SECONDS;
     const seconds = await videoDuration(file).catch(() => null);
     const overDuration =
-      seconds != null && seconds > FEATURED_VIDEO_MAX_SECONDS + 0.5;
+      maxSec != null && seconds != null && seconds > maxSec + 0.5;
     const overSize = file.size > FEATURED_VIDEO_MAX_MB * 1024 * 1024;
     if (overDuration || overSize) {
-      setVideoTrimFile(file); // abre el recortador
+      setVideoTrim({ file, withAudio }); // abre el recortador en el modo correcto
       return;
     }
     setUploading("featured");
     try {
       const u = await uploadUserFile(user.uid, file);
-      setFeaturedMedia({ url: u.url, type: "video" });
+      addFeatured({
+        url: u.url,
+        type: "video",
+        withAudio: withAudio || undefined,
+      });
     } finally {
       setUploading(null);
     }
   }
 
-  // Sube el clip recortado (Blob) y cierra el modal. Si falla, relanza para que el
-  // modal muestre el error y siga abierto (no perdemos el recorte hecho).
+  // Sube el clip recortado (Blob) y lo añade a la lista. Si falla, relanza para que
+  // el modal muestre el error y siga abierto (no perdemos el recorte hecho).
   async function onVideoTrimConfirm(blob: Blob, ext: string) {
-    if (!user) return;
+    if (!user || !videoTrim) return;
+    const withAudio = videoTrim.withAudio;
     setUploading("featured");
     setError(null);
     try {
       const up = await uploadUserBlob(user.uid, blob, `featured.${ext}`);
-      setFeaturedMedia({ url: up.url, type: "video" });
-      setVideoTrimFile(null);
+      addFeatured({
+        url: up.url,
+        type: "video",
+        withAudio: withAudio || undefined,
+      });
+      setVideoTrim(null);
     } catch (e) {
       console.error("[builder] video trim upload:", e);
       throw e;
@@ -573,21 +681,6 @@ export function ProfileBuilder({
     }
   }
 
-  // Reutilizar la misma foto recién subida para la otra pantalla.
-  function reuseForOther() {
-    if (!syncPrompt) return;
-    if (syncPrompt.target === "desktop") setPhotoURL(syncPrompt.url);
-    else setPhotoMobile(""); // móvil reutiliza la principal (fallback centrado)
-    setSyncPrompt(null);
-  }
-
-  // Abrir el modal para gestionar la OTRA pantalla manualmente (sin resubir).
-  function openOtherScreen() {
-    const target: "desktop" | "mobile" = isMobileScreen ? "desktop" : "mobile";
-    const url = target === "desktop" ? photoURL : photoMobile || photoURL;
-    if (!url) return;
-    setSyncPrompt({ url, target });
-  }
   // Elegir canción = abrir el recortador con el archivo. La subida real ocurre
   // en onTrimConfirm con SOLO el fragmento recortado.
   function pickSong(files: File[]) {
@@ -656,15 +749,17 @@ export function ProfileBuilder({
     );
   }
 
-  // Arrastre para reposicionar la foto (pan) en modo ajuste.
+  // Arrastre para reposicionar la foto (pan) en modo ajuste. Opera sobre el
+  // encuadre de la pantalla actual — el otro no se toca.
   function startDrag(e: React.PointerEvent) {
     const rect = e.currentTarget.getBoundingClientRect();
+    const cur = transformFor(currentScreen);
     dragRef.current = {
       active: true,
       sx: e.clientX,
       sy: e.clientY,
-      bx: pt.x,
-      by: pt.y,
+      bx: cur.x,
+      by: cur.y,
       w: rect.width,
       h: rect.height,
     };
@@ -675,7 +770,13 @@ export function ProfileBuilder({
     if (!d.active) return;
     const dx = ((e.clientX - d.sx) / d.w) * 100;
     const dy = ((e.clientY - d.sy) / d.h) * 100;
-    setPt((p) => ({ ...p, x: d.bx + dx, y: d.by + dy }));
+    const apply = (p: PhotoTransform) => ({
+      ...p,
+      x: d.bx + dx,
+      y: d.by + dy,
+    });
+    if (currentScreen === "mobile") setPtMobile(apply);
+    else setPt(apply);
   }
   function endDrag() {
     dragRef.current.active = false;
@@ -786,11 +887,6 @@ export function ProfileBuilder({
     "w-full bg-transparent font-narrow text-5xl font-bold uppercase leading-[0.9] text-white outline-none placeholder:text-white/30 sm:text-7xl";
   const ghostInput =
     "rounded-lg bg-white/[0.02] px-3 py-2 text-silver-50 outline-none ring-1 ring-inset ring-white/15 backdrop-blur-md transition focus:bg-white/[0.06] focus:ring-white/40 placeholder:text-white/30";
-  // Campo de cristal MÁS visible para los chips sobre la foto (género/ciudad/año):
-  // ahí sí hay imagen detrás, así que el blur frostea la foto = cristal real.
-  const glassField =
-    "rounded-full bg-white/[0.08] px-4 py-2 text-center outline-none ring-1 ring-inset ring-white/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] backdrop-blur-md transition placeholder:text-white/50 focus:bg-white/[0.14] focus:ring-white/60";
-
   // Visibilidad en la vitrina = suscripción (premium) vigente: pagar = publicar.
   // El chip refleja el estado real y avisa cuando vence / está por vencer.
   const now = Date.now();
@@ -906,15 +1002,17 @@ export function ProfileBuilder({
         ref={heroRef}
         className="relative flex h-dvh w-full items-end overflow-hidden bg-neutral-950"
       >
-        {photoURL ? (
+        {/* La foto y el encuadre son los de la pantalla en la que estás: lo que
+            ves aquí es exactamente lo que verá quien entre desde este tamaño. */}
+        {photoFor(currentScreen) ? (
           <Image
-            src={photoURL}
+            src={photoFor(currentScreen)}
             alt={t("profileBuilder.photo.alt")}
             fill
             sizes="100vw"
             className="object-cover"
             style={{
-              transform: photoTransformCss(pt),
+              transform: photoTransformCss(transformFor(currentScreen)),
               transformOrigin: "center",
             }}
             priority
@@ -925,7 +1023,7 @@ export function ProfileBuilder({
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-black/10" />
 
         {/* Slot de foto vacío */}
-        {!photoURL && (
+        {!photoFor(currentScreen) && (
           <div className="absolute inset-0 z-10 grid place-items-center">
             <UploadButton
               accept="image/*"
@@ -945,16 +1043,17 @@ export function ProfileBuilder({
           </div>
         )}
 
-        {/* Controles de foto: SOLO iconos, todos el MISMO círculo (size-11), en la
-            esquina superior derecha del hero. Cambiar · Encuadrar · Otra pantalla. */}
-        {photoURL && !adjusting && (
-          <div className="absolute top-4 right-4 z-20 flex justify-end gap-2">
+        {/* Controles de foto. Cambiar · Encuadrar, y el selector de PANTALLA:
+            la que estás usando aparece marcada (es la que ves detrás) y la otra
+            abre su vista previa —solo la foto, con su propio encuadre—. */}
+        {photoFor(currentScreen) && !adjusting && (
+          <div className="absolute top-4 right-4 z-20 flex flex-wrap justify-end gap-2">
             <UploadButton
               glass
               accept="image/*"
               onFiles={onPhotoUpload}
               disabled={uploading === "photo"}
-              className="!size-11 !justify-center !p-0"
+              className="!px-3 sm:!px-4"
               title={t("profileBuilder.photo.change")}
               ariaLabel={t("profileBuilder.photo.change")}
             >
@@ -963,6 +1062,9 @@ export function ProfileBuilder({
               ) : (
                 <ImageIcon className="size-4" />
               )}
+              <span className="hidden sm:inline">
+                {t("profileBuilder.photo.change")}
+              </span>
             </UploadButton>
             <GlassButton
               onClick={() => setAdjusting(true)}
@@ -972,27 +1074,53 @@ export function ProfileBuilder({
             >
               <CropIcon className="size-4" />
             </GlassButton>
-            <GlassButton
-              onClick={openOtherScreen}
-              className="!size-11 !justify-center !p-0"
-              title={
-                isMobileScreen
-                  ? t("profileBuilder.photoSync.manageDesktop")
-                  : t("profileBuilder.photoSync.manageMobile")
-              }
-              ariaLabel={
-                isMobileScreen
-                  ? t("profileBuilder.photoSync.manageDesktop")
-                  : t("profileBuilder.photoSync.manageMobile")
-              }
+
+            <div
+              className={`${glassSurfaceSoft} flex items-center gap-1 rounded-full p-1`}
+              role="group"
+              aria-label={t("profileBuilder.screenPreview.groupLabel")}
             >
-              <DevicesIcon className="size-4" />
-            </GlassButton>
+              <GlassSheen />
+              {(["desktop", "mobile"] as ScreenTarget[]).map((s) => {
+                const Icon = s === "mobile" ? SmartphoneIcon : MonitorIcon;
+                const here = s === currentScreen;
+                const label =
+                  s === "mobile"
+                    ? t("profileBuilder.screenPreview.mobile")
+                    : t("profileBuilder.screenPreview.desktop");
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    // La pantalla actual ya se ve detrás; la otra se previsualiza.
+                    onClick={() =>
+                      here
+                        ? setAdjusting(true)
+                        : setScreenPreview({ target: s, justUploaded: false })
+                    }
+                    aria-current={here}
+                    title={
+                      here
+                        ? t("profileBuilder.screenPreview.adjustHere", { label })
+                        : t("profileBuilder.screenPreview.previewOn", { label })
+                    }
+                    className={`relative inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold tracking-[2px] uppercase transition ${
+                      here
+                        ? "bg-white/20 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.4)]"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Icon className="size-4" />
+                    <span className="hidden sm:inline">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
         {/* Modo ajuste: arrastrar para mover + zoom/rotación */}
-        {photoURL && adjusting && (
+        {photoFor(currentScreen) && adjusting && (
           <>
             <div
               className="absolute inset-0 z-20 cursor-move touch-none"
@@ -1006,6 +1134,21 @@ export function ProfileBuilder({
             <div className="absolute bottom-6 left-1/2 z-30 w-[min(92vw,560px)] -translate-x-1/2">
               <div className={`${glassSurfaceSoft} rounded-3xl px-4 py-3`}>
                 <GlassSheen />
+                {/* Deja claro QUÉ encuadre se está tocando: cada pantalla tiene
+                    el suyo y tocar este no altera el de la otra. */}
+                <p className="relative mb-3 flex items-center justify-center gap-1.5 text-[10px] font-semibold tracking-[2px] text-white/55 uppercase">
+                  {currentScreen === "mobile" ? (
+                    <SmartphoneIcon className="size-3.5" />
+                  ) : (
+                    <MonitorIcon className="size-3.5" />
+                  )}
+                  {t("profileBuilder.photoAdjust.editingScreen", {
+                    label:
+                      currentScreen === "mobile"
+                        ? t("profileBuilder.screenPreview.mobile")
+                        : t("profileBuilder.screenPreview.desktop"),
+                  })}
+                </p>
                 <div className="relative flex flex-wrap items-center justify-center gap-x-7 gap-y-3">
                   {/* Zoom */}
                   <div className="flex items-center gap-2">
@@ -1015,7 +1158,7 @@ export function ProfileBuilder({
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.zoomOut")}
                       onStep={() =>
-                        setPt((p) => ({
+                        patchTransform((p) => ({
                           ...p,
                           scale: clamp(p.scale - 0.1, 1, 3),
                         }))
@@ -1024,12 +1167,12 @@ export function ProfileBuilder({
                       <MinusIcon className="size-4" />
                     </StepButton>
                     <span className="w-11 text-center text-sm text-white tabular-nums">
-                      {pt.scale.toFixed(1)}×
+                      {transformFor(currentScreen).scale.toFixed(1)}×
                     </span>
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.zoomIn")}
                       onStep={() =>
-                        setPt((p) => ({
+                        patchTransform((p) => ({
                           ...p,
                           scale: clamp(p.scale + 0.1, 1, 3),
                         }))
@@ -1047,7 +1190,7 @@ export function ProfileBuilder({
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.rotateLeft")}
                       onStep={() =>
-                        setPt((p) => ({
+                        patchTransform((p) => ({
                           ...p,
                           rotation: clamp(p.rotation - 2, -180, 180),
                         }))
@@ -1056,12 +1199,12 @@ export function ProfileBuilder({
                       <RotateCcwIcon className="size-4" />
                     </StepButton>
                     <span className="w-11 text-center text-sm text-white tabular-nums">
-                      {Math.round(pt.rotation)}°
+                      {Math.round(transformFor(currentScreen).rotation)}°
                     </span>
                     <StepButton
                       ariaLabel={t("profileBuilder.photoAdjust.rotateRight")}
                       onStep={() =>
-                        setPt((p) => ({
+                        patchTransform((p) => ({
                           ...p,
                           rotation: clamp(p.rotation + 2, -180, 180),
                         }))
@@ -1075,7 +1218,7 @@ export function ProfileBuilder({
                 <div className="relative mt-3 flex flex-wrap items-center justify-center gap-2 border-t border-white/10 pt-3">
                   <GlassButton
                     onClick={() =>
-                      setPt((p) => ({
+                      patchTransform((p) => ({
                         ...p,
                         rotation: (p.rotation + 90) % 360,
                       }))
@@ -1084,7 +1227,11 @@ export function ProfileBuilder({
                     <RotateCwIcon className="size-4" />
                     {t("profileBuilder.photoAdjust.rotate90")}
                   </GlassButton>
-                  <GlassButton onClick={() => setPt(DEFAULT_PHOTO_TRANSFORM)}>
+                  <GlassButton
+                    onClick={() =>
+                      setTransformFor(currentScreen, DEFAULT_PHOTO_TRANSFORM)
+                    }
+                  >
                     <CrosshairIcon className="size-4" />
                     {t("profileBuilder.photoAdjust.reset")}
                   </GlassButton>
@@ -1106,97 +1253,23 @@ export function ProfileBuilder({
 
         <div className="relative z-10 w-full p-6 sm:p-12">
           <div className="mb-3 flex flex-wrap items-center gap-2">
-            <input
-              type="color"
-              value={accent}
-              onChange={(e) => setAccent(e.target.value)}
-              title={t("profileBuilder.identity.accentColorTitle")}
-              className="size-7 cursor-pointer rounded-full border border-white/20 bg-transparent"
-            />
+            <AccentColorPicker value={accent} onChange={setAccent} />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm font-bold tracking-[3px] uppercase">
-            {/* Géneros: un SOLO control tipo multi-select — el input de añadir con
-                los chips seleccionados DENTRO (borrables ahí mismo), en vez de
-                desparramar un chip por cada género en la fila de identidad. */}
-            <div
-              className={`${glassField} flex max-w-full flex-wrap items-center gap-1.5 !rounded-2xl !px-2.5 !py-1.5`}
-              style={{ color: accent }}
-            >
-              {genres.map((g) => (
-                <span
-                  key={g}
-                  className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-xs font-bold tracking-[1px]"
-                >
-                  {g}
-                  <button
-                    type="button"
-                    onClick={() => setGenres(genres.filter((x) => x !== g))}
-                    aria-label={t("profileBuilder.identity.genreRemove", {
-                      value: g,
-                    })}
-                    className="text-white/55 transition hover:text-white"
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-              <SearchableSelect
-                value=""
-                onChange={(v) => {
-                  const g = v.trim();
-                  if (g && !genres.includes(g)) setGenres([...genres, g]);
-                }}
-                options={GENRE_OPTIONS}
-                allowCustom
-                placement="top"
-                placeholder={t("profileBuilder.identity.genreAdd")}
-                searchPlaceholder={t("profileBuilder.identity.genreSearch")}
-                emptyText={t("profileBuilder.identity.genreEmpty")}
-                customLabel={(v) =>
-                  t("profileBuilder.identity.genreCustom", { value: v })
-                }
-                ariaLabel={t("profileBuilder.identity.genreAdd")}
-                className="flex min-w-[5.5rem] flex-1 items-center justify-between gap-1.5 bg-transparent px-1.5 py-0.5 text-left"
-              />
-            </div>
-            <button
-              type="button"
+          {/* Sobre la foto solo queda la CIUDAD. Los géneros tienen su propia
+              sección y la trayectoria vive junto a la biografía: la portada es
+              para la imagen y el nombre, no para un formulario. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <ProfileChip
+              accent={accent}
               onClick={() => setLocOpen(true)}
-              aria-label={t("profileBuilder.identity.cityPlaceholder")}
-              className={`${glassField} flex w-44 items-center justify-between gap-2`}
-              style={{ color: accent }}
+              ariaLabel={t("profileBuilder.identity.cityPlaceholder")}
+              title={t("profileBuilder.identity.cityPlaceholder")}
             >
-              <span className="truncate">
-                {formatLocation(location) ||
-                  city ||
-                  t("profileBuilder.identity.cityPlaceholder")}
-              </span>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                className="size-4 shrink-0 opacity-60"
-                aria-hidden="true"
-              >
-                <path
-                  d="m6 9 6 6 6-6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <input
-              type="number"
-              value={startYear}
-              min={1950}
-              max={CURRENT_YEAR}
-              onChange={(e) => setStartYear(Number(e.target.value))}
-              title={t("profileBuilder.identity.startYearTitle")}
-              className={`${glassField} w-28`}
-              style={{ color: accent }}
-            />
+              {formatLocation(location) ||
+                city ||
+                t("profileBuilder.identity.cityPlaceholder")}
+            </ProfileChip>
           </div>
 
           {/* Nombre: con etiqueta + lápiz + subrayado punteado para que se note
@@ -1289,14 +1362,17 @@ export function ProfileBuilder({
         </p>
       )}
 
-      {/* Canción de fondo */}
-      <section className="mx-auto max-w-3xl px-6 pt-8">
+      {/* Reproductor del perfil: la canción que suena al entrar, dónde se coloca
+          y de qué tamaño. Los controles van juntos en un panel para que se lean
+          como UN ajuste y no como botones sueltos flotando. */}
+      <Block title={t("profileBuilder.player.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.player.sectionHint")}
+        </p>
         {songURL ? (
           <div>
             {/* En modo "sobre la foto" el reproductor se ve arriba (preview en el
                 hero); aquí solo mostramos la tarjeta cuando va debajo. */}
-            {/* Debajo: tarjeta + botón (ojo) para volver a ponerlo sobre la foto.
-                Sobre la foto: todos los controles flotan en el modal del hero. */}
             {!playerOverlay && (
               <>
                 <ProfileAudioPlayer
@@ -1317,32 +1393,48 @@ export function ProfileBuilder({
               </>
             )}
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <UploadButton
-                glass
-                accept="audio/*"
-                onFiles={pickSong}
-                disabled={uploading === "song"}
-              >
-                {uploading === "song" ? (
-                  <SpinnerIcon className="size-4 animate-spin" />
-                ) : (
-                  <MusicIcon className="size-4" />
-                )}
-                {uploading === "song"
-                  ? t("profileBuilder.song.changing")
-                  : t("profileBuilder.song.change")}
-              </UploadButton>
-              {playerOverlay && (
-                <GlassButton onClick={recenterPlayer}>
-                  <CrosshairIcon className="size-4" />
-                  {t("profileBuilder.player.recenter")}
-                </GlassButton>
-              )}
-              <GlassButton onClick={() => setConfirmRemoveSong(true)}>
-                <TrashIcon className="size-4 text-red-300" />
-                {t("profileBuilder.song.remove")}
-              </GlassButton>
+            <div className={`${glassSurfaceSoft} mt-5 rounded-2xl p-4`}>
+              <GlassSheen />
+              <div className="relative">
+                <p className="mb-3 text-[10px] font-semibold tracking-[2px] text-white/50 uppercase">
+                  {t("profileBuilder.player.controlsLabel")}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <UploadButton
+                    glass
+                    accept="audio/*"
+                    onFiles={pickSong}
+                    disabled={uploading === "song"}
+                  >
+                    {uploading === "song" ? (
+                      <SpinnerIcon className="size-4 animate-spin" />
+                    ) : (
+                      <MusicIcon className="size-4" />
+                    )}
+                    {uploading === "song"
+                      ? t("profileBuilder.song.changing")
+                      : t("profileBuilder.song.change")}
+                  </UploadButton>
+                  {playerOverlay && (
+                    <GlassButton
+                      onClick={recenterPlayer}
+                      title={t("profileBuilder.player.recenterTitle")}
+                    >
+                      <CrosshairIcon className="size-4" />
+                      {t("profileBuilder.player.recenter")}
+                    </GlassButton>
+                  )}
+                  <GlassButton onClick={() => setConfirmRemoveSong(true)}>
+                    <TrashIcon className="size-4 text-red-300" />
+                    {t("profileBuilder.song.remove")}
+                  </GlassButton>
+                </div>
+                <p className="text-silver-500 mt-3 text-xs leading-relaxed">
+                  {playerOverlay
+                    ? t("profileBuilder.player.hintOverlay")
+                    : t("profileBuilder.player.hintBelow")}
+                </p>
+              </div>
             </div>
           </div>
         ) : (
@@ -1363,128 +1455,33 @@ export function ProfileBuilder({
             </span>
           </UploadButton>
         )}
-      </section>
-
-      {/* Bio */}
-      <Block title={t("profileBuilder.bio.sectionTitle")}>
-        <textarea
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          placeholder={t("profileBuilder.bio.placeholder")}
-          className="text-silver-100 min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed transition outline-none placeholder:text-white/30 focus:bg-white/10"
-        />
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowBioAi(true)}
-            disabled={!bio.trim()}
-          >
-            <SparklesIcon className="size-4" />
-            {t("profileBuilder.aiBio.button")}
-          </Button>
-          <p className="text-silver-400 text-xs">
-            {t("profileBuilder.aiBio.hint")}
-          </p>
-        </div>
       </Block>
 
-      {/* Artistas relacionados / colaboradores: el artista destaca a mano otros
-          perfiles de la plataforma (red interna). */}
-      <Block title={t("profileBuilder.relatedArtists.sectionTitle")}>
-        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-          {t("profileBuilder.relatedArtists.hint")}
-        </p>
-        <RelatedArtistsPicker
-          value={relatedArtists}
-          onChange={setRelatedArtists}
-          excludeSlug={slug}
-        />
-      </Block>
+      {/* ── A partir de aquí, el editor sigue el MISMO orden que el perfil
+             público: media destacada → galería → temas → sobre ti → géneros →
+             redes → relacionados. Editar y ver dejan de ser dos mapas distintos. */}
 
-      {/* Media destacada (pantalla 2): reemplaza la repetición de la foto de
-          perfil por un clip corto en bucle o una foto que represente al artista. */}
+      {/* Media destacada: los mismos contenedores que el perfil (player + lista),
+          con el recortador ocupando el hueco del player cuando hace falta. */}
       <Block title={t("profileBuilder.featured.sectionTitle")}>
-        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+        <p className="text-silver-400 mb-5 text-sm leading-relaxed">
           {t("profileBuilder.featured.hint")}
         </p>
-        {featuredMedia ? (
-          <div className="flex flex-col gap-3">
-            <div className="relative aspect-[3/4] w-full max-w-[240px] overflow-hidden rounded-2xl border border-white/10 bg-neutral-950">
-              {featuredMedia.type === "video" ? (
-                <video
-                  src={featuredMedia.url}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : (
-                <Image
-                  src={featuredMedia.url}
-                  alt=""
-                  fill
-                  sizes="240px"
-                  className="object-cover"
-                />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <UploadButton
-                accept="image/*,video/*"
-                onFiles={onFeaturedUpload}
-                disabled={uploading === "featured"}
-                className={`${glassSurfaceSoft} relative inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/85 transition hover:text-white`}
-              >
-                <GlassSheen />
-                <span className="relative inline-flex items-center gap-2">
-                  {uploading === "featured" ? (
-                    <SpinnerIcon className="size-4 animate-spin" />
-                  ) : (
-                    <EditIcon className="size-4" />
-                  )}
-                  {t("profileBuilder.featured.change")}
-                </span>
-              </UploadButton>
-              <button
-                type="button"
-                onClick={() => setFeaturedMedia(null)}
-                className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm text-white/50 transition hover:text-red-300"
-              >
-                <TrashIcon className="size-4" />
-                {t("profileBuilder.featured.remove")}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <UploadButton
-            accept="image/*,video/*"
-            onFiles={onFeaturedUpload}
-            disabled={uploading === "featured"}
-            className={`${glassSurfaceSoft} group flex w-full flex-col items-center justify-center gap-2 rounded-2xl px-6 py-10 text-center text-white/80 transition hover:text-white`}
-          >
-            <GlassSheen />
-            <span className="relative inline-flex flex-col items-center gap-2">
-              {uploading === "featured" ? (
-                <SpinnerIcon className="size-6 animate-spin" />
-              ) : (
-                <ImageIcon className="size-6" />
-              )}
-              <span className="text-sm">{t("profileBuilder.featured.upload")}</span>
-              <span className="text-xs text-white/40">
-                {t("profileBuilder.featured.formats", {
-                  maxSec: FEATURED_VIDEO_MAX_SECONDS,
-                })}
-              </span>
-            </span>
-          </UploadButton>
-        )}
-      </Block>
-
-      {/* Redes */}
-      <Block title={t("profileBuilder.socials.sectionTitle")}>
-        <SocialPalette value={socials} onChange={setSocials} />
+        <FeaturedMediaEditor
+          items={featuredList}
+          active={featuredActive}
+          onActiveChange={setFeaturedActive}
+          onTitleChange={setFeaturedTitle}
+          onRemove={removeFeatured}
+          onUpload={onFeaturedUpload}
+          uploading={uploading === "featured"}
+          accent={accent}
+          policy={mediaPolicy}
+          pending={videoTrim}
+          onCancelTrim={() => setVideoTrim(null)}
+          onConfirmTrim={onVideoTrimConfirm}
+          maxBytes={FEATURED_VIDEO_MAX_MB * 1024 * 1024}
+        />
       </Block>
 
       {/* Galería bento ordenable (dnd-kit): arrastra una foto y las demás se
@@ -1500,35 +1497,44 @@ export function ProfileBuilder({
             {t("profileBuilder.gallery.hint")}
           </p>
         )}
-        <GalleryBento
-          items={gallery}
-          onReorder={setGallery}
-          onResize={cycleGallerySpan}
-          onRemove={(url) =>
-            setGallery((g) => g.filter((it) => it.url !== url))
-          }
-          addSlot={
-            gallery.length < GALLERY_LIMIT ? (
-              <UploadButton
-                accept="image/*"
-                multiple
-                onFiles={onGallery}
-                disabled={uploading === "gallery"}
-                className="hover:border-amethyst-300 flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:text-white"
-              >
-                {uploading === "gallery" ? (
-                  <SpinnerIcon className="size-6 animate-spin" />
-                ) : (
-                  <PlusIcon className="size-6" />
-                )}
-              </UploadButton>
-            ) : null
-          }
-        />
+        {/* Mismo contenedor (borde + ancho tope) que el panel público → lo que
+            armas aquí se ve idéntico en tu perfil. */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 lg:max-w-[780px]">
+          <GalleryBento
+            items={gallery}
+            onReorder={setGallery}
+            onResize={cycleGallerySpan}
+            onRemove={(url) =>
+              setGallery((g) => g.filter((it) => it.url !== url))
+            }
+            addSlot={
+              gallery.length < GALLERY_LIMIT ? (
+                <UploadButton
+                  accept="image/*"
+                  multiple
+                  onFiles={onGallery}
+                  disabled={uploading === "gallery"}
+                  className="hover:border-amethyst-300 flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:text-white"
+                >
+                  {uploading === "gallery" ? (
+                    <SpinnerIcon className="size-6 animate-spin" />
+                  ) : (
+                    <PlusIcon className="size-6" />
+                  )}
+                </UploadButton>
+              ) : null
+            }
+          />
+        </div>
       </Block>
 
-      {/* Temas */}
+      {/* Más sonadas: los links llevan el logo de la plataforma DENTRO del campo
+          para que se sepa cuál es cada uno también cuando ya hay texto escrito
+          (con placeholder solo, al escribir se perdía la pista). */}
       <Block title={t("profileBuilder.tracks.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.tracks.hint")}
+        </p>
         <div className="flex flex-col gap-3">
           {tracks.map((track, i) => (
             <div
@@ -1558,26 +1564,49 @@ export function ProfileBuilder({
                   </button>
                 </div>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <input
-                    value={track.youtubeUrl ?? ""}
-                    onChange={(e) =>
-                      setTrack(i, { youtubeUrl: e.target.value })
-                    }
-                    placeholder={t("profileBuilder.tracks.youtubePlaceholder")}
-                    className={ghostInput}
-                  />
-                  <input
-                    value={track.spotifyUrl ?? ""}
-                    onChange={(e) =>
-                      setTrack(i, { spotifyUrl: e.target.value })
-                    }
-                    placeholder={t("profileBuilder.tracks.spotifyPlaceholder")}
-                    className={ghostInput}
-                  />
+                  <div className="relative">
+                    <YouTubeIcon
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/45"
+                      aria-hidden="true"
+                    />
+                    <input
+                      value={track.youtubeUrl ?? ""}
+                      onChange={(e) =>
+                        setTrack(i, { youtubeUrl: e.target.value })
+                      }
+                      placeholder={t(
+                        "profileBuilder.tracks.youtubePlaceholder",
+                      )}
+                      aria-label={t("profileBuilder.tracks.youtubeAria")}
+                      className={`${ghostInput} w-full pl-9`}
+                    />
+                  </div>
+                  <div className="relative">
+                    <SpotifyIcon
+                      className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-white/45"
+                      aria-hidden="true"
+                    />
+                    <input
+                      value={track.spotifyUrl ?? ""}
+                      onChange={(e) =>
+                        setTrack(i, { spotifyUrl: e.target.value })
+                      }
+                      placeholder={t(
+                        "profileBuilder.tracks.spotifyPlaceholder",
+                      )}
+                      aria-label={t("profileBuilder.tracks.spotifyAria")}
+                      className={`${ghostInput} w-full pl-9`}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           ))}
+          {tracks.length === 0 && (
+            <p className="text-silver-500 rounded-xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-6 text-center text-sm">
+              {t("profileBuilder.tracks.empty")}
+            </p>
+          )}
           <GlassButton
             onClick={() => setTracks((prev) => [...prev, newTrack()])}
           >
@@ -1585,6 +1614,228 @@ export function ProfileBuilder({
             {t("profileBuilder.tracks.addButton")}
           </GlassButton>
         </div>
+      </Block>
+
+      {/* Sobre ti: la TRAYECTORIA vive aquí (junto a la historia que cuenta),
+          no encima de la foto. */}
+      <Block title={t("profileBuilder.bio.sectionTitle")}>
+        <div className="mb-4">
+          <ProfileChipField
+            accent={accent}
+            icon={<ClockIcon className="size-4" />}
+            label={t("profileBuilder.identity.startYearLabel")}
+          >
+            <span className="text-xs font-semibold tracking-[2px] text-white/60 uppercase">
+              {t("profileBuilder.identity.startYearSince")}
+            </span>
+            <input
+              type="number"
+              value={startYear}
+              min={1950}
+              max={CURRENT_YEAR}
+              onChange={(e) => setStartYear(Number(e.target.value))}
+              title={t("profileBuilder.identity.startYearTitle")}
+              aria-label={t("profileBuilder.identity.startYearTitle")}
+              className="w-16 bg-transparent text-sm font-bold text-white tabular-nums outline-none"
+            />
+            <span className="text-silver-400 text-xs whitespace-nowrap">
+              {t("profileBuilder.identity.startYearYears", {
+                count: Math.max(0, CURRENT_YEAR - (Number(startYear) || CURRENT_YEAR)),
+              })}
+            </span>
+          </ProfileChipField>
+        </div>
+        <textarea
+          value={bio}
+          onChange={(e) => setBio(e.target.value)}
+          placeholder={t("profileBuilder.bio.placeholder")}
+          className="text-silver-100 min-h-32 w-full resize-y rounded-lg bg-white/5 px-4 py-3 text-lg leading-relaxed transition outline-none placeholder:text-white/30 focus:bg-white/10"
+        />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowBioAi(true)}
+            disabled={!bio.trim()}
+            className="hover:shadow-[0_0_20px_rgba(139,92,246,0.45)]"
+          >
+            <SparklesIcon className="size-4" />
+            {t("profileBuilder.aiBio.button")}
+          </Button>
+          <p className="text-silver-400 text-xs">
+            {t("profileBuilder.aiBio.hint")}
+          </p>
+        </div>
+      </Block>
+
+      {/* Gestor de secciones (§05): tus etiquetas deciden qué puedes mostrar, y
+          tú decides qué muestras. Sustituye a la vieja lista de "tus artes" de
+          solo lectura — las etiquetas siguen siendo del equipo, pero ahora se ve
+          para qué sirven. */}
+      <Block title={t("sections.sectionTitle")}>
+        <p className="text-silver-400 mb-5 text-sm leading-relaxed">
+          {t("sections.sectionHint")}
+        </p>
+        <SectionManager
+          disciplines={disciplines}
+          prefs={sectionPrefs}
+          onChange={setSectionPrefs}
+          // Las etiquetas las asigna el equipo (las reglas las cierran al
+          // cliente), así que "pedirla" abre el chat en vez de concederla sola.
+          onRequestTag={() => openChat()}
+        />
+      </Block>
+
+      {/* ── Secciones por ETIQUETA (§05) ──────────────────────────────────
+          Solo se piden los datos de lo que tu etiqueta desbloquea Y tienes
+          encendido: a un beatmaker no se le pregunta por su talla de calzado. */}
+      {seccionActiva("fichaTecnica") && (
+        <Block title={t("sections.item.fichaTecnica")}>
+          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+            {t("roleSections.fichaHint")}
+          </p>
+          <FichaTecnicaEditor value={fichaTecnica} onChange={setFichaTecnica} />
+        </Block>
+      )}
+
+      {seccionActiva("portafolio") && (
+        <>
+          <Block title={t("roleSections.categorias")}>
+            <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+              {t("roleSections.categoriasHint")}
+            </p>
+            <ChipListEditor
+              value={categorias}
+              onChange={setCategorias}
+              sugerencias={CATEGORIAS_MODELO.map((c) => c.value)}
+              max={10}
+              placeholder={t("roleSections.categoriasPlaceholder")}
+              colorDe={categoriaColor}
+            />
+          </Block>
+
+          <Block title={t("roleSections.marcas")}>
+            <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+              {t("roleSections.marcasHint")}
+            </p>
+            <MarcasEditor value={marcas} onChange={setMarcas} />
+          </Block>
+        </>
+      )}
+
+      {seccionActiva("generosBaile") && (
+        <Block title={t("roleSections.generosBaile")}>
+          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+            {t("roleSections.generosBaileHint")}
+          </p>
+          <ChipListEditor
+            value={generosBaile}
+            onChange={setGenerosBaile}
+            sugerencias={GENEROS_BAILE}
+            max={12}
+            placeholder={t("roleSections.generosBailePlaceholder")}
+            accent={accent}
+          />
+        </Block>
+      )}
+
+      {seccionActiva("trayectoria") && (
+        <Block title={t("roleSections.trayectoria")}>
+          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+            {t("roleSections.trayectoriaHint")}
+          </p>
+          <HitosEditor
+            value={trayectoria}
+            onChange={(v) => setTrayectoria(v as typeof trayectoria)}
+            max={LIMITES.trayectoria}
+            addLabel={t("roleSections.addHito")}
+          />
+        </Block>
+      )}
+
+      {seccionActiva("reconocimientos") && (
+        <Block title={t("roleSections.reconocimientos")}>
+          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+            {t("roleSections.reconocimientosHint")}
+          </p>
+          <HitosEditor
+            value={reconocimientos}
+            onChange={(v) => setReconocimientos(v as typeof reconocimientos)}
+            max={LIMITES.reconocimientos}
+            addLabel={t("roleSections.addPremio")}
+          />
+        </Block>
+      )}
+
+      {/* Géneros: sección propia (en el perfil también la tienen), con los mismos
+          chips premium que se publican. */}
+      <Block title={t("profileBuilder.genres.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.genres.hint")}
+        </p>
+        {genres.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2.5">
+            {genres.map((g) => (
+              <ProfileChip
+                key={g}
+                accent={accent}
+                onRemove={() => setGenres(genres.filter((x) => x !== g))}
+                removeLabel={t("profileBuilder.identity.genreRemove", {
+                  value: g,
+                })}
+              >
+                {g}
+              </ProfileChip>
+            ))}
+          </div>
+        )}
+        <div
+          className={`${glassSurfaceSoft} inline-flex max-w-full items-center rounded-full px-3 py-1.5`}
+        >
+          <GlassSheen />
+          <SearchableSelect
+            value=""
+            onChange={(v) => {
+              const g = v.trim();
+              if (g && !genres.includes(g)) setGenres([...genres, g]);
+            }}
+            options={GENRE_OPTIONS}
+            allowCustom
+            placeholder={t("profileBuilder.identity.genreAdd")}
+            searchPlaceholder={t("profileBuilder.identity.genreSearch")}
+            emptyText={t("profileBuilder.identity.genreEmpty")}
+            customLabel={(v) =>
+              t("profileBuilder.identity.genreCustom", { value: v })
+            }
+            ariaLabel={t("profileBuilder.identity.genreAdd")}
+            className="relative flex min-w-[9rem] items-center justify-between gap-2 bg-transparent px-1.5 py-0.5 text-left text-sm text-white/85"
+          />
+        </div>
+      </Block>
+
+      {/* Redes */}
+      <Block title={t("profileBuilder.socials.sectionTitle")}>
+        <SocialPalette
+          value={socials}
+          onChange={setSocials}
+          followers={manualFollowers}
+          onFollowersChange={setManualFollowers}
+          primary={primarySocial}
+          onPrimaryChange={setPrimarySocial}
+        />
+      </Block>
+
+      {/* Artistas relacionados / colaboradores: el artista destaca a mano otros
+          perfiles de la plataforma (red interna). */}
+      <Block title={t("profileBuilder.relatedArtists.sectionTitle")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("profileBuilder.relatedArtists.hint")}
+        </p>
+        <RelatedArtistsPicker
+          value={relatedArtists}
+          onChange={setRelatedArtists}
+          excludeSlug={slug}
+        />
       </Block>
 
       {showPagoPicker && (
@@ -1601,17 +1852,6 @@ export function ProfileBuilder({
           accent={accent}
           onCancel={() => setTrimFile(null)}
           onConfirm={onTrimConfirm}
-        />
-      )}
-
-      {videoTrimFile && (
-        <VideoTrimModal
-          file={videoTrimFile}
-          accent={accent}
-          maxSeconds={FEATURED_VIDEO_MAX_SECONDS}
-          maxBytes={FEATURED_VIDEO_MAX_MB * 1024 * 1024}
-          onCancel={() => setVideoTrimFile(null)}
-          onConfirm={onVideoTrimConfirm}
         />
       )}
 
@@ -1701,75 +1941,23 @@ export function ProfileBuilder({
         </div>
       </GlassModal>
 
-      {/* Sincronización de foto: tras subir para una pantalla, ofrece reusar
-          la misma imagen en la otra o subir una versión dedicada (vertical
-          para móvil, horizontal para escritorio). */}
-      <GlassModal
-        open={syncPrompt !== null}
-        onClose={() => setSyncPrompt(null)}
-        title={
-          syncPrompt?.target === "mobile"
-            ? t("profileBuilder.photoSync.titleMobile")
-            : t("profileBuilder.photoSync.titleDesktop")
+      {/* Vista previa de la foto en la OTRA pantalla. Se abre sola tras cambiar
+          la foto (para ajustar el encuadre de esa resolución o subir una imagen
+          distinta) y a mano desde los botones Escritorio/Móvil. */}
+      <PhotoScreenPreview
+        open={screenPreview !== null}
+        target={screenPreview?.target ?? otherScreen}
+        justUploaded={screenPreview?.justUploaded ?? false}
+        url={photoFor(screenPreview?.target ?? otherScreen)}
+        transform={transformFor(screenPreview?.target ?? otherScreen)}
+        onTransformChange={(next) =>
+          setTransformFor(screenPreview?.target ?? otherScreen, next)
         }
-      >
-        {syncPrompt && (
-          <>
-            <div className="flex justify-center">
-              {syncPrompt.target === "mobile" ? (
-                <div className="relative aspect-[3/4] w-56 overflow-hidden rounded-xl">
-                  <Image
-                    src={syncPrompt.url}
-                    alt={t("profileBuilder.photo.alt")}
-                    fill
-                    sizes="14rem"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <div className="relative aspect-video w-full overflow-hidden rounded-xl">
-                  <Image
-                    src={syncPrompt.url}
-                    alt={t("profileBuilder.photo.alt")}
-                    fill
-                    sizes="(min-width: 640px) 28rem, 90vw"
-                    className="object-cover"
-                  />
-                </div>
-              )}
-            </div>
-            <p className="text-silver-300 mt-4 text-sm">
-              {syncPrompt.target === "mobile"
-                ? t("profileBuilder.photoSync.bodyMobile")
-                : t("profileBuilder.photoSync.bodyDesktop")}
-            </p>
-            <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
-              <GlassButton
-                onClick={reuseForOther}
-                className="!text-amethyst-200"
-              >
-                <CheckIcon className="size-4" />
-                {t("profileBuilder.photoSync.useSame")}
-              </GlassButton>
-              <UploadButton
-                glass
-                accept="image/*"
-                onFiles={onPhotoOther}
-                disabled={uploading === "photoOther"}
-              >
-                {uploading === "photoOther" ? (
-                  <SpinnerIcon className="size-4 animate-spin" />
-                ) : (
-                  <ImageIcon className="size-4" />
-                )}
-                {syncPrompt.target === "mobile"
-                  ? t("profileBuilder.photoSync.uploadVertical")
-                  : t("profileBuilder.photoSync.uploadHorizontal")}
-              </UploadButton>
-            </div>
-          </>
-        )}
-      </GlassModal>
+        onClose={() => setScreenPreview(null)}
+        onUploadOther={onPhotoOther}
+        uploading={uploading === "photoOther"}
+        accent={accent}
+      />
     </article>
   );
 }
@@ -1780,61 +1968,6 @@ const SIZE_LABEL: Record<PlayerSize, string> = {
   md: "M",
   lg: "L",
 };
-
-const clamp = (n: number, lo: number, hi: number) =>
-  Math.min(hi, Math.max(lo, n));
-
-/**
- * Botón de paso (−/+) con press-and-hold: un toque = un paso; mantener pulsado
- * repite (tras un pequeño retraso) para mover rápido sin perder el ajuste fino.
- * `onStep` usa actualización funcional, así que la repetición siempre parte del
- * último valor aunque el componente se re-renderice durante el hold.
- */
-function StepButton({
-  onStep,
-  ariaLabel,
-  children,
-}: {
-  onStep: () => void;
-  ariaLabel: string;
-  children: React.ReactNode;
-}) {
-  const timers = useRef<{
-    delay?: ReturnType<typeof setTimeout>;
-    rep?: ReturnType<typeof setInterval>;
-  }>({});
-
-  const stop = () => {
-    if (timers.current.delay) clearTimeout(timers.current.delay);
-    if (timers.current.rep) clearInterval(timers.current.rep);
-    timers.current = {};
-  };
-  const start = () => {
-    onStep();
-    timers.current.delay = setTimeout(() => {
-      timers.current.rep = setInterval(onStep, 60);
-    }, 300);
-  };
-
-  useEffect(() => stop, []);
-
-  return (
-    <button
-      type="button"
-      aria-label={ariaLabel}
-      onPointerDown={(e) => {
-        e.preventDefault();
-        start();
-      }}
-      onPointerUp={stop}
-      onPointerLeave={stop}
-      onPointerCancel={stop}
-      className="flex size-9 touch-none items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/25 transition ring-inset hover:bg-white/20 active:scale-90"
-    >
-      {children}
-    </button>
-  );
-}
 
 function SaveIndicator({ state }: { state: SaveState }) {
   const t = useTranslations();

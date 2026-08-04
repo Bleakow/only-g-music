@@ -45,6 +45,7 @@ import {
   MAX_DESTACADOS,
   perfilVisible,
   compararOrden,
+  effectiveDisciplines,
   toSlug,
 } from "@only-g/shared-types/artist-profile";
 import type { Role } from "@only-g/shared-types/user";
@@ -140,10 +141,7 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     puntos: data.puntos ?? 0,
     premium: (data.premium as Premium | null) ?? null,
     // Disciplinas: los perfiles viejos (o con array vacío) se leen como cantante.
-    disciplines:
-      Array.isArray(data.disciplines) && data.disciplines.length
-        ? (data.disciplines as Role[])
-        : ["artista"],
+    disciplines: effectiveDisciplines(data.disciplines as Role[] | undefined),
     socio: data.socio === true,
     // Media destacada (video/imagen) y artistas relacionados: sin estas dos
     // líneas el dato se GUARDABA en Firestore pero nunca se leía de vuelta, así

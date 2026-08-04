@@ -14,7 +14,7 @@ import { AuthProvider } from "@/features/auth/components/AuthProvider";
 import { PreciosProvider } from "@/features/pricing/components/PreciosProvider";
 import { GlobalErrorListener } from "@/features/observability/components/GlobalErrorListener";
 import { InitialLoader } from "@/components/loaders/InitialLoader";
-import { HideOnAdmin } from "@/components/layout/HideOnAdmin";
+import { HideOnOwnShell } from "@/components/layout/HideOnOwnShell";
 import { AccountDock } from "@/components/layout/AccountDock";
 import { ConversationBubble } from "@/features/conversations/components/ConversationBubble";
 import { VersionWatcher } from "@/components/layout/VersionWatcher";
@@ -79,11 +79,12 @@ export default async function LocaleLayout({
               {children}
               {/* Dock de cuenta/acciones (avatar + campana + chat + G Notes) y el
                   panel de chat. Aquí (no en (site)/layout) para que también salgan
-                  en la home; se ocultan en /admin (que trae su propia topbar). */}
-              <HideOnAdmin>
+                  en la home; se ocultan en las pantallas con shell propio (/admin,
+                  panel de métricas), donde taparían sus controles. */}
+              <HideOnOwnShell>
                 <AccountDock />
                 <ConversationBubble />
-              </HideOnAdmin>
+              </HideOnOwnShell>
               {/* Aviso de versión nueva tras un deploy (recarga a un clic). */}
               <VersionWatcher />
             </PreciosProvider>

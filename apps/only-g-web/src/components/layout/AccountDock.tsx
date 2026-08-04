@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { usePathname } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { UserMenu } from "@/features/auth/components/UserMenu";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
@@ -11,7 +11,7 @@ import { DockIconButton } from "@/components/ui/DockIconButton";
 import { IconButton } from "@/components/ui/IconButton";
 import { ChatIcon, NoteIcon } from "@/components/icons";
 import { openChat } from "@/features/conversations/lib/open-conversation";
-import { glassSurfaceSoft } from "@/components/ui/glass";
+import { glassSurfaceSoft, GlassSheen } from "@/components/ui/glass";
 import { onIntroReady } from "@/components/loaders/intro-ready";
 
 // URL de la app hermana G Notes (handoff SSO). Override con NEXT_PUBLIC_GNOTES_URL;
@@ -108,7 +108,34 @@ export function AccountDock() {
     return () => ctx.revert();
   }, [intro, hasUser]);
 
-  if (!user || menuOpen || viewerOpen) return null;
+  if (menuOpen || viewerOpen) return null;
+
+  // SIN SESIÓN: al cerrar sesión el dock desaparecía entero y no quedaba NINGUNA
+  // forma visible de volver a entrar (antes vivían dentro del menú del avatar,
+  // que solo existe con sesión). Los accesos van sueltos y a la vista.
+  //
+  // Solo en ESCRITORIO: en móvil la cápsula comparte esquina con la hamburguesa,
+  // y dos botones de texto ahí tapan el hero. Quien entre desde el móvil llega
+  // al login por el menú o por cualquier acción que exija sesión.
+  if (!user) {
+    return (
+      <div className="fixed top-6 right-28 z-[105] hidden items-center gap-2 sm:flex">
+        <Link
+          href="/login"
+          className={`${glassSurfaceSoft} flex min-h-11 items-center rounded-full px-5 text-xs font-semibold tracking-[1px] text-white uppercase`}
+        >
+          <GlassSheen />
+          <span className="relative">{t("auth.login")}</span>
+        </Link>
+        <Link
+          href="/login?mode=register"
+          className="btn-amethyst flex min-h-11 items-center rounded-full px-5 text-xs font-semibold tracking-[1px] uppercase"
+        >
+          {t("auth.createAccount")}
+        </Link>
+      </div>
+    );
+  }
 
   const isProfile = /^\/(artistas\/[^/]+|artista\/)/.test(pathname);
   // El avatar suelto de móvil SOLO va en el inicio: en páginas internas (que

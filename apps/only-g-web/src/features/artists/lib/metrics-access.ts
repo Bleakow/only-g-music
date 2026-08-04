@@ -2,6 +2,12 @@ import {
   DEFAULT_METRICS_VISIBILITY,
   type MetricsVisibility,
 } from "@only-g/shared-types/profile-metrics";
+import { effectiveDisciplines } from "@only-g/shared-types/artist-profile";
+import {
+  isSectionOn,
+  type SectionPrefs,
+} from "@only-g/shared-types/profile-sections";
+import type { Role } from "@only-g/shared-types/user";
 import { adminDb, verifiedUid } from "@/lib/firebase/admin";
 
 /**
@@ -19,8 +25,19 @@ export type AccessReason = "owner" | "admin" | "publico" | "enlace";
 export interface AccessResult {
   ok: boolean;
   reason?: AccessReason;
-  /** Datos del perfil que el panel necesita para su cabecera. */
-  profile?: { slug: string; artisticName: string; uid: string };
+  /** Datos del perfil que el panel necesita para titularse. */
+  profile?: {
+    slug: string;
+    artisticName: string;
+    uid: string;
+    /**
+     * ¿El perfil tiene encendida su parte musical (§05)? El ranking de
+     * reproducciones lo alimentan TODOS los reproductores (temas, tema de intro
+     * y media destacada), así que un bailarín también acumula datos ahí — pero
+     * son reels, no canciones. Esto decide cómo se titula ese ranking.
+     */
+    esMusical: boolean;
+  };
   visibility: MetricsVisibility;
   /** true si quien mira es el dueño (o admin): puede cambiar la visibilidad. */
   canManage: boolean;
@@ -58,10 +75,21 @@ export async function checkMetricsAccess(
   const snap = await adminDb.collection("artistProfiles").doc(slug).get();
   if (!snap.exists) return DENIED;
   const data = snap.data() ?? {};
+  // MISMA lectura que hace el repo del perfil público: sin el fallback, un
+  // cantante anterior a §05 (sin `disciplines`) vería el panel de un bailarín.
+  const disciplines = effectiveDisciplines(
+    data.disciplines as Role[] | undefined,
+  );
+  const prefs = data.sectionPrefs as SectionPrefs | undefined;
   const profile = {
     slug,
     artisticName: String(data.artisticName ?? slug),
     uid: String(data.uid ?? ""),
+    // Se pregunta al mismo dominio que decide qué pinta el perfil público, para
+    // que el panel no invente su propia idea de "esto es un cantante".
+    esMusical:
+      isSectionOn("reproductor", prefs, disciplines) ||
+      isSectionOn("canciones", prefs, disciplines),
   };
   const visibility =
     (data.metricsVisibility as MetricsVisibility | undefined) ??

@@ -93,20 +93,10 @@ export function ConversationView({
                       : "self-start bg-white/10 text-silver-100"
                 }`}
               >
-                {m.tipo === "comprobante" && (
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-silver-300">
-                    {t("chat.receipt")}
-                  </p>
-                )}
                 {m.tipo === "propuesta" && (
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-amethyst-200">
                     {t("chat.proposal")}
                     {m.price != null ? ` · ${formatCOP(m.price)}` : ""}
-                  </p>
-                )}
-                {m.tipo === "metodo" && m.metodo && (
-                  <p className="whitespace-pre-wrap">
-                    {t("chat.method", { metodo: t(`chat.metodos.${m.metodo}`) })}
                   </p>
                 )}
                 {m.tipo === "pago_confirmado" && (
@@ -141,11 +131,7 @@ export function ConversationView({
       </div>
 
       {conversation?.type === "pago" && (
-        <PagoPanel
-          conversation={conversation}
-          uid={user?.uid}
-          isAdmin={isAdmin}
-        />
+        <PagoPanel conversation={conversation} isAdmin={isAdmin} />
       )}
 
       {writable ? (

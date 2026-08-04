@@ -28,7 +28,6 @@ import type {
   NewConversationMessage,
   PagoConcepto,
 } from "@only-g/shared-types/conversation";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 
 const COL = "conversations";
 
@@ -64,7 +63,6 @@ function toMessage(id: string, d: DocumentData): ConversationMessage {
     attachmentUrl: d.attachmentUrl ?? undefined,
     attachmentName: d.attachmentName ?? undefined,
     estado: d.estado ?? undefined,
-    metodo: d.metodo ?? undefined,
     monto: d.monto ?? undefined,
     price: d.price ?? undefined,
     createdAt: d.createdAt?.toMillis?.() ?? Date.now(),
@@ -151,23 +149,18 @@ export async function sendConversationMessage(
   );
 }
 
-// ── Pago (chat de pago: premium, reserva) ───────────────────────────────────
+// ── Pago (hilo de una compra) ───────────────────────────────────────────────
 
 /**
- * Abre un chat de pago para un `concepto` (premium, reserva) con el método ya
- * elegido, enlazado a su entidad de contexto vía `ref`. Estado inicial:
- * `comprobante_pendiente` (falta subir comprobante). El `monto` es informativo:
- * la confirmación server-side es la autoridad.
- */
-/**
- * Crea el hilo de un pago que va por PASARELA (Wompi).
+ * Crea el hilo de un pago que va por PASARELA (Wompi) — la vía normal.
  *
- * Hermano del manual y no un parámetro suyo, porque no comparten datos: aquí no
- * hay `metodo` (transferencia, Bre-B…) ni comprobante que subir. Nace en
- * `pendiente_pasarela` y solo el webhook lo mueve a `confirmado`.
+ * Nace en `pendiente_pasarela` y solo el webhook lo mueve a `confirmado`.
  *
- * Existe porque el callable `crearPagoWompi` necesita un hilo previo: de ahí
- * saca QUÉ se compra y —lo importante— CUÁNTO, sin fiarse del navegador.
+ * Existe porque el callable `crearPagoWompi` necesita un hilo previo: de ahí saca
+ * QUÉ se compra. El `monto` que va aquí es solo lo que se le enseña al usuario
+ * mientras paga: el importe que se cobra lo RECALCULA el servidor desde el
+ * catálogo (ver `montoDeCatalogo` en functions) y corrige este campo si no
+ * coincide. No puede ser de otra forma — este documento lo escribe el navegador.
  */
 export async function createWompiPaymentConversation(params: {
   uid: string;
@@ -188,40 +181,32 @@ export async function createWompiPaymentConversation(params: {
   });
 }
 
-export async function createPaymentConversation(params: {
+/**
+ * Anuncia un pago EN SEDE (efectivo): el único que no pasa por la pasarela,
+ * porque es dinero físico. Nace ya `en_revision` —no hay nada que cobrar por
+ * internet, solo que el equipo confirme cuando lo reciba— y el hilo queda
+ * `esperando_confirmacion`, que bloquea la escritura del cliente.
+ *
+ * No concede NADA por sí mismo: los derechos los da `confirmPayment` cuando el
+ * admin da por recibido el dinero.
+ */
+export async function createCashPaymentConversation(params: {
   uid: string;
   concepto: PagoConcepto;
   ref: NonNullable<Conversation["ref"]>;
-  metodo: MetodoPago;
   monto: number;
 }): Promise<string> {
   return createConversation({
     type: "pago",
     participants: [params.uid],
-    status: "abierto",
+    status: "esperando_confirmacion",
     ref: params.ref,
     pago: {
       concepto: params.concepto,
       monto: params.monto,
-      metodo: params.metodo,
-      estado: "comprobante_pendiente",
+      metodo: "efectivo",
+      estado: "en_revision",
     },
-  });
-}
-
-/**
- * Transición del cliente al enviar el comprobante: `comprobante_pendiente` →
- * `en_revision` (y el hilo a `esperando_confirmacion`, que bloquea la escritura).
- * Las reglas solo permiten esta transición acotada; confirmar/rechazar es del
- * admin vía Cloud Function.
- */
-export async function marcarComprobanteEnRevision(
-  conversationId: string,
-): Promise<void> {
-  await updateDoc(doc(db, COL, conversationId), {
-    "pago.estado": "en_revision",
-    status: "esperando_confirmacion",
-    updatedAt: serverTimestamp(),
   });
 }
 
@@ -235,14 +220,14 @@ export async function confirmarPago(conversationId: string): Promise<void> {
 }
 
 /**
- * Rechaza el comprobante (SOLO admin): devuelve el pago a `comprobante_pendiente`
- * y reabre el hilo para que el cliente reenvíe. No mueve dinero ni activa nada
- * (a diferencia de confirmar) → basta un update de cliente; las reglas permiten
+ * Rechaza un pago EN SEDE que no llegó (SOLO admin): lo marca `rechazado` y
+ * reabre el hilo para que el cliente lo reintente (o pague por pasarela). No
+ * mueve dinero ni activa nada → basta un update de cliente; las reglas permiten
  * al admin cualquier transición sobre la conversación.
  */
 export async function rechazarPago(conversationId: string): Promise<void> {
   await updateDoc(doc(db, COL, conversationId), {
-    "pago.estado": "comprobante_pendiente",
+    "pago.estado": "rechazado",
     status: "abierto",
     updatedAt: serverTimestamp(),
   });

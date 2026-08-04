@@ -40,7 +40,6 @@ function toReserva(id: string, data: DocumentData): Reserva {
     pedidoId: data.pedidoId ?? undefined,
     tipo: data.tipo ?? undefined,
     artistSlug: data.artistSlug ?? undefined,
-    comprobanteUrl: data.comprobanteUrl ?? undefined,
     productorId: data.productorId ?? undefined,
     estado: data.estado,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
@@ -63,17 +62,6 @@ export async function createReserva(data: NewReserva): Promise<string> {
 export async function getReservaById(id: string): Promise<Reserva | null> {
   const snap = await getDoc(doc(db, COLLECTION, id));
   return snap.exists() ? toReserva(snap.id, snap.data()) : null;
-}
-
-/** El cliente marca el pago en revisión tras subir el comprobante (pendiente_pago → pago_en_revision). */
-export async function marcarPagoEnRevision(
-  id: string,
-  comprobanteUrl: string,
-): Promise<void> {
-  await updateDoc(doc(db, COLLECTION, id), {
-    estado: "pago_en_revision",
-    comprobanteUrl,
-  });
 }
 
 // ── Admin (requiere rol admin por reglas) ──────────────────────────

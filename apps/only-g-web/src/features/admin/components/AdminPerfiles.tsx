@@ -21,7 +21,6 @@ import {
   premiumEstado,
 } from "@only-g/shared-types/artist-profile";
 import { TALENT_ROLES, type Role } from "@only-g/shared-types/user";
-import { activarMembresia } from "@/features/admin/lib/admin-users-repo";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
@@ -55,10 +54,15 @@ const norm = (s: string) =>
  *  - Lista paginada con scroll infinito (`getProfilesPage`, cursor) dentro de un
  *    contenedor con altura máxima → no carga toda la colección al frontend.
  *  - Buscador server-side por prefijo de nombre (`searchProfilesByName`).
- *  - Acciones por perfil: activar/desactivar membresía, editar, borrar, destacar
- *    (el tope MAX_DESTACADOS se respeta con `countFeatured`, sin cargar todo).
+ *  - Acciones por perfil: ocultar/mostrar, editar, borrar, destacar (el tope
+ *    MAX_DESTACADOS se respeta con `countFeatured`, sin cargar todo).
  *  - El ORDEN del escaparate (los primeros que se ven) se cura aparte, en el modal
  *    "Curar escaparate", sobre el conjunto pequeño de perfiles visibles.
+ *
+ * NO se OTORGA membresía desde aquí. El ojo apaga y enciende la visibilidad
+ * sobre el tiempo YA pagado (`premium.activo`), nunca regala meses: conceder o
+ * extender la membresía es cosa de "Usuarios y roles". Cuando el mismo botón
+ * hacía las dos cosas, ocultar a alguien y regalarle un mes eran indistinguibles.
  */
 export function AdminPerfiles() {
   const t = useTranslations();
@@ -90,10 +94,8 @@ export function AdminPerfiles() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [curarOpen, setCurarOpen] = useState(false);
-  const [membershipTarget, setMembershipTarget] = useState<{
-    profile: ArtistProfile;
-    action: "activar" | "desactivar";
-  } | null>(null);
+  /** Perfil a OCULTAR (confirmación); mostrar es directo, no destruye nada. */
+  const [hideTarget, setHideTarget] = useState<ArtistProfile | null>(null);
 
   // Pestaña de disciplina activa (filtra la lista renderizada).
   const [tab, setTab] = useState<Role | "todos">("todos");
@@ -211,32 +213,31 @@ export function AdminPerfiles() {
       ? base
       : base.filter((p) => (p.disciplines ?? ["artista"]).includes(tab));
 
-  async function activar(slug: string, cortesia: boolean) {
+  /**
+   * MUESTRA el perfil en la vitrina reactivando la membresía que YA tenía. No
+   * concede tiempo: si su vigencia caducó, el botón está deshabilitado y hay que
+   * pasar por "Usuarios y roles" (allí sí se cobra o se regala el mes).
+   */
+  async function mostrar(slug: string) {
+    const target = lista.find((p) => p.slug === slug);
+    const vigencia = target?.premium?.expiresAt;
+    if (!target?.premium || !vigencia || vigencia <= Date.now()) return;
     setSavingSlug(slug);
     setError(null);
     try {
-      await activarMembresia(slug, cortesia);
-      const now = Date.now();
-      const exp = new Date(now);
-      exp.setMonth(exp.getMonth() + 1); // membresía = 1 mes (espejo del server)
-      patchOne(slug, {
-        premium: {
-          activo: true,
-          since: now,
-          expiresAt: exp.getTime(),
-          ...(cortesia ? { cortesia: true } : {}),
-        },
-      });
-      setMembershipTarget(null);
+      const premium = { ...target.premium, activo: true };
+      await setPremium(slug, premium);
+      patchOne(slug, { premium });
     } catch (e) {
-      console.error("[admin-perfiles] activar:", e);
+      console.error("[admin-perfiles] mostrar:", e);
       setError(t("adminPerfiles.errorActivar"));
     } finally {
       setSavingSlug(null);
     }
   }
 
-  async function desactivar(slug: string) {
+  /** OCULTA el perfil de la vitrina. Conserva la vigencia: solo apaga el flag. */
+  async function ocultar(slug: string) {
     const target = lista.find((p) => p.slug === slug);
     setSavingSlug(slug);
     setError(null);
@@ -246,9 +247,9 @@ export function AdminPerfiles() {
         : null;
       await setPremium(slug, premium);
       patchOne(slug, { premium });
-      setMembershipTarget(null);
+      setHideTarget(null);
     } catch (e) {
-      console.error("[admin-perfiles] desactivar:", e);
+      console.error("[admin-perfiles] ocultar:", e);
       setError(t("adminPerfiles.errorDesactivar"));
     } finally {
       setSavingSlug(null);
@@ -414,6 +415,9 @@ export function AdminPerfiles() {
                   {lista.map((p) => {
                     const estado = premiumEstado(p.premium, Date.now());
                     const activo = estado === "activo";
+                    // Se puede volver a MOSTRAR solo si le queda vigencia: el ojo
+                    // enciende lo pagado, no regala meses (eso es Usuarios y roles).
+                    const puedeMostrar = (p.premium?.expiresAt ?? 0) > Date.now();
                     const esSocio = p.socio === true;
                     // Visible en la vitrina = premium vigente O socio (waiver):
                     // el socio no paga membresía. Refleja perfilVisible/getVisibleProfiles.
@@ -502,29 +506,31 @@ export function AdminPerfiles() {
                             <EditIcon className="size-4" />
                           </Link>
 
-                          {/* Los SOCIOS (beatmaker/productor) están exentos de
-                              membresía: no se ofrece activar un pago. */}
+                          {/* OCULTAR / MOSTRAR (nunca otorga membresía). Los
+                              SOCIOS están exentos: su perfil es visible sin
+                              membresía, así que aquí no hay nada que apagar. */}
                           {!esSocio && (
                             <button
                               type="button"
                               onClick={() =>
-                                setMembershipTarget({
-                                  profile: p,
-                                  action: activo ? "desactivar" : "activar",
-                                })
+                                activo ? setHideTarget(p) : mostrar(p.slug)
                               }
-                              disabled={busy}
+                              disabled={busy || (!activo && !puedeMostrar)}
                               aria-label={
                                 activo
-                                  ? t("adminPerfiles.ariaDesactivar")
-                                  : t("adminPerfiles.ariaActivar")
+                                  ? t("adminPerfiles.ariaOcultar")
+                                  : puedeMostrar
+                                    ? t("adminPerfiles.ariaMostrar")
+                                    : t("adminPerfiles.ariaSinMembresia")
                               }
                               title={
                                 activo
-                                  ? t("adminPerfiles.ariaDesactivar")
-                                  : t("adminPerfiles.ariaActivar")
+                                  ? t("adminPerfiles.ariaOcultar")
+                                  : puedeMostrar
+                                    ? t("adminPerfiles.ariaMostrar")
+                                    : t("adminPerfiles.ariaSinMembresia")
                               }
-                              className={`flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 disabled:opacity-40 ${
+                              className={`flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 ${
                                 activo
                                   ? "text-silver-300 hover:text-white"
                                   : "text-emerald-300"
@@ -694,78 +700,38 @@ export function AdminPerfiles() {
         </div>
       </GlassModal>
 
-      {/* Activar membresía: pago o cortesía */}
+      {/* Ocultar de la vitrina (la vigencia se conserva) */}
       <GlassModal
-        open={membershipTarget?.action === "activar"}
-        onClose={() => setMembershipTarget(null)}
-        title={t("adminPerfiles.membresia.activarTitle", {
-          nombre: membershipTarget?.profile.artisticName ?? "",
-        })}
+        open={!!hideTarget}
+        onClose={() => setHideTarget(null)}
+        title={t("adminPerfiles.ocultar.title")}
       >
         <p className="text-silver-300 text-sm">
-          {t("adminPerfiles.membresia.activarDescripcion")}
-        </p>
-        <div className="mt-6 flex flex-col gap-3">
-          <GlassButton
-            onClick={() =>
-              membershipTarget && activar(membershipTarget.profile.slug, false)
-            }
-            disabled={savingSlug === membershipTarget?.profile.slug}
-            className="!text-amethyst-200"
-          >
-            {savingSlug === membershipTarget?.profile.slug ? (
-              <SpinnerIcon className="size-4 animate-spin" />
-            ) : null}
-            {t("adminPerfiles.membresia.pago")}
-          </GlassButton>
-          <div>
-            <GlassButton
-              onClick={() =>
-                membershipTarget && activar(membershipTarget.profile.slug, true)
-              }
-              disabled={savingSlug === membershipTarget?.profile.slug}
-            >
-              {savingSlug === membershipTarget?.profile.slug ? (
-                <SpinnerIcon className="size-4 animate-spin" />
-              ) : null}
-              {t("adminPerfiles.membresia.cortesia")}
-            </GlassButton>
-            <p className="text-silver-400 mt-2 text-xs">
-              {t("adminPerfiles.membresia.cortesiaHint")}
-            </p>
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* Desactivar membresía */}
-      <GlassModal
-        open={membershipTarget?.action === "desactivar"}
-        onClose={() => setMembershipTarget(null)}
-        title={t("adminPerfiles.membresia.desactivarTitle")}
-      >
-        <p className="text-silver-300 text-sm">
-          {t("adminPerfiles.membresia.desactivarMensaje", {
-            nombre: membershipTarget?.profile.artisticName ?? "",
+          {t("adminPerfiles.ocultar.mensaje", {
+            nombre: hideTarget?.artisticName ?? "",
           })}
+        </p>
+        <p className="text-silver-400 mt-2 text-xs">
+          {t("adminPerfiles.ocultar.nota")}
         </p>
         <div className="mt-6 flex items-center justify-end gap-3">
           <GlassButton
-            onClick={() => setMembershipTarget(null)}
-            disabled={savingSlug === membershipTarget?.profile.slug}
+            onClick={() => setHideTarget(null)}
+            disabled={savingSlug === hideTarget?.slug}
           >
-            {t("adminPerfiles.membresia.cancelar")}
+            {t("adminPerfiles.ocultar.cancelar")}
           </GlassButton>
           <GlassButton
-            onClick={() =>
-              membershipTarget && desactivar(membershipTarget.profile.slug)
-            }
-            disabled={savingSlug === membershipTarget?.profile.slug}
+            onClick={() => hideTarget && ocultar(hideTarget.slug)}
+            disabled={savingSlug === hideTarget?.slug}
             className="!text-red-200"
           >
-            {savingSlug === membershipTarget?.profile.slug ? (
+            {savingSlug === hideTarget?.slug ? (
               <SpinnerIcon className="size-4 animate-spin" />
-            ) : null}
-            {t("adminPerfiles.membresia.confirmar")}
+            ) : (
+              <EyeOffIcon className="size-4" />
+            )}
+            {t("adminPerfiles.ocultar.confirmar")}
           </GlassButton>
         </div>
       </GlassModal>

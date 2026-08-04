@@ -6,10 +6,9 @@
    este .css. */
 @source "../../../../packages/ui/src";
 
-/* shared-types también trae clases Tailwind en constantes (p. ej.
-   GALLERY_SPAN_CLASS: col-span-2/row-span-2 para el tamaño de las fotos en la
-   galería). Sin este @source, esas utilidades sin prefijo nunca se generan y el
-   botón de cambiar tamaño «no hace nada». */
+/* shared-types también trae clases Tailwind dentro de constantes del dominio.
+   Sin este @source, esas utilidades sin prefijo nunca se generan y el estilo que
+   define el dominio «no hace nada» en la app. */
 @source "../../../../packages/shared-types/src";
 
 /* ── Design tokens ─────────────────────────────────────────────── */
@@ -378,5 +377,181 @@
 @media (prefers-reduced-motion: reduce) {
   .btn-amethyst::after {
     transition: none;
+  }
+}
+
+/* ── Galería del perfil: MOSAICOS por plantilla ────────────────────────────
+   La geometría de la galería vive aquí y solo aquí. El dominio
+   (`packages/shared-types/src/gallery-layout.ts`) dice qué plantillas hay y
+   cuántas fotos lleva cada una; el reparto —qué ranura ocupa qué, cuántas
+   columnas y qué proporción tiene el bloque— se declara en estas reglas.
+
+   Dos decisiones que hacen que se vea IGUAL en el editor, en el perfil y en el
+   móvil (que era el problema real):
+
+   1. `@container` y no `@media`: la composición ancha entra cuando el CONTENEDOR
+      da de sí, no cuando lo hace la pantalla. El editor (columna estrecha) y el
+      perfil (media pantalla en escritorio) enseñan lo mismo a igual ancho.
+   2. `aspect-ratio` + filas `1fr`: el alto sale de la plantilla, no del
+      contenido. Nada de `vw` (que cuenta la barra de scroll y empuja la página)
+      ni de scroll interno anidado dentro del scroll de la página.
+
+   `--gal-cols/--gal-rows/--gal-ratio` van por plantilla; las áreas son letras
+   `a…f`, una por ranura (ver `areaDeRanura`). */
+.og-gal-wrap {
+  container-type: inline-size;
+  container-name: gal;
+}
+
+.og-gal {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(var(--gal-cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--gal-rows), minmax(0, 1fr));
+  aspect-ratio: var(--gal-ratio);
+}
+
+/* Guardarraíl: una celda de grid tiene `min-width: auto`, así que un contenido
+   ancho la estira y con ella la página entera — el desbordamiento de antes. */
+.og-gal > * {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Miniatura del selector: la MISMA rejilla, en pequeño. */
+.og-gal[data-thumb] {
+  gap: 2px;
+}
+
+/* ── Contenedor ESTRECHO (móvil): dos columnas como mucho ──────────── */
+.og-gal[data-layout="unica"] {
+  --gal-cols: 1;
+  --gal-rows: 1;
+  --gal-ratio: 4 / 5;
+  grid-template-areas: "a";
+}
+.og-gal[data-layout="duo"] {
+  --gal-cols: 2;
+  --gal-rows: 1;
+  --gal-ratio: 2 / 1;
+  grid-template-areas: "a b";
+}
+.og-gal[data-layout="retrato"] {
+  --gal-cols: 2;
+  --gal-rows: 3;
+  --gal-ratio: 2 / 3;
+  grid-template-areas: "a a" "a a" "b b";
+}
+.og-gal[data-layout="portada"] {
+  --gal-cols: 2;
+  --gal-rows: 2;
+  --gal-ratio: 1 / 1;
+  grid-template-areas: "a a" "b c";
+}
+.og-gal[data-layout="tira"] {
+  --gal-cols: 2;
+  --gal-rows: 2;
+  --gal-ratio: 1 / 1;
+  grid-template-areas: "a b" "c c";
+}
+.og-gal[data-layout="rejilla"] {
+  --gal-cols: 2;
+  --gal-rows: 2;
+  --gal-ratio: 1 / 1;
+  grid-template-areas: "a b" "c d";
+}
+.og-gal[data-layout="foco"] {
+  --gal-cols: 2;
+  --gal-rows: 3;
+  --gal-ratio: 2 / 3;
+  grid-template-areas: "a a" "b c" "d d";
+}
+.og-gal[data-layout="mosaico"] {
+  --gal-cols: 2;
+  --gal-rows: 3;
+  --gal-ratio: 2 / 3;
+  grid-template-areas: "a a" "b c" "d e";
+}
+.og-gal[data-layout="franja"] {
+  --gal-cols: 2;
+  --gal-rows: 3;
+  --gal-ratio: 2 / 3;
+  grid-template-areas: "a b" "c d" "e e";
+}
+.og-gal[data-layout="panal"] {
+  --gal-cols: 2;
+  --gal-rows: 3;
+  --gal-ratio: 2 / 3;
+  grid-template-areas: "a b" "c d" "e f";
+}
+.og-gal[data-layout="revista"] {
+  --gal-cols: 2;
+  --gal-rows: 4;
+  --gal-ratio: 1 / 2;
+  grid-template-areas: "a a" "b c" "d e" "f f";
+}
+
+/* ── Contenedor ANCHO: la composición editorial (3–4 columnas) ─────── */
+@container gal (min-width: 34rem) {
+  .og-gal[data-layout="unica"] {
+    --gal-ratio: 16 / 9;
+  }
+  .og-gal[data-layout="duo"] {
+    --gal-ratio: 2 / 1;
+  }
+  .og-gal[data-layout="retrato"] {
+    --gal-cols: 3;
+    --gal-rows: 1;
+    --gal-ratio: 3 / 1.4;
+    grid-template-areas: "a a b";
+  }
+  .og-gal[data-layout="portada"] {
+    --gal-cols: 3;
+    --gal-rows: 2;
+    --gal-ratio: 3 / 2;
+    grid-template-areas: "a a b" "a a c";
+  }
+  .og-gal[data-layout="tira"] {
+    --gal-cols: 3;
+    --gal-rows: 1;
+    --gal-ratio: 3 / 1;
+    grid-template-areas: "a b c";
+  }
+  .og-gal[data-layout="rejilla"] {
+    --gal-cols: 4;
+    --gal-rows: 1;
+    --gal-ratio: 4 / 1;
+    grid-template-areas: "a b c d";
+  }
+  .og-gal[data-layout="foco"] {
+    --gal-cols: 4;
+    --gal-rows: 2;
+    --gal-ratio: 2 / 1;
+    grid-template-areas: "a a b c" "a a d d";
+  }
+  .og-gal[data-layout="mosaico"] {
+    --gal-cols: 4;
+    --gal-rows: 2;
+    --gal-ratio: 2 / 1;
+    grid-template-areas: "a a b c" "a a d e";
+  }
+  .og-gal[data-layout="franja"] {
+    --gal-cols: 4;
+    --gal-rows: 2;
+    --gal-ratio: 2 / 1;
+    grid-template-areas: "a b c d" "e e e e";
+  }
+  .og-gal[data-layout="panal"] {
+    --gal-cols: 3;
+    --gal-rows: 2;
+    --gal-ratio: 3 / 2;
+    grid-template-areas: "a b c" "d e f";
+  }
+  .og-gal[data-layout="revista"] {
+    --gal-cols: 4;
+    --gal-rows: 3;
+    --gal-ratio: 4 / 3;
+    grid-template-areas: "a a b c" "a a d e" "f f f f";
   }
 }

@@ -5,29 +5,26 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { getPedidoById } from "../lib/pedidos-repo";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
+import { PagoInlinePanel } from "@/features/conversations/components/PagoInlinePanel";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
-import { Button } from "@/components/ui/Button";
 import { sedes } from "@/features/sedes/data/sedes";
 import { formatCOP } from "@only-g/shared-types/service";
 import {
   insigniaDePuntos,
   type Insignia,
 } from "@only-g/shared-types/artist-profile";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import type { Pedido } from "@only-g/shared-types/pedido";
 import { badgeClass } from "@/features/solicitudes/lib/estados";
 import { Skeleton } from "@/components/ui/Skeleton";
 
 /**
  * Detalle + pago de un PEDIDO (compra directa). Calca el flujo de pago de
- * `SolicitudDetail` (reserva): botón "Pagar" → `PaymentMethodPicker` → abre un
- * chat de pago propio (`concepto: "pedido"`). El estado se refleja server-side
- * (Cloud Function confirma todas las reservas del pedido a la vez), por eso no
- * hay acciones de cliente más allá de iniciar el pago. Sin hilo de soporte: el
- * pedido no tiene uno propio (a diferencia de cotización/reserva).
+ * `SolicitudDetail` (reserva): panel de pago INLINE con el checkout de la
+ * pasarela, sobre un hilo de pago propio (`concepto: "pedido"`). El estado se
+ * refleja server-side (Cloud Function confirma todas las reservas del pedido a
+ * la vez), por eso no hay acciones de cliente más allá de iniciar el pago. Sin
+ * hilo de soporte: el pedido no tiene uno propio (a diferencia de
+ * cotización/reserva).
  */
 export function PedidoDetail({ id }: { id: string }) {
   const t = useTranslations();
@@ -35,7 +32,7 @@ export function PedidoDetail({ id }: { id: string }) {
   const [pedido, setPedido] = useState<Pedido | null>(null);
   const [loading, setLoading] = useState(true);
   const [insignia, setInsignia] = useState<Insignia | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const [pagoEnviado, setPagoEnviado] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -54,8 +51,8 @@ export function PedidoDetail({ id }: { id: string }) {
     };
   }, [id]);
 
-  // Insignia del pagador (deriva el gate de efectivo del picker). Un no-artista
-  // no tiene perfil → insignia null → efectivo bloqueado.
+  // Insignia del pagador: habilita pagar EN SEDE (perk de la insignia máxima).
+  // Un no-artista no tiene perfil → insignia null → solo pasarela.
   useEffect(() => {
     const slug = account?.artistSlug;
     if (!slug) {
@@ -72,25 +69,6 @@ export function PedidoDetail({ id }: { id: string }) {
       active = false;
     };
   }, [account?.artistSlug]);
-
-  // Arranca el pago del pedido: abre un chat de pago propio (tipo `pago`) y la
-  // burbuja. El comprobante y la confirmación viven en ese hilo (PagoPanel).
-  async function iniciarPagoPedido(metodo: MetodoPago) {
-    if (!pedido) return;
-    setShowPicker(false);
-    try {
-      const cid = await createPaymentConversation({
-        uid: pedido.uid,
-        concepto: "pedido",
-        ref: { kind: "pedido", id: pedido.id },
-        metodo,
-        monto: pedido.total,
-      });
-      openConversation(cid);
-    } catch (e) {
-      console.error("[pedido] iniciarPago:", e);
-    }
-  }
 
   if (loading) {
     return (
@@ -172,30 +150,24 @@ export function PedidoDetail({ id }: { id: string }) {
         </p>
       </section>
 
-      {/* Acción: pago del pedido → abre un chat de pago propio */}
-      {pedido.estado === "pendiente_pago" && (
+      {/* Acción: pago del pedido → checkout de la pasarela, aquí mismo */}
+      {pedido.estado === "pendiente_pago" && !pagoEnviado && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
           <h2 className="font-narrow text-xl font-bold text-white uppercase">
             {t("solicitudDetail.payment")}
           </h2>
-          <p className="text-silver-300 mt-2 text-sm">
+          <p className="text-silver-300 mt-2 mb-4 text-sm">
             {t("solicitudDetail.paymentStartHint")}
           </p>
-          <Button
-            className="btn-amethyst mt-3"
-            onClick={() => setShowPicker(true)}
-          >
-            {t("solicitudDetail.pay")}
-          </Button>
+          <PagoInlinePanel
+            uid={pedido.uid}
+            concepto="pedido"
+            pagoRef={{ kind: "pedido", id: pedido.id }}
+            monto={pedido.total}
+            insignia={insignia}
+            onSent={() => setPagoEnviado(true)}
+          />
         </section>
-      )}
-
-      {showPicker && (
-        <PaymentMethodPicker
-          onPick={iniciarPagoPedido}
-          onClose={() => setShowPicker(false)}
-          insignia={insignia}
-        />
       )}
 
       {pedido.estado === "pago_en_revision" && (

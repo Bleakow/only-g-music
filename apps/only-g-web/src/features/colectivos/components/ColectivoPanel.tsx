@@ -16,12 +16,10 @@ import {
   type ColectivoMiembro,
 } from "@only-g/shared-types/colectivo";
 import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { createWompiPaymentConversation } from "@/features/conversations/lib/conversations-repo";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 import { RelatedArtistsPicker } from "@/features/artists/components/profile/RelatedArtistsPicker";
 import { getProfileBySlug } from "@/features/artists/lib/artist-profile-repo";
 import {
@@ -71,7 +69,13 @@ export function ColectivoPanel({ slug }: { slug: string }) {
   const [showMiembros, setShowMiembros] = useState(false);
   const [showIdentidad, setShowIdentidad] = useState(false);
   const [showCupos, setShowCupos] = useState(false);
-  const [showPago, setShowPago] = useState(false);
+  // Hilo del pago de la ampliación. Guarda el importe con el que nació: si el
+  // dueño cambia cuántos cupos añade, hace falta un hilo nuevo (el servidor
+  // cobra lo que dice el hilo, no lo que muestra la pantalla).
+  const [pago, setPago] = useState<{ convId: string; monto: number } | null>(
+    null,
+  );
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [cuposNuevos, setCuposNuevos] = useState(0);
 
   useEffect(() => {
@@ -156,19 +160,21 @@ export function ColectivoPanel({ slug }: { slug: string }) {
     await updateColectivo(slug, { miembros: siguientes });
   }
 
-  async function ampliarCupos(metodo: MetodoPago) {
+  async function ampliarCupos() {
     if (!user || !colectivo) return;
-    setShowPago(false);
     try {
-      const id = await createPaymentConversation({
-        uid: user.uid,
-        concepto: "colectivo",
-        ref: { kind: "colectivo", id: slug },
-        metodo,
-        monto: totalAmpliacion,
-      });
-      openConversation(id);
+      const convId =
+        pago?.monto === totalAmpliacion
+          ? pago.convId
+          : await createWompiPaymentConversation({
+              uid: user.uid,
+              concepto: "colectivo",
+              ref: { kind: "colectivo", id: slug },
+              monto: totalAmpliacion,
+            });
+      setPago({ convId, monto: totalAmpliacion });
       setShowCupos(false);
+      setCheckoutOpen(true);
     } catch (e) {
       console.error("[colectivo-panel] ampliar:", e);
     }
@@ -536,7 +542,7 @@ export function ColectivoPanel({ slug }: { slug: string }) {
             {t("cancel")}
           </GlassButton>
           <GlassButton
-            onClick={() => setShowPago(true)}
+            onClick={() => void ampliarCupos()}
             disabled={cuposNuevos === 0}
             className="!text-amethyst-200"
           >
@@ -545,11 +551,13 @@ export function ColectivoPanel({ slug }: { slug: string }) {
         </div>
       </GlassModal>
 
-      {showPago && (
-        <PaymentMethodPicker
-          onPick={ampliarCupos}
-          onClose={() => setShowPago(false)}
-          insignia={null}
+      {pago && (
+        <WompiCheckout
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          conversationId={pago.convId}
+          monto={pago.monto}
+          concepto={t("access.slots")}
         />
       )}
     </main>

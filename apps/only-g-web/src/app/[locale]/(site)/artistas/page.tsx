@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { alternatesFor } from "@/lib/seo";
 import { ArtistsShowcase } from "@/features/artists/components/ArtistsShowcase";
-import { ArtistCtaButton } from "@/features/artists/components/ArtistCtaButton";
+import { ArtistsHeaderActions } from "@/features/artists/components/ArtistsHeaderActions";
+import { DirectorySearchProvider } from "@/features/artists/components/DirectorySearchProvider";
 import { CatalogBackground } from "@/features/services/components/CatalogBackground";
 import {
   LISTA_ARTISTAS_BG_DESKTOP,
@@ -33,6 +34,10 @@ export default async function ArtistasPage() {
       desktop={LISTA_ARTISTAS_BG_DESKTOP}
       mobile={LISTA_ARTISTAS_BG_MOBILE}
     >
+      {/* La búsqueda la comparten la cabecera (su botón) y la vitrina (la lista
+          que filtra), que son ramas distintas del árbol: el estado vive en este
+          provider, no en la página (que es un Server Component). */}
+      <DirectorySearchProvider>
       <main className="min-h-dvh pb-24">
       {/* ── Cabecera editorial con resplandor amatista de marca ───────── */}
       <header className="relative overflow-hidden px-6 pt-6 pb-14 sm:px-12 sm:pb-20">
@@ -65,7 +70,8 @@ export default async function ArtistasPage() {
           <h1 className="font-narrow mt-3 text-6xl leading-[0.9] font-bold uppercase sm:text-8xl">
             {t("title")}
           </h1>
-          <ArtistCtaButton />
+          {/* CTA de perfil y, en móvil, la lupa que despliega el buscador. */}
+          <ArtistsHeaderActions />
         </div>
       </header>
 
@@ -74,6 +80,7 @@ export default async function ArtistasPage() {
         <ArtistsShowcase fallback={[]} />
       </div>
       </main>
+      </DirectorySearchProvider>
     </CatalogBackground>
   );
 }

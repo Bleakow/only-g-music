@@ -6,27 +6,24 @@ import { Link } from "@/i18n/navigation";
 import { Alert } from "@/components/ui/Alert";
 import { glassSurface, GlassSheen } from "@/components/ui/glass";
 import { formatCOP } from "@only-g/shared-types/service";
-import type { SedeId } from "@only-g/shared-types/sede";
 import { PagoInlinePanel } from "@/features/conversations/components/PagoInlinePanel";
 import { openConversation } from "@/features/conversations/lib/open-conversation";
 
 /**
- * Cierre de la compra: panel de pago INLINE. "Ir a pagar" → elige método → QR +
- * llave Bre-B + subir comprobante, en la misma pantalla (`PagoInlinePanel`). Al
- * enviar el comprobante muestra el aviso de validación y abre la burbuja del chat
- * de pago (para seguir la confirmación del admin).
+ * Cierre de la compra: panel de pago INLINE (`PagoInlinePanel`) en la misma
+ * pantalla, sin sacar al comprador del embudo.
+ *
+ * Al volver del checkout abre la burbuja del hilo de pago: ahí se ve si la
+ * pasarela lo confirmó y queda el rastro de la compra.
  */
 export function PedidoPagoInline({
   pedidoId,
   total,
   uid,
-  sede,
 }: {
   pedidoId: string;
   total: number;
   uid: string;
-  /** Sede del pedido: su destino de pago (QR propio) gana sobre el de la compañía. */
-  sede: SedeId;
 }) {
   const t = useTranslations();
   const [sent, setSent] = useState(false);
@@ -72,7 +69,6 @@ export function PedidoPagoInline({
                 concepto="pedido"
                 pagoRef={{ kind: "pedido", id: pedidoId }}
                 monto={total}
-                sede={sede}
                 onSent={(cid) => {
                   setSent(true);
                   openConversation(cid);

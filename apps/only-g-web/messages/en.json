@@ -191,9 +191,45 @@
       "produccionGrupo": "Full production for a group",
       "video": "Professional video"
     },
-    "lite": { "nombre": "Lite Pass" },
-    "golden": { "nombre": "Golden Pass" },
-    "premium": { "nombre": "Premium Pass" }
+    "lite": {
+      "nombre": "Lite Pass"
+    },
+    "golden": {
+      "nombre": "Golden Pass"
+    },
+    "premium": {
+      "nombre": "Premium Pass"
+    }
+  },
+  "vigencia": {
+    "meses": "{n, plural, one {# month} other {# months}}",
+    "dias": "{n, plural, one {# day} other {# days}}",
+    "caducado": "Expired",
+    "hoy": "Expires today"
+  },
+  "vales": {
+    "estado": {
+      "pendiente": "Not claimed",
+      "reclamado": "Claimed · in progress",
+      "entregado": "Delivered"
+    },
+    "intro": "The team delivers this one in person. Message us here and we'll set the dates.",
+    "reclamarTitulo": "Ready to book it?",
+    "reclamarHint": "Claiming it opens a chat with the team to sort out date, studio and details.",
+    "reclamar": "Claim it",
+    "mensajeInicial": "Hi! I'd like to claim my {servicio}.",
+    "errorReclamar": "We couldn't open your request. Try again.",
+    "sinVale": "Your pass doesn't include this perk.",
+    "verPases": "See passes"
+  },
+  "misBeneficios": {
+    "title": "What you have active",
+    "pase": "{pase}",
+    "perfil": "Profile published",
+    "gnotes": "G Notes premium",
+    "valesTitulo": "Included in your pass",
+    "reclamar": "Claim",
+    "verHilo": "Open chat"
   },
   "datosPago": {
     "title": "Payout details",
@@ -299,7 +335,7 @@
     "paymentInfo": "We'll share the payment details/QR via chat. Once you pay, upload your receipt here.",
     "sendReceipt": "Send receipt",
     "receiptMessage": "I sent the payment receipt.",
-    "receiptUnderReview": "We received your receipt. The team is reviewing it; we'll confirm via chat.",
+    "receiptUnderReview": "We're confirming your payment. We'll let you know in the chat.",
     "proposalTitle": "Studio proposal",
     "proposalHint": "The studio proposed this price. Accept it to generate your booking, or reject it.",
     "acceptProposal": "Accept",
@@ -327,7 +363,6 @@
     "backToPanel": "Back to panel",
     "clientBudget": "Client budget: {budget}",
     "artists": "Artists: {names}",
-    "viewReceipt": "View payment receipt",
     "artistProfileNote": "Request for an <strong>artist profile</strong>. When you confirm the payment, assign the <code>artista</code> role in the Firebase console and activate premium at <link>/admin/perfiles</link>.",
     "actions": "Actions",
     "sendProposal": "Send proposal",
@@ -393,13 +428,17 @@
     "intro": "Discover the artists and the sound they create.",
     "back": "Home",
     "createProfile": "Are you an artist? Create your profile",
-    "editProfile": "Edit your profile",
+    "createProfileShort": "Create profile",
+    "editProfile": "Your profile",
     "viewProfile": "View profile",
     "tabTodos": "All",
     "tabCantantes": "Singers",
     "tabBeatmakers": "Beatmakers",
     "segmentLabel": "Filter by discipline",
     "searchPlaceholder": "Search by name, genre or city…",
+    "searchPlaceholderAi": "Describe it: “tall brunette who sings afrobeat”…",
+    "openSearch": "Search artists with AI",
+    "closeSearch": "Close search",
     "aiButton": "AI Search",
     "aiHelper": "Filter, or ask the AI for what you imagine.",
     "aiTry": "Try:",
@@ -545,10 +584,9 @@
     "quickArtistasSub": "Profiles and contracts",
     "quickProductoresSub": "Producer management",
     "quickEstudiosSub": "Rooms and availability",
-    "quickPagosSub": "Review receipts",
-    "quickDatosPagoSub": "Where clients pay you (global)",
+    "quickPagosSub": "Studio payments to confirm",
     "quickCotizacionesSub": "Requests and quotes",
-    "quickRolesSub": "Grant and revoke permissions",
+    "quickRolesSub": "Roles, memberships & accounts",
     "quickConveniosSub": "Producer and beatmaker requests",
     "quickBeatsSub": "Beatmaker sales & payouts",
     "quickCuentasSub": "Pay out partners' net",
@@ -571,8 +609,7 @@
     "estudios": "Studios",
     "cotizaciones": "Quotes",
     "pagos": "Payments",
-    "datosPago": "Payment details",
-    "roles": "Roles",
+    "roles": "Users & roles",
     "convenios": "Agreements",
     "beats": "Beats",
     "cuentas": "Payables",
@@ -582,23 +619,49 @@
     "helpText": "Support available 24/7."
   },
   "adminRoles": {
-    "title": "Role management",
-    "intro": "Find a user and adjust their permissions.",
+    "title": "Users & roles",
+    "intro": "Everyone on Only G: roles, paid time and accounts.",
     "search": "Search by name or email…",
     "noResults": "No results.",
-    "typeToSearch": "Type to search users.",
-    "editRoles": "Edit roles",
-    "editTitle": "{nombre}'s roles",
+    "contador": "{count} users loaded",
+    "contadorBusqueda": "{count} matches",
+    "gestionar": "Manage",
+    "editTitle": "Manage {nombre}",
     "save": "Save",
     "cancel": "Cancel",
     "syncNote": "Beatmaker and producer are partners: no membership fee, and their profile syncs with these tabs.",
     "errorSelfAdmin": "You can't remove your own admin role.",
     "errorGuardar": "Couldn't save the roles.",
-    "errorBuscar": "Search failed.",
-    "paseTitulo": "Activate pass (courtesy)",
+    "errorBuscar": "Couldn't load the list.",
+    "paseTitulo": "Pass (courtesy)",
     "paseNota": "Grants the pass for free, no charge. Applied instantly.",
-    "paseOtorgado": "{pase} activated ✓",
-    "paseError": "Couldn't activate the pass."
+    "paseActivar": "Tap a pass to activate it for a month.",
+    "paseSuma": "Tapping again adds another month to the time left.",
+    "paseOtorgado": "{pase} activated · {restante} left",
+    "paseError": "Couldn't activate the pass.",
+    "membresiaTitulo": "Profile membership",
+    "membresiaActiva": "Active · {restante} left",
+    "membresiaInactiva": "No active membership.",
+    "membresiaPago": "Charge a month",
+    "membresiaCortesia": "Gift a month",
+    "membresiaNota": "Charging records the revenue; gifting doesn't touch the books. Both add a month to whatever is left.",
+    "membresiaOtorgada": "Membership up to date · {restante} left",
+    "membresiaError": "Couldn't activate the membership.",
+    "valesTitulo": "Pass perks",
+    "valeEntregar": "Mark delivered",
+    "valeError": "Couldn't update the perk.",
+    "borrarCuenta": "Delete account",
+    "borrarAria": "Delete account",
+    "borrarTitle": "Delete {nombre}'s account",
+    "borrarMensaje": "This deletes the whole account. It can't be undone.",
+    "borrarItemCuenta": "Their access and account details.",
+    "borrarItemPerfil": "Their artist profile, photos and tracks.",
+    "borrarItemChats": "Their conversations and receipts.",
+    "borrarAvisoContable": "Entries already booked stay in the ledger, pointing to an account that no longer exists.",
+    "borrarConfirmaLabel": "Type {token} to confirm.",
+    "borrarConfirm": "Delete forever",
+    "borrarError": "Couldn't delete the account.",
+    "borrarBloqueado": "That account can't be deleted from here."
   },
   "adminConvenios": {
     "title": "Agreement requests",
@@ -823,10 +886,6 @@
     "ciudad": "City",
     "direccion": "Address",
     "horario": "Schedule",
-    "pagoTitle": "This venue's own payment (optional)",
-    "pagoHint": "If left blank, this venue uses the general payment details.",
-    "pagoPropio": "Own payment",
-    "pagoDefault": "Uses general payment",
     "productoresTitle": "Producers at this venue",
     "productoresHint": "Search for a user and assign them: we grant the producer role and register them at the venue.",
     "noProductores": "No producers assigned.",
@@ -1233,8 +1292,9 @@
     "ariaSubir": "Move up",
     "ariaBajar": "Move down",
     "ariaEditar": "Edit profile",
-    "ariaActivar": "Activate membership",
-    "ariaDesactivar": "Deactivate membership",
+    "ariaOcultar": "Hide from showcase",
+    "ariaMostrar": "Show in showcase",
+    "ariaSinMembresia": "No active membership — activate it in Users & roles",
     "ariaBorrar": "Delete profile",
     "ariaQuitarDestacado": "Remove from featured",
     "ariaMarcarDestacado": "Mark as featured",
@@ -1258,15 +1318,11 @@
     "errorDestacado": "Could not change featured status.",
     "errorBorrar": "Could not delete the profile.",
     "errorMock": "Could not create the profile.",
-    "membresia": {
-      "activarTitle": "Activate {nombre}'s membership",
-      "activarDescripcion": "Choose how to activate the membership for a month.",
-      "pago": "Confirm payment · 15,000 COP",
-      "cortesia": "Complimentary · 1 month",
-      "cortesiaHint": "Complimentary activates the profile for a month and records no revenue.",
-      "desactivarTitle": "Close membership",
-      "desactivarMensaje": "Close {nombre}'s membership? Their profile will stop appearing in the showcase.",
-      "confirmar": "Close membership",
+    "ocultar": {
+      "title": "Hide from showcase",
+      "mensaje": "Hide {nombre}? Their profile will stop appearing in the showcase.",
+      "nota": "No membership time is lost — you can show them again whenever you want.",
+      "confirmar": "Hide",
       "cancelar": "Cancel"
     },
     "link": {
@@ -1500,6 +1556,9 @@
     "noMoreVideos": "No more videos yet",
     "withSound": "With sound",
     "clipN": "Clip {n}",
+    "playVideo": "Play",
+    "pauseVideo": "Pause",
+    "fullscreen": "Fullscreen",
     "aboutMe": "About",
     "sectionSocials": "Social networks",
     "followersCount": "{count} followers",
@@ -1803,10 +1862,32 @@
     },
     "gallery": {
       "sectionTitle": "Gallery ({count}/{limit})",
-      "hint": "Drag a photo to reorder (on mobile, long-press) · tap ⤢ to resize.",
-      "resize": "Resize",
+      "layoutTitle": "Layout",
+      "layouts": {
+        "unica": "Single",
+        "duo": "Duo",
+        "retrato": "Portrait",
+        "portada": "Cover",
+        "tira": "Strip",
+        "rejilla": "Grid",
+        "foco": "Focus",
+        "mosaico": "Mosaic",
+        "franja": "Band",
+        "panal": "Honeycomb",
+        "revista": "Magazine"
+      },
+      "empty": "Upload your best photos",
+      "add": "Add photos",
+      "counter": "{count} of {limit}",
+      "full": "You already have all {limit} photos.",
+      "hint": "Pick a layout and place your photos: tap ✥ on one, then the slot where you want it.",
+      "hintMoving": "Now tap the slot where you want that photo. They'll swap places.",
+      "swapHere": "Here",
+      "move": "Move",
+      "moveAria": "Move photo {n}",
+      "cancelMove": "Leave it where it is",
       "remove": "Remove photo",
-      "move": "Move"
+      "removeAria": "Remove photo {n}"
     },
     "tracks": {
       "sectionTitle": "Top tracks",
@@ -1992,6 +2073,14 @@
       "pase-activado": {
         "titulo": "Pass activated",
         "cuerpo": "Your {pase} pass is now active. Check your benefits in Subscriptions."
+      },
+      "vale-reclamado": {
+        "titulo": "Perk claimed",
+        "cuerpo": "{cliente} claimed a perk from their pass. Sort out the dates in Users & roles."
+      },
+      "vale-entregado": {
+        "titulo": "Perk delivered",
+        "cuerpo": "We marked a perk from your pass as delivered."
       },
       "colectivo-activado": {
         "titulo": "Collective active",
@@ -2577,8 +2666,6 @@
     "back": "Back",
     "lockedClosed": "This conversation is closed.",
     "lockedWaiting": "Waiting for the studio to confirm…",
-    "receipt": "Receipt",
-    "method": "Payment method: {metodo}",
     "paymentConfirmed": "Payment confirmed",
     "statusChanged": "Status: {status}",
     "viewFile": "View file",
@@ -2586,12 +2673,6 @@
       "soporte": "Support",
       "pago": "Payment",
       "directo": "Chat"
-    },
-    "metodos": {
-      "nequi": "Nequi",
-      "paypal": "PayPal",
-      "efectivo": "Cash",
-      "tarjeta": "Card"
     },
     "proposal": "Proposal",
     "contactar": "Chat",
@@ -2604,26 +2685,20 @@
     }
   },
   "pago": {
-    "chooseMethod": "Choose how to pay",
-    "premiumTitle": "Premium payment",
-    "payWith": "Pay {monto} with {metodo}",
-    "instructions": "Make the payment and upload your receipt here. An admin will verify the payment arrived; this may take a few minutes.",
-    "uploadReceipt": "Upload receipt",
-    "receiptSent": "I sent the payment receipt.",
-    "reviewing": "Receipt sent. An admin is reviewing it…",
-    "cashOnlyHigherTier": "Cash payment is unlocked for higher-tier members.",
-    "comingSoon": "Coming soon",
-    "copy": "Copy",
-    "copied": "Copied",
-    "breB": "Bre-B key",
-    "qrExpand": "Enlarge",
-    "qrDownload": "Download QR",
-    "qrTitle": "Payment QR",
-    "noInfo": "The team will share payment details via chat.",
     "confirmButton": "I confirm I received {monto} · Confirm payment",
     "rejectButton": "Reject",
     "confirmError": "Could not confirm the payment. Please try again.",
-    "startError": "Could not start the payment. Please try again."
+    "startError": "Could not start the payment. Please try again.",
+    "enSede": "Pay at the studio",
+    "enSedeHint": "Tell us now, pay when you arrive. Diamond badge only.",
+    "enSedeEnviando": "Letting them know…",
+    "enSedeAvisado": "Done. Pay at the studio and the team confirms it right here.",
+    "enSedePorConfirmar": "Cash payment of {monto} at the studio. Confirm it once you have the money.",
+    "esperandoPasarela": "We're confirming your payment. This takes a few seconds.",
+    "rechazado": "We couldn't confirm this payment. You can try again.",
+    "confirmar": "Confirm payment",
+    "rechazar": "Reject",
+    "rejectError": "Could not reject the payment. Please try again."
   },
   "pedidoPago": {
     "eyebrow": "Last step",
@@ -2632,18 +2707,16 @@
     "pay": "Go to payment",
     "changeMethod": "Paying with {metodo} · Change method",
     "hint": "Pick a method to see the QR and payment details.",
-    "validating": "Receipt sent. It's being validated; we'll notify you in the chat.",
+    "validating": "We're confirming your payment. We'll let you know in the chat.",
     "viewOrder": "View my order"
   },
   "adminPagos": {
     "backToAdmin": "← Admin panel",
     "title": "Pending payments",
-    "intro": "Receipts clients uploaded and are waiting for you to review. Open one to see the receipt and confirm or reject the payment. Confirming activates what was paid for (profile, booking, beat…); rejecting lets the client resend.",
-    "empty": "No payments to review.",
+    "intro": "Payments announced at the studio, waiting for you to confirm. Gateway payments never land here — they confirm themselves. Confirming activates what was bought (profile, booking, beat…).",
+    "empty": "No payments to confirm.",
     "review": "Review",
     "detailTitle": "Payment details",
-    "receipt": "Receipt",
-    "noReceipt": "The client hasn't uploaded the receipt yet.",
     "concepto": {
       "premium": "Premium profile",
       "reserva": "Session booking",
@@ -2651,6 +2724,7 @@
       "pedido": "Production order",
       "gnotes": "G Notes membership",
       "pase": "Pass (bundle)"
-    }
+    },
+    "enSedeHint": "Only confirm once you have the money: it activates what was bought."
   }
 }

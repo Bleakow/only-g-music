@@ -9,10 +9,12 @@ import { AdminPageHeader, adminCard, adminInner } from "./admin-ui";
 import { AdminPagoDetail } from "./AdminPagoDetail";
 
 /**
- * Lista de PAGOS PENDIENTES de revisión (chats de pago en `en_revision`). Al
- * seleccionar uno se abre su detalle INLINE (`AdminPagoDetail`, modal en la misma
- * ventana) con el comprobante y los botones de confirmar/rechazar — antes abría
- * la burbuja de chat, donde el detalle quedaba recortado.
+ * Lista de PAGOS EN SEDE por confirmar (hilos de pago en `en_revision`). Lo que
+ * cobra la pasarela nunca aparece aquí: lo confirma su webhook.
+ *
+ * Al seleccionar uno se abre su detalle INLINE (`AdminPagoDetail`, modal en la
+ * misma ventana) con los botones de confirmar/rechazar — antes abría la burbuja
+ * de chat, donde el detalle quedaba recortado.
  */
 export function AdminPagos({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useTranslations();

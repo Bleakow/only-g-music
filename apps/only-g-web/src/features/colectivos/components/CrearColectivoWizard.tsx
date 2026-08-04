@@ -16,12 +16,10 @@ import {
   type ColectivoDisciplina,
   type ColectivoTipo,
 } from "@only-g/shared-types/colectivo";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { createWompiPaymentConversation } from "@/features/conversations/lib/conversations-repo";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 import { RequireAuth } from "@/features/auth/components/RequireAuth";
 import {
   ActivityIcon,
@@ -93,7 +91,8 @@ function Wizard() {
   const [descripcion, setDescripcion] = useState("");
   const [accent, setAccent] = useState(DEFAULT_ACCENT);
   const [cupos, setCupos] = useState<number>(5);
-  const [showPago, setShowPago] = useState(false);
+  const [pagoConvId, setPagoConvId] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -110,9 +109,8 @@ function Wizard() {
 
   const puedeSeguir2 = nombre.trim().length >= 2 && slug.length >= 2;
 
-  async function crear(metodo: MetodoPago) {
+  async function crear() {
     if (!user || !tipo || !puedeSeguir2) return;
-    setShowPago(false);
     setCreando(true);
     setError(null);
     try {
@@ -136,17 +134,16 @@ function Wizard() {
         socials: undefined,
         location: undefined,
       });
-      // El colectivo ya existe y se ve. Ahora se abre el chat de pago de su
-      // membresía (mismo flujo manual que el premium del perfil).
-      const id = await createPaymentConversation({
+      // El colectivo ya existe y se ve. Ahora se cobra su membresía sin sacar al
+      // fundador de esta pantalla: al cerrar el checkout se va a su panel.
+      const id = await createWompiPaymentConversation({
         uid: user.uid,
         concepto: "colectivo",
         ref: { kind: "colectivo", id: slug },
-        metodo,
         monto: total,
       });
-      openConversation(id);
-      router.push(`/colectivos/${slug}`);
+      setPagoConvId(id);
+      setCheckoutOpen(true);
     } catch (e) {
       console.error("[colectivos] crear:", e);
       setError(t("errors.create"));
@@ -460,7 +457,7 @@ function Wizard() {
                   <button
                     type="button"
                     disabled={creando}
-                    onClick={() => setShowPago(true)}
+                    onClick={() => void crear()}
                     className="from-amethyst-400 to-amethyst-600 font-narrow mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-linear-to-b text-sm font-bold tracking-[1px] text-white uppercase shadow-[0_5px_18px_rgba(124,58,237,0.6)] transition hover:brightness-110 disabled:opacity-60"
                   >
                     {creando ? (
@@ -485,13 +482,18 @@ function Wizard() {
         </AnimatePresence>
       </div>
 
-      {showPago && (
-        <PaymentMethodPicker
-          onPick={crear}
-          onClose={() => setShowPago(false)}
-          // La insignia premia la trayectoria del ARTISTA; fundar un colectivo
-          // no la hereda, así que aquí no aplica descuento por insignia.
-          insignia={null}
+      {pagoConvId && (
+        <WompiCheckout
+          open={checkoutOpen}
+          onClose={() => {
+            setCheckoutOpen(false);
+            // El colectivo ya existe pagado o no: su panel dirá si la membresía
+            // quedó activa, así que se va allí en cualquier caso.
+            router.push(`/colectivos/${slug}`);
+          }}
+          conversationId={pagoConvId}
+          monto={total}
+          concepto={nombre.trim()}
         />
       )}
     </main>

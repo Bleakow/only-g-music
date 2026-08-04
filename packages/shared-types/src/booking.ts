@@ -48,8 +48,6 @@ export interface Reserva {
   tipo?: ReservaTipo;
   /** Slug del perfil de artista asociado (solo en pedidos `perfil_artista`). */
   artistSlug?: string;
-  /** Comprobante de pago subido (URL en Storage), en el flujo de pago manual. */
-  comprobanteUrl?: string;
   /** Productor asignado (se llena en operación interna). */
   productorId?: string;
   estado: ReservaEstado;

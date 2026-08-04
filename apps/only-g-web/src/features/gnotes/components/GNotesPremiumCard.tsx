@@ -1,11 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
-import { GlassButton } from "@/components/ui/GlassButton";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { PagarButton } from "@/features/payments/components/PagarButton";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { formatCOP } from "@only-g/shared-types/service";
@@ -13,13 +9,12 @@ import {
   gnotesActiva,
   type GNotesMembership,
 } from "@only-g/shared-types/gnotes-membership";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 
 /**
  * Tarjeta "G Notes premium" en la cuenta: muestra el estado de la membresía (IA
  * sin límite) y, si no está activa o está por vencer, ofrece suscribirse. Reusa
- * el MISMO flujo de pago que el resto de compras: elige método → crea el chat de
- * pago (concepto "gnotes") → el admin confirma → la Cloud Function activa la
+ * el MISMO flujo de pago que el resto de compras: crea el chat de
+ * pago (concepto "gnotes") → cobra la pasarela → la Cloud Function activa la
  * membresía +1 mes. Es también el destino del empujón que G Notes muestra al
  * topar el cupo diario gratis.
  */
@@ -28,8 +23,6 @@ export function GNotesPremiumCard() {
   const locale = useLocale();
   const { user, account } = useAuth();
   const { precioGNotes } = usePrecios();
-  const [showPicker, setShowPicker] = useState(false);
-
   const membership = account?.gnotesPremium as GNotesMembership | undefined;
   const activa = gnotesActiva(membership, Date.now());
   const vence =
@@ -40,23 +33,6 @@ export function GNotesPremiumCard() {
           year: "numeric",
         })
       : null;
-
-  async function iniciarPago(metodo: MetodoPago) {
-    setShowPicker(false);
-    if (!user) return;
-    try {
-      const id = await createPaymentConversation({
-        uid: user.uid,
-        concepto: "gnotes",
-        ref: { kind: "gnotes", id: user.uid },
-        metodo,
-        monto: precioGNotes,
-      });
-      openConversation(id);
-    } catch (e) {
-      console.error("[gnotes] iniciarPago:", e);
-    }
-  }
 
   return (
     <section id="gnotes-premium" className="mt-12 scroll-mt-28">
@@ -76,12 +52,17 @@ export function GNotesPremiumCard() {
               </p>
             )}
             <div className="mt-4">
-              <GlassButton
-                onClick={() => setShowPicker(true)}
-                className="!text-amethyst-200"
-              >
-                {t("gnotesPremium.renovar")}
-              </GlassButton>
+              {user && (
+                <PagarButton
+                  uid={user.uid}
+                  concepto="gnotes"
+                  pagoRef={{ kind: "gnotes", id: user.uid }}
+                  monto={precioGNotes}
+                  label={t("gnotesPremium.renovar")}
+                  conceptoLabel={t("gnotesPremium.title")}
+                  className="!text-amethyst-200"
+                />
+              )}
             </div>
           </>
         ) : (
@@ -94,24 +75,22 @@ export function GNotesPremiumCard() {
               </span>
             </p>
             <div className="mt-4">
-              <GlassButton
-                onClick={() => setShowPicker(true)}
-                className="!text-amethyst-200"
-              >
-                {t("gnotesPremium.suscribirse")}
-              </GlassButton>
+              {user && (
+                <PagarButton
+                  uid={user.uid}
+                  concepto="gnotes"
+                  pagoRef={{ kind: "gnotes", id: user.uid }}
+                  monto={precioGNotes}
+                  label={t("gnotesPremium.suscribirse")}
+                  conceptoLabel={t("gnotesPremium.title")}
+                  className="!text-amethyst-200"
+                />
+              )}
             </div>
           </>
         )}
       </div>
 
-      {showPicker && (
-        <PaymentMethodPicker
-          onPick={iniciarPago}
-          onClose={() => setShowPicker(false)}
-          insignia={null}
-        />
-      )}
     </section>
   );
 }

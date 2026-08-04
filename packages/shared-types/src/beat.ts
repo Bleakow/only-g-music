@@ -5,7 +5,7 @@
  * Modelo comercial v1 (decisión de negocio): precio de catálogo ESTÁNDAR único
  * (todos los beats valen igual, sin tiers de licencia) y comisión FIJA de la
  * plataforma; el resto es del beatmaker, que cobra por transferencia MANUAL del
- * admin. El cobro reutiliza el flujo de pago existente (chat + comprobante).
+ * admin. La venta al comprador sí va por pasarela, como el resto de la app.
  */
 
 /** Precio de catálogo estándar por beat (COP). Ajustable por negocio. */

@@ -8,9 +8,21 @@ import { httpsCallable } from "firebase/functions";
 import { functions } from "@/lib/firebase";
 import type { Role } from "@only-g/shared-types/user";
 import type { SedeId } from "@only-g/shared-types/sede";
+import type { PaseTipo, Vale, ValeProduccion } from "@only-g/shared-types/pase";
 import { getAllSedes } from "@/features/sedes/lib/sedes-repo";
 
-/** Proyección mínima de un usuario para el buscador del admin. */
+/** Pase del usuario tal y como lo proyecta el servidor para el panel. */
+export interface AdminUserPase {
+  tipo: PaseTipo | null;
+  activo: boolean;
+  /** Hasta cuándo va la parte temporal (epoch ms). Los vales NO caducan. */
+  expiresAt: number | null;
+  cortesia: boolean;
+  produccion: ValeProduccion | null;
+  video: Vale | null;
+}
+
+/** Proyección mínima de un usuario para el panel del admin. */
 export interface AdminUserHit {
   uid: string;
   email: string | null;
@@ -18,6 +30,10 @@ export interface AdminUserHit {
   roles: string[];
   /** Slug del perfil ya vinculado (si lo tiene). */
   artistSlug: string | null;
+  /** Alta de la cuenta (epoch ms), o null si el documento no lo guardó. */
+  createdAt: number | null;
+  /** Pase vigente o caducado (null = nunca tuvo). */
+  pase: AdminUserPase | null;
 }
 
 const searchUsersFn = httpsCallable<
@@ -29,6 +45,46 @@ const searchUsersFn = httpsCallable<
 export async function adminSearchUsers(query: string): Promise<AdminUserHit[]> {
   const res = await searchUsersFn({ query });
   return res.data.users;
+}
+
+/** Una página de usuarios + por dónde seguir. */
+export interface AdminUsersPage {
+  users: AdminUserHit[];
+  /** Cursor para la siguiente página (uid del último), o null si no hay más. */
+  cursor: string | null;
+  hasMore: boolean;
+}
+
+const listUsersFn = httpsCallable<
+  { cursor: string | null; limit?: number },
+  AdminUsersPage
+>(functions, "adminListUsers");
+
+/**
+ * Página de usuarios para la lista con scroll infinito (SOLO admin). El orden lo
+ * fija el servidor (por id de documento) para no dejarse a nadie fuera; ver
+ * `adminListUsers` en functions.
+ */
+export async function adminListUsers(
+  cursor: string | null,
+): Promise<AdminUsersPage> {
+  const res = await listUsersFn({ cursor });
+  return res.data;
+}
+
+const deleteUserFn = httpsCallable<
+  { targetUid: string },
+  { ok: boolean; authBorrado: boolean; conversaciones: number }
+>(functions, "adminDeleteUser");
+
+/**
+ * BORRA la cuenta entera (SOLO admin): Auth + su rastro en Firestore (perfil,
+ * datos de pago, conversaciones). IRREVERSIBLE — la UI tiene que pedir
+ * confirmación explícita antes de llamar aquí. Lanza `failed-precondition` si se
+ * intenta contra uno mismo o contra una cuenta CEO.
+ */
+export async function adminDeleteUser(targetUid: string): Promise<void> {
+  await deleteUserFn({ targetUid });
 }
 
 const linkProfileFn = httpsCallable<

@@ -2,14 +2,13 @@
  * Entidad de dominio: PEDIDO — compra directa de uno o varios servicios de precio
  * fijo, con UN solo pago. Agrupa varias líneas; cada línea se materializa como una
  * Reserva (las de `sesion` con slot de agenda; las de `entregable` —mezcla, máster—
- * sin fecha). El Pedido lleva el pago único que, al confirmarse el comprobante,
- * confirma TODAS sus reservas de golpe. Así reutilizamos toda la maquinaria de
- * reservas (contabilidad, sesiones del productor, payouts) sin duplicarla.
+ * sin fecha). El Pedido lleva el pago único que, al cobrarse, confirma TODAS sus
+ * reservas de golpe. Así reutilizamos toda la maquinaria de reservas
+ * (contabilidad, sesiones del productor, payouts) sin duplicarla.
  *
  * Diferencia clave con la Cotización: aquí el precio es CONOCIDO → el usuario paga
- * directo sin esperar contraoferta. La revisión humana permanece solo en el
- * comprobante de pago (no en el precio). Tipos + transiciones PUROS: no importar
- * UI ni Firebase aquí.
+ * directo sin esperar contraoferta, y sin que nadie tenga que revisar nada.
+ * Tipos + transiciones PUROS: no importar UI ni Firebase aquí.
  */
 import type { SedeId } from "./sede";
 import type { PricingModel } from "./service";
@@ -77,9 +76,8 @@ export interface Pedido {
   /** Datos del cliente denormalizados (para tablas/finanzas del admin). */
   clientName?: string;
   clientEmail?: string;
-  /** Conversación de pago asociada (chat del comprobante). */
+  /** Hilo de pago asociado (el soporte de la compra). */
   paymentConversationId?: string;
-  comprobanteUrl?: string;
   estado: PedidoEstado;
   createdAt: number;
 }

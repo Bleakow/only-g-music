@@ -26,11 +26,14 @@ import {
   DEFAULT_PLAYER_Y,
   DEFAULT_PLAYER_SIZE,
   GALLERY_LIMIT,
-  nextGallerySpan,
-  insigniaDePuntos,
   photoTransformCss,
   premiumEstado,
 } from "@only-g/shared-types/artist-profile";
+import {
+  intercambiar,
+  layoutEfectivo,
+  type GalleryLayoutId,
+} from "@only-g/shared-types/gallery-layout";
 import type { Role } from "@only-g/shared-types/user";
 import {
   isSectionOn,
@@ -42,12 +45,10 @@ import type {
   Reconocimiento,
   TrayectoriaItem,
 } from "@only-g/shared-types/profile-role-data";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { createWompiPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 import { useRouter } from "@/i18n/navigation";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 import {
   createProfile,
   getProfileBySlug,
@@ -56,7 +57,7 @@ import {
 import { SocialPalette } from "./SocialPalette";
 import { ProfileAudioPlayer, PLAYER_SIZE_W } from "./ProfileAudioPlayer";
 import { AudioTrimModal } from "./AudioTrimModal";
-import { GalleryBento } from "./GalleryBento";
+import { GalleryEditor } from "./GalleryEditor";
 import { BioAiModal } from "./BioAiModal";
 import { RelatedArtistsPicker } from "./RelatedArtistsPicker";
 import { ProfileChip, ProfileChipField } from "./ProfileChip";
@@ -181,8 +182,9 @@ export function ProfileBuilder({
   const { precioPerfil } = usePrecios();
   const slug = adminMode ? (slugOverride ?? "") : (account?.artistSlug ?? "");
 
-  const [showPagoPicker, setShowPagoPicker] = useState(false);
-  const [puntos, setPuntos] = useState(0);
+  // Pago del premium: hilo + checkout de la pasarela (se reusa entre intentos).
+  const [pagoConvId, setPagoConvId] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [synced, setSynced] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const existsRef = useRef(false);
@@ -221,6 +223,10 @@ export function ProfileBuilder({
   // Disciplinas (solo lectura) para calcular la política de media destacada.
   const [disciplines, setDisciplines] = useState<Role[]>([]);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
+  // Composición elegida para el mosaico (null = la de por defecto para ese nº).
+  const [galleryLayout, setGalleryLayout] = useState<GalleryLayoutId | null>(
+    null,
+  );
   const [songURL, setSongURL] = useState("");
   // Archivo elegido pendiente de recortar (abre el AudioTrimModal). Lo que se
   // sube es el FRAGMENTO, no este archivo.
@@ -341,6 +347,7 @@ export function ProfileBuilder({
           setPt(p.photoTransform ?? DEFAULT_PHOTO_TRANSFORM);
           setPtMobile(p.photoTransformMobile ?? DEFAULT_PHOTO_TRANSFORM);
           setGallery(p.gallery);
+          setGalleryLayout(p.galleryLayout ?? null);
           setSongURL(p.entryTrackUrl ?? "");
           setPlayerOverlay(p.playerOverlay ?? true);
           setPlayerX(p.playerX ?? DEFAULT_PLAYER_X);
@@ -351,7 +358,6 @@ export function ProfileBuilder({
           setManualFollowers(p.manualFollowers ?? {});
           setPrimarySocial(p.primarySocial ?? null);
           setPremiumData(p.premium);
-          setPuntos(p.puntos ?? 0);
         } else if (!adminMode && account?.artistDraft) {
           const d = account.artistDraft;
           setArtisticName(d.artisticName);
@@ -411,6 +417,9 @@ export function ProfileBuilder({
       featuredMedia: undefined,
       featuredMediaList: featuredList,
       gallery,
+      // Se normaliza al guardar: si la plantilla ya no cuadra con el nº de fotos,
+      // se persiste la que de verdad se está viendo.
+      galleryLayout: layoutEfectivo(galleryLayout, gallery.length) ?? undefined,
       tracks: tracks
         .filter((t) => t.title.trim())
         .map((t) => ({
@@ -487,6 +496,7 @@ export function ProfileBuilder({
     trayectoria,
     reconocimientos,
     gallery,
+    galleryLayout,
     featuredList,
     songURL,
     playerOverlay,
@@ -721,25 +731,12 @@ export function ProfileBuilder({
     try {
       const room = GALLERY_LIMIT - gallery.length;
       const urls = await uploadFiles(files.slice(0, Math.max(0, room)));
-      if (urls.length)
-        setGallery((g) =>
-          [...g, ...urls.map((url) => ({ url, span: "sq" as const }))].slice(
-            0,
-            GALLERY_LIMIT,
-          ),
-        );
+      if (urls.length) {
+        setGallery((g) => [...g, ...urls.map((url) => ({ url }))].slice(0, GALLERY_LIMIT));
+      }
     } finally {
       setUploading(null);
     }
-  }
-
-  // Redimensiona (cicla el tamaño) una foto del bento.
-  function cycleGallerySpan(i: number) {
-    setGallery((g) =>
-      g.map((it, idx) =>
-        idx === i ? { ...it, span: nextGallerySpan(it.span) } : it,
-      ),
-    );
   }
 
   function setTrack(i: number, patch: Partial<ProfileTrack>) {
@@ -827,25 +824,23 @@ export function ProfileBuilder({
   // Activa/renueva la suscripción: abre el selector de método; al elegir, crea el
   // chat de pago de premium y abre la burbuja en él. El admin confirma el pago
   // (Cloud Function confirmPayment) → premium activado + hilo cerrado.
-  function renovar() {
+  async function renovar() {
     if (!user || !slug) return;
-    setShowPagoPicker(true);
-  }
-
-  async function iniciarPago(metodo: MetodoPago) {
-    if (!user || !slug) return;
-    setShowPagoPicker(false);
+    if (pagoConvId) {
+      setCheckoutOpen(true);
+      return;
+    }
     try {
-      const id = await createPaymentConversation({
+      const id = await createWompiPaymentConversation({
         uid: user.uid,
         concepto: "premium",
         ref: { kind: "premium", id: slug },
-        metodo,
         monto: precioPerfil,
       });
-      openConversation(id);
+      setPagoConvId(id);
+      setCheckoutOpen(true);
     } catch (e) {
-      console.error("[builder] iniciarPago:", e);
+      console.error("[builder] renovar:", e);
       setError(t("pago.startError"));
     }
   }
@@ -956,7 +951,7 @@ export function ProfileBuilder({
             {!adminMode && mostrarRenovar && (
               <button
                 type="button"
-                onClick={renovar}
+                onClick={() => void renovar()}
                 title={renovarLabel}
                 aria-label={renovarLabel}
                 className="from-silver-100 to-amethyst-300 text-ink inline-flex min-h-9 items-center gap-1.5 rounded-full bg-gradient-to-r px-3 py-1.5 text-sm font-semibold tracking-[1px] uppercase transition hover:shadow-[0_0_18px_rgba(139,92,246,0.5)] sm:px-4"
@@ -1483,46 +1478,29 @@ export function ProfileBuilder({
         />
       </Block>
 
-      {/* Galería bento ordenable (dnd-kit): arrastra una foto y las demás se
-          acomodan solas; pulsa ⤢ para cambiar su tamaño. */}
+      {/* Galería por PLANTILLA: se elige la composición y las fotos caen en sus
+          ranuras; tocar "mover" y luego otra ranura las intercambia. */}
       <Block
         title={t("profileBuilder.gallery.sectionTitle", {
           count: gallery.length,
           limit: GALLERY_LIMIT,
         })}
       >
-        {gallery.length > 1 && (
-          <p className="text-silver-400 mb-3 text-xs">
-            {t("profileBuilder.gallery.hint")}
-          </p>
-        )}
         {/* Mismo contenedor (borde + ancho tope) que el panel público → lo que
-            armas aquí se ve idéntico en tu perfil. */}
+            armas aquí se ve idéntico en tu perfil: el mosaico se mide contra ESTE
+            ancho (container query), no contra el del dispositivo. */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 lg:max-w-[780px]">
-          <GalleryBento
+          <GalleryEditor
             items={gallery}
-            onReorder={setGallery}
-            onResize={cycleGallerySpan}
+            layout={galleryLayout}
+            limit={GALLERY_LIMIT}
+            uploading={uploading === "gallery"}
+            onLayout={setGalleryLayout}
+            onSwap={(a, b) => setGallery((g) => intercambiar(g, a, b))}
             onRemove={(url) =>
               setGallery((g) => g.filter((it) => it.url !== url))
             }
-            addSlot={
-              gallery.length < GALLERY_LIMIT ? (
-                <UploadButton
-                  accept="image/*"
-                  multiple
-                  onFiles={onGallery}
-                  disabled={uploading === "gallery"}
-                  className="hover:border-amethyst-300 flex min-h-[110px] items-center justify-center rounded-xl border border-dashed border-white/20 text-white/60 transition hover:text-white"
-                >
-                  {uploading === "gallery" ? (
-                    <SpinnerIcon className="size-6 animate-spin" />
-                  ) : (
-                    <PlusIcon className="size-6" />
-                  )}
-                </UploadButton>
-              ) : null
-            }
+            onFiles={onGallery}
           />
         </div>
       </Block>
@@ -1838,11 +1816,13 @@ export function ProfileBuilder({
         />
       </Block>
 
-      {showPagoPicker && (
-        <PaymentMethodPicker
-          onPick={iniciarPago}
-          onClose={() => setShowPagoPicker(false)}
-          insignia={insigniaDePuntos(puntos)}
+      {pagoConvId && (
+        <WompiCheckout
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          conversationId={pagoConvId}
+          monto={precioPerfil}
+          concepto={t("profileBuilder.publishGate.pay")}
         />
       )}
 
@@ -1882,7 +1862,7 @@ export function ProfileBuilder({
           <GlassButton
             onClick={() => {
               setShowPublishGate(false);
-              renovar();
+              void renovar();
             }}
             className="!text-amethyst-200"
           >

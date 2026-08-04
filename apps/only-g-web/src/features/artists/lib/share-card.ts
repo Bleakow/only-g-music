@@ -18,12 +18,30 @@ const W = 1080;
 const H = 1350;
 const PAD = 88;
 
-/** Tarjeta blanca del QR. */
+/** Tarjeta de cristal del QR. */
 const CARD_SIDE = 660;
 const CARD_Y = 372;
 const CARD_RADIUS = 52;
 /** Aire entre el borde de la tarjeta y el QR (la "quiet zone" del código). */
 const CARD_INSET = 44;
+
+/**
+ * Opacidad del cristal sobre el que va el QR. Es el único número delicado de la
+ * estampa: NO es decoración, es lo que garantiza que el código se lea.
+ *
+ * Un QR sin fondo, directamente sobre la foto, es lotería: el lector binariza la
+ * imagen y necesita módulos oscuros sobre un claro uniforme (o al revés). Sobre
+ * una foto cualquiera hay zonas donde el contraste desaparece y el código deja
+ * de leerse — y el fallo no se ve al diseñarlo, se ve cuando alguien intenta
+ * escanear el flyer. Así que en vez de transparente va TRASLÚCIDO: la foto se ve
+ * a través, desenfocada, pero el blanco de debajo mantiene el contraste.
+ *
+ * Bajarlo enseña más foto; por debajo de ~0.6 el código empieza a jugársela con
+ * fotos claras o muy contrastadas. Subirlo lo acerca a la tarjeta blanca de antes.
+ */
+const CARD_TINT = 0.72;
+/** Desenfoque del trozo de foto que se ve por el cristal (efecto glass). */
+const CARD_BLUR = 22;
 
 /** Placa central con la marca (el equivalente al icono de app). */
 const BADGE_SIDE = 128;
@@ -60,7 +78,7 @@ export async function renderShareCard(input: ShareCardInput): Promise<Blob> {
 
   drawBackground(ctx, foto);
   drawHeader(ctx, input.brand, input.name);
-  drawQrCard(ctx, input.url, input.badge);
+  drawQrCard(ctx, input.url, input.badge, foto);
   drawFooter(ctx, input.caption, input.url);
 
   return toBlob(canvas);
@@ -72,15 +90,7 @@ function drawBackground(
   ctx: CanvasRenderingContext2D,
   foto: HTMLImageElement | null,
 ): void {
-  if (foto) {
-    drawCover(ctx, foto);
-  } else {
-    const g = ctx.createLinearGradient(0, 0, W, H);
-    g.addColorStop(0, "#2a1758");
-    g.addColorStop(1, INK);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, W, H);
-  }
+  paintBackdrop(ctx, foto);
 
   // Velo: la foto es del artista y puede ser clarísima o carísima de leer. Con
   // el degradado + el plano, el texto blanco y el QR mantienen contraste sea
@@ -92,6 +102,26 @@ function drawBackground(
   ctx.fillStyle = velo;
   ctx.fillRect(0, 0, W, H);
   ctx.fillStyle = "rgba(11,11,15,0.3)";
+  ctx.fillRect(0, 0, W, H);
+}
+
+/**
+ * El fondo DESNUDO (foto o degradado), sin velos. Se pinta dos veces: al fondo
+ * de la estampa y otra vez, desenfocado, detrás del cristal del QR — así lo que
+ * asoma por el cristal es la misma foto y no un recorte pegado.
+ */
+function paintBackdrop(
+  ctx: CanvasRenderingContext2D,
+  foto: HTMLImageElement | null,
+): void {
+  if (foto) {
+    drawCover(ctx, foto);
+    return;
+  }
+  const g = ctx.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, "#2a1758");
+  g.addColorStop(1, INK);
+  ctx.fillStyle = g;
   ctx.fillRect(0, 0, W, H);
 }
 
@@ -157,20 +187,49 @@ function drawQrCard(
   ctx: CanvasRenderingContext2D,
   url: string,
   badge: string | undefined,
+  foto: HTMLImageElement | null,
 ): void {
   const x = (W - CARD_SIDE) / 2;
   const qrSide = CARD_SIDE - CARD_INSET * 2;
   const qrX = x + CARD_INSET;
   const qrY = CARD_Y + CARD_INSET;
 
+  const marco = () => {
+    ctx.beginPath();
+    ctx.roundRect(x, CARD_Y, CARD_SIDE, CARD_SIDE, CARD_RADIUS);
+  };
+
+  // Sombra: se pinta con un relleno propio ANTES del recorte. Dentro del clip la
+  // sombra quedaría comida por el propio recorte.
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.45)";
   ctx.shadowBlur = 48;
   ctx.shadowOffsetY = 18;
-  ctx.fillStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.roundRect(x, CARD_Y, CARD_SIDE, CARD_SIDE, CARD_RADIUS);
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  marco();
   ctx.fill();
+  ctx.restore();
+
+  // Cristal: dentro del recorte va la MISMA foto, desenfocada, y encima el velo
+  // blanco que asegura el contraste del código. `ctx.filter` no existe en algún
+  // navegador viejo: allí la foto sale nítida bajo el velo — menos bonito, igual
+  // de legible, que es lo que importa.
+  ctx.save();
+  marco();
+  ctx.clip();
+  ctx.filter = `blur(${CARD_BLUR}px)`;
+  paintBackdrop(ctx, foto);
+  ctx.filter = "none";
+  ctx.fillStyle = `rgba(255,255,255,${CARD_TINT})`;
+  ctx.fillRect(x, CARD_Y, CARD_SIDE, CARD_SIDE);
+  ctx.restore();
+
+  // Filo del cristal (un pelo de luz en el borde, como el resto de la interfaz).
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.55)";
+  ctx.lineWidth = 3;
+  marco();
+  ctx.stroke();
   ctx.restore();
 
   drawArtQr(ctx, url, qrX, qrY, {

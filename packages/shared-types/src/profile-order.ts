@@ -1,7 +1,7 @@
 /**
- * Pedido de Perfil de Artista. Reusa el flujo de pago de `bookings` (comprobante
- * + confirmación del admin) mediante una Reserva `tipo: 'perfil_artista'` sin
- * slot ni fecha. Lógica PURA: sin UI ni Firebase.
+ * Pedido de Perfil de Artista. Reusa el flujo de pago de `bookings` mediante una
+ * Reserva `tipo: 'perfil_artista'` sin slot ni fecha. Lógica PURA: sin UI ni
+ * Firebase.
  */
 import type { NewReserva } from "./booking";
 import type { SedeId } from "./sede";

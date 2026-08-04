@@ -12,8 +12,6 @@ import {
   DEFAULT_PLAYER_X,
   DEFAULT_PLAYER_Y,
   DEFAULT_PLAYER_SIZE,
-  GALLERY_SPAN_CLASS,
-  GALLERY_GRID,
   formatCompact,
   featuredMediaItems,
 } from "@only-g/shared-types/artist-profile";
@@ -35,6 +33,7 @@ import {
   type SectionId,
 } from "@only-g/shared-types/profile-sections";
 import { ProfileChip } from "./ProfileChip";
+import { GalleryMosaic } from "./GalleryMosaic";
 import { DisciplineTags } from "./DisciplineTags";
 import {
   CategoriasSection,
@@ -329,7 +328,6 @@ export function ArtistProfileView({
                   <MembershipPayButton
                     uid={profile.uid}
                     slug={profile.slug}
-                    puntos={profile.puntos}
                     label={t("shareProfile.payCta")}
                     className="!text-amethyst-200"
                   />
@@ -486,15 +484,19 @@ export function ArtistProfileView({
                       </Link>
                     )}
                   </div>
-                  <div className="max-h-[620px] overflow-y-auto rounded-2xl border border-white/10 bg-white/[0.02] p-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    <div className={GALLERY_GRID}>
-                      {profile.gallery.map((item, i) => (
+                  {/* SIN scroll propio: el alto lo fija la proporción de la
+                      plantilla. Un panel que hacía scroll dentro del scroll de la
+                      página convertía pasar por la galería en una lotería. */}
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                    <GalleryMosaic
+                      items={profile.gallery}
+                      layout={profile.galleryLayout}
+                      renderItem={(item, i) => (
                         <button
                           type="button"
-                          key={item.url}
                           onClick={() => setViewerIndex(i)}
                           aria-label={t("artistProfile.viewPhoto", { n: i + 1 })}
-                          className={`group relative overflow-hidden rounded-xl border border-white/10 bg-neutral-950 ${GALLERY_SPAN_CLASS[item.span]}`}
+                          className="group absolute inset-0"
                         >
                           <Image
                             src={item.url}
@@ -507,8 +509,8 @@ export function ArtistProfileView({
                             className="object-cover transition duration-500 group-hover:scale-105"
                           />
                         </button>
-                      ))}
-                    </div>
+                      )}
+                    />
                   </div>
                 </div>
               )}

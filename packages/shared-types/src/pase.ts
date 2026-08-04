@@ -70,6 +70,13 @@ export interface Vale {
   usado: boolean;
   /** epoch ms en que el admin lo marcó entregado (o ausente). */
   entregadoAt?: number;
+  /**
+   * epoch ms en que el DUEÑO lo reclamó (abrió el hilo con el estudio). Un vale
+   * pagado que nadie reclama no es lo mismo que uno en curso: sin esta marca, el
+   * estudio no sabe a quién le debe una producción y el artista no sabe si su
+   * petición llegó.
+   */
+  reclamadoAt?: number;
 }
 
 /** Vale de producción: además del estado, PARA QUIÉN (solista o agrupación). */
@@ -138,4 +145,74 @@ export function activarPase(
 /** ¿El tier es uno de los 3 válidos? (guardarraíl para datos crudos/URLs). */
 export function esPaseTipo(v: unknown): v is PaseTipo {
   return v === "lite" || v === "golden" || v === "premium";
+}
+
+// ── Vales (la parte del pase que entrega una persona) ───────────────────────
+
+/** Los dos servicios que se entregan a mano. */
+export type ValeId = "produccion" | "video";
+
+export const VALE_IDS: ValeId[] = ["produccion", "video"];
+
+/** ¿Es uno de los dos vales? (guardarraíl para datos crudos/URLs). */
+export function esValeId(v: unknown): v is ValeId {
+  return v === "produccion" || v === "video";
+}
+
+/**
+ * Ciclo de vida del vale: nace `pendiente` (pagado pero nadie lo ha pedido),
+ * pasa a `reclamado` cuando el dueño abre el hilo con el estudio, y termina en
+ * `entregado` cuando el admin lo marca cumplido.
+ */
+export type ValeEstado = "pendiente" | "reclamado" | "entregado";
+
+/** Estado de un vale (puro). Ausente = no incluido → `pendiente` no aplica. */
+export function valeEstado(vale: Vale | null | undefined): ValeEstado {
+  if (!vale) return "pendiente";
+  if (vale.usado) return "entregado";
+  return vale.reclamadoAt ? "reclamado" : "pendiente";
+}
+
+/** Un vale del pase, ya resuelto para pintarlo (dueño o admin). */
+export interface ValeItem {
+  id: ValeId;
+  estado: ValeEstado;
+  /** Solo el de producción: si es para un solista o una agrupación. */
+  alcance?: "artista" | "grupo";
+  reclamadoAt?: number;
+  entregadoAt?: number;
+}
+
+/**
+ * Vales que INCLUYE este pase, con su estado (puro). Existe para que el panel
+ * del artista y el del admin recorran la misma lista: con el `if (pase.produccion)`
+ * repetido en cada pantalla, basta añadir un tercer vale para que una de ellas
+ * se olvide de pintarlo.
+ */
+export function valesDe(pase: Pase | null | undefined): ValeItem[] {
+  if (!pase) return [];
+  const items: ValeItem[] = [];
+  if (pase.produccion) {
+    items.push({
+      id: "produccion",
+      estado: valeEstado(pase.produccion),
+      alcance: pase.produccion.alcance,
+      reclamadoAt: pase.produccion.reclamadoAt,
+      entregadoAt: pase.produccion.entregadoAt,
+    });
+  }
+  if (pase.video) {
+    items.push({
+      id: "video",
+      estado: valeEstado(pase.video),
+      reclamadoAt: pase.video.reclamadoAt,
+      entregadoAt: pase.video.entregadoAt,
+    });
+  }
+  return items;
+}
+
+/** ¿Queda algún vale por entregar? (para el aviso en "Mis cosas"). */
+export function tieneValesPorEntregar(pase: Pase | null | undefined): boolean {
+  return valesDe(pase).some((v) => v.estado !== "entregado");
 }

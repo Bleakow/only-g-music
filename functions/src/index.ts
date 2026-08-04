@@ -17,7 +17,8 @@ import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore, FieldPath, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
@@ -681,7 +682,7 @@ export const onConversationMessage = onDocumentCreated(
 
     // Notifica a los demás participantes (solo mensajes de contenido real;
     // los de sistema/estado no avisan). El deep link va al detalle según el rol.
-    if (!["mensaje", "comprobante", "propuesta"].includes(msg.tipo)) return;
+    if (!["mensaje", "propuesta"].includes(msg.tipo)) return;
     const from = msg.from;
     if (!from || from === "sistema") return;
     const conv = (
@@ -704,10 +705,13 @@ export const onConversationMessage = onDocumentCreated(
 );
 
 /**
- * Confirma un pago de premium (SOLO admin). Server-authoritative y atómico: en un
- * único batch activa el premium del perfil, cierra/bloquea el chat de pago y
- * postea el mensaje `pago_confirmado`. Idempotente (si ya está confirmado, no
- * hace nada). El monto se toma del precio fijo del servidor, no del cliente.
+ * Da por recibido un pago EN SEDE (SOLO admin) — el único que no confirma la
+ * pasarela, porque es dinero físico que alguien cuenta con la mano.
+ *
+ * Server-authoritative y atómico: en un único batch concede lo comprado, cierra
+ * el hilo y postea el mensaje `pago_confirmado`. Idempotente (si ya estaba
+ * confirmado, no hace nada). El monto sale del catálogo del servidor, nunca del
+ * cliente.
  */
 export const confirmPayment = onCall({ region: REGION }, async (request) => {
   const uid = request.auth?.uid;
@@ -731,10 +735,11 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
  * de compra: reserva, beat, pedido, G Notes, pase, colectivo o premium.
  *
  * Extraído de `confirmPayment` para que tenga DOS disparadores y UNA sola
- * implementación: el admin confirmando un comprobante a mano (flujo manual, que
- * sigue vivo) y el webhook de Wompi al aprobarse la transacción. Si cada uno
- * concediera los derechos por su cuenta, tarde o temprano uno se quedaría sin
- * actualizar y la misma compra daría cosas distintas según cómo se pagó.
+ * implementación: el webhook de Wompi al aprobarse la transacción, y el admin
+ * confirmando a mano un pago recibido EN SEDE (dinero físico, que la pasarela no
+ * cubre). Si cada uno concediera los derechos por su cuenta, tarde o temprano
+ * uno se quedaría sin actualizar y la misma compra daría cosas distintas según
+ * cómo se pagó.
  *
  * Idempotente: si el pago ya estaba confirmado responde bien sin tocar nada.
  */
@@ -910,12 +915,64 @@ function metodoDePago(
 }
 
 /**
+ * Importe REAL de una compra, calculado por el servidor a partir de QUÉ se compra
+ * (`conv.ref`). Devuelve `null` cuando el precio no es de catálogo y depende de
+ * lo que el comprador elija (hoy solo el colectivo: cuota + nº de cupos).
+ *
+ * Existe porque el hilo de pago lo crea el NAVEGADOR, monto incluido. Leer el
+ * importe "del hilo y no de la petición" no protege de nada si el hilo también
+ * lo escribió el cliente: bastaba crear uno de $1.000 para un pase de $350.000.
+ * El catálogo vive aquí, así que el precio se vuelve a calcular aquí.
+ */
+async function montoDeCatalogo(
+  conv: FirebaseFirestore.DocumentData,
+): Promise<number | null> {
+  const kind = conv.ref?.kind;
+  const refId = typeof conv.ref?.id === "string" ? conv.ref.id : "";
+  const precios = await getComercial();
+
+  if (kind === "pase") {
+    if (refId === "lite") return precios.precioLitePass;
+    if (refId === "golden") return precios.precioGoldenPass;
+    if (refId === "premium") return precios.precioPremiumPass;
+    return null;
+  }
+  if (kind === "gnotes") return precios.precioGNotes;
+  if (kind === "premium") return precios.precioPerfil;
+  if (kind === "beat") return precios.precioBeat;
+  // Reserva y pedido: el importe lo fijó el servidor al crearlos, así que la
+  // fuente de verdad es el propio documento, no el catálogo.
+  if (kind === "booking") {
+    const amount = (await db.doc(`bookings/${refId}`).get()).data()?.amount;
+    return typeof amount === "number" && amount > 0 ? Math.round(amount) : null;
+  }
+  if (kind === "pedido") {
+    const total = (await db.doc(`pedidos/${refId}`).get()).data()?.total;
+    return typeof total === "number" && total > 0 ? Math.round(total) : null;
+  }
+  return null;
+}
+
+/**
+ * Suelo del pago de un COLECTIVO: la cuota más los cupos mínimos. Su importe es
+ * legítimamente variable —`confirmarPagoColectivo` deriva los cupos del dinero
+ * recibido, así que pagar de menos da menos cupos, no un regalo—, pero por
+ * debajo de este suelo la membresía ni siquiera existiría.
+ */
+async function minimoColectivo(): Promise<number> {
+  const { precioColectivo, precioCupoColectivo } = await getComercial();
+  return precioColectivo + COLECTIVO_CUPOS_MINIMOS * precioCupoColectivo;
+}
+
+/**
  * Abre una transacción en Wompi para un chat de pago existente.
  *
- * EL IMPORTE NO VIENE DEL CLIENTE: se lee de `conversations/{id}.pago.monto`,
- * que quedó congelado al crear el hilo. Aunque alguien manipule la petición, no
- * puede pagar $1.000 por una membresía de $80.000. La firma de integridad es la
- * segunda barrera, no la primera.
+ * EL IMPORTE LO PONE EL SERVIDOR: se recalcula desde el catálogo (o desde la
+ * reserva/pedido) con `montoDeCatalogo` y se corrige el hilo si no coincidía.
+ * Antes se cobraba `conversations/{id}.pago.monto` tal cual —"congelado al crear
+ * el hilo"—, pero ese documento lo crea el navegador: quien supiera abrirlo a
+ * mano se llevaba un pase de $350.000 por $1.000. La firma de integridad va
+ * sobre el importe ya corregido, así que es la segunda barrera, no la primera.
  */
 export const crearPagoWompi = onCall(
   {
@@ -950,9 +1007,45 @@ export const crearPagoWompi = onCall(
       throw new HttpsError("failed-precondition", "Ese pago ya está confirmado.");
     }
 
-    const monto = conv.pago?.monto;
-    if (typeof monto !== "number" || !Number.isInteger(monto) || monto <= 0) {
+    const montoHilo = conv.pago?.monto;
+    if (
+      typeof montoHilo !== "number" ||
+      !Number.isInteger(montoHilo) ||
+      montoHilo <= 0
+    ) {
       throw new HttpsError("failed-precondition", "El pago no tiene importe.");
+    }
+
+    // El precio manda desde el servidor. Si el hilo traía otro (config cambiada
+    // a mitad de compra… o una petición amañada), se cobra el bueno y se corrige
+    // el hilo, para que el asiento contable y el mensaje de confirmación —que
+    // leen `pago.monto`— cuadren con lo que de verdad se cobró.
+    const esperado = await montoDeCatalogo(conv);
+    let monto: number;
+    if (esperado != null) {
+      monto = esperado;
+    } else if (conv.ref?.kind === "colectivo") {
+      // Único importe legítimamente variable: se acepta el del hilo, pero nunca
+      // por debajo del suelo (cuota + cupos mínimos).
+      const minimo = await minimoColectivo();
+      if (montoHilo < minimo) {
+        throw new HttpsError("failed-precondition", "El importe no es válido.");
+      }
+      monto = montoHilo;
+    } else {
+      // Sin precio que justificar no se abre la transacción: cobrar un importe
+      // que solo respalda el navegador es exactamente el agujero que esto cierra
+      // (y, además, un pago así no se podría conceder al confirmarse).
+      throw new HttpsError(
+        "failed-precondition",
+        "No pudimos calcular el importe de esta compra.",
+      );
+    }
+    if (monto !== montoHilo) {
+      logger.warn(
+        `[wompi] importe corregido en ${conversationId}: ${montoHilo} → ${monto}`,
+      );
+      await convRef.update({ "pago.monto": monto });
     }
 
     const email =
@@ -993,9 +1086,9 @@ export const crearPagoWompi = onCall(
       throw new HttpsError("unavailable", "No pudimos abrir el pago.");
     }
 
-    // Marca el hilo como pagado POR PASARELA. Con Wompi ya no hay comprobante
-    // que revisar, así que este documento deja de ser un "chat de verificación"
-    // y pasa a ser solo el soporte de la compra (qué se compra y cuánto). El
+    // Marca el hilo como pagado POR PASARELA: no hay nada que revisar a mano,
+    // así que este documento deja de ser un "chat de verificación" y pasa a ser
+    // solo el soporte de la compra (qué se compra y cuánto). El
     // listado de mensajes lo usa para no enseñarle al usuario una conversación
     // que nadie va a leer.
     await convRef.update({ "pago.via": "wompi" });
@@ -2480,10 +2573,49 @@ function slugify(name: string): string {
 }
 
 /**
+ * Proyección de un usuario para el panel de admin. Incluye el PASE (tier, hasta
+ * cuándo y en qué estado están sus vales) porque el panel tiene que poder decir
+ * "ya lo tiene, y le quedan 1 mes 12 días" en vez de ofrecer un botón mudo que
+ * regala tiempo a ciegas. Nada sensible: ni nombre real, ni fecha de nacimiento,
+ * ni datos de pago.
+ */
+function proyeccionAdminUser(
+  id: string,
+  u: FirebaseFirestore.DocumentData,
+): Record<string, unknown> {
+  const pase = u.pase as Record<string, unknown> | undefined;
+  return {
+    uid: id,
+    email: (u.email as string | null) ?? null,
+    displayName: (u.displayName as string | null) ?? null,
+    roles: (u.roles as string[]) ?? [],
+    artistSlug: (u.artistSlug as string | null) ?? null,
+    createdAt:
+      typeof u.createdAt?.toMillis === "function" ? u.createdAt.toMillis() : null,
+    pase: pase
+      ? {
+          tipo: pase.tipo ?? null,
+          activo: pase.activo === true,
+          expiresAt: typeof pase.expiresAt === "number" ? pase.expiresAt : null,
+          cortesia: pase.cortesia === true,
+          produccion: pase.produccion ?? null,
+          video: pase.video ?? null,
+        }
+      : null,
+  };
+}
+
+/** Tamaño de página de la lista de usuarios del admin (y tope duro por llamada). */
+const ADMIN_USERS_PAGE = 30;
+/** Documentos que como mucho recorre una búsqueda (a escala, se indexa). */
+const ADMIN_SEARCH_SCAN = 1000;
+
+/**
  * Búsqueda de usuarios para el admin (SOLO admin). El cliente no puede leer otros
- * `users/{uid}` (lo prohíben las reglas), así que la lista para vincular un perfil
- * pasa por aquí. MVP: trae hasta 200 y filtra por email/nombre en memoria; a
- * escala se indexa. Devuelve una proyección mínima (sin datos sensibles).
+ * `users/{uid}` (lo prohíben las reglas), así que buscar pasa por aquí. Recorre
+ * hasta `ADMIN_SEARCH_SCAN` documentos y filtra por email/nombre en memoria: es
+ * un scan, no un índice, y a partir de unos miles de usuarios habrá que mover
+ * esto a un buscador de verdad. Devuelve una proyección mínima.
  */
 export const adminSearchUsers = onCall({ region: REGION }, async (request) => {
   await assertAdmin(request.auth?.uid);
@@ -2491,27 +2623,138 @@ export const adminSearchUsers = onCall({ region: REGION }, async (request) => {
   const q = String(request.data?.query ?? "")
     .trim()
     .toLowerCase();
-  const snap = await db.collection("users").limit(200).get();
+  const snap = await db.collection("users").limit(ADMIN_SEARCH_SCAN).get();
   const users = snap.docs
-    .map((d) => {
-      const u = d.data();
-      return {
-        uid: d.id,
-        email: (u.email as string | null) ?? null,
-        displayName: (u.displayName as string | null) ?? null,
-        roles: (u.roles as string[]) ?? [],
-        artistSlug: (u.artistSlug as string | null) ?? null,
-      };
-    })
+    .map((d) => proyeccionAdminUser(d.id, d.data()))
     .filter(
       (u) =>
         !q ||
-        (u.email?.toLowerCase().includes(q) ?? false) ||
-        (u.displayName?.toLowerCase().includes(q) ?? false),
+        ((u.email as string | null)?.toLowerCase().includes(q) ?? false) ||
+        ((u.displayName as string | null)?.toLowerCase().includes(q) ?? false),
     )
     .slice(0, 25);
 
   return { users };
+});
+
+/**
+ * Lista PAGINADA de usuarios para el admin (SOLO admin), para poder navegar a
+ * todo el mundo sin saberse el nombre — antes solo se veía a quien acertabas a
+ * escribir en el buscador.
+ *
+ * Pagina por ID de documento y no por `createdAt` a propósito: Firestore excluye
+ * del `orderBy` los documentos que no tienen el campo, así que ordenar por fecha
+ * dejaría fuera —en silencio— a cualquier cuenta creada por una vía que no lo
+ * escribiera. Aquí la garantía es la contraria: recorriendo por `__name__` no se
+ * queda nadie sin salir, que es justo el objetivo de la pantalla.
+ */
+export const adminListUsers = onCall({ region: REGION }, async (request) => {
+  await assertAdmin(request.auth?.uid);
+
+  const cursor =
+    typeof request.data?.cursor === "string" && request.data.cursor
+      ? request.data.cursor
+      : null;
+  const limit = Math.min(
+    Number(request.data?.limit) || ADMIN_USERS_PAGE,
+    ADMIN_USERS_PAGE,
+  );
+
+  let q = db
+    .collection("users")
+    .orderBy(FieldPath.documentId())
+    .limit(limit + 1); // +1 = sonda para saber si hay más, sin una 2ª consulta
+  if (cursor) q = q.startAfter(cursor);
+
+  const snap = await q.get();
+  const hasMore = snap.docs.length > limit;
+  const docs = hasMore ? snap.docs.slice(0, limit) : snap.docs;
+
+  return {
+    users: docs.map((d) => proyeccionAdminUser(d.id, d.data())),
+    cursor: docs.length ? docs[docs.length - 1].id : null,
+    hasMore,
+  };
+});
+
+/**
+ * BORRA UNA CUENTA POR COMPLETO (SOLO admin): Firebase Auth + todo su rastro en
+ * Firestore. Irreversible y sin papelera — decisión explícita del negocio.
+ *
+ * Se lleva: `users/{uid}` (con notifications/fcmTokens), su `artistProfiles/{slug}`
+ * (con likes), `datosPago/{uid}` y las conversaciones en las que participaba.
+ * NO se lleva los asientos de `transactions` ni las ventas de beats: son el libro
+ * contable y borrarlos falsearía informes ya emitidos. Consecuencia asumida: esos
+ * asientos quedan apuntando a un uid que ya no existe.
+ *
+ * Dos guardas, y solo dos: no puedes borrarte a ti mismo (te dejarías fuera del
+ * panel) y no se puede borrar a un CEO (es la super-cuenta del negocio; se
+ * degrada primero en consola).
+ */
+export const adminDeleteUser = onCall({ region: REGION }, async (request) => {
+  const adminUid = request.auth?.uid;
+  await assertAdmin(adminUid);
+
+  const targetUid = request.data?.targetUid;
+  if (typeof targetUid !== "string" || !targetUid) {
+    throw new HttpsError("invalid-argument", "Falta el usuario.");
+  }
+  if (targetUid === adminUid) {
+    throw new HttpsError(
+      "failed-precondition",
+      "No puedes borrar tu propia cuenta.",
+    );
+  }
+
+  const userRef = db.doc(`users/${targetUid}`);
+  const userSnap = await userRef.get();
+  const u = userSnap.data() ?? {};
+  const roles = Array.isArray(u.roles) ? (u.roles as string[]) : [];
+  if (roles.includes("ceo")) {
+    throw new HttpsError(
+      "failed-precondition",
+      "No se puede borrar una cuenta CEO.",
+    );
+  }
+
+  const slug = typeof u.artistSlug === "string" ? u.artistSlug : null;
+
+  // Conversaciones donde participaba (chats de pago y de soporte, con sus
+  // mensajes). Tope de seguridad: si alguien tuviera cientos, se borran las
+  // primeras y el resto queda huérfano — preferible a un timeout a medio borrar.
+  const convs = await db
+    .collection("conversations")
+    .where("participants", "array-contains", targetUid)
+    .limit(300)
+    .get();
+  for (const c of convs.docs) {
+    await db.recursiveDelete(c.ref);
+  }
+
+  if (slug) await db.recursiveDelete(db.doc(`artistProfiles/${slug}`));
+  await db.recursiveDelete(userRef);
+  await db
+    .doc(`datosPago/${targetUid}`)
+    .delete()
+    .catch(() => {});
+
+  // Auth al final: si algo peta antes, la cuenta sigue existiendo y se puede
+  // reintentar. Al revés quedaría un fantasma sin forma de volver a entrar.
+  let authBorrado = true;
+  try {
+    await getAuth().deleteUser(targetUid);
+  } catch (e) {
+    // `user-not-found` es normal (cuenta ya borrada en Auth, rastro suelto en
+    // Firestore); cualquier otro fallo se reporta pero no revierte lo borrado.
+    authBorrado = false;
+    logger.warn(`[adminDeleteUser] Auth ${targetUid}:`, e);
+  }
+
+  logger.info(
+    `Cuenta ${targetUid} borrada por ${adminUid} (perfil: ${slug ?? "—"}, ` +
+      `conversaciones: ${convs.size}, auth: ${authBorrado})`,
+  );
+  return { ok: true, authBorrado, conversaciones: convs.size };
 });
 
 /**
@@ -2790,7 +3033,90 @@ export const marcarValeEntregado = onCall({ region: REGION }, async (request) =>
   });
 
   logger.info(`Vale ${vale} marcado entregado para ${targetUid}`);
+  await notify(targetUid, "vale-entregado", { vale }, "/solicitudes");
   return { ok: true };
+});
+
+/**
+ * El DUEÑO RECLAMA un vale de su pase (producción o video): abre el hilo con el
+ * estudio para cuadrar fechas y deja constancia de que lo pidió.
+ *
+ * Por qué existe: los vales se pagaban y luego se quedaban en tierra de nadie —
+ * el artista no tenía dónde pedirlos y el estudio no tenía forma de saber a quién
+ * le debía una producción. La marca `reclamadoAt` es lo que convierte "incluye
+ * una producción" en una cola de trabajo.
+ *
+ * Idempotente: reclamar dos veces devuelve el MISMO hilo (id determinista
+ * `vale_{uid}_{vale}`) y no vuelve a avisar al equipo. El primer mensaje lo
+ * escribe el cliente (que sí sabe en qué idioma habla el usuario).
+ */
+export const reclamarVale = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
+
+  const vale = request.data?.vale;
+  if (vale !== "produccion" && vale !== "video") {
+    throw new HttpsError("invalid-argument", "Vale no reconocido.");
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const u = (await userRef.get()).data() ?? {};
+  const pase = u.pase as Record<string, unknown> | undefined;
+  const registro = pase?.[vale] as Record<string, unknown> | undefined;
+  if (!registro) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Tu pase no incluye ese beneficio.",
+    );
+  }
+  if (registro.usado === true) {
+    throw new HttpsError("failed-precondition", "Ese vale ya fue entregado.");
+  }
+
+  const conversationId = `vale_${uid}_${vale}`;
+  const convRef = db.doc(`conversations/${conversationId}`);
+  const yaReclamado = typeof registro.reclamadoAt === "number";
+
+  if (!(await convRef.get()).exists) {
+    // El estudio entra como participante (vía Admin SDK, que ignora las reglas):
+    // sin eso el hilo solo lo vería el artista y sus mensajes no llegarían a
+    // nadie. Se añade UN admin y no todos — el tope de 2 participantes evita que
+    // cada mensaje abanique notificaciones a media plantilla; el resto se entera
+    // por el aviso de "vale reclamado".
+    const [primerAdmin] = await adminUids();
+    await convRef.set({
+      type: "soporte",
+      participants: primerAdmin ? [uid, primerAdmin] : [uid],
+      status: "abierto",
+      // `pase` como contexto: el hilo cuelga del pase que pagó el beneficio.
+      ref: { kind: "pase", id: String(pase?.tipo ?? "") },
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  }
+
+  if (!yaReclamado) {
+    await userRef.update({ [`pase.${vale}.reclamadoAt`]: Date.now() });
+    const quien = (u.displayName as string) || (u.email as string) || uid;
+    const servicio = vale === "video" ? "video profesional" : "producción";
+    await notifyAdmins(
+      "vale-reclamado",
+      { vale, cliente: quien },
+      "/admin/roles",
+      [
+        "🎟️ *Vale reclamado*",
+        "",
+        `👤 ${quien}`,
+        `🎬 Pidió su ${servicio} (pase ${String(pase?.tipo ?? "—")})`,
+        deepLink("/admin/roles"),
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    );
+    logger.info(`Vale ${vale} reclamado por ${uid}`);
+  }
+
+  return { conversationId };
 });
 
 /**
@@ -3153,8 +3479,15 @@ export const onQuoteAnswered = onDocumentUpdated(
   },
 );
 
-/** El cliente subió comprobante (pago en revisión) → avisa a los admin. */
-export const onPaymentUnderReview = onDocumentUpdated(
+/**
+ * Un pago EN SEDE quedó anunciado → avisa a los admin para que lo confirmen al
+ * recibir el dinero.
+ *
+ * Es `onDocumentWritten` y no `onDocumentUpdated` a propósito: el hilo del pago
+ * en sede NACE ya en `en_revision` (no hay paso intermedio que actualizar), así
+ * que un trigger de solo-update no se enteraría nunca.
+ */
+export const onPaymentUnderReview = onDocumentWritten(
   "conversations/{id}",
   async (event) => {
     const before = event.data?.before.data();
@@ -3164,7 +3497,7 @@ export const onPaymentUnderReview = onDocumentUpdated(
       before?.pago?.estado !== "en_revision" &&
       after.pago?.estado === "en_revision"
     ) {
-      // Reserva: refleja el comprobante en el estado de la reserva (server-side).
+      // Reserva: refleja el pago anunciado en el estado de la reserva.
       if (after.ref?.kind === "booking" && typeof after.ref?.id === "string") {
         const bRef = db.doc(`bookings/${after.ref.id}`);
         const b = (await bRef.get()).data();
@@ -3172,7 +3505,7 @@ export const onPaymentUnderReview = onDocumentUpdated(
           await bRef.update({ estado: "pago_en_revision" });
         }
       }
-      // Pedido: refleja el comprobante en el estado del pedido (server-side).
+      // Pedido: ídem, en el estado del pedido.
       if (after.ref?.kind === "pedido" && typeof after.ref?.id === "string") {
         const pRef = db.doc(`pedidos/${after.ref.id}`);
         const p = (await pRef.get()).data();

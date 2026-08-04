@@ -314,16 +314,6 @@ export function AdminSolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
               <p className="font-semibold text-white">
                 {formatCOP(reserva.amount ?? 0)}
               </p>
-              {reserva.comprobanteUrl && (
-                <a
-                  href={reserva.comprobanteUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-amethyst-200 underline underline-offset-2 hover:text-white"
-                >
-                  {t("adminSolicitud.viewReceipt")}
-                </a>
-              )}
               {reserva.tipo === "perfil_artista" && (
                 <p className="border-amethyst-300/30 bg-amethyst-500/10 text-amethyst-100 mt-1 rounded-lg border px-3 py-2 text-xs">
                   {t.rich("adminSolicitud.artistProfileNote", {

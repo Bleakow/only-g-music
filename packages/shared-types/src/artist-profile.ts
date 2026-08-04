@@ -16,6 +16,7 @@
  */
 
 import type { SocialPlatform } from "./artist";
+import type { GalleryLayoutId } from "./gallery-layout";
 import type { GeoLocation } from "./location";
 import type { Role } from "./user";
 import type { MetricsVisibility } from "./profile-metrics";
@@ -237,42 +238,19 @@ export const DEFAULT_PLAYER_SIZE: PlayerSize = "md";
 export const DEFAULT_PLAYER_X = 78;
 export const DEFAULT_PLAYER_Y = 50;
 
-// ── Galería bento ───────────────────────────────────────────────────────────
-
-/** Tamaño de una foto dentro del bento (cuadrada, ancha, alta o grande). */
-export type GallerySpan = "sq" | "wide" | "tall" | "big";
-
-/** Foto de la galería con su tamaño en el bento. El orden del array es el orden visual. */
-export interface GalleryItem {
-  url: string;
-  span: GallerySpan;
-}
-
-/** Ciclo de tamaños al pulsar el botón de redimensionar una foto. */
-export const GALLERY_SPAN_CYCLE: GallerySpan[] = ["sq", "wide", "tall", "big"];
-
-/** Siguiente tamaño en el ciclo (puro). */
-export function nextGallerySpan(span: GallerySpan): GallerySpan {
-  const i = GALLERY_SPAN_CYCLE.indexOf(span);
-  return GALLERY_SPAN_CYCLE[(i + 1) % GALLERY_SPAN_CYCLE.length];
-}
-
-/** Clases de grid (col/row span) por tamaño. La grid base es de 2/4 columnas. */
-export const GALLERY_SPAN_CLASS: Record<GallerySpan, string> = {
-  sq: "col-span-1 row-span-1",
-  wide: "col-span-2 row-span-1",
-  tall: "col-span-1 row-span-2",
-  big: "col-span-2 row-span-2",
-};
+// ── Galería ─────────────────────────────────────────────────────────────────
 
 /**
- * Grid del bento (clases Tailwind): la MISMA en el editor y en el perfil público,
- * y con **2 columnas SIEMPRE** (móvil y escritorio) para que la disposición NO
- * cambie entre dispositivos — solo escala el tamaño de las celdas. El tamaño de
- * cada foto lo da GALLERY_SPAN_CLASS.
+ * Foto de la galería. El ORDEN del array es el orden de las ranuras de la
+ * plantilla (ver `gallery-layout.ts`): la primera foto va a la primera ranura.
+ *
+ * Antes cada foto llevaba su propio `span` (cuadrada/ancha/alta/grande) y el
+ * mosaico se armaba solo. Ese campo puede seguir estando en documentos antiguos;
+ * ya no se lee ni se escribe — la composición la manda la plantilla.
  */
-export const GALLERY_GRID =
-  "grid auto-rows-[44vw] grid-cols-2 gap-3 sm:auto-rows-[220px]";
+export interface GalleryItem {
+  url: string;
+}
 
 // ── Media destacada (pantalla 2) ────────────────────────────────────────────
 
@@ -589,8 +567,15 @@ export interface ArtistProfile {
    * maxFeaturedSilent + FEATURED_AUDIO_MAX. Léelo con featuredMediaItems().
    */
   featuredMediaList?: FeaturedMedia[];
-  /** Galería de mejores fotos artísticas (bento: cada foto con su tamaño). */
+  /** Galería de mejores fotos artísticas. El orden = orden de ranuras. */
   gallery: GalleryItem[];
+  /**
+   * Composición elegida para la galería (ver `gallery-layout.ts`). Ausente = se
+   * aplica la de por defecto para ese número de fotos. Se guarda la ELECCIÓN,
+   * no la geometría: si la plantilla deja de cuadrar (subió o quitó fotos), se
+   * cae a la de por defecto sin que el perfil quede roto.
+   */
+  galleryLayout?: GalleryLayoutId;
   /** Temas destacados (botones de reproducción YouTube/Spotify). */
   tracks: ProfileTrack[];
   /** Intro recortada (ver AudioTrimModal): intenta sonar al entrar y, si el
@@ -686,8 +671,10 @@ export interface ArtistProfile {
   updatedAt: number;
 }
 
-/** Nº máximo de fotos en la galería (bento). */
-export const GALLERY_LIMIT = 6;
+/** Nº máximo de fotos en la galería. Su casa es `gallery-layout` (donde se usa
+ *  para comprobar que todas las plantillas caben); se reexporta para no romper
+ *  a quien ya lo importaba desde aquí. */
+export { GALLERY_LIMIT } from "./gallery-layout";
 
 /** Nº máximo de artistas en el menú "Destacados". */
 export const MAX_DESTACADOS = 4;
@@ -736,6 +723,7 @@ export type EditableProfile = Pick<
   | "featuredMedia"
   | "featuredMediaList"
   | "gallery"
+  | "galleryLayout"
   | "tracks"
   | "entryTrackUrl"
   | "playerOverlay"

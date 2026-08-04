@@ -13,6 +13,7 @@ import type { Pedido } from "@only-g/shared-types/pedido";
 import { formatCOP } from "@only-g/shared-types/service";
 import { badgeClass, fechaCorta } from "../lib/estados";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { MisBeneficios } from "@/features/pases/components/MisBeneficios";
 
 function Badge({ estado, label }: { estado: string; label: string }) {
   return (
@@ -158,6 +159,10 @@ export function SolicitudesList() {
         </div>
       ) : (
         <>
+          {/* Lo que tienes activo: tiempo pagado (pase, perfil, G Notes) y los
+              vales del pase. Va primero porque es lo que caduca. */}
+          <MisBeneficios />
+
           {/* Mis citas (sesiones agendadas) */}
           <section className="mt-10">
             <h2 className="font-narrow text-2xl font-bold text-white uppercase">

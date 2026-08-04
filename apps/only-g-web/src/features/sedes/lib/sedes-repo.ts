@@ -2,7 +2,7 @@
  * Capa de acceso a sedes. Base = semilla estática + sedes CREADAS por el admin
  * (documento completo en Firestore, `sedes/{id}`) para los ids que no están en
  * la semilla. Sobre la semilla se fusiona además el override editable del admin
- * (ciudad, dirección, horario, destino de pago, productores). Los selectores
+ * (ciudad, dirección, horario, productores). Los selectores
  * síncronos siguen usando la semilla directa (sin riesgo); quien necesite el
  * universo completo de sedes (chat de pago, admin) pasa por aquí — async, con
  * fallback a la semilla si Firestore no responde o la regla aún no está
@@ -24,7 +24,7 @@ import { sedes } from "../data/sedes";
 
 /** Campos que el admin edita (override guardado en Firestore, sobre la semilla). */
 export type SedeOverride = Partial<
-  Pick<Sede, "ciudad" | "direccion" | "horario" | "pago" | "productores">
+  Pick<Sede, "ciudad" | "direccion" | "horario" | "productores">
 >;
 
 /** Mapea un doc de Firestore (sede CREADA, no semilla) a `Sede`, con defaults. */
@@ -34,7 +34,6 @@ function toSede(id: string, data: DocumentData): Sede {
     nombre: typeof data.nombre === "string" ? data.nombre : "",
     ciudad: typeof data.ciudad === "string" ? data.ciudad : "",
     direccion: typeof data.direccion === "string" ? data.direccion : "",
-    pago: data.pago as Sede["pago"],
     horario: typeof data.horario === "string" ? data.horario : "",
     slots: Array.isArray(data.slots) ? (data.slots as string[]) : [],
     productores: Array.isArray(data.productores)

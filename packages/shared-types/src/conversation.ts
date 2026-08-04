@@ -18,8 +18,8 @@ export type ConversationType = "soporte" | "pago" | "directo";
 /**
  * Estado del hilo. Gobierna quién puede escribir:
  *  - "abierto": los participantes pueden escribir.
- *  - "esperando_confirmacion": en espera de una acción del estudio (p. ej. el
- *    cliente envió el comprobante y el admin lo revisa); el cliente no escribe.
+ *  - "esperando_confirmacion": en espera de una acción del estudio (p. ej. un
+ *    pago anunciado en sede que el equipo confirma); el cliente no escribe.
  *  - "cerrado": hilo finalizado, queda en el historial, nadie escribe.
  */
 export type ConversationStatus =
@@ -32,11 +32,9 @@ export type MessageFrom = string;
 
 export type MessageTipo =
   | "mensaje" // texto libre de un participante
-  | "comprobante" // adjunto de pago subido por el cliente
   | "propuesta" // propuesta del estudio con precio (cotizaciones)
   | "estado" // aviso de cambio de estado (se guarda el código, se traduce al leer)
-  | "metodo" // el cliente eligió un método de pago
-  | "pago_confirmado"; // confirmación del admin (cierra el hilo)
+  | "pago_confirmado"; // confirmación del pago (cierra el hilo)
 
 export interface ConversationMessage {
   id: string;
@@ -44,13 +42,11 @@ export interface ConversationMessage {
   from: MessageFrom;
   tipo: MessageTipo;
   texto?: string;
-  /** Adjunto (comprobante, archivo) subido a Storage. */
+  /** Adjunto (archivo) subido a Storage. */
   attachmentUrl?: string;
   attachmentName?: string;
   /** Código de estado (cuando `tipo === "estado"`): se traduce al pintarlo. */
   estado?: string;
-  /** Método elegido (cuando `tipo === "metodo"`). */
-  metodo?: MetodoPago;
   /** Monto en COP (contexto de pago). */
   monto?: number;
   /** Precio propuesto en COP (cuando `tipo === "propuesta"`). */
@@ -76,16 +72,14 @@ export type PagoConcepto =
   | "colectivo";
 
 /**
- * Estados del pago. Los cuatro primeros son del flujo MANUAL (comprobante +
- * revisión humana), en vías de deprecarse; `pendiente_pasarela` es el de Wompi,
- * donde no hay comprobante que subir ni admin que confirme: decide la pasarela.
+ * Estados del pago. La vía normal es la PASARELA (`pendiente_pasarela` → lo
+ * resuelve Wompi). `en_revision` es el pago EN SEDE: no hay nada que cobrar por
+ * internet, solo dinero que el equipo confirma cuando lo recibe.
  */
 export type PagoEstado =
-  | "metodo_pendiente" // el cliente aún no elige método
-  | "comprobante_pendiente" // método elegido, falta subir comprobante
-  | "en_revision" // comprobante enviado, el admin revisa
+  | "en_revision" // pago en sede anunciado, el equipo lo confirma al recibirlo
   | "pendiente_pasarela" // Wompi: transacción abierta, esperando su veredicto
-  | "confirmado" // pago cobrado (admin en el manual, webhook en Wompi)
+  | "confirmado" // pago cobrado (webhook de Wompi, o el equipo si fue en sede)
   | "rechazado"; // rechazado (el cliente puede reintentar)
 
 /** ¿Este pago lo resuelve la pasarela y no una persona? */
@@ -97,6 +91,7 @@ export interface PagoState {
   concepto: PagoConcepto;
   /** Monto a pagar en COP. */
   monto: number;
+  /** Solo en los pagos EN SEDE (`efectivo`); ausente si va por pasarela. */
   metodo?: MetodoPago;
   estado: PagoEstado;
 }
@@ -159,8 +154,8 @@ export function esParticipante(
 }
 
 /**
- * Estado del hilo derivado del estado del pago (server-authoritative al
- * confirmar/rechazar; el cliente solo provoca metodo→comprobante).
+ * Estado del hilo derivado del estado del pago. Server-authoritative de punta a
+ * punta: el cliente abre el hilo y ahí acaba su parte.
  */
 export function statusDePago(estado: PagoEstado): ConversationStatus {
   switch (estado) {
@@ -169,10 +164,9 @@ export function statusDePago(estado: PagoEstado): ConversationStatus {
     case "confirmado":
       return "cerrado";
     default:
-      // metodo_pendiente | comprobante_pendiente | pendiente_pasarela |
-      // rechazado → el hilo sigue abierto porque el cliente puede seguir (o
-      // reintentar). `pendiente_pasarela` NO es "esperando_confirmacion": ahí no
-      // hay nadie a quien esperar, resuelve Wompi.
+      // pendiente_pasarela | rechazado → el hilo sigue abierto porque el cliente
+      // puede reintentar. `pendiente_pasarela` NO es "esperando_confirmacion":
+      // ahí no hay nadie a quien esperar, resuelve Wompi.
       return "abierto";
   }
 }

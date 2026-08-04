@@ -191,9 +191,45 @@
       "produccionGrupo": "Producción completa para un grupo",
       "video": "Video profesional"
     },
-    "lite": { "nombre": "Pase Lite" },
-    "golden": { "nombre": "Pase Golden" },
-    "premium": { "nombre": "Pase Premium" }
+    "lite": {
+      "nombre": "Pase Lite"
+    },
+    "golden": {
+      "nombre": "Pase Golden"
+    },
+    "premium": {
+      "nombre": "Pase Premium"
+    }
+  },
+  "vigencia": {
+    "meses": "{n, plural, one {# mes} other {# meses}}",
+    "dias": "{n, plural, one {# día} other {# días}}",
+    "caducado": "Caducado",
+    "hoy": "Vence hoy"
+  },
+  "vales": {
+    "estado": {
+      "pendiente": "Sin reclamar",
+      "reclamado": "Reclamado · en curso",
+      "entregado": "Entregado"
+    },
+    "intro": "Este beneficio lo entrega el equipo en persona. Escribe por aquí y cuadramos fechas.",
+    "reclamarTitulo": "¿Lo agendamos?",
+    "reclamarHint": "Al reclamarlo abrimos un chat con el equipo para cuadrar fecha, sede y detalles.",
+    "reclamar": "Reclamar",
+    "mensajeInicial": "Hola, quiero reclamar mi {servicio}.",
+    "errorReclamar": "No pudimos abrir tu solicitud. Inténtalo de nuevo.",
+    "sinVale": "Tu pase no incluye este beneficio.",
+    "verPases": "Ver pases"
+  },
+  "misBeneficios": {
+    "title": "Lo que tienes activo",
+    "pase": "{pase}",
+    "perfil": "Perfil publicado",
+    "gnotes": "G Notes premium",
+    "valesTitulo": "Incluido en tu pase",
+    "reclamar": "Reclamar",
+    "verHilo": "Ver chat"
   },
   "datosPago": {
     "title": "Datos de pago",
@@ -299,7 +335,7 @@
     "paymentInfo": "Te compartiremos los datos/QR de pago por el chat. Cuando pagues, sube aquí tu comprobante.",
     "sendReceipt": "Enviar comprobante",
     "receiptMessage": "Envié el comprobante de pago.",
-    "receiptUnderReview": "Recibimos tu comprobante. La administración lo está revisando; te confirmamos por el chat.",
+    "receiptUnderReview": "Estamos confirmando tu pago. Te avisamos por el chat.",
     "proposalTitle": "Propuesta del estudio",
     "proposalHint": "El estudio te propuso este precio. Acéptalo para generar tu reserva, o recházalo.",
     "acceptProposal": "Aceptar",
@@ -327,7 +363,6 @@
     "backToPanel": "Volver al panel",
     "clientBudget": "Presupuesto cliente: {budget}",
     "artists": "Artistas: {names}",
-    "viewReceipt": "Ver comprobante de pago",
     "artistProfileNote": "Pedido de <strong>perfil de artista</strong>. Al confirmar el pago, asigna el rol <code>artista</code> en la consola de Firebase y activa el premium en <link>/admin/perfiles</link>.",
     "actions": "Acciones",
     "sendProposal": "Enviar propuesta",
@@ -393,13 +428,17 @@
     "intro": "Descubre a los artistas y el sonido que crean.",
     "back": "Inicio",
     "createProfile": "¿Eres artista? Crea tu perfil",
-    "editProfile": "Edita tu perfil",
+    "createProfileShort": "Crea tu perfil",
+    "editProfile": "Tu perfil",
     "viewProfile": "Ver perfil",
     "tabTodos": "Todos",
     "tabCantantes": "Cantantes",
     "tabBeatmakers": "Beatmakers",
     "segmentLabel": "Filtrar por disciplina",
     "searchPlaceholder": "Busca por nombre, género o ciudad…",
+    "searchPlaceholderAi": "Descríbelo: «morena alta que canta afrobeat»…",
+    "openSearch": "Buscar artistas con IA",
+    "closeSearch": "Cerrar la búsqueda",
     "aiButton": "Búsqueda IA",
     "aiHelper": "Filtra o pídele a la IA lo que imaginas.",
     "aiTry": "Prueba:",
@@ -545,10 +584,9 @@
     "quickArtistasSub": "Perfiles y contratos",
     "quickProductoresSub": "Gestión de productores",
     "quickEstudiosSub": "Salas y disponibilidad",
-    "quickPagosSub": "Revisar comprobantes",
-    "quickDatosPagoSub": "A dónde te pagan (global)",
+    "quickPagosSub": "Pagos en sede por confirmar",
     "quickCotizacionesSub": "Solicitudes y envíos",
-    "quickRolesSub": "Otorga y quita permisos",
+    "quickRolesSub": "Roles, membresías y cuentas",
     "quickConveniosSub": "Solicitudes de productor y beatmaker",
     "quickBeatsSub": "Ventas y pagos de beatmakers",
     "quickCuentasSub": "Liquida el neto a los socios",
@@ -571,8 +609,7 @@
     "estudios": "Estudios",
     "cotizaciones": "Cotizaciones",
     "pagos": "Pagos",
-    "datosPago": "Datos de pago",
-    "roles": "Roles",
+    "roles": "Usuarios y roles",
     "convenios": "Convenios",
     "beats": "Beats",
     "cuentas": "Cuentas por pagar",
@@ -582,23 +619,49 @@
     "helpText": "Soporte disponible 24/7 para ti."
   },
   "adminRoles": {
-    "title": "Gestión de roles",
-    "intro": "Busca un usuario y ajusta sus permisos.",
-    "search": "Buscar por nombre o correo…",
+    "title": "Usuarios y roles",
+    "intro": "Toda la gente de Only G: roles, tiempo pagado y cuentas.",
+    "search": "Busca por nombre o correo…",
     "noResults": "Sin resultados.",
-    "typeToSearch": "Escribe para buscar usuarios.",
-    "editRoles": "Editar roles",
-    "editTitle": "Roles de {nombre}",
+    "contador": "{count} usuarios cargados",
+    "contadorBusqueda": "{count} coincidencias",
+    "gestionar": "Gestionar",
+    "editTitle": "Gestionar a {nombre}",
     "save": "Guardar",
     "cancel": "Cancelar",
     "syncNote": "Beatmaker y productor son socios: no pagan membresía y su perfil se sincroniza con estas pestañas.",
     "errorSelfAdmin": "No puedes quitarte tu propio rol de admin.",
     "errorGuardar": "No se pudieron guardar los roles.",
-    "errorBuscar": "No se pudo buscar.",
-    "paseTitulo": "Activar pase (cortesía)",
+    "errorBuscar": "No se pudo cargar la lista.",
+    "paseTitulo": "Pase (cortesía)",
     "paseNota": "Concede el pase gratis, sin cobrar. Se aplica al instante.",
-    "paseOtorgado": "{pase} activado ✓",
-    "paseError": "No se pudo activar el pase."
+    "paseActivar": "Toca un pase para activarlo por un mes.",
+    "paseSuma": "Tocar otra vez suma un mes al tiempo que le queda.",
+    "paseOtorgado": "{pase} activado · le quedan {restante}",
+    "paseError": "No se pudo activar el pase.",
+    "membresiaTitulo": "Membresía del perfil",
+    "membresiaActiva": "Activa · le quedan {restante}",
+    "membresiaInactiva": "Sin membresía activa.",
+    "membresiaPago": "Cobrar un mes",
+    "membresiaCortesia": "Regalar un mes",
+    "membresiaNota": "Cobrar registra el ingreso; regalar no toca el balance. Los dos suman un mes al tiempo que quede.",
+    "membresiaOtorgada": "Membresía al día · le quedan {restante}",
+    "membresiaError": "No se pudo activar la membresía.",
+    "valesTitulo": "Vales del pase",
+    "valeEntregar": "Marcar entregado",
+    "valeError": "No se pudo marcar el vale.",
+    "borrarCuenta": "Borrar cuenta",
+    "borrarAria": "Borrar cuenta",
+    "borrarTitle": "Borrar la cuenta de {nombre}",
+    "borrarMensaje": "Esto borra la cuenta entera. No se puede deshacer.",
+    "borrarItemCuenta": "Su acceso y los datos de su cuenta.",
+    "borrarItemPerfil": "Su perfil de artista, con fotos y temas.",
+    "borrarItemChats": "Sus conversaciones y comprobantes.",
+    "borrarAvisoContable": "Los movimientos ya registrados en contabilidad se quedan, apuntando a una cuenta que ya no existe.",
+    "borrarConfirmaLabel": "Escribe {token} para confirmar.",
+    "borrarConfirm": "Borrar para siempre",
+    "borrarError": "No se pudo borrar la cuenta.",
+    "borrarBloqueado": "Esa cuenta no se puede borrar desde aquí."
   },
   "adminConvenios": {
     "title": "Solicitudes de convenio",
@@ -823,10 +886,6 @@
     "ciudad": "Ciudad",
     "direccion": "Dirección",
     "horario": "Horario",
-    "pagoTitle": "Pago propio de esta sede (opcional)",
-    "pagoHint": "Si lo dejas vacío, esta sede usa los datos de pago generales.",
-    "pagoPropio": "Pago propio",
-    "pagoDefault": "Usa el pago general",
     "productoresTitle": "Productores de esta sede",
     "productoresHint": "Busca un usuario y asígnalo: le damos el rol de productor y lo registramos en la sede.",
     "noProductores": "Sin productores asignados.",
@@ -1233,8 +1292,9 @@
     "ariaSubir": "Subir",
     "ariaBajar": "Bajar",
     "ariaEditar": "Editar perfil",
-    "ariaActivar": "Activar membresía",
-    "ariaDesactivar": "Desactivar membresía",
+    "ariaOcultar": "Ocultar de la vitrina",
+    "ariaMostrar": "Mostrar en la vitrina",
+    "ariaSinMembresia": "Sin membresía activa — actívala en Usuarios y roles",
     "ariaBorrar": "Borrar perfil",
     "ariaQuitarDestacado": "Quitar de destacados",
     "ariaMarcarDestacado": "Marcar destacado",
@@ -1258,15 +1318,11 @@
     "errorDestacado": "No se pudo cambiar el destacado.",
     "errorBorrar": "No se pudo borrar el perfil.",
     "errorMock": "No se pudo crear el perfil.",
-    "membresia": {
-      "activarTitle": "Activar membresía de {nombre}",
-      "activarDescripcion": "Elige cómo activar la membresía por un mes.",
-      "pago": "Confirmar pago · 15.000 COP",
-      "cortesia": "A cortesía · 1 mes",
-      "cortesiaHint": "La cortesía activa el perfil por un mes y no genera ingreso en balances.",
-      "desactivarTitle": "Cerrar membresía",
-      "desactivarMensaje": "¿Seguro que quieres cerrar la membresía de {nombre}? Su perfil dejará de aparecer en la vitrina.",
-      "confirmar": "Cerrar membresía",
+    "ocultar": {
+      "title": "Ocultar de la vitrina",
+      "mensaje": "¿Ocultas a {nombre}? Su perfil deja de aparecer en la vitrina.",
+      "nota": "No pierde tiempo de membresía: puedes volver a mostrarlo cuando quieras.",
+      "confirmar": "Ocultar",
       "cancelar": "Cancelar"
     },
     "link": {
@@ -1500,6 +1556,9 @@
     "noMoreVideos": "Aún no hay más videos",
     "withSound": "Con sonido",
     "clipN": "Clip {n}",
+    "playVideo": "Reproducir",
+    "pauseVideo": "Pausar",
+    "fullscreen": "Pantalla completa",
     "aboutMe": "Sobre mí",
     "sectionSocials": "Redes sociales",
     "followersCount": "{count} seguidores",
@@ -1803,10 +1862,32 @@
     },
     "gallery": {
       "sectionTitle": "Galería ({count}/{limit})",
-      "hint": "Arrastra una foto para reordenar (en móvil, mantén pulsado) · pulsa ⤢ para cambiar su tamaño.",
-      "resize": "Cambiar tamaño",
+      "layoutTitle": "Composición",
+      "layouts": {
+        "unica": "Única",
+        "duo": "Dúo",
+        "retrato": "Retrato",
+        "portada": "Portada",
+        "tira": "Tira",
+        "rejilla": "Rejilla",
+        "foco": "Foco",
+        "mosaico": "Mosaico",
+        "franja": "Franja",
+        "panal": "Panal",
+        "revista": "Revista"
+      },
+      "empty": "Sube tus mejores fotos",
+      "add": "Añadir fotos",
+      "counter": "{count} de {limit}",
+      "full": "Ya tienes las {limit} fotos.",
+      "hint": "Elige una composición y coloca tus fotos: toca ✥ en una y luego la casilla donde la quieres.",
+      "hintMoving": "Ahora toca la casilla donde quieres esa foto. Se cambian de sitio.",
+      "swapHere": "Aquí",
+      "move": "Mover",
+      "moveAria": "Mover la foto {n}",
+      "cancelMove": "Dejarla donde está",
       "remove": "Quitar foto",
-      "move": "Mover"
+      "removeAria": "Quitar la foto {n}"
     },
     "tracks": {
       "sectionTitle": "Más sonadas",
@@ -1992,6 +2073,14 @@
       "pase-activado": {
         "titulo": "Pase activado",
         "cuerpo": "Tu pase {pase} ya está activo. Revisa tus beneficios en Suscripciones."
+      },
+      "vale-reclamado": {
+        "titulo": "Vale reclamado",
+        "cuerpo": "{cliente} pidió un beneficio de su pase. Cuadra fechas en Usuarios y roles."
+      },
+      "vale-entregado": {
+        "titulo": "Beneficio entregado",
+        "cuerpo": "Marcamos como entregado un beneficio de tu pase."
       },
       "colectivo-activado": {
         "titulo": "Colectivo activo",
@@ -2577,8 +2666,6 @@
     "back": "Volver",
     "lockedClosed": "Esta conversación está cerrada.",
     "lockedWaiting": "Esperando confirmación del estudio…",
-    "receipt": "Comprobante",
-    "method": "Método de pago: {metodo}",
     "paymentConfirmed": "Pago confirmado",
     "statusChanged": "Estado: {status}",
     "viewFile": "Ver archivo",
@@ -2586,12 +2673,6 @@
       "soporte": "Soporte",
       "pago": "Pago",
       "directo": "Chat"
-    },
-    "metodos": {
-      "nequi": "Nequi",
-      "paypal": "PayPal",
-      "efectivo": "Efectivo",
-      "tarjeta": "Tarjeta"
     },
     "proposal": "Propuesta",
     "contactar": "Chat",
@@ -2604,26 +2685,20 @@
     }
   },
   "pago": {
-    "chooseMethod": "Elige cómo pagar",
-    "premiumTitle": "Pago de premium",
-    "payWith": "Paga {monto} con {metodo}",
-    "instructions": "Realiza el pago y sube tu comprobante aquí. Un admin revisará que el pago llegó correctamente; esto puede tomar unos minutos.",
-    "uploadReceipt": "Subir comprobante",
-    "receiptSent": "Envié el comprobante de pago.",
-    "reviewing": "Comprobante enviado. Un admin lo está revisando…",
-    "cashOnlyHigherTier": "El pago en efectivo se desbloquea para miembros de nivel superior.",
-    "comingSoon": "Próximamente",
-    "copy": "Copiar",
-    "copied": "Copiado",
-    "breB": "Llave Bre-B",
-    "qrExpand": "Ampliar",
-    "qrDownload": "Descargar QR",
-    "qrTitle": "QR de pago",
-    "noInfo": "La administración te compartirá los datos de pago por el chat.",
     "confirmButton": "Autorizo haber recibido {monto} · Confirmar pago",
     "rejectButton": "Rechazar",
     "confirmError": "No se pudo confirmar el pago. Inténtalo de nuevo.",
-    "startError": "No se pudo iniciar el pago. Inténtalo de nuevo."
+    "startError": "No se pudo iniciar el pago. Inténtalo de nuevo.",
+    "enSede": "Pagar en la sede",
+    "enSedeHint": "Avisas ahora y pagas al llegar. Solo para insignia Diamante.",
+    "enSedeEnviando": "Avisando…",
+    "enSedeAvisado": "Listo. Paga en la sede y el equipo lo confirma aquí mismo.",
+    "enSedePorConfirmar": "Pago en sede de {monto}. Confírmalo cuando tengas el dinero.",
+    "esperandoPasarela": "Estamos confirmando tu pago. Tarda unos segundos.",
+    "rechazado": "No pudimos confirmar este pago. Puedes intentarlo otra vez.",
+    "confirmar": "Confirmar pago",
+    "rechazar": "Rechazar",
+    "rejectError": "No se pudo rechazar el pago. Inténtalo de nuevo."
   },
   "pedidoPago": {
     "eyebrow": "Último paso",
@@ -2632,18 +2707,16 @@
     "pay": "Ir a pagar",
     "changeMethod": "Pagando con {metodo} · Cambiar método",
     "hint": "Elige un método para ver el QR y los datos de pago.",
-    "validating": "Comprobante enviado. Se está validando; te notificaremos por el chat.",
+    "validating": "Estamos confirmando tu pago. Te avisamos por el chat.",
     "viewOrder": "Ver mi pedido"
   },
   "adminPagos": {
     "backToAdmin": "← Panel admin",
     "title": "Pagos pendientes",
-    "intro": "Comprobantes que los clientes subieron y esperan tu revisión. Abre uno para ver el comprobante y confirmar o rechazar el pago. Al confirmar se activa lo pagado (perfil, reserva, beat…); al rechazar, el cliente puede reenviar.",
-    "empty": "No hay pagos por revisar.",
+    "intro": "Pagos anunciados en la sede, a la espera de tu confirmación. Lo que cobra la pasarela no pasa por aquí: se confirma solo. Al confirmar se activa lo comprado (perfil, reserva, beat…).",
+    "empty": "No hay pagos por confirmar.",
     "review": "Revisar",
     "detailTitle": "Detalle del pago",
-    "receipt": "Comprobante",
-    "noReceipt": "El cliente aún no ha subido el comprobante.",
     "concepto": {
       "premium": "Perfil premium",
       "reserva": "Reserva de sesión",
@@ -2651,6 +2724,7 @@
       "pedido": "Pedido de producción",
       "gnotes": "Membresía G Notes",
       "pase": "Pase (paquete)"
-    }
+    },
+    "enSedeHint": "Confírmalo solo cuando tengas el dinero: al hacerlo se activa lo comprado."
   }
 }

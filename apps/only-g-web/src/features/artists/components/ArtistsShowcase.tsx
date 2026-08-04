@@ -19,9 +19,7 @@ import {
   matchesQuery,
   type MacroFilter,
 } from "@only-g/shared-types/talent-directory";
-import { glassSurface } from "@/components/ui/glass";
 import {
-  SearchIcon,
   SparklesIcon,
   XIcon,
   LayoutGridIcon,
@@ -35,19 +33,20 @@ import {
 } from "@/components/icons";
 import { getVisibleProfiles } from "../lib/artist-profile-repo";
 import { profileToArtist } from "../lib/profile-display";
-import { searchArtistsAI } from "../lib/ai-search";
 import { ArtistGrid } from "./ArtistGrid";
+import { DirectorySearchBar } from "./DirectorySearchBar";
+import { useDirectorySearch } from "./DirectorySearchProvider";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
-// Degradado de marca del .pen (§03): amatista claro → intenso.
-const SEARCH_BAR = `${glassSurface} flex items-center gap-2 rounded-2xl py-1.5 pr-1.5 pl-4`;
-const AI_BUTTON =
-  "font-narrow flex shrink-0 items-center gap-2 rounded-xl bg-linear-to-b from-[#a87bff] to-[#7c3aed] px-4 py-3 text-sm font-bold tracking-wide text-white uppercase shadow-[0_6px_22px_rgba(124,58,237,0.55)] ring-1 ring-inset ring-amethyst-300/40 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50";
-const SUGGESTION_CHIP =
-  "flex shrink-0 items-center gap-1.5 rounded-full bg-amethyst-500/[0.12] px-3.5 py-1.5 text-[0.8rem] text-amethyst-100 ring-1 ring-inset ring-amethyst-300/30 backdrop-blur-md transition hover:bg-amethyst-500/20";
+// `self-center` en móvil: el riel de artes de debajo ocupa todo el ancho, así que
+// las pestañas pegadas a la izquierda quedaban descolgadas. En `sm` vuelven a su
+// esquina (la fila se invierte y van a la derecha de los chips).
 const MACRO_WRAP =
-  "inline-flex shrink-0 items-center gap-1 self-start rounded-full bg-[#0a0712cc] p-1.5 ring-1 ring-inset ring-white/15 backdrop-blur-md";
+  "inline-flex shrink-0 items-center gap-1 self-center rounded-full bg-[#0a0712cc] p-1.5 ring-1 ring-inset ring-white/15 backdrop-blur-md sm:self-start";
+/** Caja del riel de artes: mismo backing que las pestañas de área (móvil). */
+const RAIL_BOX =
+  "bg-[#0a0712cc] ring-1 ring-inset ring-white/12 backdrop-blur-md";
 const MACRO_BASE =
   "font-narrow flex items-center gap-2 rounded-full px-4 py-2.5 text-xs font-bold tracking-[2px] uppercase transition sm:px-5";
 const MACRO_ON =
@@ -97,14 +96,11 @@ export function ArtistsShowcase({ fallback }: { fallback: Artist[] }) {
   const t = useTranslations("artistsPage");
   const [artists, setArtists] = useState<Artist[]>(fallback);
   const [loading, setLoading] = useState(fallback.length === 0);
-  const [query, setQuery] = useState("");
   // Disciplinas marcadas (chips). Vacío = sin filtro de disciplina.
   const [roles, setRoles] = useState<Set<Role>>(new Set());
-  // Búsqueda IA: null = filtro instantáneo; array (aun vacío) = modo IA (slugs).
-  const [aiSlugs, setAiSlugs] = useState<string[] | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  // Invalida búsquedas IA en vuelo (si el usuario escribe o dispara otra).
-  const reqId = useRef(0);
+  // La BÚSQUEDA vive en el provider: su botón está en la cabecera, que es otra
+  // rama del árbol (ver DirectorySearchProvider).
+  const { query, aiSlugs, clearSearch } = useDirectorySearch();
 
   useEffect(() => {
     let active = true;
@@ -142,32 +138,6 @@ export function ArtistsShowcase({ fallback }: { fallback: Artist[] }) {
 
   const aiActive = aiSlugs !== null;
 
-  async function runAiSearch(q?: string) {
-    const term = (q ?? query).trim();
-    if (term.length < 2) return;
-    if (q !== undefined) setQuery(q);
-    const id = ++reqId.current;
-    setAiLoading(true);
-    const { slugs } = await searchArtistsAI(term);
-    if (reqId.current !== id) return; // una interacción más nueva la reemplazó
-    setAiSlugs(slugs);
-    setAiLoading(false);
-  }
-
-  function onQueryChange(v: string) {
-    setQuery(v);
-    reqId.current++; // escribir invalida la IA en vuelo y vuelve al filtro instantáneo
-    if (aiActive) setAiSlugs(null);
-    if (aiLoading) setAiLoading(false);
-  }
-
-  function clearSearch() {
-    reqId.current++;
-    setQuery("");
-    setAiSlugs(null);
-    setAiLoading(false);
-  }
-
   function toggleRole(r: Role) {
     setRoles((prev) => {
       const next = new Set(prev);
@@ -185,14 +155,13 @@ export function ArtistsShowcase({ fallback }: { fallback: Artist[] }) {
 
   return (
     <div className="space-y-6">
-      <DirectorySearch
-        query={query}
-        aiLoading={aiLoading}
-        onQueryChange={onQueryChange}
-        onSearch={() => runAiSearch()}
-        onSuggestion={(s) => runAiSearch(s)}
-        onClear={clearSearch}
-      />
+      {/* ESCRITORIO: la barra completa, con la ayuda y los ejemplos. En móvil el
+          buscador se despliega desde la lupa de la cabecera (ArtistsHeaderActions):
+          antes, entre barra, ayuda y chips de ejemplo, lo primero que veía quien
+          entraba a ver artistas era un formulario. */}
+      <div className="hidden sm:block">
+        <DirectorySearchBar />
+      </div>
 
       <DirectoryFilters
         roles={roles}
@@ -237,86 +206,6 @@ export function ArtistsShowcase({ fallback }: { fallback: Artist[] }) {
   );
 }
 
-/** Barra de búsqueda glass + botón IA + ayuda corta + 2 chips de sugerencia. */
-function DirectorySearch({
-  query,
-  aiLoading,
-  onQueryChange,
-  onSearch,
-  onSuggestion,
-  onClear,
-}: {
-  query: string;
-  aiLoading: boolean;
-  onQueryChange: (v: string) => void;
-  onSearch: () => void;
-  onSuggestion: (s: string) => void;
-  onClear: () => void;
-}) {
-  const t = useTranslations("artistsPage");
-  const suggestions = [t("aiSuggestion1"), t("aiSuggestion2")];
-  const canSearch = query.trim().length >= 2 && !aiLoading;
-
-  return (
-    <div className="space-y-3">
-      <div className={SEARCH_BAR}>
-        <SearchIcon className="text-silver-400 size-5 shrink-0" />
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSearch();
-          }}
-          placeholder={t("searchPlaceholder")}
-          aria-label={t("searchPlaceholder")}
-          className="placeholder:text-silver-500 min-w-0 flex-1 bg-transparent py-2.5 text-base text-white outline-none [&::-webkit-search-cancel-button]:hidden"
-        />
-        {query && (
-          <button
-            type="button"
-            onClick={onClear}
-            aria-label={t("clearSearch")}
-            className="text-silver-400 shrink-0 rounded-full p-1 transition hover:text-white"
-          >
-            <XIcon className="size-4" />
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onSearch}
-          disabled={!canSearch}
-          className={AI_BUTTON}
-        >
-          <SparklesIcon className={`size-4 ${aiLoading ? "animate-pulse" : ""}`} />
-          <span className="hidden sm:inline">
-            {aiLoading ? t("aiSearching") : t("aiButton")}
-          </span>
-        </button>
-      </div>
-
-      <p className="text-silver-500 px-1 text-xs sm:text-sm">{t("aiHelper")}</p>
-
-      <div className="flex flex-wrap items-center gap-2 px-1">
-        <span className="text-silver-500 text-[0.65rem] font-semibold tracking-[2px] uppercase">
-          {t("aiTry")}
-        </span>
-        {suggestions.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => onSuggestion(s)}
-            className={SUGGESTION_CHIP}
-          >
-            <SparklesIcon className="size-3" />
-            {s}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Filtros de disciplina. Desktop: chips a la izquierda, macro tabs en la esquina
  * derecha (misma fila) para no abrumar. Móvil: macro arriba, chips en un carrusel
@@ -335,6 +224,42 @@ function DirectoryFilters({
 }) {
   const t = useTranslations("artistsPage");
   const tRoles = useTranslations("roles");
+  const railRef = useRef<HTMLDivElement>(null);
+  // Qué extremos del riel están "tocados". Arranca en true/true: sin overflow no
+  // se desvanece nada (es el caso de escritorio, donde los chips van en varias
+  // filas y no hay carrusel).
+  const [edges, setEdges] = useState({ start: true, end: true });
+
+  useEffect(() => {
+    const el = railRef.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      setEdges({
+        start: el.scrollLeft <= 1,
+        // `max <= 1` cubre el caso sin overflow: no hay nada cortado por ningún
+        // lado y el riel se pinta entero.
+        end: max <= 1 || el.scrollLeft >= max - 1,
+      });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    // El overflow depende del ancho: al girar el móvil o cambiar de breakpoint
+    // hay que recalcular, o el degradado se queda mintiendo.
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, []);
+
+  // Máscara del riel: transparente por el lado donde queda contenido oculto.
+  const mask = `linear-gradient(to right, ${
+    edges.start ? "black" : "transparent"
+  } 0, black 28px, black calc(100% - 28px), ${
+    edges.end ? "black" : "transparent"
+  } 100%)`;
 
   const macros: { id: MacroFilter; label: string; Icon: IconType }[] = [
     { id: "todos", label: t("macroTodos"), Icon: LayoutGridIcon },
@@ -363,27 +288,38 @@ function DirectoryFilters({
         })}
       </div>
 
+      {/* Riel de artes. En móvil no caben todas, y antes se cortaban a media
+          chip contra el borde de la pantalla: parecía un fallo de maquetación,
+          no algo deslizable. Ahora van dentro de una caja con el mismo lenguaje
+          que las pestañas de área, y el lado por el que queda contenido se
+          DESVANECE — un chip a medio desaparecer sí se lee como "hay más". */}
       <div
-        role="group"
-        aria-label={t("roleLabel")}
-        className="flex flex-nowrap gap-2 overflow-x-auto pb-1 [scrollbar-width:none] sm:flex-1 sm:flex-wrap sm:overflow-visible sm:pb-0 [&::-webkit-scrollbar]:hidden"
+        className={`relative rounded-full p-1.5 ${RAIL_BOX} sm:flex-1 sm:rounded-none sm:bg-transparent sm:p-0 sm:ring-0 sm:backdrop-blur-none`}
       >
-        {DIRECTORY_ROLES.map((r) => {
-          const Icon = ROLE_ICON[r] ?? MicIcon;
-          const on = roles.has(r);
-          return (
-            <button
-              key={r}
-              type="button"
-              aria-pressed={on}
-              onClick={() => onToggleRole(r)}
-              className={`${CHIP_BASE} ${on ? CHIP_ON : CHIP_OFF}`}
-            >
-              <Icon className="size-3.5" />
-              {tRoles(r)}
-            </button>
-          );
-        })}
+        <div
+          ref={railRef}
+          role="group"
+          aria-label={t("roleLabel")}
+          style={{ maskImage: mask, WebkitMaskImage: mask }}
+          className="flex snap-x flex-nowrap gap-2 overflow-x-auto scroll-smooth [scrollbar-width:none] sm:flex-wrap sm:overflow-visible [&::-webkit-scrollbar]:hidden"
+        >
+          {DIRECTORY_ROLES.map((r) => {
+            const Icon = ROLE_ICON[r] ?? MicIcon;
+            const on = roles.has(r);
+            return (
+              <button
+                key={r}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onToggleRole(r)}
+                className={`${CHIP_BASE} snap-start ${on ? CHIP_ON : CHIP_OFF}`}
+              >
+                <Icon className="size-3.5" />
+                {tRoles(r)}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

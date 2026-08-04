@@ -1,10 +1,10 @@
 /**
  * Entidad de dominio: PAGO CON WOMPI (§09 del OGM.pen).
  *
- * Convive con el pago MANUAL (comprobante + confirmación del admin): los dos
- * desembocan en el mismo sitio —`aplicarPagoConfirmado`, que concede los
- * derechos— y por eso este módulo NO sabe nada de derechos ni de membresías.
- * Solo traduce el vocabulario de Wompi al nuestro.
+ * Es la vía normal de cobro. Convive con el pago EN SEDE (efectivo, que confirma
+ * un admin): los dos desembocan en el mismo sitio —`aplicarPagoConfirmado`, que
+ * concede los derechos— y por eso este módulo NO sabe nada de derechos ni de
+ * membresías. Solo traduce el vocabulario de Wompi al nuestro.
  *
  * Tipos PUROS y portables: no importar UI ni Firebase aquí.
  */

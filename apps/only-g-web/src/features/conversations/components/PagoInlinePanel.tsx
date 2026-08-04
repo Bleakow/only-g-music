@@ -1,54 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { FileUpload, type UploadedFile } from "@/components/ui/FileUpload";
-import { Button } from "@/components/ui/Button";
 import { Alert } from "@/components/ui/Alert";
-import { CopyIcon, CheckIcon, KeyIcon } from "@/components/icons";
 import { formatCOP } from "@only-g/shared-types/service";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
-import type { DestinoPago } from "@only-g/shared-types/payment-destination";
-import {
-  instruccionPago,
-  resolverDestinoPago,
-} from "@only-g/shared-types/payment-destination";
-import type { SedeId } from "@only-g/shared-types/sede";
+import { puedePagarEnSede } from "@only-g/shared-types/payment-method";
 import type {
   PagoConcepto,
   Conversation,
 } from "@only-g/shared-types/conversation";
 import type { Insignia } from "@only-g/shared-types/artist-profile";
-import { PaymentMethodPicker } from "./PaymentMethodPicker";
-import { PaymentQr } from "./PaymentQr";
-import { getCompanyPaymentDest } from "../lib/payment-config-repo";
-import { getSedeById } from "@/features/sedes/lib/sedes-repo";
 import {
-  createPaymentConversation,
+  createCashPaymentConversation,
   createWompiPaymentConversation,
-  sendConversationMessage,
-  marcarComprobanteEnRevision,
 } from "../lib/conversations-repo";
 import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 
-const COPY_CHIP =
-  "inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs text-silver-200 transition hover:border-amethyst-300/60 hover:text-white";
-
 /**
- * Panel de pago INLINE reutilizable. "Pagar" → elige método → QR + llave Bre-B +
- * subir comprobante, TODO en la misma pantalla (sin abrir la burbuja de chat).
- * El método se puede cambiar (reabre el selector). Al enviar el comprobante crea
- * el chat de pago del `concepto`, manda la imagen, lo marca en revisión y avisa
- * al padre vía `onSent` (que decide qué mostrar después). Lo comparten el
- * checkout de compra (`PedidoPagoInline`) y el pago de reserva/perfil
- * (`SolicitudDetail`) para que NO vuelvan a divergir.
+ * Panel de pago INLINE reutilizable (reserva, pedido, perfil…): cobra por
+ * PASARELA en la misma pantalla, sin abrir la burbuja de chat.
+ *
+ * Aquí vivía el pago manual —elegir método, QR, llave Bre-B, subir comprobante y
+ * esperar a que alguien lo mirara— y ya no existe: cobrar por pasarela y mantener
+ * además un circuito que un humano revisa a ojo son dos verdades sobre el mismo
+ * dinero, y la de a mano siempre acaba desactualizada.
+ *
+ * Queda UNA excepción: pagar EN SEDE, que la pasarela no cubre porque es dinero
+ * físico. Solo se ofrece a quien tiene la insignia máxima (perk de confianza) y
+ * no cobra nada por sí mismo: anuncia el pago y el equipo lo confirma al
+ * recibirlo.
  */
 export function PagoInlinePanel({
   uid,
   concepto,
   pagoRef,
   monto,
-  sede,
   insignia = null,
   conceptoLabel,
   onSent,
@@ -59,32 +45,24 @@ export function PagoInlinePanel({
    *  propósito: React intercepta esa prop. */
   pagoRef: NonNullable<Conversation["ref"]>;
   monto: number;
-  /** Sede: su destino de pago (QR propio) gana sobre el de la compañía. */
-  sede: SedeId;
   insignia?: Insignia | null;
   /** Nombre legible de lo que se compra, para el resumen del checkout. */
   conceptoLabel?: string;
-  /** Se llama con el id del chat de pago tras enviar el comprobante. */
+  /** Se llama con el id del hilo de pago cuando ya hay algo que seguir. */
   onSent?: (convId: string) => void;
 }) {
   const t = useTranslations();
-  const [destino, setDestino] = useState<DestinoPago>({});
-  const [showPicker, setShowPicker] = useState(false);
-  const [metodo, setMetodo] = useState<MetodoPago | null>(null);
-  const [comprobante, setComprobante] = useState<UploadedFile[]>([]);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [convId, setConvId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [copiedBreB, setCopiedBreB] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [wompiConvId, setWompiConvId] = useState<string | null>(null);
   const [wompiBusy, setWompiBusy] = useState(false);
+  const [sedeBusy, setSedeBusy] = useState(false);
+  const [sedeAvisada, setSedeAvisada] = useState(false);
 
   /**
    * Abre el checkout de Wompi. Antes crea el hilo del pago porque el servidor
-   * saca de ahí el importe: así el navegador nunca dice cuánto hay que cobrar.
-   * El hilo se reusa entre reintentos (no se crea uno por cada clic).
+   * saca de ahí QUÉ se compra (y recalcula el importe). El hilo se reusa entre
+   * reintentos: no se crea uno por cada clic.
    */
   async function abrirCheckout() {
     setError(null);
@@ -110,208 +88,71 @@ export function PagoInlinePanel({
     }
   }
 
-  // Destino de pago: override de la sede si lo tiene, si no el default de la
-  // compañía (misma política que PagoPanel: resolverDestinoPago(sede ?? company)).
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const company = await getCompanyPaymentDest();
-      let dest = company;
-      try {
-        const sedeDoc = await getSedeById(sede);
-        dest = resolverDestinoPago(sedeDoc?.pago, company);
-      } catch {
-        /* sin sede: se queda el default de la compañía */
-      }
-      if (active) setDestino(dest);
-    })().catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [sede]);
-
-  const instr = metodo ? instruccionPago(metodo, destino) : null;
-  const metodoLabel = metodo ? t(`chat.metodos.${metodo}`) : "";
-
-  async function copiar(
-    valor: string | undefined,
-    setFlag: (v: boolean) => void,
-  ) {
-    if (!valor) return;
+  /** Anuncia un pago EN SEDE: queda a la espera de que el equipo lo confirme. */
+  async function pagarEnSede() {
+    setError(null);
+    setSedeBusy(true);
     try {
-      await navigator.clipboard.writeText(valor);
-      setFlag(true);
-      setTimeout(() => setFlag(false), 1500);
-    } catch {
-      /* sin clipboard: se copia a mano */
+      const cid = await createCashPaymentConversation({
+        uid,
+        concepto,
+        ref: pagoRef,
+        monto,
+      });
+      setSedeAvisada(true);
+      onSent?.(cid);
+    } catch (e) {
+      console.error("[pago] en sede:", e);
+      setError(t("pago.startError"));
+    } finally {
+      setSedeBusy(false);
     }
   }
 
-  async function enviarComprobante() {
-    if (!comprobante[0] || !metodo) return;
-    setBusy(true);
-    setError(null);
-    try {
-      // Crea el chat de pago la primera vez; si ya existe, reusa el id (el método
-      // quedó fijado al crearlo).
-      const cid =
-        convId ??
-        (await createPaymentConversation({
-          uid,
-          concepto,
-          ref: pagoRef,
-          metodo,
-          monto,
-        }));
-      setConvId(cid);
-      await sendConversationMessage(cid, {
-        from: uid,
-        tipo: "comprobante",
-        texto: t("pago.receiptSent"),
-        attachmentUrl: comprobante[0].url,
-        attachmentName: comprobante[0].name,
-      });
-      await marcarComprobanteEnRevision(cid);
-      setComprobante([]);
-      onSent?.(cid);
-    } catch (e) {
-      console.error("[pago-inline] comprobante:", e);
-      setError(t("pago.startError"));
-    } finally {
-      setBusy(false);
-    }
+  if (sedeAvisada) {
+    return (
+      <Alert tone="info">{t("pago.enSedeAvisado")}</Alert>
+    );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* Pago con pasarela: la vía PRINCIPAL. Se cobra al instante y sin que
-          nadie tenga que revisar un comprobante a mano. El bloque manual de
-          abajo queda como alternativa mientras se deprecca. */}
+    <div className="flex flex-col gap-3">
       <button
         type="button"
         onClick={abrirCheckout}
         disabled={wompiBusy}
         className="btn-amethyst w-full rounded-full px-6 py-3 text-center text-sm font-semibold tracking-[2px] uppercase disabled:opacity-60"
       >
-        {wompiBusy ? t("checkout.procesando") : t("checkout.pagar", {
-          monto: formatCOP(monto),
-        })}
+        {wompiBusy
+          ? t("checkout.procesando")
+          : t("checkout.pagar", { monto: formatCOP(monto) })}
       </button>
 
-      <button
-        type="button"
-        onClick={() => setShowPicker(true)}
-        className="text-silver-400 min-h-11 w-full text-xs font-semibold tracking-[1px] uppercase transition hover:text-white"
-      >
-        {metodo
-          ? t("pedidoPago.changeMethod", { metodo: metodoLabel })
-          : t("pedidoPago.pay")}
-      </button>
-
-      {instr && (
-        <div className="border-amethyst-300/30 bg-amethyst-500/5 rounded-xl border p-4">
-          <p className="font-semibold text-white">
-            {t("pago.payWith", {
-              monto: formatCOP(monto),
-              metodo: metodoLabel,
-            })}
-          </p>
-
-          {instr.valor && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-silver-100 font-mono text-sm">
-                {instr.valor}
-              </span>
-              <button
-                type="button"
-                onClick={() => copiar(instr.valor, setCopied)}
-                className={COPY_CHIP}
-              >
-                {copied ? (
-                  <CheckIcon className="size-3.5" />
-                ) : (
-                  <CopyIcon className="size-3.5" />
-                )}
-                {copied ? t("pago.copied") : t("pago.copy")}
-              </button>
-            </div>
-          )}
-
-          {instr.llaveBreB && (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-amethyst-200 inline-flex items-center gap-1.5 text-xs font-semibold tracking-[1px] uppercase">
-                <KeyIcon className="size-4" />
-                {t("pago.breB")}
-              </span>
-              <span className="text-silver-100 font-mono text-sm">
-                {instr.llaveBreB}
-              </span>
-              <button
-                type="button"
-                onClick={() => copiar(instr.llaveBreB, setCopiedBreB)}
-                className={COPY_CHIP}
-              >
-                {copiedBreB ? (
-                  <CheckIcon className="size-3.5" />
-                ) : (
-                  <CopyIcon className="size-3.5" />
-                )}
-                {copiedBreB ? t("pago.copied") : t("pago.copy")}
-              </button>
-            </div>
-          )}
-
-          {instr.qrUrl && <PaymentQr url={instr.qrUrl} label={metodoLabel} />}
-
-          {instr.nota && (
-            <p className="text-silver-200 mt-2 text-sm">{instr.nota}</p>
-          )}
-
-          <p className="text-silver-400 mt-3 text-xs">
-            {t("pago.instructions")}
-          </p>
-          <div className="mt-3">
-            <FileUpload
-              value={comprobante}
-              onChange={setComprobante}
-              accept="image/*,application/pdf"
-            />
-          </div>
-          <Button
-            className="mt-3 w-full"
-            onClick={enviarComprobante}
-            loading={busy}
-            disabled={comprobante.length === 0}
+      {puedePagarEnSede(insignia) && (
+        <div>
+          <button
+            type="button"
+            onClick={pagarEnSede}
+            disabled={sedeBusy}
+            className="text-silver-300 min-h-11 w-full text-xs font-semibold tracking-[1px] uppercase transition hover:text-white disabled:opacity-60"
           >
-            {t("pago.uploadReceipt")}
-          </Button>
-          {error && (
-            <Alert tone="error" className="mt-2">
-              {error}
-            </Alert>
-          )}
+            {sedeBusy ? t("pago.enSedeEnviando") : t("pago.enSede")}
+          </button>
+          <p className="text-silver-500 text-center text-[0.7rem]">
+            {t("pago.enSedeHint")}
+          </p>
         </div>
       )}
 
-      {showPicker && (
-        <PaymentMethodPicker
-          insignia={insignia}
-          onPick={(m) => {
-            setMetodo(m);
-            setShowPicker(false);
-          }}
-          onClose={() => setShowPicker(false)}
-        />
-      )}
+      {error && <Alert tone="error">{error}</Alert>}
 
       {wompiConvId && (
         <WompiCheckout
           open={checkoutOpen}
           onClose={() => {
             setCheckoutOpen(false);
-            // El padre decide qué enseñar tras pagar (igual que con el
-            // comprobante). Si el pago no se completó, el hilo sigue abierto y
-            // el botón lo reabre sin crear otro.
+            // El padre decide qué enseñar tras pagar. Si el pago no se completó,
+            // el hilo sigue abierto y el botón lo reabre sin crear otro.
             onSent?.(wompiConvId);
           }}
           conversationId={wompiConvId}

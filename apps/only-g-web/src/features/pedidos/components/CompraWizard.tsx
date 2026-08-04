@@ -341,7 +341,6 @@ export function CompraWizard() {
         pedidoId={doneId}
         total={total}
         uid={user?.uid ?? ""}
-        sede={sede}
       />
     );
   }

@@ -5,15 +5,13 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { Beat } from "@only-g/shared-types/beat";
 import { formatCOP } from "@only-g/shared-types/service";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { listBeats } from "@/features/beats/lib/beats-repo";
 import { comprarBeat } from "@/features/beats/lib/beat-sales-repo";
 import { ContactBeatmakerButton } from "@/features/beats/components/ContactBeatmakerButton";
 import { MUSIC_GENRES } from "@/features/artists/data/genres";
 import { useAuth } from "@/features/auth/components/AuthProvider";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 import {
   SearchableSelect,
   type SelectOption,
@@ -35,10 +33,9 @@ const FILTER_TRIGGER =
  * Catálogo público de beats: filtra por género y por beatmaker (derivado de
  * los beats cargados), y deja escuchar un preview con un único reproductor
  * compartido (al abrir uno se cierra el que sonaba). Comprar abre el mismo
- * flujo de pago que `MembershipPayButton` (elegir método → crear el chat de
- * pago → abrir la burbuja), reutilizando `PaymentMethodPicker` +
- * `openConversation`; la venta y la entrega del máster las resuelve el
- * servidor al confirmar el pago.
+ * flujo de pago que el resto de la app: hilo de pago + checkout de la pasarela
+ * en la misma pantalla; la venta y la entrega del máster las resuelve el
+ * servidor cuando el webhook confirma el cobro.
  */
 export function BeatsCatalog() {
   const t = useTranslations();
@@ -201,29 +198,29 @@ function BeatCard({
   const { user } = useAuth();
   const { precioBeat } = usePrecios();
   const router = useRouter();
-  const [showPicker, setShowPicker] = useState(false);
+  // El hilo del pago se reusa entre reintentos: no nace uno por cada clic.
+  const [convId, setConvId] = useState<string | null>(null);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [comprando, setComprando] = useState(false);
   const [error, setError] = useState(false);
 
   const esPropio = !!user && beat.beatmakerUid === user.uid;
 
-  function onComprarClick() {
+  async function onComprarClick() {
     if (!user) {
       router.push(`/login?next=${encodeURIComponent("/beats")}`);
       return;
     }
     setError(false);
-    setShowPicker(true);
-  }
-
-  async function iniciarCompra(metodo: MetodoPago) {
-    if (!user) return;
-    setShowPicker(false);
+    if (convId) {
+      setCheckoutOpen(true);
+      return;
+    }
     setComprando(true);
-    setError(false);
     try {
-      const conversationId = await comprarBeat(user.uid, beat, metodo, precioBeat);
-      openConversation(conversationId);
+      const id = await comprarBeat(user.uid, beat, precioBeat);
+      setConvId(id);
+      setCheckoutOpen(true);
     } catch (err) {
       console.error("[beats-catalog] comprar:", err);
       setError(true);
@@ -316,10 +313,9 @@ function BeatCard({
           ) : (
             <button
               type="button"
-              onClick={onComprarClick}
+              onClick={() => void onComprarClick()}
               disabled={comprando}
               aria-label={t("beats.comprar")}
-              title={t("beats.elegirMetodo")}
               className="hover:border-amethyst-300/60 hover:text-amethyst-200 flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-xs tracking-[1px] text-white uppercase transition disabled:cursor-not-allowed disabled:opacity-50"
             >
               {comprando && <SpinnerIcon className="size-3.5 animate-spin" />}
@@ -342,15 +338,13 @@ function BeatCard({
         )}
       </div>
 
-      {showPicker && (
-        // `insignia={null}` es A PROPÓSITO: el efectivo requiere insignia
-        // diamante de un PERFIL DE ARTISTA, y aquí el comprador es genérico
-        // (no necesariamente artista) — no cargamos su perfil solo para esto,
-        // así que el picker bloquea efectivo por defecto para esta compra.
-        <PaymentMethodPicker
-          onPick={iniciarCompra}
-          onClose={() => setShowPicker(false)}
-          insignia={null}
+      {convId && (
+        <WompiCheckout
+          open={checkoutOpen}
+          onClose={() => setCheckoutOpen(false)}
+          conversationId={convId}
+          monto={precioBeat}
+          concepto={beat.titulo}
         />
       )}
     </div>

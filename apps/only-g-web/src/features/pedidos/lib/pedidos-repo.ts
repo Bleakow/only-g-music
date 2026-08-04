@@ -7,9 +7,9 @@
  * reserva, misma proyección `daySlots` que las reservas sueltas) y crea las de
  * ENTREGABLE sin slot. Si algún slot está tomado, aborta sin escribir nada.
  *
- * La UI nunca toca Firestore directo. El pago se maneja en un chat único sobre el
- * pedido; al confirmar el comprobante (admin), una Cloud Function confirma todas
- * las reservas del pedido a la vez.
+ * La UI nunca toca Firestore directo. El pago se maneja en un hilo único sobre el
+ * pedido; al cobrarse, una Cloud Function confirma todas las reservas del pedido
+ * a la vez.
  */
 import {
   collection,
@@ -19,7 +19,6 @@ import {
   query,
   where,
   orderBy,
-  updateDoc,
   runTransaction,
   serverTimestamp,
   type DocumentData,
@@ -28,7 +27,6 @@ import { db } from "@/lib/firebase";
 import {
   type Pedido,
   type PedidoLinea,
-  type PedidoEstado,
   type LineaTipo,
   cantidadSana,
 } from "@only-g/shared-types/pedido";
@@ -87,7 +85,6 @@ function toPedido(id: string, data: DocumentData): Pedido {
     clientName: data.clientName ?? undefined,
     clientEmail: data.clientEmail ?? undefined,
     paymentConversationId: data.paymentConversationId ?? undefined,
-    comprobanteUrl: data.comprobanteUrl ?? undefined,
     estado: data.estado,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
   };
@@ -221,21 +218,3 @@ export async function listPedidosByUser(uid: string): Promise<Pedido[]> {
   return snap.docs.map((d) => toPedido(d.id, d.data()));
 }
 
-/** El cliente marca el pago del pedido en revisión tras subir el comprobante. */
-export async function marcarPedidoPagoEnRevision(
-  id: string,
-  comprobanteUrl: string,
-): Promise<void> {
-  await updateDoc(doc(db, PEDIDOS, id), {
-    estado: "pago_en_revision" satisfies PedidoEstado,
-    comprobanteUrl,
-  });
-}
-
-/** Vincula la conversación de pago creada para el pedido. */
-export async function setPedidoPaymentConversation(
-  id: string,
-  paymentConversationId: string,
-): Promise<void> {
-  await updateDoc(doc(db, PEDIDOS, id), { paymentConversationId });
-}

@@ -40,14 +40,13 @@ import {
   type PlayerSize,
   type FeaturedMedia,
   type GalleryItem,
-  type GallerySpan,
-  GALLERY_SPAN_CYCLE,
   MAX_DESTACADOS,
   perfilVisible,
   compararOrden,
   effectiveDisciplines,
   toSlug,
 } from "@only-g/shared-types/artist-profile";
+import { esGalleryLayoutId } from "@only-g/shared-types/gallery-layout";
 import type { Role } from "@only-g/shared-types/user";
 
 const COLLECTION = "artistProfiles";
@@ -66,16 +65,18 @@ const COLLECTION = "artistProfiles";
  * Normaliza la galería: acepta el formato nuevo (objetos {url, span}) y el viejo
  * (array de strings, que se mapea a tamaño cuadrado). Descarta entradas sin url.
  */
+/**
+ * Fotos de la galería. Admite las tres formas que hay en la base: una URL
+ * suelta, `{url}` y el antiguo `{url, span}` — el `span` (el tamaño que elegía
+ * cada foto) ya no se lee: la composición la manda la plantilla.
+ */
 function toGallery(raw: unknown): GalleryItem[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .map((it): GalleryItem => {
-      if (typeof it === "string") return { url: it, span: "sq" };
+      if (typeof it === "string") return { url: it };
       const o = (it ?? {}) as Partial<GalleryItem>;
-      const span = GALLERY_SPAN_CYCLE.includes(o.span as GallerySpan)
-        ? (o.span as GallerySpan)
-        : "sq";
-      return { url: String(o.url ?? ""), span };
+      return { url: String(o.url ?? "") };
     })
     .filter((it) => it.url);
 }
@@ -128,6 +129,9 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     trayectoria:
       (data.trayectoria as ArtistProfile["trayectoria"]) ?? undefined,
     gallery: toGallery(data.gallery),
+    galleryLayout: esGalleryLayoutId(data.galleryLayout)
+      ? data.galleryLayout
+      : undefined,
     tracks: (data.tracks as ArtistProfile["tracks"]) ?? [],
     entryTrackUrl: data.entryTrackUrl ?? undefined,
     playerOverlay: data.playerOverlay ?? undefined,

@@ -3,7 +3,7 @@
  * Nequi / efectivo). Tipos puros + un helper de completitud. Sin UI, sin
  * Firebase, sin i18n.
  *
- * OJO: esto es la dirección INVERSA de `DestinoPago` (payment-destination.ts).
+ * OJO: esto es la dirección INVERSA del cobro: aquí Only G PAGA, no cobra.
  * Allí el cliente paga A la empresa; aquí la empresa paga AL socio. Son dominios
  * distintos y NO deben mezclarse. Doc dedicado `datosPago/{uid}` (privado): el
  * dueño escribe los suyos, el admin los lee para poder pagar (ver firestore.rules).

@@ -6,7 +6,6 @@ import { GlassButton } from "@/components/ui/GlassButton";
 import { GlassModal } from "@/components/ui/GlassModal";
 import { EditIcon, PlusIcon, SpinnerIcon } from "@/components/icons";
 import type { Sede, SedeId } from "@only-g/shared-types/sede";
-import type { DestinoPago } from "@only-g/shared-types/payment-destination";
 import { toSlug } from "@only-g/shared-types/artist-profile";
 import {
   getAllSedes,
@@ -14,7 +13,6 @@ import {
   createSede,
   type SedeOverride,
 } from "@/features/sedes/lib/sedes-repo";
-import { DestinoPagoFields } from "./DestinoPagoFields";
 import { SedeProductores } from "./SedeProductores";
 import { AdminPageHeader, adminCard } from "./admin-ui";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -50,7 +48,7 @@ function Field({
 
 /**
  * Gestión de SEDES/estudios (SOLO admin). Edita el override de las sedes de la
- * semilla (ciudad, dirección, horario, destino de pago propio) y permite CREAR
+ * semilla (ciudad, dirección, horario) y permite CREAR
  * sedes nuevas: el id se deriva como slug del nombre y el doc se persiste
  * completo en Firestore (`sedes/{id}`, ver `createSede`). Preserva los IDs de
  * la semilla (barranquilla/bogota) → no afecta reservas/disponibilidad
@@ -110,7 +108,6 @@ export function AdminEstudios() {
       ciudad: s.ciudad,
       direccion: s.direccion,
       horario: s.horario,
-      pago: s.pago,
     });
     setError(null);
   }
@@ -119,29 +116,15 @@ export function AdminEstudios() {
     setForm((prev) => ({ ...prev, ...p }));
   }
 
-  function patchPago(p: Partial<DestinoPago>) {
-    setForm((prev) => ({ ...prev, pago: { ...prev.pago, ...p } }));
-  }
-
   async function guardar() {
     if (!editId) return;
     setSaving(true);
     setError(null);
     try {
-      const p = form.pago ?? {};
-      const pago: DestinoPago = {
-        telefono: p.telefono?.trim() || undefined,
-        paypal: p.paypal?.trim() || undefined,
-        correo: p.correo?.trim() || undefined,
-        llaveBreB: p.llaveBreB?.trim() || undefined,
-        qrUrl: p.qrUrl || undefined,
-        nota: p.nota?.trim() || undefined,
-      };
       await setSedeOverride(editId, {
         ciudad: form.ciudad?.trim() || undefined,
         direccion: form.direccion?.trim() || undefined,
         horario: form.horario?.trim() || undefined,
-        pago: Object.values(pago).some(Boolean) ? pago : undefined,
       });
       await cargar();
       setEditId(null);
@@ -239,11 +222,6 @@ export function AdminEstudios() {
                   <p className="text-silver-400 truncate text-sm">
                     {s.ciudad} · {s.direccion}
                   </p>
-                  <p className="text-silver-500 text-xs">
-                    {s.pago
-                      ? t("adminEstudios.pagoPropio")
-                      : t("adminEstudios.pagoDefault")}
-                  </p>
                 </div>
                 <button
                   type="button"
@@ -281,20 +259,6 @@ export function AdminEstudios() {
             value={form.horario ?? ""}
             onChange={(v) => patch({ horario: v })}
           />
-
-          <div className="border-t border-white/10 pt-4">
-            <p className="text-amethyst-200 text-xs font-semibold tracking-[1px] uppercase">
-              {t("adminEstudios.pagoTitle")}
-            </p>
-            <p className="text-silver-400 mt-0.5 mb-3 text-[11px]">
-              {t("adminEstudios.pagoHint")}
-            </p>
-            <DestinoPagoFields
-              value={form.pago ?? {}}
-              onChange={patchPago}
-              onError={setError}
-            />
-          </div>
 
           <div className="border-t border-white/10 pt-4">
             <p className="text-amethyst-200 text-xs font-semibold tracking-[1px] uppercase">

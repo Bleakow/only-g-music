@@ -264,8 +264,8 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
         </p>
       )}
 
-      {/* Acción: pago de la reserva → panel de pago INLINE (QR + llave Bre-B +
-          subir comprobante en la MISMA ventana, sin abrir la burbuja de chat). */}
+      {/* Acción: pago de la reserva → panel de pago INLINE (checkout de la
+          pasarela en la MISMA ventana, sin abrir la burbuja de chat). */}
       {reserva && reserva.estado === "pendiente_pago" && !pagoEnviado && (
         <section className="mt-6 rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
           <h2 className="font-narrow text-xl font-bold text-white uppercase">
@@ -279,7 +279,6 @@ export function SolicitudDetail({ tipo, id }: { tipo: Tipo; id: string }) {
             concepto="reserva"
             pagoRef={{ kind: "booking", id: reserva.id }}
             monto={reserva.amount ?? 0}
-            sede={reserva.sede}
             insignia={insignia}
             onSent={() => setPagoEnviado(true)}
           />

@@ -17,8 +17,7 @@ import { httpsCallable } from "firebase/functions";
 import { db, functions } from "@/lib/firebase";
 import type { Beat } from "@only-g/shared-types/beat";
 import type { BeatSale } from "@only-g/shared-types/beat-sale";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
+import { createWompiPaymentConversation } from "@/features/conversations/lib/conversations-repo";
 
 const COLLECTION = "beatSales";
 
@@ -42,25 +41,23 @@ function toBeatSale(id: string, data: DocumentData): BeatSale {
 }
 
 /**
- * Inicia la compra de un beat: abre el chat de pago existente (mismo flujo que
- * premium/reserva) con el método elegido y el `precio` vigente del catálogo. El
- * precio se RECIBE del componente (que lo saca de `usePrecios()`), NO se importa
- * la constante: así el monto que ve el comprador == el que se le cobrará, sin
- * acoplar este repo a React. El server re-valida el monto (config-driven) al
- * confirmar. La venta (`BeatSale`) y la entrega del máster las crea el servidor
+ * Inicia la compra de un beat: abre el hilo de pago por PASARELA (mismo flujo
+ * que premium/reserva) con el `precio` vigente del catálogo. El precio se RECIBE
+ * del componente (que lo saca de `usePrecios()`), NO se importa la constante:
+ * así el monto que ve el comprador == el que se le cobrará, sin acoplar este
+ * repo a React. El server recalcula el importe desde el catálogo al cobrar. La
+ * venta (`BeatSale`) y la entrega del máster las crea el servidor
  * (`confirmPayment` → `confirmarPagoBeat`), no este repo.
  */
 export async function comprarBeat(
   buyerUid: string,
   beat: Beat,
-  metodo: MetodoPago,
   precio: number,
 ): Promise<string> {
-  return createPaymentConversation({
+  return createWompiPaymentConversation({
     uid: buyerUid,
     concepto: "beat",
     ref: { kind: "beat", id: beat.id },
-    metodo,
     monto: precio,
   });
 }

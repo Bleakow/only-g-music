@@ -21,6 +21,7 @@ import {
   MicIcon,
   MusicIcon,
   PlayIcon,
+  PlusIcon,
   RouteIcon,
   RulerIcon,
   ShareIcon,
@@ -69,13 +70,17 @@ export function SectionManager({
   disciplines,
   prefs,
   onChange,
-  onRequestTag,
+  onManageArtes,
 }: {
   disciplines: Role[] | undefined;
   prefs: SectionPrefs | undefined;
   onChange: (next: SectionPrefs) => void;
-  /** Pedirle al equipo una etiqueta que aún no tienes. */
-  onRequestTag?: (role: Role) => void;
+  /**
+   * Ir a "Perfiles y convenios" a activar artes. Se omite CUANDO YA ESTÁS ahí
+   * (el gestor se reusa en esa ventana): sin esta prop no se pinta ni el chip
+   * `+` ni el botón de las bloqueadas, que llevarían a la página actual.
+   */
+  onManageArtes?: () => void;
 }) {
   const t = useTranslations();
   const { base, unlocked, locked } = groupSections(disciplines);
@@ -96,7 +101,7 @@ export function SectionManager({
           <p className="text-silver-400 mt-0.5 text-xs">
             {t("sections.tagsHint")}
           </p>
-          <div className="mt-4 flex flex-wrap gap-2.5">
+          <div className="mt-4 flex flex-wrap items-center gap-2.5">
             {(disciplines ?? []).map((r) => (
               <ProfileChip key={r} icon={<TagIcon className="size-3.5" />}>
                 {t(`roles.${r}`)}
@@ -106,6 +111,20 @@ export function SectionManager({
               <p className="text-silver-500 text-xs">
                 {t("sections.tagsEmpty")}
               </p>
+            )}
+            {/* Chip "+": la salida desde el editor hacia donde SÍ se cambian las
+                artes. Va junto a las etiquetas y no en un menú porque es ahí
+                donde el artista se pregunta "¿y si además hago otra cosa?". */}
+            {onManageArtes && (
+              <button
+                type="button"
+                onClick={onManageArtes}
+                title={t("sections.addTag")}
+                className="text-amethyst-200 border-amethyst-300/40 hover:bg-amethyst-500/15 hover:border-amethyst-300/70 inline-flex min-h-9 items-center gap-1.5 rounded-full border border-dashed px-3.5 text-xs font-semibold transition"
+              >
+                <PlusIcon className="size-3.5" />
+                {t("sections.addTag")}
+              </button>
             )}
           </div>
         </div>
@@ -156,9 +175,7 @@ export function SectionManager({
               id={def.id}
               label={t(`sections.item.${def.id}`)}
               requires={t(`roles.${requires}`)}
-              onRequest={
-                onRequestTag ? () => onRequestTag(requires) : undefined
-              }
+              onRequest={onManageArtes}
             />
           ))}
         </SectionGroup>

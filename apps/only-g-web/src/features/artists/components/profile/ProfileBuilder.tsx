@@ -43,10 +43,8 @@ import type {
   TrayectoriaItem,
 } from "@only-g/shared-types/profile-role-data";
 import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import {
-  openChat,
-  openConversation,
-} from "@/features/conversations/lib/open-conversation";
+import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { useRouter } from "@/i18n/navigation";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
 import type { MetodoPago } from "@only-g/shared-types/payment-method";
@@ -178,6 +176,7 @@ export function ProfileBuilder({
   adminMode?: boolean;
 } = {}) {
   const t = useTranslations();
+  const router = useRouter();
   const { user, account, refreshAccount } = useAuth();
   const { precioPerfil } = usePrecios();
   const slug = adminMode ? (slugOverride ?? "") : (account?.artistSlug ?? "");
@@ -1668,24 +1667,6 @@ export function ProfileBuilder({
         </div>
       </Block>
 
-      {/* Gestor de secciones (§05): tus etiquetas deciden qué puedes mostrar, y
-          tú decides qué muestras. Sustituye a la vieja lista de "tus artes" de
-          solo lectura — las etiquetas siguen siendo del equipo, pero ahora se ve
-          para qué sirven. */}
-      <Block title={t("sections.sectionTitle")}>
-        <p className="text-silver-400 mb-5 text-sm leading-relaxed">
-          {t("sections.sectionHint")}
-        </p>
-        <SectionManager
-          disciplines={disciplines}
-          prefs={sectionPrefs}
-          onChange={setSectionPrefs}
-          // Las etiquetas las asigna el equipo (las reglas las cierran al
-          // cliente), así que "pedirla" abre el chat en vez de concederla sola.
-          onRequestTag={() => openChat()}
-        />
-      </Block>
-
       {/* ── Secciones por ETIQUETA (§05) ──────────────────────────────────
           Solo se piden los datos de lo que tu etiqueta desbloquea Y tienes
           encendido: a un beatmaker no se le pregunta por su talla de calzado. */}
@@ -1835,6 +1816,25 @@ export function ProfileBuilder({
           value={relatedArtists}
           onChange={setRelatedArtists}
           excludeSlug={slug}
+        />
+      </Block>
+
+      {/* Gestor de secciones (§05), EL ÚLTIMO bloque a propósito: decide qué
+          bloques de arriba existen, así que puesto en medio parecía un ajuste
+          más de la misma altura. Aquí se lee como lo que es — el resumen de qué
+          enseña tu perfil. La gestión completa (activar artes, convenios) vive
+          en "Perfiles y convenios": aquí solo se marca y desmarca. */}
+      <Block title={t("sections.sectionTitle")}>
+        <p className="text-silver-400 mb-5 text-sm leading-relaxed">
+          {t("sections.sectionHint")}
+        </p>
+        <SectionManager
+          disciplines={disciplines}
+          prefs={sectionPrefs}
+          onChange={setSectionPrefs}
+          // Las artes ya no se piden por chat: hay una ventana para activarlas
+          // (las presentacionales) o pedir su convenio (beatmaker/modelo).
+          onManageArtes={() => router.push("/artista/perfiles")}
         />
       </Block>
 

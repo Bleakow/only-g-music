@@ -7,12 +7,23 @@
  * Tipos puros y portables — no importar UI ni Firebase aquí.
  */
 
-/** Tipos de convenio disponibles hoy. `cantante` NO usa convenio: es self-serve. */
-export type ConvenioTipo = "productor" | "beatmaker";
+/**
+ * Artes y funciones que EXIGEN convenio. El resto (cantante, bailarín, DJ,
+ * presentador) es autoservicio: se enciende desde "Perfiles y convenios".
+ *
+ * `beatmaker` y `modelo` son además ARTES (desbloquean secciones del perfil);
+ * `productor` no lo es: es una función comercial atada a una sede, sin secciones
+ * propias. Por eso esta lista no coincide con `ARTES_CON_CONVENIO` de `user.ts`.
+ */
+export type ConvenioTipo = "productor" | "beatmaker" | "modelo";
 
 export type ConvenioEstado = "pendiente" | "aprobada" | "rechazada";
 
-export const CONVENIO_TIPOS: ConvenioTipo[] = ["productor", "beatmaker"];
+export const CONVENIO_TIPOS: ConvenioTipo[] = [
+  "productor",
+  "beatmaker",
+  "modelo",
+];
 
 export interface ConvenioRequest {
   id: string;

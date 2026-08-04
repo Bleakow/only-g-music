@@ -13,7 +13,7 @@ import {
   onDocumentWritten,
 } from "firebase-functions/v2/firestore";
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import * as logger from "firebase-functions/logger";
 import { initializeApp } from "firebase-admin/app";
@@ -23,6 +23,14 @@ import { notify, type NotifEvento } from "./notify";
 import { notifyAdminWhatsApp, deepLink } from "./whatsapp";
 import { buildSearchIndex, needsReindex } from "./artist-index";
 import { buildSocialStats } from "./social-stats";
+import {
+  crearTransaccion,
+  firmaIntegridad,
+  obtenerAcceptanceToken,
+  verificarChecksum,
+  type WompiEvent,
+} from "./wompi";
+import type { WompiMetodo } from "@only-g/shared-types/wompi";
 // SOLO el TIPO (se borra al compilar). NO importar VALORES del paquete: functions
 // se compila con tsc sin bundler y el paquete exporta `.ts` fuente → un import de
 // valor haría `require` de un .ts en runtime y fallaría el deploy. Por eso el
@@ -43,6 +51,17 @@ const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const YOUTUBE_API_KEY = defineSecret("YOUTUBE_API_KEY");
 const SPOTIFY_CLIENT_ID = defineSecret("SPOTIFY_CLIENT_ID");
 const SPOTIFY_CLIENT_SECRET = defineSecret("SPOTIFY_CLIENT_SECRET");
+/**
+ * Wompi (§09). La llave PÚBLICA no es un secreto —el navegador la usa para
+ * tokenizar tarjetas— pero se guarda aquí igual para que las cuatro se
+ * aprovisionen de una vez y no quede ninguna suelta en el repo.
+ */
+const WOMPI_PUBLIC_KEY = defineSecret("WOMPI_PUBLIC_KEY");
+const WOMPI_PRIVATE_KEY = defineSecret("WOMPI_PRIVATE_KEY");
+/** Firma el importe de cada transacción (ver `firmaIntegridad`). */
+const WOMPI_INTEGRITY_SECRET = defineSecret("WOMPI_INTEGRITY_SECRET");
+/** Verifica que un webhook viene de Wompi y no de un curioso. */
+const WOMPI_EVENTS_SECRET = defineSecret("WOMPI_EVENTS_SECRET");
 /** Mantener en sync con `src/domain/profile-order.ts`. */
 const PRECIO_PERFIL = 80000;
 /** Meses de vigencia del premium — sync con PREMIUM_DURACION_MESES (dominio). */
@@ -64,6 +83,28 @@ const COLECTIVO_DURACION_MESES = 1;
 /** Cupos mínimos — sync con CUPOS_MINIMOS del dominio (functions no importa valores). */
 const COLECTIVO_CUPOS_MINIMOS = 2;
 const COLECTIVO_CUPOS_MAXIMOS = 100;
+/**
+ * Artes de talento — sync con TALENT_ROLES del dominio (functions no importa
+ * valores). Estaba copiada en cuatro sitios y DOS se habían quedado sin `dj` ni
+ * `presentador`: quien se registraba con esas artes las perdía al crear su
+ * perfil, y sus secciones (`generosMusicales`, `reelPresentaciones`) no se
+ * podían desbloquear nunca. Una sola lista, un solo sitio que actualizar.
+ */
+const TALENT_ROLES = [
+  "artista",
+  "beatmaker",
+  "modelo",
+  "bailarin",
+  "dj",
+  "presentador",
+];
+/**
+ * Artes que el artista enciende y apaga solo — sync con ARTES_AUTOSERVICIO.
+ * Lista blanca de `actualizarMisArtes`: `beatmaker` y `modelo` NO están aquí
+ * (van por convenio), y ningún rol de poder (`admin`, `ceo`, `productor`) puede
+ * colarse por definición.
+ */
+const ARTES_AUTOSERVICIO = ["artista", "bailarin", "dj", "presentador"];
 /** Precios de los PASES en COP — sync con dominio (DEFAULTS). */
 const PRECIO_LITE_PASS = 80000;
 const PRECIO_GOLDEN_PASS = 350000;
@@ -73,6 +114,18 @@ const PRECIO_COLECTIVO = 120000;
 const PRECIO_CUPO_COLECTIVO = 25000;
 /** Meses de vigencia de la parte temporal de un pase — sync con PASE_DURACION_MESES. */
 const PASE_DURACION_MESES = 1;
+/**
+ * Nueva caducidad al conceder `meses` — sync con `extenderVigencia` del dominio
+ * (functions no importa valores). ACUMULA sobre lo que siguiera vigente: comprar
+ * el Golden con doce días de Lite por delante no puede borrar esos doce días.
+ */
+function extenderVigencia(actual: unknown, meses: number, now: number): number {
+  const base = typeof actual === "number" && actual > now ? actual : now;
+  const fecha = new Date(base);
+  fecha.setMonth(fecha.getMonth() + meses);
+  return fecha.getTime();
+}
+
 /** ¿El tier es uno de los 3 válidos? (inline: functions no importa valores del paquete). */
 function esPaseTipo(v: unknown): v is PaseTipo {
   return v === "lite" || v === "golden" || v === "premium";
@@ -670,6 +723,24 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
     throw new HttpsError("invalid-argument", "Falta conversationId.");
   }
 
+  return await aplicarPagoConfirmado(conversationId);
+});
+
+/**
+ * Concede los DERECHOS de un pago ya cobrado y cierra su hilo. Despacha por tipo
+ * de compra: reserva, beat, pedido, G Notes, pase, colectivo o premium.
+ *
+ * Extraído de `confirmPayment` para que tenga DOS disparadores y UNA sola
+ * implementación: el admin confirmando un comprobante a mano (flujo manual, que
+ * sigue vivo) y el webhook de Wompi al aprobarse la transacción. Si cada uno
+ * concediera los derechos por su cuenta, tarde o temprano uno se quedaría sin
+ * actualizar y la misma compra daría cosas distintas según cómo se pagó.
+ *
+ * Idempotente: si el pago ya estaba confirmado responde bien sin tocar nada.
+ */
+async function aplicarPagoConfirmado(
+  conversationId: string,
+): Promise<{ ok: true }> {
   const convRef = db.doc(`conversations/${conversationId}`);
   const conv = (await convRef.get()).data();
   if (!conv) throw new HttpsError("not-found", "Conversación inexistente.");
@@ -731,9 +802,14 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
       : precioPerfil;
 
   const now = Date.now();
-  const expira = new Date(now);
-  expira.setMonth(expira.getMonth() + PREMIUM_DURACION_MESES);
-  const premium = { activo: true, since: now, expiresAt: expira.getTime() };
+  // Acumula sobre el premium que siguiera vigente (mismo criterio que el pase).
+  const premiumActual = (await db.doc(`artistProfiles/${slug}`).get()).data()
+    ?.premium?.expiresAt;
+  const premium = {
+    activo: true,
+    since: now,
+    expiresAt: extenderVigencia(premiumActual, PREMIUM_DURACION_MESES, now),
+  };
 
   // El pagador del premium es el dueño del perfil (único participante del hilo).
   const payerUid = Array.isArray(conv.participants)
@@ -775,7 +851,245 @@ export const confirmPayment = onCall({ region: REGION }, async (request) => {
   logger.info(`Pago confirmado: ${conversationId} → premium ${slug}`);
   await notify(payerUid, "premium-activado", {}, "/artista/perfil");
   return { ok: true };
-});
+}
+
+// ── §09 · Pagos con Wompi ───────────────────────────────────────────────────
+// Convive con el pago manual: los dos terminan en `aplicarPagoConfirmado`. El
+// manual NO se retira hasta ver a Wompi cobrando en producción.
+
+/** Referencia de la transacción — sync con `referenciaPago` del dominio. */
+function referenciaPago(conversationId: string, nonce: string): string {
+  return `ogm-${conversationId}-${nonce}`;
+}
+
+/** Pesos → centavos — sync con `aCentavos` del dominio. */
+function aCentavos(pesos: number): number {
+  return Math.round(pesos) * 100;
+}
+
+/** Estado de Wompi → el nuestro — sync con `estadoDeWompi` del dominio. */
+function estadoDeWompi(status: string): "pendiente" | "aprobado" | "rechazado" {
+  if (status === "APPROVED") return "aprobado";
+  if (status === "DECLINED" || status === "VOIDED" || status === "ERROR") {
+    return "rechazado";
+  }
+  return "pendiente";
+}
+
+/**
+ * Arma el `payment_method` que espera Wompi según el método elegido (§09).
+ * Los datos de TARJETA nunca llegan aquí: el navegador los cambia por un token
+ * contra Wompi con la llave pública, y lo que viaja es ese token.
+ */
+function metodoDePago(
+  metodo: WompiMetodo,
+  d: Record<string, unknown>,
+  descripcion: string,
+): Record<string, unknown> {
+  if (metodo === "CARD") {
+    return {
+      type: "CARD",
+      token: String(d.cardToken ?? ""),
+      installments: Number(d.installments) > 0 ? Number(d.installments) : 1,
+    };
+  }
+  if (metodo === "NEQUI") {
+    return { type: "NEQUI", phone_number: String(d.nequiPhone ?? "") };
+  }
+  if (metodo === "PSE") {
+    return {
+      type: "PSE",
+      user_type: Number(d.pseUserType ?? 0),
+      user_legal_id_type: String(d.pseLegalIdType ?? "CC"),
+      user_legal_id: String(d.pseLegalId ?? ""),
+      financial_institution_code: String(d.pseBank ?? ""),
+      payment_description: descripcion,
+    };
+  }
+  return { type: "BANCOLOMBIA_TRANSFER", payment_description: descripcion };
+}
+
+/**
+ * Abre una transacción en Wompi para un chat de pago existente.
+ *
+ * EL IMPORTE NO VIENE DEL CLIENTE: se lee de `conversations/{id}.pago.monto`,
+ * que quedó congelado al crear el hilo. Aunque alguien manipule la petición, no
+ * puede pagar $1.000 por una membresía de $80.000. La firma de integridad es la
+ * segunda barrera, no la primera.
+ */
+export const crearPagoWompi = onCall(
+  {
+    region: REGION,
+    secrets: [WOMPI_PUBLIC_KEY, WOMPI_PRIVATE_KEY, WOMPI_INTEGRITY_SECRET],
+  },
+  async (request) => {
+    const uid = request.auth?.uid;
+    if (!uid) throw new HttpsError("unauthenticated", "Inicia sesión.");
+
+    const d = (request.data ?? {}) as Record<string, unknown>;
+    const conversationId = typeof d.conversationId === "string" ? d.conversationId : "";
+    const metodo = d.metodo as WompiMetodo;
+    if (!conversationId) {
+      throw new HttpsError("invalid-argument", "Falta el pago.");
+    }
+    if (!["CARD", "PSE", "NEQUI", "BANCOLOMBIA_TRANSFER"].includes(metodo)) {
+      throw new HttpsError("invalid-argument", "Método de pago no válido.");
+    }
+
+    const convRef = db.doc(`conversations/${conversationId}`);
+    const conv = (await convRef.get()).data();
+    if (!conv || conv.type !== "pago") {
+      throw new HttpsError("not-found", "Ese pago no existe.");
+    }
+    // Solo el dueño del hilo puede pagarlo: si no, cualquiera con un id podría
+    // abrir transacciones a nombre de otro.
+    if (!Array.isArray(conv.participants) || !conv.participants.includes(uid)) {
+      throw new HttpsError("permission-denied", "Ese pago no es tuyo.");
+    }
+    if (conv.pago?.estado === "confirmado") {
+      throw new HttpsError("failed-precondition", "Ese pago ya está confirmado.");
+    }
+
+    const monto = conv.pago?.monto;
+    if (typeof monto !== "number" || !Number.isInteger(monto) || monto <= 0) {
+      throw new HttpsError("failed-precondition", "El pago no tiene importe.");
+    }
+
+    const email =
+      (await db.doc(`users/${uid}`).get()).data()?.email ??
+      request.auth?.token?.email;
+    if (typeof email !== "string" || !email) {
+      throw new HttpsError("failed-precondition", "Tu cuenta no tiene correo.");
+    }
+
+    // Nonce por INTENTO: Wompi rechaza una referencia repetida, así que reusarla
+    // dejaría al usuario sin poder reintentar tras un rechazo del banco.
+    const nonce = Math.random().toString(36).slice(2, 10);
+    const reference = referenciaPago(conversationId, nonce);
+    const amountInCents = aCentavos(monto);
+    const descripcion = `Only G · ${conv.ref?.kind ?? "pago"}`;
+
+    let creada;
+    try {
+      const acceptanceToken = await obtenerAcceptanceToken(
+        WOMPI_PUBLIC_KEY.value(),
+      );
+      creada = await crearTransaccion(WOMPI_PRIVATE_KEY.value(), {
+        reference,
+        amountInCents,
+        customerEmail: email,
+        acceptanceToken,
+        signature: firmaIntegridad(
+          reference,
+          amountInCents,
+          WOMPI_INTEGRITY_SECRET.value(),
+        ),
+        paymentMethod: metodoDePago(metodo, d, descripcion),
+        redirectUrl:
+          typeof d.redirectUrl === "string" ? d.redirectUrl : undefined,
+      });
+    } catch (e) {
+      logger.error("[wompi] crear transacción:", e);
+      throw new HttpsError("unavailable", "No pudimos abrir el pago.");
+    }
+
+    // Marca el hilo como pagado POR PASARELA. Con Wompi ya no hay comprobante
+    // que revisar, así que este documento deja de ser un "chat de verificación"
+    // y pasa a ser solo el soporte de la compra (qué se compra y cuánto). El
+    // listado de mensajes lo usa para no enseñarle al usuario una conversación
+    // que nadie va a leer.
+    await convRef.update({ "pago.via": "wompi" });
+
+    await db.doc(`wompiPagos/${reference}`).set({
+      reference,
+      conversationId,
+      uid,
+      monto,
+      metodo,
+      estado: estadoDeWompi(creada.status),
+      transactionId: creada.id,
+      wompiStatus: creada.status,
+      createdAt: Date.now(),
+      aplicado: false,
+    });
+
+    logger.info(`[wompi] ${reference} creada (${metodo}) → ${creada.status}`);
+    return {
+      reference,
+      transactionId: creada.id,
+      status: creada.status,
+      redirectUrl: creada.redirectUrl,
+    };
+  },
+);
+
+/**
+ * Webhook de Wompi: la ÚNICA fuente de verdad sobre si un pago se cobró.
+ *
+ * Es una URL pública, así que lo primero es verificar la firma: sin eso,
+ * cualquiera que la descubra manda un `APPROVED` y se lleva la membresía gratis.
+ * Responde 200 incluso ante errores nuestros (salvo firma inválida) para que
+ * Wompi no entre en un bucle de reintentos por un fallo que no va a arreglarse
+ * repitiendo; lo que falle queda en el log y el pago, en "pendiente".
+ */
+export const wompiWebhook = onRequest(
+  { region: REGION, secrets: [WOMPI_EVENTS_SECRET], cors: false },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("method not allowed");
+      return;
+    }
+    const event = req.body as WompiEvent;
+    if (!verificarChecksum(event, WOMPI_EVENTS_SECRET.value())) {
+      logger.warn("[wompi] webhook con firma inválida");
+      res.status(401).send("bad signature");
+      return;
+    }
+
+    const tx = event.data?.transaction;
+    const reference = typeof tx?.reference === "string" ? tx.reference : "";
+    const status = typeof tx?.status === "string" ? tx.status : "";
+    if (!reference || !status) {
+      logger.warn("[wompi] webhook sin referencia o estado");
+      res.status(200).send("ignored");
+      return;
+    }
+
+    try {
+      const pagoRef = db.doc(`wompiPagos/${reference}`);
+      const pago = (await pagoRef.get()).data();
+      if (!pago) {
+        // Puede ser una transacción de otro entorno (sandbox contra producción).
+        logger.warn(`[wompi] referencia desconocida: ${reference}`);
+        res.status(200).send("unknown reference");
+        return;
+      }
+
+      const estado = estadoDeWompi(status);
+      await pagoRef.update({
+        estado,
+        wompiStatus: status,
+        transactionId: typeof tx?.id === "string" ? tx.id : pago.transactionId,
+        motivo: typeof tx?.status_message === "string" ? tx.status_message : null,
+        updatedAt: Date.now(),
+      });
+
+      if (estado === "aprobado" && !pago.aplicado) {
+        // Se conceden los derechos ANTES de marcar `aplicado`. Al revés, si esto
+        // fallara a mitad, el pago quedaría marcado como aplicado sin haberlo
+        // sido y nadie lo reintentaría. Llamarlo dos veces es inofensivo:
+        // `aplicarPagoConfirmado` sale sola si el hilo ya está confirmado.
+        await aplicarPagoConfirmado(pago.conversationId as string);
+        await pagoRef.update({ aplicado: true });
+        logger.info(`[wompi] ${reference} aprobada y aplicada`);
+      }
+      res.status(200).send("ok");
+    } catch (e) {
+      logger.error(`[wompi] webhook ${reference}:`, e);
+      res.status(200).send("error logged");
+    }
+  },
+);
 
 /**
  * Confirma el pago de una RESERVA (SOLO admin, vía confirmPayment). Transiciona
@@ -928,12 +1242,13 @@ async function confirmarPagoGNotes(
       : precioGNotes;
 
   const now = Date.now();
-  const expira = new Date(now);
-  expira.setMonth(expira.getMonth() + GNOTES_DURACION_MESES);
+  // Acumula: renovar antes de que se acabe no puede costarte los días que quedan.
+  const gnotesActual = (await db.doc(`users/${payerUid}`).get()).data()
+    ?.gnotesPremium?.expiresAt;
   const gnotesPremium = {
     activo: true,
     since: now,
-    expiresAt: expira.getTime(),
+    expiresAt: extenderVigencia(gnotesActual, GNOTES_DURACION_MESES, now),
   };
 
   const conversationId = convRef.id;
@@ -1239,11 +1554,16 @@ async function concederPase(
   cortesia: boolean,
 ): Promise<void> {
   const userRef = db.doc(`users/${uid}`);
+  // Se lee ANTES para poder ACUMULAR sobre lo que ya tuviera vigente.
+  const u = (await userRef.get()).data();
 
   // Registro del pase (inline: functions no importa el helper `activarPase`).
   // Producción: golden→artista, premium→grupo. Video: solo premium.
-  const paseExpira = new Date(now);
-  paseExpira.setMonth(paseExpira.getMonth() + PASE_DURACION_MESES);
+  const paseExpira = extenderVigencia(
+    u?.pase?.expiresAt,
+    PASE_DURACION_MESES,
+    now,
+  );
   const paseRec: {
     tipo: PaseTipo;
     activo: boolean;
@@ -1252,7 +1572,7 @@ async function concederPase(
     cortesia?: boolean;
     produccion?: { alcance: "artista" | "grupo"; usado: boolean };
     video?: { usado: boolean };
-  } = { tipo, activo: true, since: now, expiresAt: paseExpira.getTime() };
+  } = { tipo, activo: true, since: now, expiresAt: paseExpira };
   if (cortesia) paseRec.cortesia = true;
   if (tipo === "golden") {
     paseRec.produccion = { alcance: "artista", usado: false };
@@ -1262,12 +1582,15 @@ async function concederPase(
     paseRec.video = { usado: false };
   }
 
-  const gExpira = new Date(now);
-  gExpira.setMonth(gExpira.getMonth() + GNOTES_DURACION_MESES);
+  const gExpira = extenderVigencia(
+    u?.gnotesPremium?.expiresAt,
+    GNOTES_DURACION_MESES,
+    now,
+  );
   batch.set(
     userRef,
     {
-      gnotesPremium: { activo: true, since: now, expiresAt: gExpira.getTime() },
+      gnotesPremium: { activo: true, since: now, expiresAt: gExpira },
       pase: paseRec,
       updatedAt: FieldValue.serverTimestamp(),
     },
@@ -1276,14 +1599,18 @@ async function concederPase(
   // Perfil de artista premium (+1 mes, alineado con la vigencia del pase). Solo
   // si el usuario YA tiene perfil vinculado; si no, el beneficio queda implícito
   // en el `pase` (el admin lo ve y lo aplica al crear el perfil): no se pierde.
-  const slug = (await userRef.get()).data()?.artistSlug;
+  const slug = u?.artistSlug;
   if (typeof slug === "string" && slug) {
-    const pExpira = new Date(now);
-    pExpira.setMonth(pExpira.getMonth() + PASE_DURACION_MESES);
+    const profRef = db.doc(`artistProfiles/${slug}`);
+    const premiumActual = (await profRef.get()).data()?.premium?.expiresAt;
     batch.set(
-      db.doc(`artistProfiles/${slug}`),
+      profRef,
       {
-        premium: { activo: true, since: now, expiresAt: pExpira.getTime() },
+        premium: {
+          activo: true,
+          since: now,
+          expiresAt: extenderVigencia(premiumActual, PASE_DURACION_MESES, now),
+        },
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
@@ -2228,11 +2555,9 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
   const currentRoles = Array.isArray(userSnap.data()?.roles)
     ? (userSnap.data()?.roles as string[])
     : [];
-  const finalRoles = [...new Set([...currentRoles, "artista"])];
-  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
-  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
-  const socio =
-    finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+  const { disciplines, socio } = deriveDisciplinesSocio([
+    ...new Set([...currentRoles, "artista"]),
+  ]);
 
   // Reserva atómica del slug (ver `reservarSlug`): antes eran lecturas sueltas
   // + `batch.set`, y dos vinculaciones del mismo nombre podían pisar el mismo
@@ -2255,7 +2580,7 @@ export const adminLinkProfile = onCall({ region: REGION }, async (request) => {
       trajectoryStartYear: new Date().getFullYear(),
       puntos: 0,
       premium: null,
-      disciplines: disciplines.length ? disciplines : ["artista"],
+      disciplines,
       socio,
     },
     userRef,
@@ -2389,11 +2714,9 @@ export const crearPerfilInicial = onCall({ region: REGION }, async (request) => 
 
   // Disciplinas/socio de los roles FINALES (espejo de adminLinkProfile).
   const currentRoles = Array.isArray(u.roles) ? (u.roles as string[]) : [];
-  const finalRoles = [...new Set([...currentRoles, "artista"])];
-  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
-  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
-  const socio =
-    finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+  const { disciplines, socio } = deriveDisciplinesSocio([
+    ...new Set([...currentRoles, "artista"]),
+  ]);
 
   // No pisa realName/birthDate si no vienen (un usuario atascado ya los tenía).
   const userUpdate: Record<string, unknown> = {
@@ -2421,7 +2744,7 @@ export const crearPerfilInicial = onCall({ region: REGION }, async (request) => 
       puntos: 0,
       // Borrador (premium null → paga al publicar) o publicado (premium del pase).
       premium,
-      disciplines: disciplines.length ? disciplines : ["artista"],
+      disciplines,
       socio,
     },
     userRef,
@@ -2649,11 +2972,9 @@ export const adminSetRoles = onCall({ region: REGION }, async (request) => {
     // propio users.artistSlug apuntando al perfil de OTRA persona; sin este check,
     // sincronizar aquí pisaría el perfil de una víctima.
     if (profSnap.exists && profSnap.data()?.uid === targetUid) {
-      const TALENT = ["artista", "beatmaker", "modelo", "bailarin", "dj", "presentador"];
-      const disciplines = roles.filter((r) => TALENT.includes(r));
-      const socio = roles.includes("beatmaker") || roles.includes("productor");
+      const { disciplines, socio } = deriveDisciplinesSocio(roles);
       batch.update(profRef, {
-        disciplines: disciplines.length ? disciplines : ["artista"],
+        disciplines,
         socio,
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -2714,8 +3035,11 @@ export const aprobarConvenio = onCall({ region: REGION }, async (request) => {
       { productores: FieldValue.arrayUnion(targetUid) },
       { merge: true },
     );
-  } else if (tipo === "beatmaker") {
-    batch.update(userRef, { roles: FieldValue.arrayUnion("beatmaker") });
+  } else if (tipo === "beatmaker" || tipo === "modelo") {
+    // Ambas son ARTES: conceden el rol y con él las secciones que desbloquean.
+    // `modelo` no marca `socio` (eso lo decide deriveDisciplinesSocio): no exime
+    // de la membresía, solo abre su pestaña del directorio y su ficha técnica.
+    batch.update(userRef, { roles: FieldValue.arrayUnion(tipo) });
   } else {
     throw new HttpsError("failed-precondition", "Tipo de convenio inválido.");
   }
@@ -2737,13 +3061,11 @@ export const aprobarConvenio = onCall({ region: REGION }, async (request) => {
       const currentRoles = Array.isArray(userSnap.data()?.roles)
         ? (userSnap.data()?.roles as string[])
         : [];
-      const finalRoles = [...new Set([...currentRoles, tipo])];
-      const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
-      const disciplines = finalRoles.filter((r) => TALENT.includes(r));
-      const socio =
-        finalRoles.includes("beatmaker") || finalRoles.includes("productor");
+      const { disciplines, socio } = deriveDisciplinesSocio([
+        ...new Set([...currentRoles, tipo]),
+      ]);
       batch.update(profRef, {
-        disciplines: disciplines.length ? disciplines : ["artista"],
+        disciplines,
         socio,
         updatedAt: FieldValue.serverTimestamp(),
       });
@@ -2876,20 +3198,107 @@ export const onPaymentUnderReview = onDocumentUpdated(
   },
 );
 
+/**
+ * El artista enciende y apaga sus PROPIAS artes desde "Perfiles y convenios".
+ *
+ * Pasa por el servidor porque las reglas cierran `users.roles` y
+ * `artistProfiles.disciplines` al cliente, y con razón: de ahí cuelgan la
+ * exención de membresía (`socio`) y en qué pestaña del directorio sales.
+ *
+ * INVARIANTE. La petición solo puede mover la rebanada AUTOSERVICIO de los roles:
+ *   1. Lo pedido se valida contra `ARTES_AUTOSERVICIO` — pedir `beatmaker`,
+ *      `modelo`, `productor`, `admin` o `ceo` es un error, no un no-op silencioso.
+ *   2. Los roles que NO son autoservicio se conservan LEYÉNDOLOS del documento,
+ *      nunca de la petición. Aunque el cliente mienta, no puede concederse nada.
+ * Es decir: no hay forma de escalar privilegios por aquí ni equivocándose.
+ */
+export const actualizarMisArtes = onCall({ region: REGION }, async (request) => {
+  const uid = request.auth?.uid;
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Inicia sesión para cambiar tus artes.");
+  }
+
+  const pedidas = request.data?.artes;
+  if (!Array.isArray(pedidas)) {
+    throw new HttpsError("invalid-argument", "Faltan las artes.");
+  }
+  const artes = [...new Set(pedidas.filter((a) => typeof a === "string"))];
+  const prohibida = artes.find((a) => !ARTES_AUTOSERVICIO.includes(a));
+  if (prohibida) {
+    throw new HttpsError(
+      "permission-denied",
+      `"${prohibida}" no se activa por tu cuenta: necesita convenio.`,
+    );
+  }
+
+  const userRef = db.doc(`users/${uid}`);
+  const userSnap = await userRef.get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "Tu cuenta no existe.");
+  }
+  const actuales = Array.isArray(userSnap.data()?.roles)
+    ? (userSnap.data()?.roles as string[])
+    : [];
+
+  // Todo lo que no sea autoservicio sobrevive intacto: los roles de poder, el
+  // `cliente` de base y las artes que costaron un convenio.
+  const conservados = actuales.filter((r) => !ARTES_AUTOSERVICIO.includes(r));
+  const finalRoles = [...new Set([...conservados, ...artes])];
+
+  // Un perfil sin ninguna arte no existe como concepto: al leerlo, el dominio lo
+  // trataría como cantante (ver `effectiveDisciplines`). Mejor decirlo que
+  // dejar que el usuario "apague todo" y le reaparezca Cantante sin explicación.
+  const conTalento = finalRoles.filter((r) => TALENT_ROLES.includes(r));
+  if (conTalento.length === 0) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Deja al menos un arte activa en tu perfil.",
+    );
+  }
+
+  const { disciplines, socio } = deriveDisciplinesSocio(finalRoles);
+
+  const batch = db.batch();
+  batch.update(userRef, { roles: finalRoles });
+
+  const slug = userSnap.data()?.artistSlug as string | undefined;
+  if (typeof slug === "string" && slug) {
+    const profRef = db.doc(`artistProfiles/${slug}`);
+    const profSnap = await profRef.get();
+    // Comprobación de PROPIEDAD (confused deputy): el cliente puede apuntar su
+    // `users.artistSlug` al perfil de otra persona, y sin esto le reescribiría
+    // las disciplinas a una víctima. Mismo guard que `adminSetRoles`.
+    if (profSnap.exists && profSnap.data()?.uid === uid) {
+      batch.update(profRef, {
+        disciplines,
+        socio,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
+  }
+  await batch.commit();
+
+  logger.info(`Artes de ${uid} = [${disciplines.join(",")}]`);
+  return { ok: true, disciplines };
+});
+
 /** Nuevo perfil de artista creado → avisa a los admin. */
 /**
  * Deriva `disciplines`/`socio` de un conjunto de roles. `disciplines` = roles de
  * talento (default `['artista']` si no hay ninguno); `socio` = beatmaker/productor
- * (exentos de membresía). Mismo criterio que `adminLinkProfile`/`adminSetRoles`;
- * extraído para el alta self-serve (los 3 sitios previos podrían adoptarlo luego).
+ * (exentos de membresía).
+ *
+ * ÚNICO sitio donde se hace esta cuenta. Antes vivía copiada en cuatro, y dos de
+ * las copias se habían quedado sin `dj` ni `presentador`: el resultado dependía
+ * de por qué puerta hubieras entrado (crear perfil vs. que un admin te tocara
+ * los roles).
  */
 function deriveDisciplinesSocio(roles: unknown): {
   disciplines: string[];
   socio: boolean;
 } {
-  const TALENT = ["artista", "beatmaker", "modelo", "bailarin"];
   const finalRoles = Array.isArray(roles) ? (roles as string[]) : [];
-  const disciplines = finalRoles.filter((r) => TALENT.includes(r));
+  const disciplines = finalRoles.filter((r) => TALENT_ROLES.includes(r));
   return {
     disciplines: disciplines.length ? disciplines : ["artista"],
     socio: finalRoles.includes("beatmaker") || finalRoles.includes("productor"),

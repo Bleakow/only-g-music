@@ -650,6 +650,25 @@ export function SmartphoneIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+// Tarjeta de crédito — pestaña de pago con tarjeta del checkout (§09).
+export function CreditCardIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <rect x="2" y="5" width="20" height="14" rx="2.5" />
+      <path d="M2 10h20" />
+    </svg>
+  );
+}
+
+// Rayo — el atajo Bre-B del checkout (pago inmediato con llave).
+export function ZapIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...strokeProps(props)}>
+      <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />
+    </svg>
+  );
+}
+
 // Descargar (flecha hacia bandeja) — para bajar el QR de pago.
 export function DownloadIcon(props: SVGProps<SVGSVGElement>) {
   return (

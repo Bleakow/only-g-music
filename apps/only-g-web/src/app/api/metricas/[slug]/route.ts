@@ -41,6 +41,7 @@ const SHARE_CHANNELS: ShareChannel[] = [
   "whatsapp",
   "copy",
   "native",
+  "qr",
   "instagram",
   "x",
   "facebook",
@@ -131,6 +132,7 @@ export async function GET(
       perfil: {
         slug: access.profile.slug,
         artisticName: access.profile.artisticName,
+        esMusical: access.profile.esMusical,
       },
       rango,
       visibility: access.visibility,

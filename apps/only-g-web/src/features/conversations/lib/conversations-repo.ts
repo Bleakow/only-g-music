@@ -159,6 +159,35 @@ export async function sendConversationMessage(
  * `comprobante_pendiente` (falta subir comprobante). El `monto` es informativo:
  * la confirmación server-side es la autoridad.
  */
+/**
+ * Crea el hilo de un pago que va por PASARELA (Wompi).
+ *
+ * Hermano del manual y no un parámetro suyo, porque no comparten datos: aquí no
+ * hay `metodo` (transferencia, Bre-B…) ni comprobante que subir. Nace en
+ * `pendiente_pasarela` y solo el webhook lo mueve a `confirmado`.
+ *
+ * Existe porque el callable `crearPagoWompi` necesita un hilo previo: de ahí
+ * saca QUÉ se compra y —lo importante— CUÁNTO, sin fiarse del navegador.
+ */
+export async function createWompiPaymentConversation(params: {
+  uid: string;
+  concepto: PagoConcepto;
+  ref: NonNullable<Conversation["ref"]>;
+  monto: number;
+}): Promise<string> {
+  return createConversation({
+    type: "pago",
+    participants: [params.uid],
+    status: "abierto",
+    ref: params.ref,
+    pago: {
+      concepto: params.concepto,
+      monto: params.monto,
+      estado: "pendiente_pasarela",
+    },
+  });
+}
+
 export async function createPaymentConversation(params: {
   uid: string;
   concepto: PagoConcepto;

@@ -29,6 +29,8 @@ export type ShareChannel =
   | "whatsapp"
   | "copy"
   | "native"
+  /** La estampa con el QR: descargada o mandada como imagen. */
+  | "qr"
   | "instagram"
   | "x"
   | "facebook"

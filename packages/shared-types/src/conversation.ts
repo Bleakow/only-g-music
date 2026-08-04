@@ -75,12 +75,23 @@ export type PagoConcepto =
   /** Membresía de organización de un colectivo + sus cupos de artista (§07). */
   | "colectivo";
 
+/**
+ * Estados del pago. Los cuatro primeros son del flujo MANUAL (comprobante +
+ * revisión humana), en vías de deprecarse; `pendiente_pasarela` es el de Wompi,
+ * donde no hay comprobante que subir ni admin que confirme: decide la pasarela.
+ */
 export type PagoEstado =
   | "metodo_pendiente" // el cliente aún no elige método
   | "comprobante_pendiente" // método elegido, falta subir comprobante
   | "en_revision" // comprobante enviado, el admin revisa
-  | "confirmado" // el admin confirmó el pago
-  | "rechazado"; // el admin rechazó (el cliente puede reintentar)
+  | "pendiente_pasarela" // Wompi: transacción abierta, esperando su veredicto
+  | "confirmado" // pago cobrado (admin en el manual, webhook en Wompi)
+  | "rechazado"; // rechazado (el cliente puede reintentar)
+
+/** ¿Este pago lo resuelve la pasarela y no una persona? */
+export function esPagoDePasarela(estado: PagoEstado): boolean {
+  return estado === "pendiente_pasarela";
+}
 
 export interface PagoState {
   concepto: PagoConcepto;
@@ -158,7 +169,10 @@ export function statusDePago(estado: PagoEstado): ConversationStatus {
     case "confirmado":
       return "cerrado";
     default:
-      // metodo_pendiente | comprobante_pendiente | rechazado → el cliente sigue
+      // metodo_pendiente | comprobante_pendiente | pendiente_pasarela |
+      // rechazado → el hilo sigue abierto porque el cliente puede seguir (o
+      // reintentar). `pendiente_pasarela` NO es "esperando_confirmacion": ahí no
+      // hay nadie a quien esperar, resuelve Wompi.
       return "abierto";
   }
 }

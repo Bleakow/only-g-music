@@ -70,7 +70,7 @@
     "user": "Usuario",
     "sectionManage": "Gestión",
     "sectionAccount": "Cuenta",
-    "convenios": "Convenios y permisos",
+    "convenios": "Perfiles y convenios",
     "myRequests": "Mis cosas",
     "myArtistProfile": "Mi perfil de artista",
     "becomeArtist": "Conviértete en artista",
@@ -1856,8 +1856,16 @@
     "share": "Compartir",
     "close": "Cerrar",
     "title": "Compartir perfil",
-    "qrAlt": "Código QR del perfil",
+    "qrAlt": "Tarjeta para compartir con el código QR del perfil",
     "generating": "Generando…",
+    "preparing": "Preparando tu tarjeta…",
+    "cardError": "No pudimos generar la imagen. Revisa tu conexión e inténtalo.",
+    "cardBrand": "Only G Music",
+    "cardBadge": "OGM",
+    "cardCaption": "Escanea el código para ver el perfil",
+    "download": "Descargar",
+    "shareImage": "Compartir",
+    "shareLink": "Compartir el enlace",
     "copied": "Copiado",
     "copy": "Copiar",
     "shareNative": "Compartir…",
@@ -2291,12 +2299,152 @@
       "empty": "Todavía no has añadido nada."
     }
   },
+  "checkout": {
+    "title": "Pago seguro",
+    "conceptoGenerico": "Tu compra en Only G",
+    "close": "Cerrar el pago",
+    "paso": "Paso {n} de 3",
+    "resumen": {
+      "title": "Esto es lo que vas a pagar",
+      "total": "Total",
+      "continuar": "Continuar"
+    },
+    "metodo": {
+      "label": "Método de pago",
+      "CARD": "Tarjeta",
+      "PSE": "PSE",
+      "NEQUI": "Nequi",
+      "BANCOLOMBIA_TRANSFER": "Bancolombia"
+    },
+    "bancolombia": {
+      "info": "Te llevamos a Bancolombia para que autorices la transferencia y vuelves aquí al terminar."
+    },
+    "card": {
+      "numero": "Número de tarjeta",
+      "numeroPlaceholder": "1234 5678 9012 3456",
+      "vence": "Vence",
+      "vencePlaceholder": "MM/AA",
+      "cvc": "CVC",
+      "titular": "Nombre en la tarjeta",
+      "titularPlaceholder": "Como aparece impreso",
+      "cuotas": "Cuotas"
+    },
+    "pse": {
+      "tipo": "Tipo de persona",
+      "natural": "Natural",
+      "juridica": "Jurídica",
+      "banco": "Banco",
+      "bancoPlaceholder": "Elige tu banco",
+      "documento": "Documento",
+      "numeroDocumento": "Número de documento",
+      "correo": "Correo electrónico",
+      "nota": "Te llevamos al portal de tu banco y vuelves aquí al terminar."
+    },
+    "nequi": {
+      "numero": "Número Nequi",
+      "numeroPlaceholder": "300 000 0000",
+      "info": "Te llega una notificación a la app para que apruebes el pago.",
+      "esperandoTitle": "Abre tu app Nequi",
+      "esperandoSub": "Aprueba el pago de {monto} en la notificación de tu app. Seguimos esperando la confirmación.",
+      "expira": "Expira en {tiempo}",
+      "expirado": "Se acabó el tiempo. Puedes intentarlo otra vez.",
+      "cancelar": "Cancelar el pago"
+    },
+    "breb": {
+      "title": "¿Prefieres Bre-B?",
+      "sub": "Paga con tu llave desde cualquier banco"
+    },
+    "acepto": "Acepto los <terms>Términos</terms> y la <privacy>Política de Privacidad</privacy> de Only G, y autorizo el pago vía Wompi.",
+    "pagar": "Pagar {monto}",
+    "procesando": "Procesando…",
+    "seguro": "Pago procesado por Wompi",
+    "estado": {
+      "aprobadaTitle": "¡Pago aprobado!",
+      "aprobadaSub": "Ya tienes activo lo que compraste. Te dejamos el comprobante abajo.",
+      "pendienteTitle": "Pago en proceso",
+      "pendienteSub": "Tu pago se está confirmando. Te avisamos apenas Wompi lo apruebe: no hace falta que esperes aquí.",
+      "rechazadaTitle": "Pago rechazado",
+      "rechazadaSub": "Tu banco no aprobó la transacción. No se hizo ningún cargo a tu cuenta.",
+      "listo": "Listo",
+      "entendido": "Entendido",
+      "reintentar": "Intentar de nuevo"
+    },
+    "recibo": {
+      "title": "Comprobante",
+      "concepto": "Concepto",
+      "referencia": "Referencia",
+      "metodo": "Método",
+      "fecha": "Fecha",
+      "total": "Total"
+    },
+    "errors": {
+      "tarjeta": "Revisa los datos de tu tarjeta e inténtalo de nuevo.",
+      "crear": "No pudimos abrir el pago. Revisa tu conexión e inténtalo.",
+      "acepto": "Necesitas aceptar los términos para continuar.",
+      "campos": "Completa los datos que faltan.",
+      "noDisponible": "El pago con tarjeta no está disponible ahora mismo.",
+      "sinLectura": "No podemos consultar el estado de tu pago ahora mismo. Si el cobro salió de tu cuenta, escríbenos con la referencia de abajo y lo resolvemos."
+    }
+  },
+  "perfilesConvenios": {
+    "eyebrow": "Tu lugar en Only G",
+    "title": "Perfiles y convenios",
+    "intro": "Aquí decides qué haces: activa las artes que manejas, pide el convenio de las que se pactan con el equipo y elige qué secciones enseña tu perfil.",
+    "explainer": "Para vender servicios en Only G (beats, producción o modelaje) necesitas un convenio: un contrato que fija la comisión de la plataforma. Los perfiles de cantante, DJ, bailarín y presentador son libres y no requieren convenio.",
+    "misConveniosTitle": "Tus convenios",
+    "solicitarTitle": "Solicitar un convenio",
+    "libresTitle": "Perfiles libres",
+    "libresHint": "Sin contrato ni comisión — solo tu talento en escena.",
+    "sinComision": "Sin comisión",
+    "comisionNota": "La comisión de la plataforma se pacta contigo en el convenio.",
+    "convenio": {
+      "beatmaker": "Vende tus beats con checkout y descarga directa en Only G.",
+      "productor": "Ofrece servicios de producción musical a otros artistas.",
+      "modelo": "Portafolio profesional y booking para castings y campañas."
+    },
+    "chip": {
+      "activo": "Activo",
+      "revision": "En revisión",
+      "rechazado": "Rechazado"
+    },
+    "membresiaTitle": "Requiere membresía activa para publicar",
+    "membresiaHint": "Puedes crear y editar tu perfil libre, pero para publicarlo y aparecer en la lista necesitas tu membresía activa.",
+    "membresiaActiva": "Membresía activa",
+    "gestionar": "Gestionar",
+    "seccionesTitle": "Secciones de tu perfil",
+    "seccionesHint": "Marca lo que quieres mostrar. Los datos de cada sección se llenan en el editor.",
+    "sinPerfil": "Todavía no tienes perfil de artista. Créalo y vuelve para elegir qué muestra.",
+    "crearPerfil": "Crear mi perfil",
+    "estado": {
+      "activo": "Activo en tu perfil",
+      "revision": "En revisión por el equipo de Only G",
+      "rechazado": "No se aprobó. Puedes volver a pedirlo.",
+      "rechazadoMotivo": "No se aprobó: {motivo}",
+      "disponible": "Necesita convenio con el estudio"
+    },
+    "pedir": "Pedirla",
+    "pedirTitle": "Pedir convenio de {arte}",
+    "pedirHint": {
+      "productor": "Cuéntanos con qué estudio o equipo trabajas y qué produces. Al aprobarlo entras a una sede y se te abre la consola.",
+      "beatmaker": "Cuéntanos qué haces y dónde se te puede escuchar. Al aprobarlo puedes vender tus beats en la plataforma.",
+      "modelo": "Cuéntanos tu experiencia y déjanos dónde ver tu trabajo. Al aprobarlo entras en la pestaña de modelos."
+    },
+    "pedirPlaceholder": "Tu experiencia, enlaces a tu trabajo, con quién has trabajado…",
+    "enviar": "Enviar solicitud",
+    "enviando": "Enviando…",
+    "errors": {
+      "load": "No pudimos cargar tus artes. Revisa tu conexión e inténtalo.",
+      "save": "No pudimos guardar el cambio. Inténtalo de nuevo.",
+      "send": "No pudimos enviar tu solicitud. Inténtalo de nuevo."
+    }
+  },
   "sections": {
     "sectionTitle": "Tus secciones",
     "sectionHint": "Arma tu perfil con lo que de verdad te representa. Tus etiquetas deciden qué puedes mostrar.",
     "tagsTitle": "Tus etiquetas",
     "tagsHint": "Tus etiquetas desbloquean las secciones disponibles para tu perfil.",
-    "tagsEmpty": "Todavía no tienes etiquetas. Escríbele al equipo para que te las asigne.",
+    "tagsEmpty": "Todavía no tienes artes activas. Añádelas en Perfiles y convenios.",
+    "addTag": "Añadir arte",
     "groupBase": "Secciones base",
     "groupBaseHint": "Siempre disponibles",
     "groupUnlocked": "Desbloqueadas por tus etiquetas",
@@ -2305,7 +2453,7 @@
     "groupLockedHint": "Requieren una etiqueta que aún no tienes",
     "baseCaption": "Sección base",
     "requiresTag": "Requiere la etiqueta {tag}",
-    "requestTag": "Pedirla",
+    "requestTag": "Conseguirla",
     "item": {
       "sobreMi": "Sobre mí",
       "galeria": "Galería de fotos",
@@ -2353,6 +2501,9 @@
     "topSongs": "Canciones más escuchadas",
     "topSongsSub": "Reproducidas desde tu perfil de artista",
     "emptySongs": "Todavía no han reproducido tus temas.",
+    "topPlays": "Lo más reproducido",
+    "topPlaysSub": "Videos y audios que suenan en tu perfil",
+    "emptyPlays": "Todavía no han reproducido nada tuyo.",
     "sharesTitle": "Compartidos",
     "sharesHint": "Personas que compartieron tu perfil. No contamos los tuyos.",
     "emptyShares": "Aún nadie ha compartido tu perfil.",
@@ -2369,6 +2520,7 @@
       "whatsapp": "WhatsApp",
       "copy": "Enlace copiado",
       "native": "Menú de compartir",
+      "qr": "Tarjeta con QR",
       "instagram": "Instagram",
       "x": "X",
       "facebook": "Facebook",

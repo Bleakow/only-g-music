@@ -40,6 +40,32 @@ export const TALENT_ROLES: Role[] = [
   "presentador",
 ];
 
+/**
+ * Artes que el propio artista enciende y apaga desde "Perfiles y convenios",
+ * sin pasar por el equipo. Son las PRESENTACIONALES: lo único que cambia al
+ * activarlas es qué secciones puede mostrar su perfil y en qué pestaña del
+ * directorio sale.
+ */
+export const ARTES_AUTOSERVICIO: Role[] = [
+  "artista",
+  "bailarin",
+  "dj",
+  "presentador",
+];
+
+/**
+ * Artes que SOLO concede un convenio aprobado. No es burocracia: `beatmaker`
+ * marca el perfil como `socio`, y un socio queda EXENTO de pagar la membresía
+ * (ver `perfilVisible`) — a golpe de interruptor, cualquiera publicaría gratis.
+ * `modelo` va aquí por curaduría: el equipo decide quién entra en esa pestaña.
+ */
+export const ARTES_CON_CONVENIO: Role[] = ["beatmaker", "modelo"];
+
+/** ¿Esta arte la puede encender el artista por su cuenta? */
+export function esArteAutoservicio(role: Role): boolean {
+  return ARTES_AUTOSERVICIO.includes(role);
+}
+
 export interface UserAccount {
   /** UID de Firebase Auth. */
   uid: string;

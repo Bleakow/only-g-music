@@ -73,6 +73,21 @@ export async function getMyPendingConvenio(
   return snap.empty ? null : toConvenio(snap.docs[0].id, snap.docs[0].data());
 }
 
+/**
+ * TODAS las solicitudes del usuario, recientes primero. La ventana "Perfiles y
+ * convenios" las necesita completas (no solo la pendiente) para poder decir por
+ * qué un arte sigue apagada: nunca se pidió, está en revisión, o se rechazó y
+ * con qué motivo. Sin `orderBy` en la consulta —se ordena en memoria— para no
+ * exigir un índice compuesto por un puñado de documentos por persona.
+ */
+export async function listMyConvenios(uid: string): Promise<ConvenioRequest[]> {
+  const q = query(collection(db, COLLECTION), where("uid", "==", uid));
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => toConvenio(d.id, d.data()))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
+
 // ── Admin (requiere rol admin por reglas) ──────────────────────────
 
 /** Todas las solicitudes de convenio, más recientes primero (SOLO admin). */

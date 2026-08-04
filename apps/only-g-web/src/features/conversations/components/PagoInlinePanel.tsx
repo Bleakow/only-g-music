@@ -25,9 +25,11 @@ import { getCompanyPaymentDest } from "../lib/payment-config-repo";
 import { getSedeById } from "@/features/sedes/lib/sedes-repo";
 import {
   createPaymentConversation,
+  createWompiPaymentConversation,
   sendConversationMessage,
   marcarComprobanteEnRevision,
 } from "../lib/conversations-repo";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 
 const COPY_CHIP =
   "inline-flex min-h-11 items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-xs text-silver-200 transition hover:border-amethyst-300/60 hover:text-white";
@@ -48,6 +50,7 @@ export function PagoInlinePanel({
   monto,
   sede,
   insignia = null,
+  conceptoLabel,
   onSent,
 }: {
   uid: string;
@@ -59,6 +62,8 @@ export function PagoInlinePanel({
   /** Sede: su destino de pago (QR propio) gana sobre el de la compañía. */
   sede: SedeId;
   insignia?: Insignia | null;
+  /** Nombre legible de lo que se compra, para el resumen del checkout. */
+  conceptoLabel?: string;
   /** Se llama con el id del chat de pago tras enviar el comprobante. */
   onSent?: (convId: string) => void;
 }) {
@@ -72,6 +77,38 @@ export function PagoInlinePanel({
   const [convId, setConvId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedBreB, setCopiedBreB] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [wompiConvId, setWompiConvId] = useState<string | null>(null);
+  const [wompiBusy, setWompiBusy] = useState(false);
+
+  /**
+   * Abre el checkout de Wompi. Antes crea el hilo del pago porque el servidor
+   * saca de ahí el importe: así el navegador nunca dice cuánto hay que cobrar.
+   * El hilo se reusa entre reintentos (no se crea uno por cada clic).
+   */
+  async function abrirCheckout() {
+    setError(null);
+    if (wompiConvId) {
+      setCheckoutOpen(true);
+      return;
+    }
+    setWompiBusy(true);
+    try {
+      const cid = await createWompiPaymentConversation({
+        uid,
+        concepto,
+        ref: pagoRef,
+        monto,
+      });
+      setWompiConvId(cid);
+      setCheckoutOpen(true);
+    } catch (e) {
+      console.error("[pago] abrir checkout:", e);
+      setError(t("checkout.errors.crear"));
+    } finally {
+      setWompiBusy(false);
+    }
+  }
 
   // Destino de pago: override de la sede si lo tiene, si no el default de la
   // compañía (misma política que PagoPanel: resolverDestinoPago(sede ?? company)).
@@ -147,10 +184,24 @@ export function PagoInlinePanel({
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Pago con pasarela: la vía PRINCIPAL. Se cobra al instante y sin que
+          nadie tenga que revisar un comprobante a mano. El bloque manual de
+          abajo queda como alternativa mientras se deprecca. */}
+      <button
+        type="button"
+        onClick={abrirCheckout}
+        disabled={wompiBusy}
+        className="btn-amethyst w-full rounded-full px-6 py-3 text-center text-sm font-semibold tracking-[2px] uppercase disabled:opacity-60"
+      >
+        {wompiBusy ? t("checkout.procesando") : t("checkout.pagar", {
+          monto: formatCOP(monto),
+        })}
+      </button>
+
       <button
         type="button"
         onClick={() => setShowPicker(true)}
-        className="btn-amethyst w-full rounded-full px-6 py-3 text-center text-sm font-semibold tracking-[2px] uppercase"
+        className="text-silver-400 min-h-11 w-full text-xs font-semibold tracking-[1px] uppercase transition hover:text-white"
       >
         {metodo
           ? t("pedidoPago.changeMethod", { metodo: metodoLabel })
@@ -250,6 +301,22 @@ export function PagoInlinePanel({
             setShowPicker(false);
           }}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {wompiConvId && (
+        <WompiCheckout
+          open={checkoutOpen}
+          onClose={() => {
+            setCheckoutOpen(false);
+            // El padre decide qué enseñar tras pagar (igual que con el
+            // comprobante). Si el pago no se completó, el hilo sigue abierto y
+            // el botón lo reabre sin crear otro.
+            onSent?.(wompiConvId);
+          }}
+          conversationId={wompiConvId}
+          monto={monto}
+          concepto={conceptoLabel ?? t("checkout.conceptoGenerico")}
         />
       )}
     </div>

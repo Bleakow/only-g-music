@@ -6,8 +6,23 @@ import {
   formatCompact,
   featuredMediaPolicy,
   featuredMediaItems,
+  effectiveDisciplines,
   type FeaturedMedia,
 } from "./artist-profile";
+
+describe("effectiveDisciplines", () => {
+  it("devuelve las disciplinas tal cual cuando las hay", () => {
+    expect(effectiveDisciplines(["bailarin"])).toEqual(["bailarin"]);
+    expect(effectiveDisciplines(["modelo", "presentador"])).toEqual([
+      "modelo",
+      "presentador",
+    ]);
+  });
+  it("perfiles anteriores a §05 (sin campo o vacío) son cantantes", () => {
+    expect(effectiveDisciplines(undefined)).toEqual(["artista"]);
+    expect(effectiveDisciplines([])).toEqual(["artista"]);
+  });
+});
 
 describe("featuredMediaPolicy", () => {
   it("general: 2 mudos + 1 audio (≤30s), total 3", () => {

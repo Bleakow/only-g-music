@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { GlassButton } from "@/components/ui/GlassButton";
-import { PaymentMethodPicker } from "@/features/conversations/components/PaymentMethodPicker";
-import { createPaymentConversation } from "@/features/conversations/lib/conversations-repo";
-import { openConversation } from "@/features/conversations/lib/open-conversation";
+import { createWompiPaymentConversation } from "@/features/conversations/lib/conversations-repo";
+import { WompiCheckout } from "@/features/payments/components/WompiCheckout";
 import { usePrecios } from "@/features/pricing/components/PreciosProvider";
 import { useAuth } from "@/features/auth/components/AuthProvider";
 import { formatCOP } from "@only-g/shared-types/service";
@@ -15,7 +14,6 @@ import {
   paseEstado,
   type PaseTipo,
 } from "@only-g/shared-types/pase";
-import type { MetodoPago } from "@only-g/shared-types/payment-method";
 
 /** Mapea cada tier a su clave de precio en la config comercial. */
 const PRECIO_KEY: Record<
@@ -39,7 +37,12 @@ export function SubscriptionsPanel() {
   const locale = useLocale();
   const { user, account } = useAuth();
   const precios = usePrecios();
-  const [picker, setPicker] = useState<PaseTipo | null>(null);
+  // Pago del pase: hilo + checkout de Wompi. Antes se abría un selector de
+  // método manual y luego la BURBUJA de chat — y si la burbuja no estaba
+  // montada, el usuario pulsaba "Suscribirse" y no le aparecía nada.
+  const [comprando, setComprando] = useState<PaseTipo | null>(null);
+  const [convId, setConvId] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const pase = account?.pase;
   const activo = pase ? paseEstado(pase, Date.now()) === "activo" : false;
@@ -52,20 +55,22 @@ export function SubscriptionsPanel() {
         })
       : null;
 
-  async function comprar(tipo: PaseTipo, metodo: MetodoPago) {
-    setPicker(null);
-    if (!user) return;
+  async function comprar(tipo: PaseTipo) {
+    if (!user || busy) return;
+    setBusy(true);
     try {
-      const id = await createPaymentConversation({
+      const id = await createWompiPaymentConversation({
         uid: user.uid,
         concepto: "pase",
         ref: { kind: "pase", id: tipo },
-        metodo,
         monto: precios[PRECIO_KEY[tipo]],
       });
-      openConversation(id);
+      setConvId(id);
+      setComprando(tipo);
     } catch (e) {
       console.error("[pases] comprar:", e);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -177,8 +182,8 @@ export function SubscriptionsPanel() {
               </ul>
               <div className="mt-6">
                 <GlassButton
-                  onClick={() => setPicker(tipo)}
-                  disabled={esActual || !user}
+                  onClick={() => void comprar(tipo)}
+                  disabled={esActual || !user || busy}
                   className={destacado ? "!text-amethyst-100 w-full" : "w-full"}
                 >
                   {esActual ? t("pases.actual") : t("pases.suscribirse")}
@@ -189,11 +194,16 @@ export function SubscriptionsPanel() {
         })}
       </div>
 
-      {picker && (
-        <PaymentMethodPicker
-          onPick={(m) => comprar(picker, m)}
-          onClose={() => setPicker(null)}
-          insignia={null}
+      {convId && comprando && (
+        <WompiCheckout
+          open
+          onClose={() => {
+            setComprando(null);
+            setConvId(null);
+          }}
+          conversationId={convId}
+          monto={precios[PRECIO_KEY[comprando]]}
+          concepto={t(`pases.${comprando}.nombre`)}
         />
       )}
     </main>

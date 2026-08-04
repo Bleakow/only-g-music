@@ -150,6 +150,22 @@ export function activarPremium(now: number): Premium {
   return { activo: true, since: now, expiresAt: expira.getTime() };
 }
 
+// ── Disciplinas ─────────────────────────────────────────────────────────────
+
+/**
+ * Disciplinas EFECTIVAS de un perfil: el campo tal cual, o `["artista"]` si
+ * viene vacío o ausente (perfiles anteriores a §05, cuando todo perfil era de
+ * cantante).
+ *
+ * Vive aquí y no en cada lector a propósito: el perfil público, el gestor de
+ * secciones y el panel de métricas tienen que coincidir en si alguien es
+ * cantante. Con la comprobación copiada en tres sitios, basta que uno lea el
+ * campo crudo para que la UI se contradiga sola.
+ */
+export function effectiveDisciplines(raw: Role[] | undefined): Role[] {
+  return Array.isArray(raw) && raw.length > 0 ? raw : ["artista"];
+}
+
 // ── Trayectoria ─────────────────────────────────────────────────────────────
 
 /** Años de trayectoria a partir del año de inicio (puro). */

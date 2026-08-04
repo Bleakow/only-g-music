@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import dynamic from "next/dynamic";
 import { useLocale, useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { useContextualBack } from "@/lib/use-contextual-back";
 import {
   METRICS_RANGES,
   deltaPct,
@@ -50,7 +50,16 @@ const WorldMap = dynamic(
 
 /** Datos que sirve `GET /api/metricas/[slug]`. */
 export interface MetricsData {
-  perfil: { slug: string; artisticName: string };
+  perfil: {
+    slug: string;
+    artisticName: string;
+    /**
+     * ¿El perfil tiene encendida su parte musical (§05)? Lo resuelve el servidor.
+     * Opcional por compat: un panel abierto durante un deploy puede recibir la
+     * respuesta vieja, y ahí "lo más reproducido" es el título que nunca miente.
+     */
+    esMusical?: boolean;
+  };
   rango: MetricsRange;
   visibility: MetricsVisibility;
   canManage: boolean;
@@ -86,6 +95,16 @@ export function MetricsPanel({
   const t = useTranslations("metrics");
   const locale = useLocale();
   const { actual, previo, serie } = data;
+
+  // Retrocede en el historial en vez de empujar el perfil: empujarlo dejaba las
+  // métricas en la pila y el "atrás" del perfil volvía aquí (bucle). El perfil es
+  // solo el destino de rescate para quien entra por enlace compartido.
+  const goBack = useContextualBack(`/artistas/${data.perfil.slug}`);
+
+  // El ranking de reproducciones lo llenan TODOS los reproductores del perfil
+  // (temas, tema de intro y media destacada). Titularlo "canciones" solo cuadra
+  // si el perfil es musical; para un bailarín o un modelo son sus clips.
+  const esMusical = data.perfil.esMusical ?? false;
 
   // Nombres de país traducidos por el propio navegador: `Intl.DisplayNames` sabe
   // que CO es "Colombia" en español y "Colombia" en inglés, y que DE es
@@ -136,15 +155,16 @@ export function MetricsPanel({
       <header className="bg-ink-soft sticky top-0 z-30 border-b border-white/[0.08] px-4 py-4 backdrop-blur sm:px-10">
         <div className="mx-auto flex max-w-400 flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href={`/artistas/${data.perfil.slug}`}
+            <button
+              type="button"
+              onClick={goBack}
               aria-label={t("back")}
               title={t("back")}
               className={`${glassSurfaceSoft} flex size-11 shrink-0 items-center justify-center rounded-[13px] text-white/80 transition hover:text-white`}
             >
               <GlassSheen />
               <ArrowLeftIcon className="relative size-4" />
-            </Link>
+            </button>
             <div className="min-w-0">
               <h1 className="font-narrow truncate text-xl font-bold tracking-wide text-white uppercase sm:text-2xl">
                 {t("title")}
@@ -260,22 +280,26 @@ export function MetricsPanel({
           </MetricPanel>
         </div>
 
-        {/* ── Canciones + compartidos ───────────────────────────────────── */}
+        {/* ── Lo más reproducido + compartidos ──────────────────────────── */}
         <div className="grid gap-6 xl:grid-cols-[1fr_380px]">
           <MetricPanel
-            title={t("topSongs")}
-            subtitle={t("topSongsSub")}
+            title={t(esMusical ? "topSongs" : "topPlays")}
+            subtitle={t(esMusical ? "topSongsSub" : "topPlaysSub")}
           >
             <RankedList
               entries={canciones}
               accent={accent}
-              emptyText={t("emptySongs")}
+              emptyText={t(esMusical ? "emptySongs" : "emptyPlays")}
               renderLabel={(e, i) => (
                 <>
                   <span className="font-narrow text-silver-500 w-4 shrink-0 text-sm font-bold tabular-nums">
                     {i + 1}
                   </span>
-                  <MusicIcon className="text-silver-500 size-3.5 shrink-0" />
+                  {esMusical ? (
+                    <MusicIcon className="text-silver-500 size-3.5 shrink-0" />
+                  ) : (
+                    <PlayIcon className="text-silver-500 size-3.5 shrink-0" />
+                  )}
                   <span className="truncate">{e.key}</span>
                 </>
               )}

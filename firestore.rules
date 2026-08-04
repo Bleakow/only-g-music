@@ -141,15 +141,33 @@ service cloud.firestore {
     // El usuario crea SU propia solicitud (estado inicial 'pendiente') y lee las
     // suyas; el admin lee todas. La APROBACIÓN otorga un rol → va por Cloud
     // Function (Admin SDK), nunca desde el cliente: por eso update/delete = false.
+    // ── Pagos con Wompi (§09) ────────────────────────────────────────
+    // El dueño LEE su pago (de ahí salen las pantallas de aprobado/pendiente/
+    // rechazado) y NADIE escribe desde el cliente: lo crea `crearPagoWompi` y lo
+    // actualiza el webhook, ambos con el Admin SDK. Si el cliente pudiera
+    // escribir aquí, se pondría `estado: "aprobado"` él solo y se llevaría la
+    // membresía sin pagar — el estado del pago lo dicta la pasarela, no el
+    // navegador.
+    match /wompiPagos/{reference} {
+      allow read: if request.auth != null
+        && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create, update, delete: if false;
+    }
+
     match /convenioRequests/{id} {
       allow read: if request.auth != null
         && (isAdmin() || resource.data.uid == request.auth.uid);
 
+      // Los tipos van enumerados a mano (no hay `in` con listas del cliente):
+      // son las artes/funciones que el equipo APRUEBA. El resto de artes
+      // (cantante, bailarín, DJ, presentador) no pasa por aquí — se encienden
+      // solas con la Function `actualizarMisArtes`.
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.estado == 'pendiente'
         && (request.resource.data.tipo == 'productor'
-          || request.resource.data.tipo == 'beatmaker');
+          || request.resource.data.tipo == 'beatmaker'
+          || request.resource.data.tipo == 'modelo');
 
       allow update, delete: if false;
     }

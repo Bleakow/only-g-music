@@ -70,7 +70,7 @@
     "user": "User",
     "sectionManage": "Manage",
     "sectionAccount": "Account",
-    "convenios": "Agreements & roles",
+    "convenios": "Profiles and agreements",
     "myRequests": "My activity",
     "myArtistProfile": "My artist profile",
     "becomeArtist": "Become an artist",
@@ -1856,8 +1856,16 @@
     "share": "Share",
     "close": "Close",
     "title": "Share profile",
-    "qrAlt": "Profile QR code",
+    "qrAlt": "Shareable card with the profile QR code",
     "generating": "Generating…",
+    "preparing": "Building your card…",
+    "cardError": "We couldn't build the image. Check your connection and try again.",
+    "cardBrand": "Only G Music",
+    "cardBadge": "OGM",
+    "cardCaption": "Scan the code to open the profile",
+    "download": "Download",
+    "shareImage": "Share",
+    "shareLink": "Share the link",
     "copied": "Copied",
     "copy": "Copy",
     "shareNative": "Share…",
@@ -2291,12 +2299,152 @@
       "empty": "You haven't added anything yet."
     }
   },
+  "checkout": {
+    "title": "Secure payment",
+    "conceptoGenerico": "Your Only G purchase",
+    "close": "Close the payment",
+    "paso": "Step {n} of 3",
+    "resumen": {
+      "title": "Here's what you're paying",
+      "total": "Total",
+      "continuar": "Continue"
+    },
+    "metodo": {
+      "label": "Payment method",
+      "CARD": "Card",
+      "PSE": "PSE",
+      "NEQUI": "Nequi",
+      "BANCOLOMBIA_TRANSFER": "Bancolombia"
+    },
+    "bancolombia": {
+      "info": "We take you to Bancolombia to authorise the transfer and bring you back when you're done."
+    },
+    "card": {
+      "numero": "Card number",
+      "numeroPlaceholder": "1234 5678 9012 3456",
+      "vence": "Expires",
+      "vencePlaceholder": "MM/YY",
+      "cvc": "CVC",
+      "titular": "Name on card",
+      "titularPlaceholder": "As printed on it",
+      "cuotas": "Instalments"
+    },
+    "pse": {
+      "tipo": "Person type",
+      "natural": "Individual",
+      "juridica": "Company",
+      "banco": "Bank",
+      "bancoPlaceholder": "Pick your bank",
+      "documento": "ID type",
+      "numeroDocumento": "ID number",
+      "correo": "Email",
+      "nota": "We take you to your bank's portal and bring you back when you're done."
+    },
+    "nequi": {
+      "numero": "Nequi number",
+      "numeroPlaceholder": "300 000 0000",
+      "info": "You'll get a notification in the app to approve the payment.",
+      "esperandoTitle": "Open your Nequi app",
+      "esperandoSub": "Approve the {monto} payment in your app notification. We're still waiting for confirmation.",
+      "expira": "Expires in {tiempo}",
+      "expirado": "Time ran out. You can try again.",
+      "cancelar": "Cancel the payment"
+    },
+    "breb": {
+      "title": "Rather use Bre-B?",
+      "sub": "Pay with your key from any bank"
+    },
+    "acepto": "I accept Only G's <terms>Terms</terms> and <privacy>Privacy Policy</privacy>, and authorise the payment via Wompi.",
+    "pagar": "Pay {monto}",
+    "procesando": "Processing…",
+    "seguro": "Payment processed by Wompi",
+    "estado": {
+      "aprobadaTitle": "Payment approved!",
+      "aprobadaSub": "What you bought is active now. Your receipt is right below.",
+      "pendienteTitle": "Payment in progress",
+      "pendienteSub": "Your payment is being confirmed. We'll let you know as soon as Wompi approves it — no need to wait here.",
+      "rechazadaTitle": "Payment declined",
+      "rechazadaSub": "Your bank didn't approve the transaction. Nothing was charged to your account.",
+      "listo": "Done",
+      "entendido": "Got it",
+      "reintentar": "Try again"
+    },
+    "recibo": {
+      "title": "Receipt",
+      "concepto": "Item",
+      "referencia": "Reference",
+      "metodo": "Method",
+      "fecha": "Date",
+      "total": "Total"
+    },
+    "errors": {
+      "tarjeta": "Check your card details and try again.",
+      "crear": "We couldn't open the payment. Check your connection and try again.",
+      "acepto": "You need to accept the terms to continue.",
+      "campos": "Fill in the missing details.",
+      "noDisponible": "Card payment isn't available right now.",
+      "sinLectura": "We can't check your payment status right now. If the charge left your account, write to us with the reference below and we'll sort it out."
+    }
+  },
+  "perfilesConvenios": {
+    "eyebrow": "Your place in Only G",
+    "title": "Profiles and agreements",
+    "intro": "This is where you decide what you do: turn on the crafts you work in, request an agreement for the ones arranged with the team, and pick what your profile shows.",
+    "explainer": "To sell services on Only G (beats, production or modelling) you need an agreement: a contract that sets the platform's commission. Singer, DJ, dancer and host profiles are free and need no agreement.",
+    "misConveniosTitle": "Your agreements",
+    "solicitarTitle": "Request an agreement",
+    "libresTitle": "Free profiles",
+    "libresHint": "No contract, no commission — just your talent on stage.",
+    "sinComision": "No commission",
+    "comisionNota": "The platform commission is agreed with you in the agreement itself.",
+    "convenio": {
+      "beatmaker": "Sell your beats with checkout and instant download on Only G.",
+      "productor": "Offer music production services to other artists.",
+      "modelo": "Professional portfolio and booking for castings and campaigns."
+    },
+    "chip": {
+      "activo": "Active",
+      "revision": "Under review",
+      "rechazado": "Rejected"
+    },
+    "membresiaTitle": "Needs an active membership to publish",
+    "membresiaHint": "You can create and edit your free profile, but to publish it and show up in the list you need an active membership.",
+    "membresiaActiva": "Membership active",
+    "gestionar": "Manage",
+    "seccionesTitle": "Your profile sections",
+    "seccionesHint": "Tick what you want to show. The content of each section is filled in the editor.",
+    "sinPerfil": "You don't have an artist profile yet. Create it and come back to choose what it shows.",
+    "crearPerfil": "Create my profile",
+    "estado": {
+      "activo": "Active on your profile",
+      "revision": "Under review by the Only G team",
+      "rechazado": "Not approved. You can request it again.",
+      "rechazadoMotivo": "Not approved: {motivo}",
+      "disponible": "Needs an agreement with the studio"
+    },
+    "pedir": "Request it",
+    "pedirTitle": "Request a {arte} agreement",
+    "pedirHint": {
+      "productor": "Tell us which studio or crew you work with and what you produce. Once approved you join a location and the console opens up.",
+      "beatmaker": "Tell us what you make and where we can hear it. Once approved you can sell your beats on the platform.",
+      "modelo": "Tell us about your experience and where to see your work. Once approved you join the models tab."
+    },
+    "pedirPlaceholder": "Your experience, links to your work, who you've worked with…",
+    "enviar": "Send request",
+    "enviando": "Sending…",
+    "errors": {
+      "load": "We couldn't load your crafts. Check your connection and try again.",
+      "save": "We couldn't save the change. Try again.",
+      "send": "We couldn't send your request. Try again."
+    }
+  },
   "sections": {
     "sectionTitle": "Your sections",
     "sectionHint": "Build your profile from what actually represents you. Your tags decide what you can show.",
     "tagsTitle": "Your tags",
     "tagsHint": "Your tags unlock the sections available for your profile.",
-    "tagsEmpty": "You don't have tags yet. Message the team to get them assigned.",
+    "tagsEmpty": "You have no active crafts yet. Add them in Profiles and agreements.",
+    "addTag": "Add craft",
     "groupBase": "Base sections",
     "groupBaseHint": "Always available",
     "groupUnlocked": "Unlocked by your tags",
@@ -2305,7 +2453,7 @@
     "groupLockedHint": "They need a tag you don't have yet",
     "baseCaption": "Base section",
     "requiresTag": "Needs the {tag} tag",
-    "requestTag": "Request it",
+    "requestTag": "Get it",
     "item": {
       "sobreMi": "About me",
       "galeria": "Photo gallery",
@@ -2353,6 +2501,9 @@
     "topSongs": "Most played songs",
     "topSongsSub": "Played from your artist profile",
     "emptySongs": "Your tracks haven't been played yet.",
+    "topPlays": "Most played",
+    "topPlaysSub": "Videos and audio playing on your profile",
+    "emptyPlays": "Nobody has played your content yet.",
     "sharesTitle": "Shares",
     "sharesHint": "People who shared your profile. Yours don't count.",
     "emptyShares": "Nobody has shared your profile yet.",
@@ -2369,6 +2520,7 @@
       "whatsapp": "WhatsApp",
       "copy": "Link copied",
       "native": "Share menu",
+      "qr": "QR card",
       "instagram": "Instagram",
       "x": "X",
       "facebook": "Facebook",

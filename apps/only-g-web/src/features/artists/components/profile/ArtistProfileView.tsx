@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Link, useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
+import { useContextualBack } from "@/lib/use-contextual-back";
 import { useTranslations } from "next-intl";
 import type { ArtistProfile } from "@only-g/shared-types/artist-profile";
 import {
@@ -138,15 +139,11 @@ export function ArtistProfileView({
   isOwner?: boolean;
 }) {
   const t = useTranslations();
-  const router = useRouter();
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
   // "Atrás" contextual: vuelve a DONDE se venía (la lista, o el editor/panel admin
   // si el admin llegó por "Ver perfil"), no siempre a la lista. Fallback: /artistas.
-  function goBack() {
-    if (typeof window !== "undefined" && window.history.length > 1) router.back();
-    else router.push("/artistas");
-  }
+  const goBack = useContextualBack("/artistas");
 
   // Clamp de colisión del reproductor overlay: su posición se guarda como % global
   // (normalmente calibrada en escritorio). En móvil el bloque de identidad (nombre/
@@ -325,6 +322,7 @@ export function ArtistProfileView({
             <ShareProfile
               slug={profile.slug}
               name={profile.artisticName}
+              photoUrl={profile.photoURL}
               locked={isOwner && !isPremium}
               payButton={
                 isOwner && !isPremium ? (

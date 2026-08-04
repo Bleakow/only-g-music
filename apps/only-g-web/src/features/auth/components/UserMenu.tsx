@@ -319,21 +319,18 @@ export function UserMenu({
                     {/* ── GESTIÓN (management, por rol) ── */}
                     <SectionLabel>{t("userMenu.sectionManage")}</SectionLabel>
                     <div className="flex flex-col gap-1.5">
-                      {hasAnyRole(account, ["admin"]) && (
-                        <MenuLink
-                          href="/admin/convenios"
-                          icon={FileCheckIcon}
-                          label={t("userMenu.convenios")}
-                          onClose={close}
-                          highlight
-                        />
-                      )}
+                      {/* Las solicitudes de convenio de OTROS se aprueban solo
+                          desde /admin. Estaban aquí, y a un admin que además es
+                          artista le aparecían dos entradas casi homónimas: la
+                          suya ("Perfiles y convenios", abajo) y la del equipo.
+                          Separadas por contexto, no hay forma de confundirlas. */}
                       {hasAnyRole(account, ["admin"]) && (
                         <MenuLink
                           href="/admin"
                           icon={ShieldCheckIcon}
                           label={t("userMenu.adminPanel")}
                           onClose={close}
+                          highlight
                         />
                       )}
                       {!hasAnyRole(account, ["admin"]) && (
@@ -381,26 +378,37 @@ export function UserMenu({
                     {/* ── CUENTA (personal) ── */}
                     <SectionLabel>{t("userMenu.sectionAccount")}</SectionLabel>
                     <div className="flex flex-col gap-1.5">
-                      {hasAnyRole(account, ["artista"]) ? (
-                        <MenuLink
-                          href={
-                            account?.artistSlug
-                              ? `/artistas/${account.artistSlug}`
-                              : "/artista/perfil"
-                          }
-                          icon={UserRoundIcon}
-                          label={t("userMenu.myArtistProfile")}
-                          onClose={close}
-                        />
-                      ) : (
-                        !hasAnyRole(account, ["admin"]) && (
+                      {hasAnyRole(account, ["artista"]) && (
+                        <>
                           <MenuLink
-                            href="/artista/nuevo"
-                            icon={UserPlusIcon}
-                            label={t("userMenu.becomeArtist")}
+                            href={
+                              account?.artistSlug
+                                ? `/artistas/${account.artistSlug}`
+                                : "/artista/perfil"
+                            }
+                            icon={UserRoundIcon}
+                            label={t("userMenu.myArtistProfile")}
                             onClose={close}
                           />
-                        )
+                          {/* Perfiles y convenios: tus artes, tus convenios y
+                              qué secciones enseña tu perfil. Va en CUENTA (es
+                              TUYO), no en GESTIÓN (que es lo que administras de
+                              la plataforma). */}
+                          <MenuLink
+                            href="/artista/perfiles"
+                            icon={FileCheckIcon}
+                            label={t("userMenu.convenios")}
+                            onClose={close}
+                          />
+                        </>
+                      )}
+                      {!hasAnyRole(account, ["artista", "admin"]) && (
+                        <MenuLink
+                          href="/artista/nuevo"
+                          icon={UserPlusIcon}
+                          label={t("userMenu.becomeArtist")}
+                          onClose={close}
+                        />
                       )}
                       <MenuLink
                         href="/suscripciones"

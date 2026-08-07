@@ -1,0 +1,476 @@
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { SplitText } from "gsap/SplitText";
+import type { RitmoId } from "@only-g/shared-types/book";
+import { paramsDeRitmo, type ParamsRitmo } from "./ritmo";
+
+/**
+ * COREOGRAFÍA DEL BOOK (§10).
+ *
+ * Se carga con `import()` desde `BookView`, así que GSAP y sus plugins solo los
+ * paga quien abre un book — no el perfil, no la vitrina, no la home.
+ *
+ * Tres reglas que no se negocian:
+ *
+ * 1. TODO dentro de un `gsap.context()` con `revert()` al desmontar. React monta
+ *    dos veces en desarrollo (StrictMode) y sin revert un `gsap.from` deja los
+ *    elementos con el estado inicial pegado — o sea, invisibles. Ya pasó antes.
+ *
+ * 2. `gsap.matchMedia()` con TRES ramas, no un interruptor. La de móvil no es
+ *    la de escritorio recortada: la tira pasa a carrusel nativo (anclar scroll
+ *    horizontal en un móvil es una pelea perdida) y la foto anclada pega arriba.
+ *    Y la rama `reduce` cuenta LA MISMA historia solo con opacidad: quien pide
+ *    menos movimiento no se queda sin book, se queda sin mareo.
+ *
+ * 3. Nada de esto puede ser necesario para entender el book. La línea base
+ *    estática ya funciona sola; esto es lo que se le pone encima.
+ *
+ * El RITMO que eligió la modelo entra aquí como números. No es una librería de
+ * scroll suave: son los mismos recorridos contados de otra manera.
+ */
+
+gsap.registerPlugin(ScrollTrigger, SplitText);
+
+/**
+ * Los números del ritmo viven en `./ritmo`, sin GSAP y sin DOM: la vitrina
+ * también necesita saber cuánto dura y con qué curva se mueve algo, y no puede
+ * pagar ScrollTrigger y SplitText para leer dos números.
+ */
+type Params = ParamsRitmo;
+
+/** `scrub` para timelines que SIEMPRE van atadas al scroll (pin, revelados). */
+const arrastre = (p: Params) => (p.scrub === false ? true : p.scrub);
+
+const q = <T extends Element>(raiz: Element, sel: string) =>
+  Array.from(raiz.querySelectorAll<T>(sel));
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Escenas — escritorio y móvil (la coreografía completa)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Registra trabajo de limpieza que `gsap.context` no sabe deshacer solo. */
+type AlLimpiar = (fn: () => void) => void;
+
+/**
+ * LA APERTURA. Una sola timeline atada al recorrido de la escena, con tres
+ * cosas pasando a la vez:
+ *   · el nombre SE DISPERSA hacia arriba, letra a letra desde el centro,
+ *   · la primera foto se DESENFOCA hasta desaparecer en el color de fondo,
+ *   · las otras dos SUBEN desde abajo en diagonal, con un recorrido leve por
+ *     dentro de sí mismas, y se colocan.
+ *
+ * El anclado NO lo hace GSAP: lo hace un `position: sticky` en el CSS. Así la
+ * apertura ya se sostiene sin JavaScript —la foto se ve, el nombre se lee, las
+ * otras dos están colocadas— y esto solo añade el viaje. Un `pin` de
+ * ScrollTrigger habría metido un `.pin-spacer` en la primera pantalla del book,
+ * que es el peor sitio para que algo se descoloque un fotograma.
+ */
+function apertura(
+  escena: HTMLElement,
+  p: Params,
+  movil: boolean,
+  alLimpiar: AlLimpiar,
+) {
+  const track = escena.querySelector<HTMLElement>(".og-book-apertura");
+  if (!track) return;
+
+  const nombre = escena.querySelector<HTMLElement>(".og-book-ap-nombre");
+  const titulo = escena.querySelector<HTMLElement>(".og-book-titulo-portada");
+  const pista = escena.querySelector<HTMLElement>(".og-book-pista");
+  const principal = escena.querySelector<HTMLElement>(
+    ".og-book-ap-principal .og-book-pieza > *",
+  );
+  const diagonales = q<HTMLElement>(escena, ".og-book-ap-diagonal");
+
+  // Estado inicial de las dos que suben. Va AQUÍ y no en el CSS a propósito: si
+  // arrancaran escondidas por hoja de estilos y este módulo no llegara nunca a
+  // cargarse, la apertura se quedaría con dos fotos invisibles para siempre.
+  gsap.set(diagonales, { yPercent: 175, opacity: 0 });
+
+  const tl = gsap.timeline({
+    scrollTrigger: {
+      trigger: track,
+      start: "top top",
+      end: "bottom bottom",
+      scrub: arrastre(p),
+    },
+  });
+
+  // 1. El nombre se dispersa. Por CARACTERES y desde el centro: es lo que hace
+  //    que se lea como "se dispersa" y no como "se va hacia arriba en bloque".
+  if (titulo) {
+    const split = new SplitText(titulo, { type: "chars" });
+    tl.to(
+      split.chars,
+      {
+        yPercent: -180,
+        opacity: 0,
+        ease: "none",
+        stagger: { from: "center", amount: 0.35 },
+      },
+      0,
+    );
+    // `gsap.context` deshace los tweens, pero NO el DOM que SplitText partió:
+    // hay que revertirlo a mano o el nombre se queda troceado en fragmentos.
+    alLimpiar(() => split.revert());
+  } else if (nombre) {
+    tl.to(nombre.children, { yPercent: -180, opacity: 0, ease: "none" }, 0);
+  }
+
+  if (pista) tl.to(pista, { opacity: 0, ease: "none" }, 0);
+
+  // 2. La foto que abre se desenfoca hasta dejar ver el fondo de la atmósfera.
+  //    La escala acompaña: un desenfoque sin movimiento se lee como un fallo de
+  //    carga, no como una transición.
+  if (principal) {
+    tl.to(
+      principal,
+      {
+        filter: "blur(42px)",
+        scale: 1.14,
+        opacity: 0,
+        ease: "none",
+      },
+      0.06,
+    );
+  }
+
+  // 3. Las dos suben y se colocan, una detrás de la otra.
+  if (diagonales.length) {
+    tl.to(
+      diagonales,
+      {
+        yPercent: 0,
+        opacity: 1,
+        ease: "none",
+        stagger: 0.14,
+      },
+      0.14,
+    );
+
+    // 4. El recorrido leve POR DENTRO de cada foto. La escala la pone la propia
+    //    tween y no el CSS: en reposo la imagen encaja exacta, y solo se amplía
+    //    mientras hay viaje — si no, habría bordes vacíos al desplazarla.
+    diagonales.forEach((d, i) => {
+      const img = d.querySelector<HTMLElement>(".og-book-pieza > *");
+      if (!img) return;
+      tl.fromTo(
+        img,
+        { yPercent: -6, scale: 1.16 },
+        { yPercent: 6, scale: 1.16, ease: "none" },
+        0.14 + i * 0.06,
+      );
+    });
+  }
+
+  // En móvil la diagonal es más estrecha y el viaje, más corto: recorrer 175%
+  // en una pantalla alta se siente lento aunque dure lo mismo.
+  if (movil) tl.timeScale(1);
+}
+
+/** A sangre: se abre como un telón y la imagen respira por dentro. */
+function plena(escena: HTMLElement, p: Params) {
+  const figura = escena.querySelector<HTMLElement>(".og-book-figura");
+  const media = escena.querySelector<HTMLElement>(".og-book-pieza > *");
+  if (figura) {
+    gsap.fromTo(
+      figura,
+      { clipPath: "inset(14% 8% round 1rem)" },
+      {
+        clipPath: "inset(0% 0% round 0rem)",
+        ease: "none",
+        scrollTrigger: {
+          trigger: escena,
+          start: "top 85%",
+          end: "top 25%",
+          scrub: arrastre(p),
+        },
+      },
+    );
+  }
+  if (media) {
+    // El parallax va DENTRO del marco: la imagen se mueve, el hueco no. Moverlo
+    // todo abriría huecos entre escenas.
+    gsap.fromTo(
+      media,
+      { yPercent: -6 },
+      {
+        yPercent: 6,
+        ease: "none",
+        scrollTrigger: {
+          trigger: escena,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
+      },
+    );
+  }
+}
+
+/** Díptico: una sube, la otra baja. Es lo que lo convierte en díptico. */
+function diptico(escena: HTMLElement, p: Params) {
+  const figuras = q<HTMLElement>(escena, ".og-book-figura");
+  figuras.forEach((fig, i) => {
+    gsap.fromTo(
+      fig,
+      { y: i % 2 === 0 ? p.recorrido * 0.5 : -p.recorrido * 0.5 },
+      {
+        y: i % 2 === 0 ? -p.recorrido * 0.5 : p.recorrido * 0.5,
+        ease: "none",
+        scrollTrigger: {
+          trigger: escena,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+        },
+      },
+    );
+  });
+}
+
+/** Foto anclada: el `sticky` lo hace el CSS; aquí solo desfilan los textos. */
+function ancla(escena: HTMLElement, p: Params) {
+  const notas = q<HTMLElement>(escena, ".og-book-notas > *");
+  if (!notas.length) return;
+  notas.forEach((nota) => {
+    gsap.from(nota, {
+      y: p.recorrido * 0.4,
+      opacity: 0,
+      duration: p.duracion,
+      ease: p.ease,
+      scrollTrigger: { trigger: nota, start: "top 85%" },
+    });
+  });
+}
+
+/** Rejilla: entran una detrás de otra, del desenfoque a la nitidez. */
+function rejilla(escena: HTMLElement, p: Params) {
+  const figuras = q<HTMLElement>(escena, ".og-book-figura");
+  if (!figuras.length) return;
+  gsap.from(figuras, {
+    y: p.recorrido * 0.6,
+    opacity: 0,
+    filter: "blur(12px)",
+    duration: p.duracion,
+    ease: p.ease,
+    stagger: 0.12,
+    scrollTrigger: { trigger: escena, start: "top 88%" },
+  });
+}
+
+/** Retrato: la foto se descubre de abajo arriba y la nota la sigue. */
+function retrato(escena: HTMLElement, p: Params) {
+  const figura = escena.querySelector<HTMLElement>(".og-book-figura");
+  if (figura) {
+    gsap.from(figura, {
+      clipPath: "inset(100% 0% 0% 0%)",
+      duration: p.duracion * 1.2,
+      ease: p.ease,
+      scrollTrigger: { trigger: escena, start: "top 82%" },
+    });
+  }
+  const pie = escena.querySelector<HTMLElement>("figcaption");
+  if (pie) {
+    gsap.from(pie, {
+      y: 24,
+      opacity: 0,
+      duration: p.duracion,
+      ease: p.ease,
+      scrollTrigger: { trigger: escena, start: "top 70%" },
+    });
+  }
+}
+
+/**
+ * Serie: se ancla la escena y la fila se recorre de lado mientras bajas.
+ * SOLO en escritorio — en el móvil la fila ya es un carrusel con imán y dedo,
+ * que es mejor que cualquier pin: anclar el scroll de un móvil le quita al
+ * visitante el control de la página.
+ */
+function tira(escena: HTMLElement, p: Params) {
+  const fila = escena.querySelector<HTMLElement>(".og-book-grid");
+  if (!fila) return;
+  fila.dataset.pin = "true";
+
+  const recorrido = () => Math.max(0, fila.scrollWidth - fila.clientWidth);
+  if (recorrido() <= 0) return;
+
+  gsap.to(fila, {
+    x: () => -recorrido(),
+    ease: "none",
+    scrollTrigger: {
+      trigger: escena,
+      start: "top top",
+      // El alto del pin ES el recorrido horizontal: así una tira de seis fotos
+      // pide más scroll que una de tres, en vez de ir a distinta velocidad.
+      end: () => `+=${recorrido()}`,
+      pin: true,
+      scrub: arrastre(p),
+      // Al rotar el móvil o cambiar el ancho, `scrollWidth` cambia. Sin esto, el
+      // recorrido se queda con la medida vieja y la tira acaba a medias.
+      invalidateOnRefresh: true,
+      anticipatePin: 1,
+    },
+  });
+}
+
+/**
+ * Índice: las fichas entran una detrás de otra. NO se toca el revelado del
+ * hover —ese es CSS puro a propósito: un hover que depende de un módulo cargado
+ * por red se siente roto justo en los primeros segundos, que es cuando alguien
+ * pasa el ratón por encima.
+ */
+function indice(escena: HTMLElement, p: Params) {
+  const figuras = q<HTMLElement>(escena, ".og-book-figura");
+  if (!figuras.length) return;
+  gsap.from(figuras, {
+    y: p.recorrido * 0.5,
+    opacity: 0,
+    duration: p.duracion,
+    ease: p.ease,
+    stagger: 0.1,
+    scrollTrigger: { trigger: escena, start: "top 85%" },
+  });
+}
+
+/**
+ * Vitrina: solo la ENTRADA. El intercambio al tocar una miniatura lo gobierna el
+ * propio componente con Flip, porque responde a un clic y no al scroll — mezclar
+ * las dos cosas aquí sería que un scroll pudiera pisar una traslación a medias.
+ */
+function vitrina(escena: HTMLElement, p: Params) {
+  const partes = q<HTMLElement>(
+    escena,
+    ".og-book-vit-titulo, .og-book-vit-figura, .og-book-vit-cita",
+  );
+  if (!partes.length) return;
+  gsap.from(partes, {
+    y: p.recorrido * 0.35,
+    opacity: 0,
+    duration: p.duracion,
+    ease: p.ease,
+    stagger: 0.07,
+    scrollTrigger: { trigger: escena, start: "top 82%" },
+  });
+}
+
+/** Cierre: aparece sin ceremonia. Es una despedida, no otro número. */
+function cierre(escena: HTMLElement, p: Params) {
+  const sobre = escena.querySelector<HTMLElement>(".og-book-sobre");
+  if (!sobre) return;
+  gsap.from(sobre, {
+    y: p.recorrido * 0.4,
+    opacity: 0,
+    duration: p.duracion,
+    ease: p.ease,
+    scrollTrigger: { trigger: escena, start: "top 80%" },
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Montaje
+// ─────────────────────────────────────────────────────────────────────────────
+
+type Coreografia = (
+  escena: HTMLElement,
+  p: Params,
+  movil: boolean,
+  alLimpiar: AlLimpiar,
+) => void;
+
+const POR_TIPO: Record<string, Coreografia> = {
+  portada: apertura,
+  plena: (e, p) => plena(e, p),
+  diptico: (e, p) => diptico(e, p),
+  ancla: (e, p) => ancla(e, p),
+  rejilla: (e, p) => rejilla(e, p),
+  indice: (e, p) => indice(e, p),
+  vitrina: (e, p) => vitrina(e, p),
+  retrato: (e, p) => retrato(e, p),
+  cierre: (e, p) => cierre(e, p),
+  // `tira` no está aquí: solo se monta en escritorio, más abajo.
+};
+
+/**
+ * Monta la coreografía sobre un book ya renderizado. Devuelve la función de
+ * limpieza — llamarla es OBLIGATORIO al desmontar.
+ */
+export function montarCoreografia(raiz: HTMLElement, ritmo: RitmoId): () => void {
+  const p = paramsDeRitmo(ritmo);
+  const pendientes: (() => void)[] = [];
+  const alLimpiar: AlLimpiar = (fn) => pendientes.push(fn);
+
+  /**
+   * Las piezas del book llegan tarde (lazy load) y cada una que aterriza cambia
+   * el alto de la página. Sin recalcular, los disparadores de las escenas de
+   * abajo apuntan a donde el contenido ESTABA. En captura porque el `load` de
+   * una `<img>` no burbujea, y agrupado porque en una rejilla llegan cuatro
+   * seguidas y no hacen falta cuatro recálculos.
+   */
+  let agrupado: number | undefined;
+  const alCargarMedia = () => {
+    window.clearTimeout(agrupado);
+    agrupado = window.setTimeout(() => ScrollTrigger.refresh(), 140);
+  };
+  raiz.addEventListener("load", alCargarMedia, true);
+  raiz.addEventListener("loadeddata", alCargarMedia, true);
+
+  const ctx = gsap.context(() => {
+    const mm = gsap.matchMedia();
+
+    mm.add(
+      {
+        ancho: "(min-width: 768px)",
+        estrecho: "(max-width: 767px)",
+        reduce: "(prefers-reduced-motion: reduce)",
+      },
+      (contexto) => {
+        const { ancho, reduce } = contexto.conditions as {
+          ancho: boolean;
+          estrecho: boolean;
+          reduce: boolean;
+        };
+
+        const escenas = q<HTMLElement>(raiz, ".og-book-escena");
+
+        // MENOS MOVIMIENTO. No es apagar la coreografía: es contarla con lo
+        // único que no marea. Se recorre el book entero y no falta nada.
+        if (reduce) {
+          escenas.forEach((escena) => {
+            gsap.from(escena, {
+              opacity: 0,
+              duration: 0.4,
+              ease: "none",
+              scrollTrigger: { trigger: escena, start: "top 90%" },
+            });
+          });
+          return;
+        }
+
+        escenas.forEach((escena) => {
+          const tipo = escena.dataset.tipo ?? "";
+          if (tipo === "tira") {
+            // En estrecho la tira se queda como está: carrusel con dedo e imán.
+            if (ancho) tira(escena, p);
+            return;
+          }
+          POR_TIPO[tipo]?.(escena, p, !ancho, alLimpiar);
+        });
+      },
+    );
+
+    return () => mm.revert();
+  }, raiz);
+
+  return () => {
+    window.clearTimeout(agrupado);
+    raiz.removeEventListener("load", alCargarMedia, true);
+    raiz.removeEventListener("loadeddata", alCargarMedia, true);
+    // Primero lo que GSAP no sabe deshacer (el DOM partido por SplitText) y
+    // luego el contexto: al revés, el revert del contexto trabajaría sobre unos
+    // nodos que están a punto de desaparecer.
+    pendientes.forEach((fn) => fn());
+    ctx.revert();
+  };
+}

@@ -33,6 +33,7 @@ export type SectionId =
   | "canciones"
   | "generosMusicales"
   // Modelo
+  | "book"
   | "portafolio"
   | "fichaTecnica"
   | "reconocimientos"
@@ -77,6 +78,13 @@ export const PROFILE_SECTIONS: ProfileSectionDef[] = [
   { id: "canciones", unlockedBy: ["artista"], defaultOn: true },
   { id: "generosMusicales", unlockedBy: ["artista", "dj"], defaultOn: true },
   // ── Modelo ──────────────────────────────────────────────────────────
+  // `book` (§10) es el portafolio inmersivo: una pieza aparte, a pantalla
+  // completa, con su propia ruta. Va ENCENDIDA por defecto aunque no haya nada
+  // montado —al revés que `reconocimientos`— porque apagarla escondería también
+  // el editor, y una modelo no puede descubrir una sección que no ve. Lo que
+  // decide si el visitante ve algo es `bookPublicado`, que solo se enciende
+  // cuando el book es publicable.
+  { id: "book", unlockedBy: ["modelo"], defaultOn: true },
   { id: "portafolio", unlockedBy: ["modelo"], defaultOn: true },
   { id: "fichaTecnica", unlockedBy: ["modelo"], defaultOn: true },
   { id: "reconocimientos", unlockedBy: ["modelo"], defaultOn: false },

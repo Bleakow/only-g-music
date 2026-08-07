@@ -9,6 +9,7 @@ import {
   uploadUserFile,
   uploadUserBlob,
 } from "@/features/uploads/lib/uploads-repo";
+import { videoMeta } from "@/features/uploads/lib/media-meta";
 import type { SocialPlatform } from "@only-g/shared-types/artist";
 import {
   type EditableProfile,
@@ -26,6 +27,7 @@ import {
   DEFAULT_PLAYER_Y,
   DEFAULT_PLAYER_SIZE,
   GALLERY_LIMIT,
+  esReel,
   photoTransformCss,
   premiumEstado,
 } from "@only-g/shared-types/artist-profile";
@@ -74,6 +76,7 @@ import {
   categoriaColor,
 } from "./RoleSectionsEditor";
 import { FeaturedMediaEditor } from "./FeaturedMediaEditor";
+import { PerfilTalentoModal } from "@/features/admin/components/PerfilTalentoModal";
 import { PhotoScreenPreview, type ScreenTarget } from "./PhotoScreenPreview";
 import { StepButton, clampNum as clamp } from "./StepButton";
 import { UploadButton } from "./UploadButton";
@@ -109,6 +112,8 @@ import {
   RotateCwIcon,
   RotateCcwIcon,
   ArrowLeftIcon,
+  ArrowRightIcon,
+  CameraIcon,
   SparklesIcon,
   ClockIcon,
   MonitorIcon,
@@ -127,23 +132,9 @@ const MAX_MB = 25;
 const FEATURED_VIDEO_MAX_MB = 25;
 const GENRE_OPTIONS = MUSIC_GENRES.map((g) => ({ value: g, label: g }));
 
-/** Lee la duración (s) de un archivo de video por sus metadatos, sin subirlo. */
-function videoDuration(file: File): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const v = document.createElement("video");
-    v.preload = "metadata";
-    v.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(v.duration);
-    };
-    v.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("metadata"));
-    };
-    v.src = url;
-  });
-}
+// `videoMeta` vivía aquí. Se movió a `features/uploads/lib/media-meta.ts` al
+// llegar el book (§10), que necesita exactamente lo mismo: dos copias acaban
+// divergiendo justo en el detalle que importa.
 
 let trackSeq = 0;
 interface EditorTrack extends ProfileTrack {
@@ -220,8 +211,11 @@ export function ProfileBuilder({
   const [generosBaile, setGenerosBaile] = useState<string[]>([]);
   const [trayectoria, setTrayectoria] = useState<TrayectoriaItem[]>([]);
   const [reconocimientos, setReconocimientos] = useState<Reconocimiento[]>([]);
-  // Disciplinas (solo lectura) para calcular la política de media destacada.
+  // Disciplinas del perfil. Solo lectura para el artista (las derivan las
+  // Functions de sus roles); el ADMIN sí las edita, desde `PerfilTalentoModal`.
   const [disciplines, setDisciplines] = useState<Role[]>([]);
+  // Ventana de artes + comisiones (solo modo admin).
+  const [talentoOpen, setTalentoOpen] = useState(false);
   const [gallery, setGallery] = useState<GalleryItem[]>([]);
   // Composición elegida para el mosaico (null = la de por defecto para ese nº).
   const [galleryLayout, setGalleryLayout] = useState<GalleryLayoutId | null>(
@@ -460,7 +454,13 @@ export function ProfileBuilder({
       try {
         const editable: EditableProfile = JSON.parse(snapshot);
         if (existsRef.current) await updateProfile(slug, editable);
-        else {
+        else if (adminMode) {
+          // El admin EDITA perfiles ajenos; no los funda desde aquí. Crear
+          // pondría `uid` = el del admin y, con él, el trigger de perfiles
+          // volcaría los roles DEL ADMIN sobre el perfil de otro. Si el slug no
+          // existe (borrado, URL a mano), se dice y no se inventa un dueño.
+          throw new Error(`perfil inexistente: ${slug}`);
+        } else {
           await createProfile(user.uid, slug, editable, null);
           existsRef.current = true;
         }
@@ -586,6 +586,8 @@ export function ProfileBuilder({
 
   // Política de media destacada según disciplina (cuántos mudos / con audio).
   const mediaPolicy = featuredMediaPolicy(disciplines);
+  // Para una modelo, la media destacada se llama REEL y admite clips largos.
+  const reel = esReel(disciplines);
 
   // ¿Se le piden los datos de esta sección? Solo si su etiqueta la desbloquea Y
   // la tiene encendida en el gestor — el editor no pregunta por lo que no se va
@@ -646,9 +648,9 @@ export function ProfileBuilder({
     const maxSec = withAudio
       ? mediaPolicy.audioMaxSeconds
       : FEATURED_VIDEO_MAX_SECONDS;
-    const seconds = await videoDuration(file).catch(() => null);
+    const meta = await videoMeta(file).catch(() => null);
     const overDuration =
-      maxSec != null && seconds != null && seconds > maxSec + 0.5;
+      maxSec != null && meta != null && meta.duration > maxSec + 0.5;
     const overSize = file.size > FEATURED_VIDEO_MAX_MB * 1024 * 1024;
     if (overDuration || overSize) {
       setVideoTrim({ file, withAudio }); // abre el recortador en el modo correcto
@@ -661,6 +663,7 @@ export function ProfileBuilder({
         url: u.url,
         type: "video",
         withAudio: withAudio || undefined,
+        ratio: meta?.ratio,
       });
     } finally {
       setUploading(null);
@@ -675,11 +678,15 @@ export function ProfileBuilder({
     setUploading("featured");
     setError(null);
     try {
+      // La proporción se mide sobre el clip YA RECORTADO: el re-encode escala a
+      // 720p de ancho máximo, así que la del original no tiene por qué coincidir.
+      const meta = await videoMeta(blob).catch(() => null);
       const up = await uploadUserBlob(user.uid, blob, `featured.${ext}`);
       addFeatured({
         url: up.url,
         type: "video",
         withAudio: withAudio || undefined,
+        ratio: meta?.ratio,
       });
       setVideoTrim(null);
     } catch (e) {
@@ -1291,8 +1298,9 @@ export function ProfileBuilder({
         {/* Reproductor sobre la foto. La CAJA posicionada es solo el reproductor
             pelado (idéntico al que se ve publicado), por eso la posición cuadra
             exacta. Los controles FLOTAN (absolute) y no desplazan esa caja.
-            Oculto solo mientras se ajusta la foto. */}
-        {songURL && playerOverlay && !adjusting && (
+            Oculto mientras se ajusta la foto — y si la sección está apagada o
+            bloqueada, porque entonces tampoco se publica. */}
+        {seccionActiva("reproductor") && songURL && playerOverlay && !adjusting && (
           <div
             ref={playerBoxRef}
             className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 rounded-2xl ring-1 ring-white/20 ${PLAYER_SIZE_W[playerSize]}`}
@@ -1359,7 +1367,10 @@ export function ProfileBuilder({
       {/* Reproductor del perfil: la canción que suena al entrar, dónde se coloca
           y de qué tamaño. Los controles van juntos en un panel para que se lean
           como UN ajuste y no como botones sueltos flotando. */}
-      <Block title={t("profileBuilder.player.sectionTitle")}>
+      <Block
+        on={seccionActiva("reproductor")}
+        title={t("profileBuilder.player.sectionTitle")}
+      >
         <p className="text-silver-400 mb-4 text-sm leading-relaxed">
           {t("profileBuilder.player.sectionHint")}
         </p>
@@ -1457,9 +1468,20 @@ export function ProfileBuilder({
 
       {/* Media destacada: los mismos contenedores que el perfil (player + lista),
           con el recortador ocupando el hueco del player cuando hace falta. */}
-      <Block title={t("profileBuilder.featured.sectionTitle")}>
+      <Block
+        on={seccionActiva("mediaDestacada")}
+        title={t(
+          reel
+            ? "profileBuilder.featured.reelTitle"
+            : "profileBuilder.featured.sectionTitle",
+        )}
+      >
         <p className="text-silver-400 mb-5 text-sm leading-relaxed">
-          {t("profileBuilder.featured.hint")}
+          {t(
+            reel
+              ? "profileBuilder.featured.reelHint"
+              : "profileBuilder.featured.hint",
+          )}
         </p>
         <FeaturedMediaEditor
           items={featuredList}
@@ -1481,6 +1503,7 @@ export function ProfileBuilder({
       {/* Galería por PLANTILLA: se elige la composición y las fotos caen en sus
           ranuras; tocar "mover" y luego otra ranura las intercambia. */}
       <Block
+        on={seccionActiva("galeria")}
         title={t("profileBuilder.gallery.sectionTitle", {
           count: gallery.length,
           limit: GALLERY_LIMIT,
@@ -1505,10 +1528,40 @@ export function ProfileBuilder({
         </div>
       </Block>
 
+      {/* EL BOOK (§10). Va justo debajo de la galería porque es donde la modelo
+          lo busca —"lo otro, lo grande"— y porque en el perfil público la
+          entrada al book vive encima de la galería. El editor es una pantalla
+          aparte: el book tiene su propio documento y su propio "publicado", y
+          este archivo ya pasa de dos mil líneas. */}
+      <Block on={seccionActiva("book")} title={t("bookEditor.title")}>
+        <Link
+          // En modo admin, al book DE ESTE PERFIL. `/artista/book` edita el del
+          // usuario logueado: desde aquí llevaría al admin a su propio book, que
+          // es exactamente cómo el book de un perfil mock acababa colgando de la
+          // cuenta del admin.
+          href={adminMode ? `/admin/perfiles/${slug}/book` : "/artista/book"}
+          className="hover:border-amethyst-300/70 group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.02] p-5 transition"
+        >
+          <CameraIcon className="text-amethyst-300 size-7 shrink-0" />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-white">
+              {t("bookEditor.openEditor")}
+            </span>
+            <span className="text-silver-400 block text-xs leading-relaxed">
+              {t("bookEditor.subtitle")}
+            </span>
+          </span>
+          <ArrowRightIcon className="text-silver-400 ml-auto size-5 shrink-0 transition group-hover:translate-x-1 group-hover:text-white" />
+        </Link>
+      </Block>
+
       {/* Más sonadas: los links llevan el logo de la plataforma DENTRO del campo
           para que se sepa cuál es cada uno también cuando ya hay texto escrito
           (con placeholder solo, al escribir se perdía la pista). */}
-      <Block title={t("profileBuilder.tracks.sectionTitle")}>
+      <Block
+        on={seccionActiva("canciones")}
+        title={t("profileBuilder.tracks.sectionTitle")}
+      >
         <p className="text-silver-400 mb-4 text-sm leading-relaxed">
           {t("profileBuilder.tracks.hint")}
         </p>
@@ -1595,7 +1648,10 @@ export function ProfileBuilder({
 
       {/* Sobre ti: la TRAYECTORIA vive aquí (junto a la historia que cuenta),
           no encima de la foto. */}
-      <Block title={t("profileBuilder.bio.sectionTitle")}>
+      <Block
+        on={seccionActiva("sobreMi")}
+        title={t("profileBuilder.bio.sectionTitle")}
+      >
         <div className="mb-4">
           <ProfileChipField
             accent={accent}
@@ -1648,87 +1704,93 @@ export function ProfileBuilder({
       {/* ── Secciones por ETIQUETA (§05) ──────────────────────────────────
           Solo se piden los datos de lo que tu etiqueta desbloquea Y tienes
           encendido: a un beatmaker no se le pregunta por su talla de calzado. */}
-      {seccionActiva("fichaTecnica") && (
-        <Block title={t("sections.item.fichaTecnica")}>
-          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-            {t("roleSections.fichaHint")}
-          </p>
-          <FichaTecnicaEditor value={fichaTecnica} onChange={setFichaTecnica} />
-        </Block>
-      )}
+      <Block
+        on={seccionActiva("fichaTecnica")}
+        title={t("sections.item.fichaTecnica")}
+      >
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.fichaHint")}
+        </p>
+        <FichaTecnicaEditor value={fichaTecnica} onChange={setFichaTecnica} />
+      </Block>
 
-      {seccionActiva("portafolio") && (
-        <>
-          <Block title={t("roleSections.categorias")}>
-            <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-              {t("roleSections.categoriasHint")}
-            </p>
-            <ChipListEditor
-              value={categorias}
-              onChange={setCategorias}
-              sugerencias={CATEGORIAS_MODELO.map((c) => c.value)}
-              max={10}
-              placeholder={t("roleSections.categoriasPlaceholder")}
-              colorDe={categoriaColor}
-            />
-          </Block>
+      <Block
+        on={seccionActiva("portafolio")}
+        title={t("roleSections.categorias")}
+      >
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.categoriasHint")}
+        </p>
+        <ChipListEditor
+          value={categorias}
+          onChange={setCategorias}
+          sugerencias={CATEGORIAS_MODELO.map((c) => c.value)}
+          max={10}
+          placeholder={t("roleSections.categoriasPlaceholder")}
+          colorDe={categoriaColor}
+        />
+      </Block>
 
-          <Block title={t("roleSections.marcas")}>
-            <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-              {t("roleSections.marcasHint")}
-            </p>
-            <MarcasEditor value={marcas} onChange={setMarcas} />
-          </Block>
-        </>
-      )}
+      <Block on={seccionActiva("portafolio")} title={t("roleSections.marcas")}>
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.marcasHint")}
+        </p>
+        <MarcasEditor value={marcas} onChange={setMarcas} />
+      </Block>
 
-      {seccionActiva("generosBaile") && (
-        <Block title={t("roleSections.generosBaile")}>
-          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-            {t("roleSections.generosBaileHint")}
-          </p>
-          <ChipListEditor
-            value={generosBaile}
-            onChange={setGenerosBaile}
-            sugerencias={GENEROS_BAILE}
-            max={12}
-            placeholder={t("roleSections.generosBailePlaceholder")}
-            accent={accent}
-          />
-        </Block>
-      )}
+      <Block
+        on={seccionActiva("generosBaile")}
+        title={t("roleSections.generosBaile")}
+      >
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.generosBaileHint")}
+        </p>
+        <ChipListEditor
+          value={generosBaile}
+          onChange={setGenerosBaile}
+          sugerencias={GENEROS_BAILE}
+          max={12}
+          placeholder={t("roleSections.generosBailePlaceholder")}
+          accent={accent}
+        />
+      </Block>
 
-      {seccionActiva("trayectoria") && (
-        <Block title={t("roleSections.trayectoria")}>
-          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-            {t("roleSections.trayectoriaHint")}
-          </p>
-          <HitosEditor
-            value={trayectoria}
-            onChange={(v) => setTrayectoria(v as typeof trayectoria)}
-            max={LIMITES.trayectoria}
-            addLabel={t("roleSections.addHito")}
-          />
-        </Block>
-      )}
+      <Block
+        on={seccionActiva("trayectoria")}
+        title={t("roleSections.trayectoria")}
+      >
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.trayectoriaHint")}
+        </p>
+        <HitosEditor
+          value={trayectoria}
+          onChange={(v) => setTrayectoria(v as typeof trayectoria)}
+          max={LIMITES.trayectoria}
+          addLabel={t("roleSections.addHito")}
+        />
+      </Block>
 
-      {seccionActiva("reconocimientos") && (
-        <Block title={t("roleSections.reconocimientos")}>
-          <p className="text-silver-400 mb-4 text-sm leading-relaxed">
-            {t("roleSections.reconocimientosHint")}
-          </p>
-          <HitosEditor
-            value={reconocimientos}
-            onChange={(v) => setReconocimientos(v as typeof reconocimientos)}
-            max={LIMITES.reconocimientos}
-            addLabel={t("roleSections.addPremio")}
-          />
-        </Block>
-      )}
+      <Block
+        on={seccionActiva("reconocimientos")}
+        title={t("roleSections.reconocimientos")}
+      >
+        <p className="text-silver-400 mb-4 text-sm leading-relaxed">
+          {t("roleSections.reconocimientosHint")}
+        </p>
+        <HitosEditor
+          value={reconocimientos}
+          onChange={(v) => setReconocimientos(v as typeof reconocimientos)}
+          max={LIMITES.reconocimientos}
+          addLabel={t("roleSections.addPremio")}
+        />
+      </Block>
 
       {/* Géneros: sección propia (en el perfil también la tienen), con los mismos
           chips premium que se publican. */}
-      <Block title={t("profileBuilder.genres.sectionTitle")}>
+      <Block
+        on={seccionActiva("generosMusicales")}
+        title={t("profileBuilder.genres.sectionTitle")}
+      >
         <p className="text-silver-400 mb-4 text-sm leading-relaxed">
           {t("profileBuilder.genres.hint")}
         </p>
@@ -1773,7 +1835,10 @@ export function ProfileBuilder({
       </Block>
 
       {/* Redes */}
-      <Block title={t("profileBuilder.socials.sectionTitle")}>
+      <Block
+        on={seccionActiva("redes")}
+        title={t("profileBuilder.socials.sectionTitle")}
+      >
         <SocialPalette
           value={socials}
           onChange={setSocials}
@@ -1786,7 +1851,10 @@ export function ProfileBuilder({
 
       {/* Artistas relacionados / colaboradores: el artista destaca a mano otros
           perfiles de la plataforma (red interna). */}
-      <Block title={t("profileBuilder.relatedArtists.sectionTitle")}>
+      <Block
+        on={seccionActiva("relacionados")}
+        title={t("profileBuilder.relatedArtists.sectionTitle")}
+      >
         <p className="text-silver-400 mb-4 text-sm leading-relaxed">
           {t("profileBuilder.relatedArtists.hint")}
         </p>
@@ -1812,9 +1880,28 @@ export function ProfileBuilder({
           onChange={setSectionPrefs}
           // Las artes ya no se piden por chat: hay una ventana para activarlas
           // (las presentacionales) o pedir su convenio (beatmaker/modelo).
-          onManageArtes={() => router.push("/artista/perfiles")}
+          //
+          // En modo ADMIN esa ventana NO sirve: "Perfiles y convenios" es la del
+          // usuario logueado, así que llevaba al admin a asignarse a SÍ MISMO el
+          // arte que quería dar a este perfil. Aquí se abre la ventana que edita
+          // EL PERFIL que se está editando (y sus comisiones, si tiene cuenta).
+          onManageArtes={() =>
+            adminMode ? setTalentoOpen(true) : router.push("/artista/perfiles")
+          }
         />
       </Block>
+
+      {/* Artes y comisiones DE ESTE PERFIL (solo admin). Al guardar adopta las
+          disciplinas devueltas: el gestor de secciones de arriba desbloquea al
+          instante lo que la nueva etiqueta abre, sin recargar. */}
+      {adminMode && (
+        <PerfilTalentoModal
+          slug={slug}
+          open={talentoOpen}
+          onClose={() => setTalentoOpen(false)}
+          onSaved={setDisciplines}
+        />
+      )}
 
       {pagoConvId && (
         <WompiCheckout
@@ -1973,13 +2060,26 @@ function SaveIndicator({ state }: { state: SaveState }) {
   return null;
 }
 
+/**
+ * Un bloque del editor. `on` es lo que ata el editor al gestor de secciones: si
+ * la sección está apagada o bloqueada por las etiquetas, el bloque NO se pinta.
+ *
+ * Va como prop y no envolviendo cada bloque en un `&&` porque son catorce: con
+ * el condicional fuera, los que se olvidan de ponerlo no se notan (era el caso —
+ * a un modelo se le pedía la canción de entrada), y los que sí lo tienen se leen
+ * distinto de los que no. Aquí la pregunta se hace en el mismo sitio siempre.
+ */
 function Block({
   title,
   children,
+  on = true,
 }: {
   title: string;
   children: React.ReactNode;
+  /** ¿Se pide este dato? Por defecto sí (bloques que no son una sección). */
+  on?: boolean;
 }) {
+  if (!on) return null;
   return (
     <section className="mx-auto mt-8 max-w-3xl px-6">
       <h2 className="font-narrow mb-3 text-2xl font-bold text-white uppercase">

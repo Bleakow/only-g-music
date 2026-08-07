@@ -12,8 +12,10 @@ import { usePathname } from "@/i18n/navigation";
 function hasOwnShell(pathname: string): boolean {
   // El panel admin: sidebar + topbar propios.
   if (pathname.startsWith("/admin")) return true;
-  // El panel de métricas del perfil: /artistas/{slug}/metricas.
-  return /^\/artistas\/[^/]+\/metricas$/.test(pathname);
+  // El panel de métricas del perfil y el BOOK (§10): /artistas/{slug}/…
+  // El book además es a sangre de verdad —escenas a pantalla completa—, así que
+  // un header fijo encima se comería justo la parte de la foto que se mira.
+  return /^\/artistas\/[^/]+\/(metricas|book)$/.test(pathname);
 }
 
 /**

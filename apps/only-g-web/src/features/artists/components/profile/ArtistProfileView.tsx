@@ -14,6 +14,8 @@ import {
   DEFAULT_PLAYER_SIZE,
   formatCompact,
   featuredMediaItems,
+  esReel,
+  presentacionDestacada,
 } from "@only-g/shared-types/artist-profile";
 import type { SocialPlatform } from "@only-g/shared-types/artist";
 import { formatLocation } from "@only-g/shared-types/location";
@@ -56,8 +58,10 @@ import { PhotoViewer } from "./PhotoViewer";
 import { RelatedArtists } from "./RelatedArtists";
 import { StatsCards } from "./StatsCards";
 import { FeaturedMediaPlayer } from "./FeaturedMediaPlayer";
+import { ReelsGrid } from "./ReelsGrid";
 import { FollowButton } from "./FollowButton";
 import { ProfileColectivos } from "./ProfileColectivos";
+import { BookEntryCard } from "@/features/book/components/BookEntryCard";
 import { trackVisita } from "../../lib/metrics-client";
 import {
   ProfileMetricsProvider,
@@ -197,6 +201,13 @@ export function ArtistProfileView({
   const disciplinas = profile.disciplines ?? [];
   const esBeatmakerPuro =
     disciplinas.includes("beatmaker") && !disciplinas.includes("artista");
+
+  // Media destacada: la lista efectiva y cómo toca presentarla (reels vs player).
+  const destacados = featuredMediaItems(
+    profile.featuredMediaList,
+    profile.featuredMedia,
+  );
+  const destacada = presentacionDestacada(destacados);
 
   const now = Date.now();
   const isPremium = premiumEstado(profile.premium, now) === "activo";
@@ -433,33 +444,85 @@ export function ArtistProfileView({
           <StatsCards profile={profile} />
         </section>
 
-        {/* Media destacada — player principal + lista de clips */}
+        {/* Media destacada. La presentación la decide EL MATERIAL, no la etiqueta
+            de quien lo sube (ver `presentacionDestacada`):
+              · todo vertical → REELS. En escritorio, cuadrícula centrada que se
+                abre al pulsar; en móvil NO se toca nada, porque ahí el vertical a
+                ancho completo es su formato nativo y ya se ve mejor que cualquier
+                reproductor horizontal. El problema era solo de escritorio.
+              · algo horizontal o una foto → el reproductor ancho de siempre.
+            Atarlo al rol se descartó: un cantante que sube un vertical se vería
+            recortado igual, y una modelo con material horizontal quedaría metida a
+            la fuerza en un marco 9:16. */}
         {on("mediaDestacada") && (
         <section className="mx-auto max-w-400 px-6 pt-16">
           <h2 className="font-narrow mb-6 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
-            {t("artistProfile.sectionFeatured")}
+            {/* El nombre sí sigue a la etiqueta: para una modelo esto ES su reel,
+                y "media destacada" no dice nada en su oficio. */}
+            {esReel(profile.disciplines)
+              ? t("artistProfile.sectionReel")
+              : t("artistProfile.sectionFeatured")}
           </h2>
-          <FeaturedMediaPlayer
-            items={featuredMediaItems(
-              profile.featuredMediaList,
-              profile.featuredMedia,
-            )}
-            photoURL={profile.photoURL}
-            name={profile.artisticName}
-            accent={profile.accent}
-          />
+          {destacada === "reels" ? (
+            <>
+              {/* Dos árboles, cada uno simple, en vez de uno que se recoloque
+                  solo: el corte por CSS no depende del cliente, así que no hay
+                  parpadeo al hidratar ni desajuste con el HTML del servidor. */}
+              <div className="lg:hidden">
+                <FeaturedMediaPlayer
+                  items={destacados}
+                  photoURL={profile.photoURL}
+                  name={profile.artisticName}
+                  accent={profile.accent}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <ReelsGrid
+                  items={destacados}
+                  name={profile.artisticName}
+                  accent={profile.accent}
+                />
+              </div>
+            </>
+          ) : (
+            <FeaturedMediaPlayer
+              items={destacados}
+              photoURL={profile.photoURL}
+              name={profile.artisticName}
+              accent={profile.accent}
+            />
+          )}
         </section>
         )}
 
-        {/* Galería + Temas: dos paneles con BORDE y alto fijo (scroll interno).
-            La galería usa la MISMA grid del editor (GALLERY_GRID) → el bento se ve
-            idéntico a como el artista lo armó. Cada panel obedece a su sección,
-            y si el artista apaga las dos, la fila entera desaparece. */}
+        {/* La puerta al BOOK (§10) va ENCIMA de la galería, y la galería no se
+            toca: son dos cosas distintas y el perfil no tiene por qué elegir.
+            Aparece solo si la sección está encendida Y hay book publicado. */}
+        {on("book") && <BookEntryCard profile={profile} />}
+
+        {/* Galería + Temas: dos paneles con BORDE. La galería usa el MISMO
+            mosaico que el editor (`GalleryMosaic`) → se ve idéntica a como el
+            artista la armó. Cada panel obedece a su sección, y si el artista
+            apaga las dos, la fila entera desaparece.
+
+            Tres cosas de esta fila NO son decorativas — son lo que impide que
+            desborde a la derecha y arrastre a todas las secciones de abajo (que
+            se centran con `mx-auto`: si la página se ensancha, se corren):
+              1. `grid-cols-1` EXPLÍCITO. Sin él, una sola columna es una pista
+                 implícita `auto`, y una pista `auto` se dimensiona al MAX-CONTENT
+                 de lo que lleva dentro: un título de tema largo (van con
+                 `truncate`, o sea `nowrap`) estira la pista más allá del
+                 contenedor. `1fr` sí acepta encogerse.
+              2. `min-w-0` en cada columna. Un ítem de grid tiene `min-width:auto`,
+                 así que su contenido puede empujarlo por debajo de su pista.
+              3. `overflow-hidden` en el panel de la galería. Antes lo cubría de
+                 rebote el `overflow-y-auto` del panel con scroll interno, que se
+                 retiró al pasar a mosaicos: sin él, nada corta lo que se salga. */}
         {((on("galeria") && profile.gallery.length > 0) ||
           (on("canciones") && profile.tracks.length > 0)) && (
           <div className="mx-auto max-w-400 px-6 pt-16">
             <div
-              className={`grid gap-8 ${
+              className={`grid grid-cols-1 gap-8 ${
                 on("galeria") &&
                 profile.gallery.length > 0 &&
                 on("canciones") &&
@@ -469,7 +532,7 @@ export function ArtistProfileView({
               }`}
             >
               {on("galeria") && profile.gallery.length > 0 && (
-                <div>
+                <div className="min-w-0">
                   <div className="mb-5 flex items-center gap-3">
                     <h2 className="font-narrow text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
                       {t("artistProfile.gallery")}
@@ -487,7 +550,7 @@ export function ArtistProfileView({
                   {/* SIN scroll propio: el alto lo fija la proporción de la
                       plantilla. Un panel que hacía scroll dentro del scroll de la
                       página convertía pasar por la galería en una lotería. */}
-                  <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                  <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02] p-4">
                     <GalleryMosaic
                       items={profile.gallery}
                       layout={profile.galleryLayout}
@@ -515,7 +578,7 @@ export function ArtistProfileView({
                 </div>
               )}
               {on("canciones") && profile.tracks.length > 0 && (
-                <div>
+                <div className="min-w-0">
                   <h2 className="font-narrow mb-5 text-2xl font-bold tracking-wide text-white uppercase sm:text-3xl">
                     {t("artistProfile.topTracks")}
                   </h2>

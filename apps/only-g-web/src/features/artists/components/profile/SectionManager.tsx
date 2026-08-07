@@ -11,6 +11,7 @@ import {
 } from "@only-g/shared-types/profile-sections";
 import {
   AwardIcon,
+  CameraIcon,
   ChartBarIcon,
   DiscIcon,
   FilmIcon,
@@ -57,6 +58,7 @@ const SECTION_ICON: Record<SectionId, typeof UserRoundIcon> = {
   reproductor: PlayIcon,
   canciones: MusicIcon,
   generosMusicales: DiscIcon,
+  book: CameraIcon,
   portafolio: LayoutGridIcon,
   fichaTecnica: RulerIcon,
   reconocimientos: AwardIcon,

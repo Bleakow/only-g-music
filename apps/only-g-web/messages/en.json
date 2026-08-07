@@ -1283,6 +1283,9 @@
     "inactivo": "Inactive",
     "socio": "Partner",
     "socioEstado": "Visible · partner",
+    "mock": "Mock",
+    "mockVisible": "Visible · no account",
+    "mockOculto": "Hidden · no account",
     "premiumEstado": {
       "activo": "Premium active",
       "expirado": "Expired",
@@ -1295,6 +1298,7 @@
     "ariaOcultar": "Hide from showcase",
     "ariaMostrar": "Show in showcase",
     "ariaSinMembresia": "No active membership — activate it in Users & roles",
+    "ariaActivarMembresia": "Activate membership to show it",
     "ariaBorrar": "Delete profile",
     "ariaQuitarDestacado": "Remove from featured",
     "ariaMarcarDestacado": "Mark as featured",
@@ -1302,7 +1306,7 @@
     "btnActivar": "Activate",
     "btnRenovar": "Renew",
     "mockTitle": "Create mock profile",
-    "mockDescripcion": "A filler profile for the showcase, with no link to any user. You fill it in by hand in the editor. You can activate its membership like any other.",
+    "mockDescripcion": "A filler profile for the showcase, with no link to any user. You fill it in by hand in the editor. With no account behind it, it needs no membership: show or hide it with the eye.",
     "mockNamePlaceholder": "Artist name",
     "mockCrear": "Create and edit",
     "mockCancelar": "Cancel",
@@ -1325,6 +1329,14 @@
       "confirmar": "Hide",
       "cancelar": "Cancel"
     },
+    "membresia": {
+      "title": "Activate membership",
+      "mensaje": "{nombre} is linked to an account, so they need a membership to appear in the showcase.",
+      "nota": "Charging records the income in accounting. Comping gifts it: same month, no entry.",
+      "cobrar": "Charge and activate",
+      "cortesia": "Give as comp",
+      "cancelar": "Cancel"
+    },
     "link": {
       "vincularUsuario": "Link user",
       "title": "Link a profile to a user",
@@ -1341,6 +1353,24 @@
       "errorYaTiene": "That user already has a linked profile.",
       "errorCrear": "Could not create the linked profile."
     }
+  },
+  "perfilTalento": {
+    "title": "Crafts and commissions",
+    "mockHint": "This profile has no account behind it: turn its crafts on and off freely. It affects no one and needs no agreement.",
+    "vinculadoHint": "This profile belongs to {quien}. What you set here changes THEIR crafts and THEIR commission, not yours.",
+    "artesLabel": "Profile crafts",
+    "comisionesLabel": "Agreed commissions",
+    "comisionesHint": "Leave them empty to use the general commission. Anything you type here overrides it.",
+    "sinComisiones": "Their crafts don't take a cut. The beat commission shows up with the Beatmaker tag, and the production one once they have the producer role.",
+    "comisionBeat": "Beat sales",
+    "comisionProduccion": "Production",
+    "globalHint": "General: {valor}%",
+    "globalSinFijar": "General: not set",
+    "guardar": "Save",
+    "errorCarga": "We couldn't load this profile's crafts. Try again.",
+    "errorGuardar": "Couldn't save. Check your connection and try again.",
+    "errorSinArtes": "Leave at least one craft active.",
+    "errorPorcentaje": "The commission must be between 0 and 100."
   },
   "producerConsole": {
     "description": "Your live sessions. No billing data — just who you're serving and when. If you don't start a session, it auto-starts {graceMins} min after the scheduled time.",
@@ -1574,7 +1604,10 @@
       "sello": "Label",
       "grupo": "Group",
       "movimiento": "Movement"
-    }
+    },
+    "sectionReel": "Reel",
+    "playReel": "Play reel {n}",
+    "reelN": "Reel {n} of {total}"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -1865,16 +1898,27 @@
       "layoutTitle": "Layout",
       "layouts": {
         "unica": "Single",
+        "panoramica": "Panorama",
         "duo": "Duo",
         "retrato": "Portrait",
+        "apilado": "Stacked",
+        "dosTercios": "Two thirds",
         "portada": "Cover",
         "tira": "Strip",
+        "columna": "Columns",
+        "escalera": "Steps",
         "rejilla": "Grid",
         "foco": "Focus",
+        "contraste": "Contrast",
+        "torre": "Tower",
         "mosaico": "Mosaic",
         "franja": "Band",
+        "abanico": "Fan",
+        "columnas": "Ribbon",
         "panal": "Honeycomb",
-        "revista": "Magazine"
+        "revista": "Magazine",
+        "retablo": "Frieze",
+        "bloques": "Blocks"
       },
       "empty": "Upload your best photos",
       "add": "Add photos",
@@ -1904,6 +1948,8 @@
     "featured": {
       "sectionTitle": "Featured media",
       "hint": "Upload short clips or photos that represent you: your group, a move, your vibe.",
+      "reelTitle": "Reel",
+      "reelHint": "Up to two reels, with sound and however long you need. Photos go in your gallery.",
       "upload": "Upload a video or a photo",
       "formats": "Video up to {maxSec}s or an image",
       "change": "Change",
@@ -2553,7 +2599,8 @@
       "reproductor": "Auto player",
       "canciones": "Featured songs",
       "generosMusicales": "Music genres",
-      "portafolio": "Extended portfolio",
+      "book": "Book",
+      "portafolio": "Categories and brands",
       "fichaTecnica": "Stats sheet",
       "reconocimientos": "Awards",
       "tiendaBeats": "Beat store",
@@ -2561,6 +2608,156 @@
       "trayectoria": "Career",
       "reelPresentaciones": "Hosting reel"
     }
+  },
+  "bookEditor": {
+    "title": "Your book",
+    "openEditor": "Build my book",
+    "subtitle": "A full-screen portfolio, separate from your gallery. Build scenes, add photos and clips, and choose how it feels.",
+    "noSlug": "Create your artist profile first. The book is built on top of it.",
+    "noSection": "Your book is switched off in your profile's section manager.",
+    "noSectionAdmin": "This profile has no book available. Give it the Model tag or switch the section on from its editor.",
+    "goToProfile": "Go to my profile",
+    "goToAdminProfile": "Edit this profile",
+    "save": {
+      "idle": "Saves automatically",
+      "saving": "Saving…",
+      "saved": "Saved",
+      "error": "Couldn't save"
+    },
+    "counter": "{escenas}/{maxEscenas} scenes · {piezas}/{maxPiezas} pieces",
+    "preview": "View book",
+    "publish": "Publish",
+    "published": "Published",
+    "cannotPublish": "To publish you need a cover photo and at least one complete scene.",
+    "addScene": "Add scene",
+    "addSceneTitle": "Which scene?",
+    "cancel": "Cancel",
+    "limitScenes": "You already have every scene that fits",
+    "sceneUp": "Move scene up",
+    "sceneDown": "Move scene down",
+    "sceneRemove": "Remove scene",
+    "swapHere": "Swap here",
+    "cancelMove": "Leave it where it is",
+    "moveAria": "Move piece {n}",
+    "removeAria": "Remove piece {n}",
+    "piezaN": "Piece {n}",
+    "clip": "Clip",
+    "faltanPiezas": "You need {count} more pieces for this scene to show.",
+    "topeVideos": "Up to {count} clips in this scene.",
+    "tituloPlaceholder": "The occasion — Editorial · Bogotá Fashion Week",
+    "notaPlaceholder": "A line or two about this photo.",
+    "notaTituloPlaceholder": "2024 · Campaign",
+    "notaTextoPlaceholder": "What it was, who it was for, what you did.",
+    "encabezadoPlaceholder": {
+      "portada": "A line to introduce you (optional)",
+      "vitrina": "Large title for the showcase (optional)",
+      "plena": "Scene title (optional)",
+      "diptico": "Scene title (optional)",
+      "retrato": "Scene title (optional)",
+      "ancla": "Scene title (optional)",
+      "indice": "Index title (optional)",
+      "rejilla": "Scene title (optional)",
+      "tira": "Series title (optional)",
+      "cierre": "A sign-off (optional)"
+    },
+    "escenas": {
+      "portada": "Cover",
+      "vitrina": "Showcase",
+      "plena": "Large photo",
+      "diptico": "Diptych",
+      "retrato": "Portrait with note",
+      "ancla": "Pinned photo",
+      "indice": "Index",
+      "rejilla": "Grid",
+      "tira": "Series",
+      "cierre": "Closing"
+    },
+    "escenasHint": {
+      "portada": "Your name over a full-screen photo, with details in the corners. Opens the book.",
+      "vitrina": "One large photo with its quote and others beside it. Tap one and they swap places.",
+      "plena": "A large photo that opens like a curtain as you scroll.",
+      "diptico": "Two photos side by side, moving at different speeds.",
+      "retrato": "A vertical photo with room to tell something beside it.",
+      "ancla": "The photo stays put while your text scrolls past it.",
+      "indice": "Cards with their credit and number. On hover, the photo opens from the centre.",
+      "rejilla": "Three or four photos entering one after another.",
+      "tira": "A series you travel sideways. On mobile, by swiping.",
+      "cierre": "Your name, your quotes and your socials. Closes the book."
+    },
+    "meta": {
+      "title": "Corner details",
+      "hint": "Short text in each corner, like a campaign sheet.",
+      "arribaInicio": "YEAR · 2026",
+      "arribaFin": "EDITORIAL",
+      "abajoInicio": "CLIENT · STUDIO",
+      "abajoFin": "FASHION · CAMPAIGN"
+    },
+    "etiquetaPlaceholder": "Credit or category",
+    "medidaTitle": "Size",
+    "medidas": {
+      "contenida": "Contained",
+      "amplia": "Wide"
+    },
+    "atmosfera": {
+      "title": "Atmosphere",
+      "hint": "Your style inside the book. Pick a ready-made combination or fine-tune each part.",
+      "presetsTitle": "Combinations",
+      "presetsHint": "One tap and everything's set.",
+      "presets": {
+        "nocturno": "Nocturne",
+        "editorial": "Editorial",
+        "brutal": "Brutal",
+        "calido": "Warm"
+      },
+      "fondoTitle": "Background",
+      "fondos": {
+        "medianoche": "Midnight",
+        "hueso": "Bone",
+        "arena": "Sand",
+        "carbon": "Charcoal"
+      },
+      "letraTitle": "Type",
+      "letras": {
+        "narrow": "Condensed",
+        "serif": "Serif",
+        "mono": "Mono",
+        "grotesca": "Grotesque"
+      },
+      "ritmoTitle": "Pace",
+      "ritmos": {
+        "sereno": "Calm",
+        "dinamico": "Dynamic",
+        "brusco": "Abrupt"
+      },
+      "ritmosHint": {
+        "sereno": "Long, unhurried moves.",
+        "dinamico": "The balance: it moves without dizzying you.",
+        "brusco": "Hard cuts, no transition."
+      },
+      "texturaTitle": "Texture",
+      "texturas": {
+        "ninguna": "Clean",
+        "grano": "Grain",
+        "vineta": "Vignette"
+      },
+      "acentoTitle": "Accent",
+      "acentoHeredado": "My profile's",
+      "acentoPropio": "Another colour"
+    }
+  },
+  "book": {
+    "metaTitle": "{name}'s book",
+    "metaTitleFallback": "Book — Only G Music",
+    "scrollHint": "Scroll",
+    "back": "Back to profile",
+    "backToProfile": "Go to profile",
+    "draftNotice": "Only you can see this. Your book isn't published yet.",
+    "vitrinaVer": "See photo {n} larger",
+    "entryTitle": "Book",
+    "entryHint": "The full portfolio, full screen.",
+    "entryCount": "{count} pieces",
+    "notFoundTitle": "No book here",
+    "notFoundBody": "It may no longer be published, or the link is incomplete."
   },
   "metrics": {
     "title": "Your profile metrics",

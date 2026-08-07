@@ -35,6 +35,18 @@ export function logError(error: unknown, contexto?: string): void {
           : null,
       uid: auth.currentUser?.uid ?? null,
       createdAt: serverTimestamp(),
+    }).catch(() => {
+      /*
+       * EL LOGGER NO PUEDE GENERAR EL ERROR QUE ESTÁ REGISTRANDO.
+       *
+       * El `try/catch` de abajo solo atrapa lo SÍNCRONO: un `addDoc` que
+       * rechaza se le escapa entero, así que la promesa quedaba huérfana. Y
+       * `errorLogs` exige sesión (`allow create: if request.auth != null`),
+       * de modo que con un visitante ANÓNIMO —el caso normal de un enlace
+       * compartido— cada error capturado producía un SEGUNDO
+       * `unhandledrejection` con el mismo mensaje, que el listener global
+       * volvía a recoger. El dedup evitaba el bucle, no el ruido.
+       */
     });
   } catch {
     /* el logger de errores nunca debe lanzar */

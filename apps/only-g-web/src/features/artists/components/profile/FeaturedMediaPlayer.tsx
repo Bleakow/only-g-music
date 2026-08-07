@@ -36,9 +36,12 @@ export function FeaturedMediaPlayer({
   const current = list[idx];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+    // El player se lleva todo el ancho que sobre; la lista de al lado se estrecha
+    // a lo justo para leer un título. `minmax(0,1fr)` y no `1fr` para que un
+    // título largo de la lista no ensanche su pista y le robe sitio al video.
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
       {/* Player principal + título descriptivo */}
-      <div>
+      <div className="min-w-0">
         {current.type === "video" ? (
           <FeaturedVideoPlayer
             key={current.url}

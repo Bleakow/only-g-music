@@ -4,8 +4,11 @@ import {
   esComisionValida,
   esPrecioValido,
   esRecargoValido,
+  fraccionAPorcentaje,
   parsePrecios,
   parseComisiones,
+  parseComisionesArtista,
+  porcentajeAFraccion,
 } from "./comercial-config";
 
 describe("validadores", () => {
@@ -75,5 +78,49 @@ describe("parseComisiones", () => {
   it("si ninguna sede es válida, no incluye el mapa", () => {
     const out = parseComisiones({ comisionProductorPorSede: { x: 2 } });
     expect(out.comisionProductorPorSede).toBeUndefined();
+  });
+});
+
+describe("parseComisionesArtista", () => {
+  it("sin doc → ningún pacto (rige la cadena normal)", () => {
+    expect(parseComisionesArtista(undefined)).toEqual({});
+    expect(parseComisionesArtista(null)).toEqual({});
+  });
+  it("acepta cada concepto por separado", () => {
+    expect(parseComisionesArtista({ beat: 0.3 })).toEqual({ beat: 0.3 });
+    expect(parseComisionesArtista({ produccion: 0.1 })).toEqual({
+      produccion: 0.1,
+    });
+  });
+  it("un 0% SÍ es un pacto válido (Only G no se queda nada)", () => {
+    expect(parseComisionesArtista({ beat: 0 })).toEqual({ beat: 0 });
+  });
+  it("descarta lo malformado en vez de asumir 0%", () => {
+    // El default peligroso sería 0: convertiría un typo en regalarle la venta.
+    expect(parseComisionesArtista({ beat: 7, produccion: "20" })).toEqual({});
+  });
+});
+
+describe("porcentaje ↔ fracción (lo que teclea el admin ↔ lo que se guarda)", () => {
+  it("convierte el porcentaje a fracción", () => {
+    expect(porcentajeAFraccion("20")).toBe(0.2);
+    expect(porcentajeAFraccion("12,5")).toBe(0.125); // coma decimal, es-CO
+    expect(porcentajeAFraccion("0")).toBe(0);
+    expect(porcentajeAFraccion("100")).toBe(1);
+  });
+  it("vacío = sin pactar, no 0%", () => {
+    expect(porcentajeAFraccion("")).toBeUndefined();
+    expect(porcentajeAFraccion("   ")).toBeUndefined();
+  });
+  it("null cuando no es un porcentaje (la UI avisa en vez de interpretar)", () => {
+    expect(porcentajeAFraccion("abc")).toBeNull();
+    expect(porcentajeAFraccion("-1")).toBeNull();
+    expect(porcentajeAFraccion("101")).toBeNull();
+  });
+  it("ida y vuelta sin arrastrar ruido binario", () => {
+    expect(fraccionAPorcentaje(0.2)).toBe("20");
+    expect(fraccionAPorcentaje(0.125)).toBe("12.5");
+    expect(fraccionAPorcentaje(undefined)).toBe("");
+    expect(porcentajeAFraccion(fraccionAPorcentaje(0.175))).toBe(0.175);
   });
 });

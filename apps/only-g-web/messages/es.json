@@ -1283,6 +1283,9 @@
     "inactivo": "Inactivo",
     "socio": "Socio",
     "socioEstado": "Visible · socio",
+    "mock": "Mock",
+    "mockVisible": "Visible · sin cuenta",
+    "mockOculto": "Oculto · sin cuenta",
     "premiumEstado": {
       "activo": "Premium activo",
       "expirado": "Expirado",
@@ -1295,6 +1298,7 @@
     "ariaOcultar": "Ocultar de la vitrina",
     "ariaMostrar": "Mostrar en la vitrina",
     "ariaSinMembresia": "Sin membresía activa — actívala en Usuarios y roles",
+    "ariaActivarMembresia": "Activar membresía para mostrarlo",
     "ariaBorrar": "Borrar perfil",
     "ariaQuitarDestacado": "Quitar de destacados",
     "ariaMarcarDestacado": "Marcar destacado",
@@ -1302,7 +1306,7 @@
     "btnActivar": "Activar",
     "btnRenovar": "Renovar",
     "mockTitle": "Crear mock profile",
-    "mockDescripcion": "Un perfil de relleno para la vitrina, sin vínculo a ningún usuario. Lo rellenas a mano en el editor. Podrás activarle la membresía como a cualquier otro.",
+    "mockDescripcion": "Un perfil de relleno para la vitrina, sin vínculo a ningún usuario. Lo rellenas a mano en el editor. Como no hay cuenta detrás, no necesita membresía: lo muestras y lo ocultas con el ojo.",
     "mockNamePlaceholder": "Nombre artístico",
     "mockCrear": "Crear y editar",
     "mockCancelar": "Cancelar",
@@ -1325,6 +1329,14 @@
       "confirmar": "Ocultar",
       "cancelar": "Cancelar"
     },
+    "membresia": {
+      "title": "Activar membresía",
+      "mensaje": "«{nombre}» está vinculado a una cuenta, así que necesita membresía para salir en la vitrina.",
+      "nota": "Cobrar deja el ingreso registrado en contabilidad. Cortesía se la regala: un mes igual, sin asiento.",
+      "cobrar": "Cobrar y activar",
+      "cortesia": "Dar de cortesía",
+      "cancelar": "Cancelar"
+    },
     "link": {
       "vincularUsuario": "Vincular usuario",
       "title": "Vincular perfil a un usuario",
@@ -1341,6 +1353,24 @@
       "errorYaTiene": "Ese usuario ya tiene un perfil vinculado.",
       "errorCrear": "No se pudo crear el perfil vinculado."
     }
+  },
+  "perfilTalento": {
+    "title": "Artes y comisiones",
+    "mockHint": "Este perfil no tiene cuenta detrás: enciende y apaga sus artes como quieras. No afecta a nadie ni pide convenio.",
+    "vinculadoHint": "Este perfil es de {quien}. Lo que marques aquí cambia SUS artes y SU comisión, no las tuyas.",
+    "artesLabel": "Artes del perfil",
+    "comisionesLabel": "Comisiones pactadas",
+    "comisionesHint": "Déjalas vacías para usar la comisión general. Lo que escribas aquí manda sobre ella.",
+    "sinComisiones": "Sus artes no cobran porcentaje. La comisión de beats aparece con la etiqueta Beatmaker, y la de producción cuando tiene el rol de productor.",
+    "comisionBeat": "Venta de beats",
+    "comisionProduccion": "Producción",
+    "globalHint": "General: {valor}%",
+    "globalSinFijar": "General: sin fijar",
+    "guardar": "Guardar",
+    "errorCarga": "No pudimos cargar las artes de este perfil. Inténtalo de nuevo.",
+    "errorGuardar": "No se pudo guardar. Revisa tu conexión e inténtalo.",
+    "errorSinArtes": "Deja al menos un arte activa.",
+    "errorPorcentaje": "La comisión va entre 0 y 100."
   },
   "producerConsole": {
     "description": "Tus sesiones en vivo. Sin datos de cobro: solo a quién atiendes y cuándo. Si no inicias una sesión, arranca sola {graceMins} min después de la hora agendada.",
@@ -1574,7 +1604,10 @@
       "sello": "Sello",
       "grupo": "Grupo",
       "movimiento": "Movimiento"
-    }
+    },
+    "sectionReel": "Reel",
+    "playReel": "Ver el reel {n}",
+    "reelN": "Reel {n} de {total}"
   },
   "artistOnboarding": {
     "alreadyRegistered": {
@@ -1865,16 +1898,27 @@
       "layoutTitle": "Composición",
       "layouts": {
         "unica": "Única",
+        "panoramica": "Panorámica",
         "duo": "Dúo",
         "retrato": "Retrato",
+        "apilado": "Apilado",
+        "dosTercios": "Dos tercios",
         "portada": "Portada",
         "tira": "Tira",
+        "columna": "Columnas",
+        "escalera": "Escalera",
         "rejilla": "Rejilla",
         "foco": "Foco",
+        "contraste": "Contraste",
+        "torre": "Torre",
         "mosaico": "Mosaico",
         "franja": "Franja",
+        "abanico": "Abanico",
+        "columnas": "Cinta",
         "panal": "Panal",
-        "revista": "Revista"
+        "revista": "Revista",
+        "retablo": "Retablo",
+        "bloques": "Bloques"
       },
       "empty": "Sube tus mejores fotos",
       "add": "Añadir fotos",
@@ -1904,6 +1948,8 @@
     "featured": {
       "sectionTitle": "Media destacada",
       "hint": "Sube clips cortos o fotos que te representen: tu agrupación, un movimiento, tu esencia.",
+      "reelTitle": "Reel",
+      "reelHint": "Hasta dos reels, con sonido y de la duración que necesites. Las fotos van en tu galería.",
       "upload": "Sube un video o una foto",
       "formats": "Video de hasta {maxSec} s o una imagen",
       "change": "Cambiar",
@@ -2553,7 +2599,8 @@
       "reproductor": "Reproductor automático",
       "canciones": "Canciones destacadas",
       "generosMusicales": "Géneros musicales",
-      "portafolio": "Portafolio ampliado",
+      "book": "Book",
+      "portafolio": "Categorías y marcas",
       "fichaTecnica": "Ficha técnica",
       "reconocimientos": "Reconocimientos",
       "tiendaBeats": "Tienda de beats",
@@ -2561,6 +2608,156 @@
       "trayectoria": "Trayectoria",
       "reelPresentaciones": "Reel de presentaciones"
     }
+  },
+  "bookEditor": {
+    "title": "Tu book",
+    "openEditor": "Montar mi book",
+    "subtitle": "Un portafolio a pantalla completa, aparte de tu galería. Monta escenas, sube fotos y clips, y elige cómo se siente.",
+    "noSlug": "Primero crea tu perfil de artista. El book se monta encima de él.",
+    "noSection": "Tu book está apagado en el gestor de secciones de tu perfil.",
+    "noSectionAdmin": "Este perfil no tiene el book disponible. Dale la etiqueta Modelo o enciende la sección desde su editor.",
+    "goToProfile": "Ir a mi perfil",
+    "goToAdminProfile": "Editar este perfil",
+    "save": {
+      "idle": "Se guarda solo",
+      "saving": "Guardando…",
+      "saved": "Guardado",
+      "error": "No se pudo guardar"
+    },
+    "counter": "{escenas}/{maxEscenas} escenas · {piezas}/{maxPiezas} piezas",
+    "preview": "Ver book",
+    "publish": "Publicar",
+    "published": "Publicado",
+    "cannotPublish": "Para publicar necesitas una foto de portada y al menos una escena completa.",
+    "addScene": "Añadir escena",
+    "addSceneTitle": "¿Qué escena quieres?",
+    "cancel": "Cancelar",
+    "limitScenes": "Ya tienes todas las escenas que caben",
+    "sceneUp": "Subir escena",
+    "sceneDown": "Bajar escena",
+    "sceneRemove": "Quitar escena",
+    "swapHere": "Cambiar aquí",
+    "cancelMove": "Dejarla donde está",
+    "moveAria": "Mover la pieza {n}",
+    "removeAria": "Quitar la pieza {n}",
+    "piezaN": "Pieza {n}",
+    "clip": "Clip",
+    "faltanPiezas": "Te faltan {count} piezas para que esta escena se vea.",
+    "topeVideos": "Máximo {count} clips en esta escena.",
+    "tituloPlaceholder": "La ocasión — Editorial · Bogotá Fashion Week",
+    "notaPlaceholder": "Una o dos frases sobre esta foto.",
+    "notaTituloPlaceholder": "2024 · Campaña",
+    "notaTextoPlaceholder": "Qué fue, para quién, qué hiciste.",
+    "encabezadoPlaceholder": {
+      "portada": "Una línea que te presente (opcional)",
+      "vitrina": "Título grande de la vitrina (opcional)",
+      "plena": "Título de la escena (opcional)",
+      "diptico": "Título de la escena (opcional)",
+      "retrato": "Título de la escena (opcional)",
+      "ancla": "Título de la escena (opcional)",
+      "indice": "Título del índice (opcional)",
+      "rejilla": "Título de la escena (opcional)",
+      "tira": "Título de la serie (opcional)",
+      "cierre": "Una despedida (opcional)"
+    },
+    "escenas": {
+      "portada": "Portada",
+      "vitrina": "Vitrina",
+      "plena": "Foto grande",
+      "diptico": "Díptico",
+      "retrato": "Retrato con nota",
+      "ancla": "Foto fija",
+      "indice": "Índice",
+      "rejilla": "Rejilla",
+      "tira": "Serie",
+      "cierre": "Cierre"
+    },
+    "escenasHint": {
+      "portada": "Tu nombre sobre una foto a pantalla completa, con datos en las esquinas. Abre el book.",
+      "vitrina": "Una foto grande con su frase y varias al lado. Al tocar una, cambian de sitio.",
+      "plena": "Una foto grande que se abre como un telón al bajar.",
+      "diptico": "Dos fotos lado a lado que se mueven a distinta velocidad.",
+      "retrato": "Una foto vertical con espacio para contar algo al lado.",
+      "ancla": "La foto se queda quieta mientras tus textos pasan por al lado.",
+      "indice": "Fichas con su crédito y su número. Al pasar por encima, la foto se abre desde el centro.",
+      "rejilla": "Tres o cuatro fotos que entran una detrás de otra.",
+      "tira": "Una serie que se recorre de lado. En el móvil, deslizando.",
+      "cierre": "Tu nombre en grande, tus frases y tus redes. Cierra el book."
+    },
+    "meta": {
+      "title": "Datos de las esquinas",
+      "hint": "Texto corto en cada esquina, como en una ficha de campaña.",
+      "arribaInicio": "AÑO · 2026",
+      "arribaFin": "EDITORIAL",
+      "abajoInicio": "CLIENTE · ESTUDIO",
+      "abajoFin": "MODA · CAMPAÑA"
+    },
+    "etiquetaPlaceholder": "Crédito o categoría",
+    "medidaTitle": "Tamaño",
+    "medidas": {
+      "contenida": "Contenida",
+      "amplia": "Amplia"
+    },
+    "atmosfera": {
+      "title": "Atmósfera",
+      "hint": "Tu estilo dentro del book. Elige una combinación hecha o afina cada cosa.",
+      "presetsTitle": "Combinaciones",
+      "presetsHint": "Un toque y queda todo puesto.",
+      "presets": {
+        "nocturno": "Nocturno",
+        "editorial": "Editorial",
+        "brutal": "Brutal",
+        "calido": "Cálido"
+      },
+      "fondoTitle": "Fondo",
+      "fondos": {
+        "medianoche": "Medianoche",
+        "hueso": "Hueso",
+        "arena": "Arena",
+        "carbon": "Carbón"
+      },
+      "letraTitle": "Letra",
+      "letras": {
+        "narrow": "Condensada",
+        "serif": "Serif",
+        "mono": "Mono",
+        "grotesca": "Grotesca"
+      },
+      "ritmoTitle": "Ritmo",
+      "ritmos": {
+        "sereno": "Sereno",
+        "dinamico": "Dinámico",
+        "brusco": "Brusco"
+      },
+      "ritmosHint": {
+        "sereno": "Movimientos largos y tranquilos.",
+        "dinamico": "El equilibrio: se mueve sin marear.",
+        "brusco": "Cortes secos, sin transición."
+      },
+      "texturaTitle": "Textura",
+      "texturas": {
+        "ninguna": "Limpia",
+        "grano": "Grano",
+        "vineta": "Viñeta"
+      },
+      "acentoTitle": "Acento",
+      "acentoHeredado": "El de mi perfil",
+      "acentoPropio": "Otro color"
+    }
+  },
+  "book": {
+    "metaTitle": "Book de {name}",
+    "metaTitleFallback": "Book — Only G Music",
+    "scrollHint": "Desliza",
+    "back": "Volver al perfil",
+    "backToProfile": "Ir al perfil",
+    "draftNotice": "Solo tú ves esto. Tu book aún no está publicado.",
+    "vitrinaVer": "Ver la foto {n} en grande",
+    "entryTitle": "Book",
+    "entryHint": "El portafolio completo, a pantalla completa.",
+    "entryCount": "{count} piezas",
+    "notFoundTitle": "Aquí no hay book",
+    "notFoundBody": "Puede que ya no esté publicado o que el enlace esté incompleto."
   },
   "metrics": {
     "title": "Métricas de tu perfil",

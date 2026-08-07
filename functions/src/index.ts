@@ -487,24 +487,17 @@ export const onBookingConfirmed = onDocumentUpdated(
     try {
       const { comisionProductor, comisionProductorPorSede } =
         await getComercial();
-      // Comisión EFECTIVA de esta reserva: el override de SU sede si existe, si no
-      // el global. `undefined` en el mapa (sede sin override) → cae al global.
-      const sede = typeof after.sede === "string" ? after.sede : "";
-      const override = comisionProductorPorSede[sede];
-      const comisionEff =
-        typeof override === "number" ? override : comisionProductor;
       const amount = after.amount;
-      if (
-        comisionEff !== null &&
-        comisionEff > 0 &&
-        typeof amount === "number" &&
-        Number.isInteger(amount) &&
-        amount > 0
-      ) {
+      if (typeof amount === "number" && Number.isInteger(amount) && amount > 0) {
         // El acreedor DEBE existir y tener rol `productor`: no se crea "deuda a
         // cualquiera" (mismo control que el alta manual `registrarPayoutProduccion`).
         // `productorId` es inyectable por el cliente; esta validación + el bloqueo en
         // firestore.rules cierran el griefing de pasivos a UIDs arbitrarios.
+        //
+        // Se lee ANTES de decidir el %, y no después como antes: la comisión pactada
+        // con esta persona vive en su doc, y puede ACTIVAR el split ella sola aunque
+        // el CEO no haya fijado la global. Comprobar el gate primero dejaba fuera
+        // justo el caso que el admin acaba de pactar.
         const prod =
           (await db.doc(`users/${after.productorId}`).get()).data() ?? {};
         const roles = prod.roles;
@@ -513,8 +506,19 @@ export const onBookingConfirmed = onDocumentUpdated(
             `Reserva ${reservaId}: productorId ${after.productorId} no es productor — sin payout automático.`,
           );
         } else {
-          const comision = Math.round(amount * comisionEff);
-          const neto = amount - comision;
+          // Comisión EFECTIVA, de lo más específico a lo más general: lo PACTADO
+          // con este productor → el override de SU sede → la global del CEO.
+          // `undefined` en el mapa (sede sin override) → cae al global.
+          const sede = typeof after.sede === "string" ? after.sede : "";
+          const override = comisionProductorPorSede[sede];
+          const comisionEff =
+            comisionPactada(prod, "produccion") ??
+            (typeof override === "number" ? override : comisionProductor);
+          const comision =
+            comisionEff !== null && comisionEff > 0
+              ? Math.round(amount * comisionEff)
+              : null;
+          const neto = comision === null ? 0 : amount - comision;
           // neto<=0 (comisión = 100%): Only G se queda todo → sin payout (el ingreso
           // ES el `amount` completo, correcto). Sin deuda "a nadie".
           if (neto > 0) {
@@ -1798,6 +1802,25 @@ async function confirmarPagoPase(
  * rango se ignora y rige el default. `comisionProductor` no tiene default (el
  * dueño la definirá): si no es válida, se devuelve `null` (aún no la usa nadie).
  */
+/**
+ * Comisión PACTADA con una persona para un concepto (`users/{uid}.comisiones`),
+ * o `null` si no hay pacto válido. Es el escalón MÁS específico de la cadena:
+ * manda sobre el override por sede y sobre la global del CEO.
+ *
+ * Un valor fuera de [0,1] se trata como "sin pactar" y NO como 0%: un typo del
+ * panel no puede convertirse en regalarle el 100% del bruto a nadie. Misma
+ * última línea de defensa que `getComercial` aplica al config del CEO.
+ */
+function comisionPactada(
+  user: FirebaseFirestore.DocumentData | undefined,
+  campo: "beat" | "produccion",
+): number | null {
+  const v = (user?.comisiones as Record<string, unknown> | undefined)?.[campo];
+  return typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1
+    ? v
+    : null;
+}
+
 async function getComercial(): Promise<{
   precioBeat: number;
   comisionBeat: number;
@@ -1925,7 +1948,15 @@ async function confirmarPagoBeat(
     montoPagado > 0
       ? montoPagado
       : precioBeat;
-  const comision = Math.round(precio * comisionBeat);
+  // Comisión EFECTIVA: la PACTADA con ESTE beatmaker manda sobre la global del
+  // CEO (el admin la fija desde el editor de su perfil). Sin pacto, la global.
+  const pactada = beatmakerUid
+    ? comisionPactada(
+        (await db.doc(`users/${beatmakerUid}`).get()).data(),
+        "beat",
+      )
+    : null;
+  const comision = Math.round(precio * (pactada ?? comisionBeat));
   const neto = precio - comision;
 
   // Entrega: URL firmada del máster (7 días), SOLO si `masterPath` pertenece a
@@ -3614,6 +3645,213 @@ export const actualizarMisArtes = onCall({ region: REGION }, async (request) => 
   logger.info(`Artes de ${uid} = [${disciplines.join(",")}]`);
   return { ok: true, disciplines };
 });
+
+// ── Admin: artes y comisiones DE UN PERFIL ────────────────────────────────────
+
+/**
+ * Lee el "talento" de un perfil para el panel del admin: qué artes tiene y, si
+ * cuelga de una cuenta, qué comisiones se pactaron con esa persona.
+ *
+ * Existe porque el cliente NO puede leer `users/{uid}` de otro (las reglas lo
+ * cierran al dueño), así que el admin no tiene forma de prellenar los campos sin
+ * pasar por aquí. Devuelve también las comisiones GLOBALES para que la UI pueda
+ * enseñarlas como referencia de lo que rige si no se pacta nada.
+ */
+export const adminGetPerfilTalento = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const slug = request.data?.slug;
+    if (typeof slug !== "string" || !slug) {
+      throw new HttpsError("invalid-argument", "Falta el perfil.");
+    }
+    const profSnap = await db.doc(`artistProfiles/${slug}`).get();
+    if (!profSnap.exists) {
+      throw new HttpsError("not-found", "Perfil inexistente.");
+    }
+    const prof = profSnap.data() ?? {};
+    const uid = typeof prof.uid === "string" && prof.uid ? prof.uid : null;
+    const { comisionBeat, comisionProductor } = await getComercial();
+
+    // MOCK: no hay cuenta detrás, así que las artes son las del propio perfil y
+    // no hay comisiones que pactar (no hay con quién).
+    if (!uid) {
+      const disc = Array.isArray(prof.disciplines)
+        ? (prof.disciplines as string[]).filter((r) => TALENT_ROLES.includes(r))
+        : [];
+      return {
+        vinculado: false,
+        uid: null,
+        displayName: null,
+        email: null,
+        artes: disc,
+        esProductor: false,
+        comisiones: { beat: null, produccion: null },
+        globales: { beat: comisionBeat, produccion: comisionProductor },
+      };
+    }
+
+    const userSnap = await db.doc(`users/${uid}`).get();
+    const user = userSnap.data() ?? {};
+    const roles = Array.isArray(user.roles) ? (user.roles as string[]) : [];
+    const com = (user.comisiones ?? {}) as Record<string, unknown>;
+    const frac = (v: unknown): number | null =>
+      typeof v === "number" && Number.isFinite(v) && v >= 0 && v <= 1 ? v : null;
+    return {
+      vinculado: true,
+      uid,
+      displayName: (user.displayName as string | null) ?? null,
+      email: (user.email as string | null) ?? null,
+      // Las artes de una cuenta son SUS roles de talento: el perfil solo los
+      // refleja. Leerlas del perfil dejaría al panel enseñando la foto vieja si
+      // alguna vez se desincronizaran.
+      artes: roles.filter((r) => TALENT_ROLES.includes(r)),
+      // `productor` NO es un arte (es una función comercial atada a una sede, sin
+      // secciones propias), pero decide si tiene sentido pactarle la comisión de
+      // producción: el split la exige, así que sin el rol el pacto sería papel
+      // mojado. Va aparte de `artes` justo por eso.
+      esProductor: roles.includes("productor"),
+      comisiones: { beat: frac(com.beat), produccion: frac(com.produccion) },
+      globales: { beat: comisionBeat, produccion: comisionProductor },
+    };
+  },
+);
+
+/**
+ * El ADMIN fija las ARTES de un perfil —y, si está vinculado, las comisiones
+ * pactadas con esa persona— desde el editor del propio perfil.
+ *
+ * Por qué existe, si ya hay `adminSetRoles` y `actualizarMisArtes`:
+ *   · `actualizarMisArtes` opera sobre QUIEN LLAMA. Usarla desde el panel hacía
+ *     que el admin se pusiera a SÍ MISMO el arte que quería dar a otro — el bug
+ *     que motivó esto.
+ *   · `adminSetRoles` va por `uid` y exige la lista COMPLETA de roles, que el
+ *     admin no puede leer desde el navegador. Y no sirve para un MOCK: no hay uid.
+ *
+ * Las dos ramas, y en qué se diferencian:
+ *   · VINCULADO — la verdad son los roles de la cuenta. Se reescribe la rebanada
+ *     de talento y se conservan LEYÉNDOLOS los demás roles (`admin`, `cliente`,
+ *     `productor`, `ceo`): así el panel no puede degradar a nadie de rebote. El
+ *     perfil se sincroniza con `deriveDisciplinesSocio`, igual que siempre. El
+ *     admin SÍ puede conceder `beatmaker`/`modelo` sin convenio: si está tocando
+ *     este perfil es porque ya habló con la persona.
+ *   · MOCK — no hay cuenta: las artes se escriben en el perfil y se acabó. `socio`
+ *     queda SIEMPRE en false aunque las artes incluyan `beatmaker`: `socio` es una
+ *     exención de membresía que solo tiene sentido con un convenio detrás, y un
+ *     mock ya se muestra por `visibleAdmin`. Pactar comisiones aquí es un error
+ *     explícito, no un no-op: no hay a quién pagarle.
+ */
+export const adminSetPerfilTalento = onCall(
+  { region: REGION },
+  async (request) => {
+    await assertAdmin(request.auth?.uid);
+    const slug = request.data?.slug;
+    const pedidas = request.data?.artes;
+    if (typeof slug !== "string" || !slug) {
+      throw new HttpsError("invalid-argument", "Falta el perfil.");
+    }
+    if (!Array.isArray(pedidas)) {
+      throw new HttpsError("invalid-argument", "Faltan las artes.");
+    }
+    const artes = [...new Set(pedidas.filter((a) => typeof a === "string"))];
+    const invalida = artes.find((a) => !TALENT_ROLES.includes(a));
+    if (invalida) {
+      throw new HttpsError("invalid-argument", `"${invalida}" no es un arte.`);
+    }
+    // Mismo invariante que `actualizarMisArtes`: un perfil sin ninguna arte se
+    // leería como cantante (ver `effectiveDisciplines`), así que apagarlas todas
+    // no hace lo que parece. Mejor decirlo.
+    if (artes.length === 0) {
+      throw new HttpsError(
+        "failed-precondition",
+        "Deja al menos un arte activa en el perfil.",
+      );
+    }
+
+    // Comisiones: `null` (o ausente) = sin pactar → hereda la global. Un número
+    // fuera de [0,1] es un error, nunca un 0% silencioso.
+    const leerComision = (v: unknown, campo: string): number | null => {
+      if (v === null || v === undefined) return null;
+      if (typeof v !== "number" || !Number.isFinite(v) || v < 0 || v > 1) {
+        throw new HttpsError(
+          "invalid-argument",
+          `La comisión de ${campo} debe ir entre 0% y 100%.`,
+        );
+      }
+      return v;
+    };
+    const comBeat = leerComision(request.data?.comisionBeat, "beats");
+    const comProd = leerComision(
+      request.data?.comisionProduccion,
+      "producción",
+    );
+
+    const profRef = db.doc(`artistProfiles/${slug}`);
+    const profSnap = await profRef.get();
+    if (!profSnap.exists) {
+      throw new HttpsError("not-found", "Perfil inexistente.");
+    }
+    const prof = profSnap.data() ?? {};
+    const uid = typeof prof.uid === "string" && prof.uid ? prof.uid : null;
+
+    // ── Rama MOCK ────────────────────────────────────────────────────────
+    if (!uid) {
+      if (comBeat !== null || comProd !== null) {
+        throw new HttpsError(
+          "failed-precondition",
+          "Un perfil sin cuenta vinculada no tiene con quién pactar comisiones.",
+        );
+      }
+      await profRef.update({
+        disciplines: artes,
+        socio: false,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      logger.info(`Artes del mock ${slug} = [${artes.join(",")}]`);
+      return { ok: true, vinculado: false, disciplines: artes, socio: false };
+    }
+
+    // ── Rama VINCULADA ───────────────────────────────────────────────────
+    const userRef = db.doc(`users/${uid}`);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      throw new HttpsError("not-found", "La cuenta vinculada no existe.");
+    }
+    const actuales = Array.isArray(userSnap.data()?.roles)
+      ? (userSnap.data()?.roles as string[])
+      : [];
+    // Todo lo que no sea un arte sobrevive intacto (roles de poder incluidos).
+    const conservados = actuales.filter((r) => !TALENT_ROLES.includes(r));
+    const finalRoles = [...new Set([...conservados, ...artes])];
+    const { disciplines, socio } = deriveDisciplinesSocio(finalRoles);
+
+    // Las comisiones se guardan en el doc PRIVADO de la persona, no en el perfil
+    // (que es de lectura pública). Sin ninguna pactada, se borra el campo entero:
+    // "sin pacto" tiene que ser indistinguible de "nunca se tocó".
+    const comisiones: Record<string, number> = {};
+    if (comBeat !== null) comisiones.beat = comBeat;
+    if (comProd !== null) comisiones.produccion = comProd;
+
+    const batch = db.batch();
+    batch.update(userRef, {
+      roles: finalRoles,
+      comisiones: Object.keys(comisiones).length
+        ? comisiones
+        : FieldValue.delete(),
+    });
+    batch.update(profRef, {
+      disciplines,
+      socio,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
+
+    logger.info(
+      `Talento de ${slug} (${uid}): artes=[${disciplines.join(",")}] socio=${socio}`,
+    );
+    return { ok: true, vinculado: true, disciplines, socio };
+  },
+);
 
 /** Nuevo perfil de artista creado → avisa a los admin. */
 /**

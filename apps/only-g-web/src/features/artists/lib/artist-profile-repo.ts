@@ -44,6 +44,7 @@ import {
   perfilVisible,
   compararOrden,
   effectiveDisciplines,
+  esPerfilMock,
   toSlug,
 } from "@only-g/shared-types/artist-profile";
 import { esGalleryLayoutId } from "@only-g/shared-types/gallery-layout";
@@ -147,6 +148,7 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     // Disciplinas: los perfiles viejos (o con array vacío) se leen como cantante.
     disciplines: effectiveDisciplines(data.disciplines as Role[] | undefined),
     socio: data.socio === true,
+    visibleAdmin: data.visibleAdmin === true,
     // Media destacada (video/imagen) y artistas relacionados: sin estas dos
     // líneas el dato se GUARDABA en Firestore pero nunca se leía de vuelta, así
     // que no aparecía ni en el perfil ni al recargar el editor.
@@ -168,6 +170,18 @@ function toProfile(slug: string, data: DocumentData): ArtistProfile {
     colectivos: Array.isArray(data.colectivos)
       ? (data.colectivos as ArtistProfile["colectivos"])
       : undefined,
+    // Espejo del book (§10). Va aquí y no en el documento del book porque la
+    // tarjeta de entrada del perfil no puede costar una segunda lectura. Y va
+    // aquí ARRIBA, en la whitelist, porque este mapeo es el que decide qué
+    // "existe": es exactamente el olvido que dejó a `featuredMediaList`
+    // guardándose sin leerse nunca.
+    bookPublicado: data.bookPublicado === true,
+    bookPortada:
+      typeof data.bookPortada === "string" && data.bookPortada
+        ? data.bookPortada
+        : undefined,
+    bookPiezas:
+      typeof data.bookPiezas === "number" ? data.bookPiezas : undefined,
     createdAt: data.createdAt?.toMillis?.() ?? Date.now(),
     updatedAt: data.updatedAt?.toMillis?.() ?? Date.now(),
   };
@@ -317,6 +331,29 @@ export async function setPremium(
 ): Promise<void> {
   await updateDoc(doc(db, COLLECTION, slug), {
     premium,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+/**
+ * MUESTRA u OCULTA en la vitrina un perfil MOCK, sin membresía de por medio
+ * (SOLO admin). Un mock es relleno de escaparate: no hay cuenta a la que
+ * cobrarle, así que lo único que decide si se ve es el criterio del admin.
+ *
+ * Lanza si el perfil tiene dueño. No es paranoia: dejar que este interruptor
+ * publicara un perfil VINCULADO sería una puerta trasera a la membresía —el
+ * "primera vez = activa membresía" del panel se saltaría con un clic—. Los
+ * perfiles con cuenta se publican con `activarMembresia`, y punto.
+ */
+export async function setVisibleAdmin(
+  profile: Pick<ArtistProfile, "slug" | "uid">,
+  visible: boolean,
+): Promise<void> {
+  if (!esPerfilMock(profile)) {
+    throw new Error("visibleAdmin es solo para perfiles sin cuenta vinculada");
+  }
+  await updateDoc(doc(db, COLLECTION, profile.slug), {
+    visibleAdmin: visible,
     updatedAt: serverTimestamp(),
   });
 }

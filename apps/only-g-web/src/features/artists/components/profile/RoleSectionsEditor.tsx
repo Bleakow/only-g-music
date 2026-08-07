@@ -23,8 +23,19 @@ import { ProfileChip } from "./ProfileChip";
  * encendida — no tiene sentido pedirle la ficha técnica a un beatmaker.
  */
 
+/**
+ * Vestido de los campos de estos editores. SIN ancho a propósito: lo pone cada
+ * sitio.
+ *
+ * Llevaba `w-full` dentro, y el campo del año lo pisaba con `w-24`. Dos
+ * utilidades de `width` en el mismo elemento no se resuelven por el orden en que
+ * las escribes, sino por el orden en que Tailwind las emite — así que cuál ganaba
+ * era una moneda al aire. Cuando ganaba `w-full`, el año (que además es
+ * `shrink-0`) se comía la fila entera y los campos de texto de al lado quedaban
+ * aplastados a nada: parecía que el hito solo dejaba escribir el año.
+ */
 const INPUT =
-  "w-full rounded-lg bg-white/[0.02] px-3 py-2 text-sm text-silver-50 outline-none ring-1 ring-inset ring-white/15 transition focus:bg-white/[0.06] focus:ring-amethyst-300/70 placeholder:text-white/25";
+  "rounded-lg bg-white/[0.02] px-3 py-2 text-sm text-silver-50 outline-none ring-1 ring-inset ring-white/15 transition focus:bg-white/[0.06] focus:ring-amethyst-300/70 placeholder:text-white/25";
 
 /** Ficha técnica: seis campos de texto libre (ver `profile-role-data`). */
 export function FichaTecnicaEditor({
@@ -47,7 +58,7 @@ export function FichaTecnicaEditor({
             value={ficha[campo] ?? ""}
             onChange={(e) => onChange({ ...ficha, [campo]: e.target.value })}
             placeholder={t(`fichaPlaceholder.${campo}`)}
-            className={INPUT}
+            className={`${INPUT} w-full`}
           />
         </label>
       ))}
@@ -114,7 +125,7 @@ export function ChipListEditor({
           add(e.currentTarget.value);
           e.currentTarget.value = "";
         }}
-        className={`${INPUT} max-w-xs disabled:opacity-40`}
+        className={`${INPUT} w-full max-w-xs disabled:opacity-40`}
       />
 
       {libres.length > 0 && lista.length < max && (
@@ -176,19 +187,22 @@ export function HitosEditor({
               className={`${INPUT} w-24 shrink-0 text-center tabular-nums`}
             />
             <div className="flex min-w-0 flex-1 flex-col gap-2">
+              {/* `?? ""` no es adorno: sin él, un hito guardado sin `titulo`
+                  monta el input como NO controlado y al escribir React lo pasa a
+                  controlado — el salto se ve como que el campo no acepta texto. */}
               <input
-                value={it.titulo}
+                value={it.titulo ?? ""}
                 onChange={(e) => set(i, { titulo: e.target.value })}
                 placeholder={t("hito.titulo")}
                 aria-label={t("hito.titulo")}
-                className={INPUT}
+                className={`${INPUT} w-full`}
               />
               <input
                 value={it.detalle ?? ""}
                 onChange={(e) => set(i, { detalle: e.target.value })}
                 placeholder={t("hito.detalle")}
                 aria-label={t("hito.detalle")}
-                className={INPUT}
+                className={`${INPUT} w-full`}
               />
             </div>
             <button

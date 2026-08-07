@@ -82,15 +82,16 @@ service cloud.firestore {
         && request.resource.data.roles[0] == 'cliente';
 
       // El cliente puede actualizar SU doc, pero NO tocar `roles`, `gnotesPremium`
-      // (membresía G Notes) ni `pase` (paquete con producción/video): esos solo
-      // los escribe el servidor (Admin SDK / Functions al confirmar el pago, o el
-      // admin al dar cortesía), que ignora estas reglas. Sin este freeze, un
-      // usuario se auto-regalaría IA sin límite o un pase escribiendo su doc.
+      // (membresía G Notes), `pase` (paquete con producción/video) ni `comisiones`
+      // (el corte pactado con Only G): esos solo los escribe el servidor (Admin
+      // SDK / Functions al confirmar el pago, o el admin al dar cortesía o pactar
+      // la comisión), que ignora estas reglas. Sin este freeze, un usuario se
+      // auto-regalaría IA sin límite, un pase, o una comisión del 0%.
       allow update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.roles == resource.data.roles
         && !request.resource.data.diff(resource.data).affectedKeys()
-              .hasAny(['gnotesPremium', 'pase']);
+              .hasAny(['gnotesPremium', 'pase', 'comisiones']);
 
       allow delete: if false;
 
@@ -407,7 +408,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.artistSlug == slug
           && request.resource.data.puntos == 0
           && request.resource.data.premium == null
-          && !request.resource.data.keys().hasAny(['orden', 'featured', 'disciplines', 'socio', 'searchIndex']));
+          && !request.resource.data.keys().hasAny(['orden', 'featured', 'disciplines', 'socio', 'searchIndex', 'visibleAdmin']));
 
       // El dueño edita su contenido, sin tocar campos sensibles ni la curaduría
       // de la vitrina (orden/featured = solo admin).
@@ -417,7 +418,7 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys()
               .hasAny(['uid', 'slug', 'puntos', 'premium', 'createdAt', 'orden', 'featured',
                        'disciplines', 'socio', 'searchIndex', 'socialStats', 'visitas',
-                       'metricsVisibility']));
+                       'metricsVisibility', 'visibleAdmin']));
       // NOTA: antes existía aquí una excepción que dejaba a cualquier visitante
       // (incluso anónimo) sumar +1 a `visitas`. Se retiró: ahora las visitas las
       // registra la API `/api/metricas/[slug]` con el Admin SDK, así que el
@@ -451,6 +452,27 @@ service cloud.firestore {
         allow read: if true;
         allow create, delete: if request.auth != null && request.auth.uid == uid;
         allow update: if false;
+      }
+
+      // ── El BOOK (§10): portafolio inmersivo, un solo doc (`book/main`) ──
+      // PÚBLICO en lectura, igual que el perfil: el enlace del book se le manda
+      // a clientes que no tienen cuenta. Lo que decide si un visitante ve algo
+      // no es esta regla sino `bookPublicado` en el perfil.
+      //
+      // Escribe solo la dueña del perfil. Se valida con `ownsProfileSlug`, que
+      // mira artistProfiles/{slug}.uid y NO el puntero users/{uid}.artistSlug
+      // —que el cliente puede falsear—, así nadie edita el book de otra.
+      //
+      // El tope de escenas se repite aquí a mano (la fuente de verdad es
+      // BOOK_MAX_ESCENAS en shared-types/book.ts) porque los límites del
+      // catálogo son de cliente: sin esto, un cliente fabricado podría plantar
+      // un documento de mil escenas y convertir la ruta del book en una bomba.
+      match /book/{docId} {
+        allow read: if true;
+        allow create, update: if (isAdmin() || ownsProfileSlug(slug))
+          && request.resource.data.escenas is list
+          && request.resource.data.escenas.size() <= 12;
+        allow delete: if isAdmin() || ownsProfileSlug(slug);
       }
     }
 

@@ -7,8 +7,50 @@ import {
   featuredMediaPolicy,
   featuredMediaItems,
   effectiveDisciplines,
+  esPerfilMock,
+  esReel,
+  esVideoVertical,
+  perfilVisible,
+  presentacionDestacada,
   type FeaturedMedia,
 } from "./artist-profile";
+
+/** Vigencia viva / caducada respecto a `AHORA`, para los casos de premium. */
+const AHORA = 1_700_000_000_000;
+const vigente = { activo: true, since: 0, expiresAt: AHORA + 86_400_000 };
+const caducado = { activo: true, since: 0, expiresAt: AHORA - 86_400_000 };
+
+describe("esPerfilMock", () => {
+  it("sin uid es un perfil de relleno; con uid, de alguien", () => {
+    expect(esPerfilMock({ uid: "" })).toBe(true);
+    expect(esPerfilMock({ uid: "abc123" })).toBe(false);
+  });
+});
+
+describe("perfilVisible", () => {
+  it("premium vigente basta; caducado no", () => {
+    expect(perfilVisible({ premium: vigente, socio: false }, AHORA)).toBe(true);
+    expect(perfilVisible({ premium: caducado, socio: false }, AHORA)).toBe(
+      false,
+    );
+  });
+  it("el socio se ve sin pagar membresía", () => {
+    expect(perfilVisible({ premium: null, socio: true }, AHORA)).toBe(true);
+  });
+  it("el interruptor del admin muestra un mock sin premium ni convenio", () => {
+    expect(
+      perfilVisible({ premium: null, socio: false, visibleAdmin: true }, AHORA),
+    ).toBe(true);
+  });
+  it("apagado explícito no resucita: sin las otras vías, no se ve", () => {
+    expect(
+      perfilVisible({ premium: null, socio: false, visibleAdmin: false }, AHORA),
+    ).toBe(false);
+  });
+  it("sin ninguna de las tres vías, oculto", () => {
+    expect(perfilVisible({ premium: null, socio: false }, AHORA)).toBe(false);
+  });
+});
 
 describe("effectiveDisciplines", () => {
   it("devuelve las disciplinas tal cual cuando las hay", () => {
@@ -45,6 +87,68 @@ describe("featuredMediaPolicy", () => {
     });
     // Basta con ser bailarín entre varias disciplinas.
     expect(featuredMediaPolicy(["artista", "bailarin"]).maxTotal).toBe(5);
+  });
+  it("modelos: 4 reels, todos con audio, sin límite de duración", () => {
+    expect(featuredMediaPolicy(["modelo"])).toEqual({
+      maxSilent: 0,
+      maxAudio: 4,
+      audioMaxSeconds: null,
+      maxTotal: 4,
+    });
+  });
+  it("bailarina Y modelo: manda bailarín (la lista más amplia)", () => {
+    // El orden de los `if` es la regla: se comprueba bailarín primero, así que
+    // quien es las dos cosas conserva sus 5 clips en vez de bajar a 2.
+    expect(featuredMediaPolicy(["modelo", "bailarin"]).maxTotal).toBe(5);
+  });
+});
+
+describe("presentacionDestacada (la decide el material, no el rol)", () => {
+  const vert = (n: number): FeaturedMedia => ({
+    url: `v${n}`,
+    type: "video",
+    ratio: 9 / 16,
+  });
+  const horiz: FeaturedMedia = { url: "h", type: "video", ratio: 16 / 9 };
+  const foto: FeaturedMedia = { url: "f", type: "image" };
+
+  it("todo vertical → cuadrícula de reels", () => {
+    expect(presentacionDestacada([vert(1), vert(2)])).toBe("reels");
+  });
+  it("basta UN horizontal para volver al reproductor ancho", () => {
+    expect(presentacionDestacada([vert(1), horiz])).toBe("player");
+  });
+  it("una foto entre medias también manda al reproductor", () => {
+    expect(presentacionDestacada([vert(1), foto])).toBe("player");
+  });
+  it("sin nada, reproductor (cae a la foto de portada)", () => {
+    expect(presentacionDestacada([])).toBe("player");
+  });
+  it("material ANTIGUO sin proporción se lee como horizontal (sin regresión)", () => {
+    expect(presentacionDestacada([{ url: "x", type: "video" }])).toBe("player");
+  });
+  it("un cuadrado NO es un reel: cabe de sobra en el marco ancho", () => {
+    expect(presentacionDestacada([{ url: "s", type: "video", ratio: 1 }])).toBe(
+      "player",
+    );
+  });
+});
+
+describe("esVideoVertical", () => {
+  it("solo videos, solo con proporción válida y por debajo del umbral", () => {
+    expect(esVideoVertical({ url: "a", type: "video", ratio: 0.5625 })).toBe(true);
+    expect(esVideoVertical({ url: "a", type: "video", ratio: 1.77 })).toBe(false);
+    expect(esVideoVertical({ url: "a", type: "video", ratio: 0 })).toBe(false);
+    expect(esVideoVertical({ url: "a", type: "image", ratio: 0.5 })).toBe(false);
+  });
+});
+
+describe("esReel", () => {
+  it("solo las modelos llaman reel a su media destacada", () => {
+    expect(esReel(["modelo"])).toBe(true);
+    expect(esReel(["artista", "modelo"])).toBe(true);
+    expect(esReel(["artista"])).toBe(false);
+    expect(esReel(undefined)).toBe(false);
   });
 });
 

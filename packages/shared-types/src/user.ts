@@ -2,6 +2,7 @@
  * Entidad de dominio: Cuenta de usuario. Tipos puros y portables (reutilizables
  * en una futura app nativa). No importar nada de UI ni de Firebase aquí.
  */
+import type { ComisionesArtista } from "./comercial-config";
 import type { GNotesMembership } from "./gnotes-membership";
 import type { Pase } from "./pase";
 
@@ -97,6 +98,14 @@ export interface UserAccount {
    *  escribe SOLO el servidor (Function al confirmar el pago, o el admin al dar
    *  cortesía); el cliente lo lee para mostrar el estado y los vales. */
   pase?: Pase;
+
+  /**
+   * Comisiones PACTADAS con esta persona (fracciones 0..1), que mandan sobre las
+   * globales del CEO. Viven aquí —doc privado, solo lo lee su dueño— y no en el
+   * perfil público: cuánto se queda Only G de alguien no se enseña en la vitrina.
+   * Las escribe SOLO el servidor (el admin, desde el editor del perfil).
+   */
+  comisiones?: ComisionesArtista;
 }
 
 /** Datos del perfil capturados al registrarse como artista (prellenan el editor). */

@@ -33,11 +33,20 @@ export function FeaturedVideoPlayer({
   muted,
   name,
   accent,
+  variant = "inline",
 }: {
   src: string;
   muted: boolean;
   name: string;
   accent?: string;
+  /**
+   * `inline` — dentro de la página: el marco toma la proporción del clip.
+   * `viewer` — dentro del visor a pantalla completa: LLENA la caja que le den
+   *   (que ya viene medida contra el viewport) y encaja el video entero sin
+   *   recortar. Aquí el marco no puede salir del alto disponible, así que manda
+   *   la caja y no el clip.
+   */
+  variant?: "inline" | "viewer";
 }) {
   const t = useTranslations("artistProfile");
   const ref = useRef<HTMLVideoElement>(null);
@@ -45,6 +54,14 @@ export function FeaturedVideoPlayer({
   const [playing, setPlaying] = useState(false);
   const [cur, setCur] = useState(0);
   const [dur, setDur] = useState(0);
+  /**
+   * Proporción REAL del clip, leída de sus metadatos. Antes el marco era siempre
+   * 16:9: un reel grabado con el móvil en vertical entraba recortado por los
+   * lados y, encima, ocupaba un cuarto de la pantalla del que lo miraba —
+   * justo el formato en el que la gente graba y ve estos videos. Arranca en 16:9
+   * (lo más común) para que no dé un salto al cargar.
+   */
+  const [ratio, setRatio] = useState(16 / 9);
   /** ¿Se ven los controles? Arrancan ESCONDIDOS: es el efecto foto animada. */
   const [chrome, setChrome] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -100,7 +117,19 @@ export function FeaturedVideoPlayer({
 
   return (
     <div
-      className="group bg-ink-soft relative aspect-video overflow-hidden rounded-2xl border border-white/10"
+      // En la página, la proporción la manda el CLIP, no el marco; el tope de
+      // alto (85svh) es lo único que la acota, para que un vertical no obligue a
+      // hacer scroll dentro del propio video. `svh` y no `vh` porque en móvil la
+      // barra del navegador miente con `vh`. En el visor manda la caja: ya viene
+      // medida contra el viewport.
+      style={
+        variant === "viewer"
+          ? undefined
+          : { aspectRatio: ratio, maxHeight: "85svh" }
+      }
+      className={`group bg-ink-soft relative overflow-hidden rounded-2xl border border-white/10 ${
+        variant === "viewer" ? "h-full w-full" : "mx-auto"
+      }`}
       // El ratón solo ASOMA los controles (no toca la reproducción); el dedo, en
       // cambio, pausa: en móvil no hay "apuntar sin tocar".
       onMouseEnter={() => revelar(false)}
@@ -133,8 +162,19 @@ export function FeaturedVideoPlayer({
           revelar(false); // pausado: se quedan a la vista
         }}
         onTimeUpdate={() => setCur(ref.current?.currentTime ?? 0)}
-        onLoadedMetadata={() => setDur(ref.current?.duration ?? 0)}
-        className="absolute inset-0 h-full w-full object-cover"
+        onLoadedMetadata={() => {
+          const v = ref.current;
+          if (!v) return;
+          setDur(v.duration ?? 0);
+          // Con el marco ya a la medida del clip, `object-cover` no recorta nada;
+          // se queda por los redondeos y por los clips que reporten mal su tamaño.
+          if (v.videoWidth > 0 && v.videoHeight > 0) {
+            setRatio(v.videoWidth / v.videoHeight);
+          }
+        }}
+        className={`absolute inset-0 h-full w-full ${
+          variant === "viewer" ? "object-contain" : "object-cover"
+        }`}
       />
 
       {/* Botón central: solo con el video parado. */}

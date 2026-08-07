@@ -9,7 +9,9 @@ import {
   getAllProfiles,
   countFeatured,
   getVisibleProfiles,
+  getProfileBySlug,
   setPremium,
+  setVisibleAdmin,
   setCuracion,
   deleteProfile,
   createMockProfile,
@@ -18,8 +20,11 @@ import {
 import {
   type ArtistProfile,
   MAX_DESTACADOS,
+  esPerfilMock,
+  perfilVisible,
   premiumEstado,
 } from "@only-g/shared-types/artist-profile";
+import { activarMembresia } from "../lib/admin-users-repo";
 import { TALENT_ROLES, type Role } from "@only-g/shared-types/user";
 import { fechaCorta } from "@/features/solicitudes/lib/estados";
 import { GlassButton } from "@/components/ui/GlassButton";
@@ -96,6 +101,12 @@ export function AdminPerfiles() {
   const [curarOpen, setCurarOpen] = useState(false);
   /** Perfil a OCULTAR (confirmación); mostrar es directo, no destruye nada. */
   const [hideTarget, setHideTarget] = useState<ArtistProfile | null>(null);
+  /** Perfil VINCULADO que se quiere mostrar y aún no tiene vigencia: hay que
+   *  activarle la membresía (cobrada o de cortesía) antes de que se vea. */
+  const [membresiaTarget, setMembresiaTarget] = useState<ArtistProfile | null>(
+    null,
+  );
+  const [membresiaBusy, setMembresiaBusy] = useState(false);
 
   // Pestaña de disciplina activa (filtra la lista renderizada).
   const [tab, setTab] = useState<Role | "todos">("todos");
@@ -256,6 +267,50 @@ export function AdminPerfiles() {
     }
   }
 
+  /**
+   * Enciende/apaga un perfil MOCK. Sin membresía de por medio: es relleno de
+   * vitrina, no hay cuenta a la que cobrarle, así que se muestra porque el admin
+   * lo dice. Directo en los dos sentidos — apagarlo no destruye nada.
+   */
+  async function alternarMock(p: ArtistProfile, visible: boolean) {
+    setSavingSlug(p.slug);
+    setError(null);
+    try {
+      await setVisibleAdmin(p, visible);
+      patchOne(p.slug, { visibleAdmin: visible });
+    } catch (e) {
+      console.error("[admin-perfiles] mock visible:", e);
+      setError(
+        t(visible ? "adminPerfiles.errorActivar" : "adminPerfiles.errorDesactivar"),
+      );
+    } finally {
+      setSavingSlug(null);
+    }
+  }
+
+  /**
+   * PRIMERA activación de un perfil VINCULADO: le activa la membresía (cobrada,
+   * con su asiento contable, o de cortesía). Es el único camino para publicar un
+   * perfil con cuenta detrás — el ojo por sí solo no regala meses, y aquí queda
+   * explícito qué se está concediendo.
+   */
+  async function activarMembresiaPerfil(slug: string, cortesia: boolean) {
+    setMembresiaBusy(true);
+    setError(null);
+    try {
+      await activarMembresia(slug, cortesia);
+      // La vigencia la calcula el servidor: se relee en vez de estimarla aquí.
+      const fresco = await getProfileBySlug(slug);
+      if (fresco) patchOne(slug, { premium: fresco.premium });
+      setMembresiaTarget(null);
+    } catch (e) {
+      console.error("[admin-perfiles] membresia:", e);
+      setError(t("adminPerfiles.errorActivar"));
+    } finally {
+      setMembresiaBusy(false);
+    }
+  }
+
   async function toggleDestacado(slug: string) {
     const target = lista.find((p) => p.slug === slug);
     if (!target) return;
@@ -413,15 +468,22 @@ export function AdminPerfiles() {
               ) : (
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {lista.map((p) => {
-                    const estado = premiumEstado(p.premium, Date.now());
+                    const ahora = Date.now();
+                    const estado = premiumEstado(p.premium, ahora);
                     const activo = estado === "activo";
                     // Se puede volver a MOSTRAR solo si le queda vigencia: el ojo
-                    // enciende lo pagado, no regala meses (eso es Usuarios y roles).
-                    const puedeMostrar = (p.premium?.expiresAt ?? 0) > Date.now();
+                    // enciende lo pagado, no regala meses. Si no queda, abre la
+                    // activación de membresía (que sí concede, y lo dice).
+                    const puedeMostrar = (p.premium?.expiresAt ?? 0) > ahora;
                     const esSocio = p.socio === true;
-                    // Visible en la vitrina = premium vigente O socio (waiver):
-                    // el socio no paga membresía. Refleja perfilVisible/getVisibleProfiles.
-                    const visible = activo || esSocio;
+                    // MOCK = sin cuenta detrás: se muestra y se oculta a placer,
+                    // sin membresía. Lo demás necesita vigencia (o ser socio).
+                    const esMock = esPerfilMock(p);
+                    // Visible en la vitrina — misma cuenta que hace la web pública
+                    // (`perfilVisible` / `getVisibleProfiles`), no una copia a mano.
+                    const visible = perfilVisible(p, ahora);
+                    /** ¿Está encendido AHORA el interruptor que maneja este ojo? */
+                    const encendido = esMock ? p.visibleAdmin === true : activo;
                     const busy = savingSlug === p.slug;
                     return (
                       <li
@@ -457,6 +519,13 @@ export function AdminPerfiles() {
                               {t("adminPerfiles.socio")}
                             </span>
                           )}
+                          {/* Sin cuenta detrás: distinguirlo de un vistazo evita
+                              buscarle una membresía que nunca va a tener. */}
+                          {esMock && (
+                            <span className="text-silver-200 absolute top-1.5 left-1.5 rounded-full border border-white/25 bg-black/55 px-2 py-0.5 text-[9px] font-semibold tracking-[1.5px] uppercase backdrop-blur">
+                              {t("adminPerfiles.mock")}
+                            </span>
+                          )}
 
                           {/* Destacado (arriba-der) */}
                           <button
@@ -481,16 +550,22 @@ export function AdminPerfiles() {
                               {p.artisticName || "—"}
                             </p>
                             <p className="text-silver-300 mt-1 truncate text-[11px]">
-                              {activo && p.premium
-                                ? t("adminPerfiles.vence", {
-                                    fecha: fechaCorta(
-                                      p.premium.expiresAt,
-                                      locale,
-                                    ),
-                                  })
-                                : esSocio
-                                  ? t("adminPerfiles.socioEstado")
-                                  : t(`adminPerfiles.premiumEstado.${estado}`)}
+                              {esMock
+                                ? t(
+                                    encendido
+                                      ? "adminPerfiles.mockVisible"
+                                      : "adminPerfiles.mockOculto",
+                                  )
+                                : activo && p.premium
+                                  ? t("adminPerfiles.vence", {
+                                      fecha: fechaCorta(
+                                        p.premium.expiresAt,
+                                        locale,
+                                      ),
+                                    })
+                                  : esSocio
+                                    ? t("adminPerfiles.socioEstado")
+                                    : t(`adminPerfiles.premiumEstado.${estado}`)}
                             </p>
                           </div>
                         </div>
@@ -506,39 +581,53 @@ export function AdminPerfiles() {
                             <EditIcon className="size-4" />
                           </Link>
 
-                          {/* OCULTAR / MOSTRAR (nunca otorga membresía). Los
-                              SOCIOS están exentos: su perfil es visible sin
+                          {/* MOSTRAR / OCULTAR. Tres comportamientos según de
+                              dónde cuelgue el perfil, y ninguno regala meses a
+                              escondidas:
+                                · MOCK — interruptor directo, sin membresía.
+                                · VINCULADO con vigencia — enciende lo ya pagado.
+                                · VINCULADO sin vigencia — abre la ventana que
+                                  activa la membresía (cobrada o de cortesía).
+                              Los SOCIOS quedan fuera: su perfil se ve sin
                               membresía, así que aquí no hay nada que apagar. */}
                           {!esSocio && (
                             <button
                               type="button"
-                              onClick={() =>
-                                activo ? setHideTarget(p) : mostrar(p.slug)
-                              }
-                              disabled={busy || (!activo && !puedeMostrar)}
+                              onClick={() => {
+                                if (esMock) {
+                                  void alternarMock(p, !encendido);
+                                } else if (encendido) {
+                                  setHideTarget(p);
+                                } else if (puedeMostrar) {
+                                  void mostrar(p.slug);
+                                } else {
+                                  setMembresiaTarget(p);
+                                }
+                              }}
+                              disabled={busy}
                               aria-label={
-                                activo
+                                encendido
                                   ? t("adminPerfiles.ariaOcultar")
-                                  : puedeMostrar
+                                  : esMock || puedeMostrar
                                     ? t("adminPerfiles.ariaMostrar")
-                                    : t("adminPerfiles.ariaSinMembresia")
+                                    : t("adminPerfiles.ariaActivarMembresia")
                               }
                               title={
-                                activo
+                                encendido
                                   ? t("adminPerfiles.ariaOcultar")
-                                  : puedeMostrar
+                                  : esMock || puedeMostrar
                                     ? t("adminPerfiles.ariaMostrar")
-                                    : t("adminPerfiles.ariaSinMembresia")
+                                    : t("adminPerfiles.ariaActivarMembresia")
                               }
                               className={`flex size-9 items-center justify-center rounded-lg transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 ${
-                                activo
+                                encendido
                                   ? "text-silver-300 hover:text-white"
                                   : "text-emerald-300"
                               }`}
                             >
                               {busy ? (
                                 <SpinnerIcon className="size-4 animate-spin" />
-                              ) : activo ? (
+                              ) : encendido ? (
                                 <EyeOffIcon className="size-4" />
                               ) : (
                                 <EyeIcon className="size-4" />
@@ -696,6 +785,57 @@ export function AdminPerfiles() {
           >
             <TrashIcon className="size-4" />
             {t("adminPerfiles.borrarConfirm")}
+          </GlassButton>
+        </div>
+      </GlassModal>
+
+      {/* Primera activación de un perfil VINCULADO: sin vigencia no hay vitrina,
+          y conceder tiempo es una decisión con dos formas distintas (se cobra o
+          se regala). Se pregunta cuál en vez de elegir por el admin: una factura
+          de más y una de menos se ven igual en el panel, pero no en el balance. */}
+      <GlassModal
+        open={!!membresiaTarget}
+        onClose={() => !membresiaBusy && setMembresiaTarget(null)}
+        title={t("adminPerfiles.membresia.title")}
+      >
+        <p className="text-silver-300 text-sm">
+          {t("adminPerfiles.membresia.mensaje", {
+            nombre: membresiaTarget?.artisticName ?? "",
+          })}
+        </p>
+        <p className="text-silver-400 mt-2 text-xs">
+          {t("adminPerfiles.membresia.nota")}
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+          <GlassButton
+            onClick={() => setMembresiaTarget(null)}
+            disabled={membresiaBusy}
+          >
+            {t("adminPerfiles.membresia.cancelar")}
+          </GlassButton>
+          <GlassButton
+            onClick={() =>
+              membresiaTarget &&
+              void activarMembresiaPerfil(membresiaTarget.slug, true)
+            }
+            disabled={membresiaBusy}
+          >
+            {t("adminPerfiles.membresia.cortesia")}
+          </GlassButton>
+          <GlassButton
+            onClick={() =>
+              membresiaTarget &&
+              void activarMembresiaPerfil(membresiaTarget.slug, false)
+            }
+            disabled={membresiaBusy}
+            className="!text-amethyst-200"
+          >
+            {membresiaBusy ? (
+              <SpinnerIcon className="size-4 animate-spin" />
+            ) : (
+              <EyeIcon className="size-4" />
+            )}
+            {t("adminPerfiles.membresia.cobrar")}
           </GlassButton>
         </div>
       </GlassModal>

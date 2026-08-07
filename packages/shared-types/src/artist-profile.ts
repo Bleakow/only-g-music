@@ -126,19 +126,37 @@ export function premiumEstado(
 }
 
 /**
- * ¿El perfil debe mostrarse en la vitrina pública? Visible si el premium está
- * vigente O si su dueño es SOCIO (beatmaker/productor): los socios no pagan
- * membresía para tener activo su perfil de cantante. `socio` es un flag
- * DENORMALIZADO en el perfil (lo pone admin/Functions al cambiar los roles del
- * usuario), para no tener que leer users/{uid} por cada perfil de la vitrina.
+ * ¿El perfil debe mostrarse en la vitrina pública? Tres vías, por orden de
+ * "quién decide":
+ *   1. `visibleAdmin` — el interruptor del admin sobre un perfil MOCK (sin
+ *      dueño). Un mock es relleno de vitrina: no hay a quién cobrarle una
+ *      membresía, así que se muestra porque el admin lo dice y punto.
+ *   2. `socio` — su dueño tiene convenio (beatmaker/productor) y está exento.
+ *   3. `premium` vigente — el caso normal: pagar = publicar.
+ *
+ * `socio` y `visibleAdmin` son flags DENORMALIZADOS y server-controlled (los
+ * escriben admin/Functions), para no tener que leer users/{uid} por cada perfil
+ * de la vitrina. Ver `esPerfilMock`: `visibleAdmin` solo se concede sin dueño.
  */
 export function perfilVisible(
-  profile: Pick<ArtistProfile, "premium" | "socio">,
+  profile: Pick<ArtistProfile, "premium" | "socio" | "visibleAdmin">,
   now: number,
 ): boolean {
   return (
-    profile.socio === true || premiumEstado(profile.premium, now) === "activo"
+    profile.visibleAdmin === true ||
+    profile.socio === true ||
+    premiumEstado(profile.premium, now) === "activo"
   );
+}
+
+/**
+ * ¿Es un perfil MOCK (relleno de vitrina)? Un mock no cuelga de ninguna cuenta:
+ * lo crea y lo mantiene el admin. La distinción manda en tres sitios —quién
+ * puede fijarle las artes, si necesita membresía para verse y si tiene sentido
+ * pactarle comisiones—, así que vive aquí y no repetida como `!p.uid`.
+ */
+export function esPerfilMock(profile: Pick<ArtistProfile, "uid">): boolean {
+  return !profile.uid;
 }
 
 /**
@@ -270,6 +288,55 @@ export interface FeaturedMedia {
   withAudio?: boolean;
   /** Texto descriptivo (título) del clip — se muestra en el player y en la lista. */
   title?: string;
+  /**
+   * Proporción del clip (ancho/alto), leída de sus metadatos AL SUBIRLO. Decide
+   * cómo se presenta: vertical = reel, horizontal = video. Ver
+   * `presentacionDestacada`.
+   *
+   * Se guarda en vez de calcularse al pintar porque la decisión de layout tiene
+   * que estar tomada ANTES de cargar los videos: si no, la página se recompone
+   * sola a mitad de carga. Ausente en el material anterior a esto — se lee como
+   * horizontal, que es como se venía viendo (sin regresión).
+   */
+  ratio?: number;
+}
+
+/**
+ * Por debajo de esto, el clip cuenta como VERTICAL. No es 1 exacto a propósito:
+ * un 1:1 o un 4:5 caben de sobra en el reproductor ancho, y forzarlos a una
+ * cuadrícula de reels los dejaría con franjas a los lados.
+ */
+export const RATIO_VERTICAL = 0.9;
+
+/** ¿Este clip está grabado en vertical (formato reel)? */
+export function esVideoVertical(media: FeaturedMedia): boolean {
+  return (
+    media.type === "video" &&
+    typeof media.ratio === "number" &&
+    media.ratio > 0 &&
+    media.ratio < RATIO_VERTICAL
+  );
+}
+
+/**
+ * Cómo se PRESENTA la media destacada de un perfil. Lo decide el material, no la
+ * etiqueta de quien lo sube:
+ *
+ *   · `reels`  — todo son clips verticales. En escritorio van en cuadrícula y el
+ *                que se pulsa se abre; en móvil se quedan como están, que es su
+ *                formato nativo y ahí ya se ven bien.
+ *   · `player` — hay algo horizontal (o una foto, o material antiguo sin
+ *                proporción guardada): manda el reproductor ancho de siempre.
+ *
+ * Atarlo al ROL era la alternativa fácil y era peor: un cantante que sube un
+ * vertical se vería recortado igual, y una modelo que sube un horizontal quedaría
+ * encajonada en un marco 9:16. La forma del video no miente; la etiqueta sí puede.
+ */
+export function presentacionDestacada(
+  items: FeaturedMedia[],
+): "reels" | "player" {
+  if (items.length === 0) return "player";
+  return items.every(esVideoVertical) ? "reels" : "player";
 }
 
 /** Duración máxima de un clip MUDO destacado (segundos). */
@@ -281,6 +348,16 @@ export const FEATURED_AUDIO_MAX_SECONDS = 30;
  * - General: 2 piezas MUDAS (clips ≤8s o imágenes) + 1 clip CON audio (≤30s) = 3.
  * - Bailarines: hasta 5 clips, TODOS con audio y SIN límite de duración (el baile
  *   necesita su música completa).
+ * - Modelos: son REELS. Hasta CUATRO clips, todos CON audio y sin tope de duración.
+ *   Nada de piezas mudas: un reel sin sonido no es un reel, y para las fotos ya
+ *   está la galería. El corte de 30s valía para un clip de presentación; un reel
+ *   de pasarela o de campaña no cabe ahí. Cuatro, y no más, porque se presentan
+ *   en una cuadrícula que se centra según cuántos haya (ver `rejillaDeReels`):
+ *   pasando de cuatro, o se encoge cada uno o la fila deja de leerse de un golpe.
+ *
+ * Sin tope de duración NO significa sin tope de peso: el recortador re-encoda a
+ * 720p acotando el bitrate para caber bajo `maxBytes` (25 MB, el límite duro de
+ * las reglas de Storage). Un reel largo entra; entra más comprimido.
  */
 export interface FeaturedMediaPolicy {
   /** Máx. de piezas mudas (clips ≤8s o imágenes). */
@@ -300,12 +377,28 @@ export function featuredMediaPolicy(
   if (disciplines?.includes("bailarin")) {
     return { maxSilent: 0, maxAudio: 5, audioMaxSeconds: null, maxTotal: 5 };
   }
+  if (disciplines?.includes("modelo")) {
+    return { maxSilent: 0, maxAudio: 4, audioMaxSeconds: null, maxTotal: 4 };
+  }
   return {
     maxSilent: 2,
     maxAudio: 1,
     audioMaxSeconds: FEATURED_AUDIO_MAX_SECONDS,
     maxTotal: 3,
   };
+}
+
+/**
+ * ¿Esta media destacada se llama REEL? Para una modelo, sí: el material con el
+ * que se presenta ES su reel, y llamarlo "media destacada" no le dice nada a
+ * nadie del oficio.
+ *
+ * Vive en el dominio y no en cada pantalla porque el nombre tiene que coincidir
+ * en el perfil público y en el editor: si el artista arma un "Reel" y luego lo ve
+ * publicado como otra cosa, editar y ver vuelven a ser dos mapas distintos.
+ */
+export function esReel(disciplines: Role[] | undefined): boolean {
+  return !!disciplines?.includes("modelo");
 }
 
 /**
@@ -628,6 +721,15 @@ export interface ArtistProfile {
   socio?: boolean;
 
   /**
+   * El admin MUESTRA este perfil en la vitrina sin membresía. Solo tiene sentido
+   * —y solo se concede— en perfiles MOCK (sin `uid`): son relleno de escaparate,
+   * no hay cuenta a la que cobrarle. En un perfil vinculado la visibilidad se
+   * gana con la membresía, que es justo lo que este flag NO puede saltarse.
+   * Server-controlled (las reglas lo cierran al dueño).
+   */
+  visibleAdmin?: boolean;
+
+  /**
    * Ficha semántica para la búsqueda IA del directorio (apariencia + sonido +
    * temática). La calcula la Cloud Function de indexado a partir de fotos/audio/
    * texto. Server-controlled y PRIVADA (no se expone al cliente). Ausente = aún
@@ -666,6 +768,20 @@ export interface ArtistProfile {
    * enlazado (nunca se duplican datos que se quedarían rancios).
    */
   relatedArtists?: string[];
+
+  /**
+   * ESPEJO del book (§10). El book vive en su propio documento
+   * (`artistProfiles/{slug}/book/main`) porque son decenas de piezas que casi
+   * nadie abre, y este documento lo lee CADA tarjeta del directorio. Aquí solo
+   * se copia lo justo para pintar la tarjeta de entrada del perfil sin tener que
+   * leer la subcolección: si hay book publicado, su portada y cuánto trae.
+   *
+   * Lo escribe el editor del book al guardar. Denormalizado a propósito: puede
+   * quedar rancio un instante, y lo peor que pasa es una miniatura vieja.
+   */
+  bookPublicado?: boolean;
+  bookPortada?: string;
+  bookPiezas?: number;
 
   createdAt: number;
   updatedAt: number;
@@ -735,4 +851,7 @@ export type EditableProfile = Pick<
   | "primarySocial"
   | "trajectoryStartYear"
   | "relatedArtists"
+  | "bookPublicado"
+  | "bookPortada"
+  | "bookPiezas"
 >;

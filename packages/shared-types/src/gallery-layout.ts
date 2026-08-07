@@ -28,17 +28,34 @@
 export const GALLERY_LIMIT = 6;
 
 export type GalleryLayoutId =
+  // 1 foto
   | "unica"
+  | "panoramica"
+  // 2 fotos
   | "duo"
   | "retrato"
+  | "apilado"
+  | "dosTercios"
+  // 3 fotos
   | "portada"
   | "tira"
+  | "columna"
+  | "escalera"
+  // 4 fotos
   | "rejilla"
   | "foco"
+  | "contraste"
+  | "torre"
+  // 5 fotos
   | "mosaico"
   | "franja"
+  | "abanico"
+  | "columnas"
+  // 6 fotos
   | "panal"
-  | "revista";
+  | "revista"
+  | "retablo"
+  | "bloques";
 
 export interface GalleryLayoutMeta {
   id: GalleryLayoutId;
@@ -53,16 +70,27 @@ export interface GalleryLayoutMeta {
  */
 export const GALLERY_LAYOUTS: GalleryLayoutMeta[] = [
   { id: "unica", slots: 1 },
+  { id: "panoramica", slots: 1 },
   { id: "duo", slots: 2 },
   { id: "retrato", slots: 2 },
+  { id: "apilado", slots: 2 },
+  { id: "dosTercios", slots: 2 },
   { id: "portada", slots: 3 },
   { id: "tira", slots: 3 },
+  { id: "columna", slots: 3 },
+  { id: "escalera", slots: 3 },
   { id: "rejilla", slots: 4 },
   { id: "foco", slots: 4 },
+  { id: "contraste", slots: 4 },
+  { id: "torre", slots: 4 },
   { id: "mosaico", slots: 5 },
   { id: "franja", slots: 5 },
+  { id: "abanico", slots: 5 },
+  { id: "columnas", slots: 5 },
   { id: "panal", slots: 6 },
   { id: "revista", slots: 6 },
+  { id: "retablo", slots: 6 },
+  { id: "bloques", slots: 6 },
 ];
 
 /** Letras de área, en orden de ranura: la foto `i` ocupa `grid-area: a|b|c…`. */

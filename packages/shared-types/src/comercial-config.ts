@@ -33,6 +33,22 @@ export interface Comisiones {
   comisionProductorPorSede?: Record<string, number>;
 }
 
+/**
+ * Comisiones PACTADAS CON UN ARTISTA CONCRETO (fracciones 0..1). Viven en su
+ * `users/{uid}` —privado— y no en el perfil, que es de lectura pública: el corte
+ * que le hace Only G a alguien no es asunto del visitante.
+ *
+ * Cada campo es un OVERRIDE opcional: ausente = "no se pactó nada" y rige la
+ * cadena normal (por sede si la hay, si no la global del CEO). Por eso son
+ * opcionales y no llevan default — un 0 aquí significa "0%", no "sin fijar".
+ */
+export interface ComisionesArtista {
+  /** Override de la comisión por venta de beat de ESTE beatmaker. */
+  beat?: number;
+  /** Override de la comisión de producción/reservas de ESTE productor. */
+  produccion?: number;
+}
+
 /** Precios de catálogo/suscripción en COP (enteros > 0). VISIBLES al comprador. */
 export interface Precios {
   /** Precio de catálogo estándar por beat (también el "beat/instrumental" comprable). */
@@ -111,6 +127,44 @@ export const DEFAULTS: ComercialConfig = {
 /** ¿Comisión válida? Fracción finita en [0, 1] (0%..100%). */
 export function esComisionValida(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1;
+}
+
+/**
+ * Normaliza las comisiones pactadas con un artista. Solo sobreviven los valores
+ * VÁLIDOS: uno malformado se descarta y ese concepto vuelve a la cadena normal,
+ * nunca a un 0% silencioso (regalarle el 100% a alguien por un typo sería el
+ * peor "default" posible).
+ */
+export function parseComisionesArtista(
+  raw: Record<string, unknown> | undefined | null,
+): ComisionesArtista {
+  const out: ComisionesArtista = {};
+  if (esComisionValida(raw?.beat)) out.beat = raw!.beat as number;
+  if (esComisionValida(raw?.produccion)) out.produccion = raw!.produccion as number;
+  return out;
+}
+
+/**
+ * Porcentaje (0..100, como se teclea) → fracción (0..1, como se guarda). Cadena
+ * vacía = "sin pactar" → `undefined`. Devuelve `null` si lo tecleado no es un
+ * porcentaje válido, para que la UI pueda distinguir "borrado" de "mal escrito".
+ */
+export function porcentajeAFraccion(
+  texto: string,
+): number | undefined | null {
+  const limpio = texto.trim().replace(",", ".");
+  if (!limpio) return undefined;
+  const n = Number(limpio);
+  if (!Number.isFinite(n) || n < 0 || n > 100) return null;
+  // Redondeo a 4 decimales: 12.5% → 0.125 exacto, sin arrastrar el ruido binario
+  // de la división a los cálculos de dinero.
+  return Math.round((n / 100) * 10_000) / 10_000;
+}
+
+/** Fracción (0..1) → porcentaje para mostrar en el input. `undefined` → "". */
+export function fraccionAPorcentaje(fraccion: number | undefined): string {
+  if (!esComisionValida(fraccion)) return "";
+  return String(Math.round(fraccion * 10_000) / 100);
 }
 
 /** ¿Precio válido? Entero > 0 (COP no usa centavos; un neto no puede ser 0/negativo). */

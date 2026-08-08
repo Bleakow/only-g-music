@@ -20,7 +20,6 @@ import {
   SITIOS_VITRINA,
   RITMOS,
   TEXTURAS,
-  acentoEfectivo,
   anadirEscena,
   bookGuiado,
   bookNuevo,
@@ -128,22 +127,27 @@ describe("catálogo de escenas", () => {
     expect(escenaDef("rejilla")!.retirada).toBe(true);
   });
 
-  it("toda escena declara su medida, y a sangre solo van las ESTRUCTURALES", () => {
+  it("toda escena declara su medida, y `sangre` está bajo control", () => {
     // Es el motivo por el que existe todo el sistema de respiración: el book se
     // sintió abrumador porque tres escenas ocupaban la pantalla entera.
     //
-    // La regla ya no es "solo la portada" sino "solo las que la modelo no puede
-    // repetir", y es más fuerte de lo que parece: una escena a sangre que se
-    // pudiera AÑADIR devuelve el book a ser una sucesión de pantallazos en dos
-    // clics, mientras que las fijas están puestas una vez y no se multiplican.
-    // Hoy son la apertura (pantalla completa) y el metraje (pegado a un borde,
-    // que es otra cosa: el alto lo capa el CSS).
+    // La regla NO es "solo la portada" ni "solo las estructurales" — las dos se
+    // probaron y las dos se quedaron cortas. `sangre` significa "sin margen de
+    // página", y eso es un pantallazo SOLO si además ocupa toda la pantalla de
+    // alto. El metraje y el retrato van pegados a un borde con el texto al otro
+    // lado y el alto capado; la apertura es la única a pantalla completa.
+    //
+    // Lo que de verdad hay que garantizar —que ninguna de ellas se coma la
+    // pantalla— es una cuenta de CSS, y ahí está su prueba: ver
+    // `book-css.test.ts`, "toda escena a sangre que no sea la apertura capa su
+    // alto". Aquí solo se fija la LISTA, para que ampliarla sea una decisión y
+    // no un descuido.
     for (const e of ESCENAS) expect(MEDIDAS).toContain(e.medida);
-    const aSangre = ESCENAS.filter((e) => e.medida === "sangre");
-    expect(aSangre.map((e) => e.tipo)).toEqual(["portada", "metraje"]);
-    for (const e of aSangre) {
-      expect(e.fija, `"${e.tipo}" va a sangre pero se puede añadir`).toBeTruthy();
-    }
+    expect(ESCENAS.filter((e) => e.medida === "sangre").map((e) => e.tipo)).toEqual([
+      "portada",
+      "metraje",
+      "retrato",
+    ]);
   });
 
   it("todo preset declara los CINCO ejes", () => {
@@ -487,18 +491,7 @@ describe("atmósfera", () => {
     });
   });
 
-  it("solo acepta acentos en hex de 6 dígitos", () => {
-    expect(normalizarAtmosfera({ acento: "#a87bff" }).acento).toBe("#a87bff");
-    expect(normalizarAtmosfera({ acento: "rojo" }).acento).toBeUndefined();
-    expect(normalizarAtmosfera({ acento: "#fff" }).acento).toBeUndefined();
-  });
 
-  it("sin acento propio, hereda el del perfil", () => {
-    expect(acentoEfectivo(ATMOSFERA_POR_DEFECTO, "#8b5cf6")).toBe("#8b5cf6");
-    expect(
-      acentoEfectivo({ ...ATMOSFERA_POR_DEFECTO, acento: "#ff0000" }, "#8b5cf6"),
-    ).toBe("#ff0000");
-  });
 });
 
 describe("normalizarBook", () => {
@@ -790,10 +783,13 @@ describe("vitrina — el reparto de ranuras", () => {
     expect(traerAlFrente(traerAlFrente(r, 2), 0)).toEqual(r);
   });
 
-  it("la vitrina cabe en las áreas que la rejilla sabe nombrar", () => {
+  it("toda escena cabe en las áreas que la rejilla sabe nombrar", () => {
     // `areaDeRanura` solo llega hasta `f`: una escena con más ranuras que áreas
     // colocaría piezas en `gridArea: ""`, o sea en pistas implícitas.
+    // El cierre se salta la comprobación porque no tiene piezas: es un telón con
+    // el nombre encima, y `max - 1` ahí es una ranura que no existe.
     for (const def of ESCENAS) {
+      if (def.max === 0) continue;
       expect(areaDeRanura(def.max - 1), `${def.tipo} se sale de las áreas`).not.toBe(
         "",
       );

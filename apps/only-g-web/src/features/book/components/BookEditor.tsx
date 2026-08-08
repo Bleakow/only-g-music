@@ -452,7 +452,6 @@ export function BookEditor({
           portadaUrl={
             book.escenas.find((e) => e.tipo === "portada")?.piezas[3]?.url
           }
-          accentDelPerfil={perfil.accent}
           nombre={perfil.nombre}
           onChange={(atmosfera) =>
             setBook((b) => (b ? { ...b, atmosfera } : b))

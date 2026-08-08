@@ -38,7 +38,14 @@
   --bk-line: rgb(255 255 255 / 0.14);
   /* Lo pone el componente por estilo inline: sale del book o, si no lo eligió,
      del `accent` que la modelo ya tiene en su perfil. */
-  --bk-acento: #8b5cf6;
+  /* El ACENTO ya no lo elige nadie: sale de la paleta del fondo. Un color libre
+     suelto por el book —un botón fucsia en un portafolio de moda— le quitaba
+     seriedad al perfil, y a juego con su fondo no hay forma de desafinarlo. */
+  --bk-acento: #b9a2ff;
+  /* El tono del telón del cierre: el mismo fondo empujado hacia la tinta. Sube
+     en las atmósferas oscuras y baja en las de papel, sin declarar uno por cada
+     una. */
+  --bk-telon: color-mix(in srgb, var(--bk-bg) 90%, var(--bk-ink) 10%);
   --bk-display: var(--font-narrow), system-ui, sans-serif;
 
   /* El AIRE entre escenas lo consume la propia raíz (ver el `gap` de abajo);
@@ -66,12 +73,42 @@
   overflow-x: clip;
 }
 
+.og-book-root[data-fondo="carbon"] {
+  --bk-bg: #1a1a1d;
+  --bk-ink: #ededf0;
+  --bk-ink-soft: #a0a0aa;
+  --bk-surf: rgb(255 255 255 / 0.05);
+  --bk-line: rgb(255 255 255 / 0.12);
+  --bk-acento: #d8d8dd;
+}
+
+/* BLANCO Y NEGRO PURO. Sin una gota de color en ninguno de los dos tokens: es la
+   atmósfera de quien quiere que su book sea la foto y nada más. */
+.og-book-root[data-fondo="tinta"] {
+  --bk-bg: #000000;
+  --bk-ink: #ffffff;
+  --bk-ink-soft: #9e9e9e;
+  --bk-surf: rgb(255 255 255 / 0.06);
+  --bk-line: rgb(255 255 255 / 0.18);
+  --bk-acento: #ffffff;
+}
+
+.og-book-root[data-fondo="petroleo"] {
+  --bk-bg: #08161a;
+  --bk-ink: #e4f1f0;
+  --bk-ink-soft: #86a5a6;
+  --bk-surf: rgb(255 255 255 / 0.05);
+  --bk-line: rgb(255 255 255 / 0.12);
+  --bk-acento: #7fd4cc;
+}
+
 .og-book-root[data-fondo="hueso"] {
   --bk-bg: #f2efe9;
   --bk-ink: #14120f;
   --bk-ink-soft: #57534b;
   --bk-surf: rgb(0 0 0 / 0.04);
   --bk-line: rgb(0 0 0 / 0.12);
+  --bk-acento: #2f2b24;
 }
 
 .og-book-root[data-fondo="arena"] {
@@ -80,14 +117,28 @@
   --bk-ink-soft: #6b5c48;
   --bk-surf: rgb(0 0 0 / 0.04);
   --bk-line: rgb(0 0 0 / 0.12);
+  --bk-acento: #8a6a3f;
 }
 
-.og-book-root[data-fondo="carbon"] {
-  --bk-bg: #1a1a1d;
-  --bk-ink: #ededf0;
-  --bk-ink-soft: #a0a0aa;
-  --bk-surf: rgb(255 255 255 / 0.05);
-  --bk-line: rgb(255 255 255 / 0.12);
+/* El reverso exacto de `tinta`. */
+.og-book-root[data-fondo="nieve"] {
+  --bk-bg: #ffffff;
+  --bk-ink: #000000;
+  --bk-ink-soft: #6b6b6b;
+  --bk-surf: rgb(0 0 0 / 0.045);
+  --bk-line: rgb(0 0 0 / 0.16);
+  --bk-acento: #000000;
+}
+
+/* Papel envejecido: el fondo tira a crema y la tinta a sepia, no a negro. Es lo
+   que hace que se lea como una copia vieja y no como un papel sucio. */
+.og-book-root[data-fondo="vintage"] {
+  --bk-bg: #e7dcc6;
+  --bk-ink: #3a2c1c;
+  --bk-ink-soft: #7c6a51;
+  --bk-surf: rgb(58 44 28 / 0.06);
+  --bk-line: rgb(58 44 28 / 0.18);
+  --bk-acento: #9a5b2c;
 }
 
 /* ── Atmósfera: tipografía ────────────────────────────────────────────────
@@ -123,6 +174,16 @@
 
 .og-book-root[data-textura="ninguna"]::after {
   content: none;
+}
+
+/* EN UNA MUESTRA la capa se queda dentro de su caja. La textura del book es
+   `position: fixed` a propósito —el grano no puede viajar con el scroll o deja
+   de leerse como grano de película—, pero eso en un botón de 4 rem taparía la
+   pantalla entera. Un atributo y una línea, y la textura del selector es la
+   MISMA que la del book: dos definiciones acabarían divergiendo. */
+.og-book-root[data-muestra][data-textura]::after {
+  position: absolute;
+  z-index: 1;
 }
 
 .og-book-root[data-textura="grano"]::after {
@@ -759,13 +820,27 @@
   outline-offset: 4px;
 }
 
-/* ── retrato — una pieza vertical y su nota ────────────────────────────── */
+/* ── retrato — una pieza vertical y su nota ────────────────────────────────
+   PEGADA AL LADO DERECHO en escritorio, que es el espejo del metraje: si las dos
+   se apoyaran en el mismo borde parecerían la misma escena repetida.
+
+   Va a `sangre` —sin margen de página— porque es lo único que deja a la foto
+   tocar el borde, y el alto lo capa `max-block-size`: sin ese tope, siete
+   columnas a 3/4 en un monitor dan una pieza más alta que la pantalla, que es
+   justo lo que el sistema de respiración existe para evitar. */
 
 .og-book-grid[data-escena="retrato"] {
   --bk-cols: 1;
   gap: 1.5rem;
   grid-template-areas: "a" "n";
   --bk-ratio: 3 / 4;
+}
+.og-book-grid[data-escena="retrato"] .og-book-pieza {
+  max-block-size: 88svh;
+}
+/* La que va pegada al borde es la foto, no la letra. */
+.og-book-grid[data-escena="retrato"] .og-book-notas {
+  padding-inline: var(--bk-margen);
 }
 
 /* ── ancla — la pieza se queda quieta y el texto pasa ──────────────────── */
@@ -1113,15 +1188,34 @@
   }
 }
 
-/* ── cierre ───────────────────────────────────────────────────────────────
-   Las frases arriba (área `n`, en dos columnas), el nombre enorme debajo. Sin
-   `min-height`: el cierre mide lo que mide su contenido más su aire. */
+/* ── cierre — EL TELÓN ─────────────────────────────────────────────────────
+   Sin foto. Un tono distinto del mismo fondo que cruza la pantalla de lado a
+   lado, y encima el nombre en grande, las frases, las redes del perfil y los
+   datos de las esquinas. Una foto ahí competiría con el nombre, que es lo último
+   que tiene que quedar.
+
+   El tono se DERIVA del fondo con `color-mix` en vez de escribir uno por
+   atmósfera: mezclado hacia la tinta, sube en las oscuras y baja en las de
+   papel, así que un fondo nuevo trae su telón gratis y no hay forma de olvidarse
+   de declararlo.
+
+   El color va en la ESCENA y no en la rejilla: la escena ocupa el ancho entero y
+   la rejilla se queda en su columna de lectura. Un telón que no llega a los
+   bordes no es un telón. */
+
+.og-book-escena[data-tipo="cierre"] {
+  background: var(--bk-telon);
+  padding-block: clamp(4rem, 12vw, 9rem);
+}
 
 .og-book-grid[data-escena="cierre"] {
   --bk-cols: 1;
   gap: clamp(3rem, 8vw, 6rem);
-  grid-template-areas: "n" "a";
-  padding-block: clamp(4rem, 12vw, 9rem);
+  /* `z` y no `a`: `a` es la PRIMERA RANURA DE PIEZA, y el cierre ya no tiene
+     piezas. Con `a` aquí, la prueba de contrato que impide colocar piezas fuera
+     de sus ranuras no podría distinguir una capa superpuesta de una foto
+     descolocada — y esa prueba ya cazó una colisión de áreas antes. */
+  grid-template-areas: "n" "z";
 }
 
 .og-book-cierre-frases {
@@ -1175,17 +1269,28 @@
     grid-template-areas: "a b";
   }
 
-  /* Retrato y ancla: la pieza a un lado, el texto al otro. Doce columnas para
-     poder dar 7/5 — una foto vertical y un texto a media caja leen mejor que dos
-     mitades exactas. */
-  .og-book-grid[data-escena="retrato"],
+  /* Ancla: la pieza a un lado, el texto al otro. Doce columnas para poder dar
+     6/6 sin que la foto llegue al borde — el ancla NO se pega a nada, su gracia
+     es que se queda quieta. */
   .og-book-grid[data-escena="ancla"] {
     --bk-cols: 12;
     gap: 3rem;
     align-items: start;
   }
+
+  /* El retrato al revés que el metraje: texto a la izquierda, foto pegada al
+     borde derecho y centrada contra él. */
   .og-book-grid[data-escena="retrato"] {
-    grid-template-areas: "a a a a a a a n n n n n";
+    --bk-cols: 12;
+    grid-template-areas: "n n n n n a a a a a a a";
+    gap: 0;
+    align-items: center;
+    --bk-ratio: 4 / 5;
+  }
+  .og-book-grid[data-escena="retrato"] .og-book-notas {
+    /* Gana al `self-start` que trae la columna de texto por defecto. */
+    align-self: center;
+    padding-inline: clamp(2.5rem, 6cqw, 6rem);
   }
   .og-book-grid[data-escena="ancla"] {
     grid-template-areas: "a a a a a a n n n n n n";

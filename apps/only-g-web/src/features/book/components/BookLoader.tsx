@@ -76,7 +76,6 @@ export function BookLoader({ slug }: { slug: string }) {
       book={book}
       slug={slug}
       nombre={profile.artisticName}
-      accentDelPerfil={profile.accent}
       // El book guarda QUÉ redes enseña, nunca sus URLs: esas viven en el
       // perfil, que es donde la modelo ya las mantiene. Una copia aquí sería un
       // enlace que se pudre el día que cambie de cuenta.

@@ -2724,9 +2724,13 @@
       "fondoTitle": "Fondo",
       "fondos": {
         "medianoche": "Medianoche",
+        "carbon": "Carbón",
+        "tinta": "Tinta",
+        "petroleo": "Petróleo",
         "hueso": "Hueso",
         "arena": "Arena",
-        "carbon": "Carbón"
+        "nieve": "Nieve",
+        "vintage": "Vintage"
       },
       "letraTitle": "Letra",
       "letras": {
@@ -2752,9 +2756,6 @@
         "grano": "Grano",
         "vineta": "Viñeta"
       },
-      "acentoTitle": "Acento",
-      "acentoHeredado": "El de mi perfil",
-      "acentoPropio": "Otro color",
       "desintegradoTitle": "Cómo se deshace tu portada",
       "desintegrados": {
         "arena": "Arena",

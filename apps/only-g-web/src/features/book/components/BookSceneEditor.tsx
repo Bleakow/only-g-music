@@ -96,6 +96,9 @@ export function BookSceneEditor({
 
   return (
     <div className="og-book-editor flex flex-col gap-4">
+      {/* Sin encabezado donde la escena no lo tiene: un campo que se guarda y
+          no se pinta es la peor clase de campo. */}
+      {!def.sinEncabezado && (
       <input
         value={escena.encabezado ?? ""}
         onChange={(e) => set({ encabezado: e.target.value })}
@@ -103,6 +106,7 @@ export function BookSceneEditor({
         placeholder={t(`encabezadoPlaceholder.${escena.tipo}`)}
         className="focus:border-amethyst-300/70 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/35"
       />
+      )}
 
       {/* MEDIDA: cuánto sitio ocupa la escena. Solo dos opciones y solo donde el
           tipo lo permite — la portada va a sangre y eso no se negocia, porque un

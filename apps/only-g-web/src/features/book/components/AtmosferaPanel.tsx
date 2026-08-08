@@ -1,15 +1,14 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ATMOSFERAS,
+  DESINTEGRADOS,
   FONDOS,
   LETRAS,
   RITMOS,
   TEXTURAS,
-  DESINTEGRADOS,
-  acentoEfectivo,
   type Atmosfera,
 } from "@only-g/shared-types/book";
 import { DesintegradoPreview } from "./DesintegradoPreview";
@@ -17,55 +16,65 @@ import { DesintegradoPreview } from "./DesintegradoPreview";
 /**
  * Panel de ATMÓSFERA: cómo la modelo pone su estilo sin poder romper el book.
  *
- * PRESETS PRIMERO, PERILLAS DESPUÉS. Cuatro ejes son ciento cuarenta y cuatro
- * combinaciones, y casi nadie quiere ser director de arte: arriba van cuatro
- * atmósferas ya compuestas que dejan el book bien de un clic, y debajo los ejes
- * sueltos para quien sí quiera afinar.
+ * PRESETS PRIMERO, PERILLAS DESPUÉS. Arriba, cuatro atmósferas ya compuestas que
+ * dejan el book bien de un clic; debajo, los ejes sueltos para quien quiera
+ * afinar. Casi nadie quiere ser director de arte.
  *
- * Cada opción de FONDO trae su paleta completa (fondo, tinta, superficie,
- * línea), así que no hay combinación que produzca texto ilegible. Eso es lo que
- * permite ofrecer personalización de verdad en vez de un selector de color con
- * una advertencia debajo.
+ * CADA BOTÓN ENSEÑA LO QUE ELIGE, y eso es lo que separa este panel de una lista
+ * de nombres. Un chip que pone "Vintage" no dice de qué color es y "Grotesca" no
+ * dice cómo se lee: aquí el fondo se ve en su color, la letra está escrita en su
+ * propia tipografía y la textura se muestra sobre su propio fondo. Es la misma
+ * regla que ya rige las miniaturas de escena y la vista previa del desintegrado,
+ * y por la misma razón: enseñar la cosa real, no un dibujo aparte que acabará
+ * divergiendo.
+ *
+ * Y las muestras se pintan con `.og-book-root` y los `data-*` DE VERDAD, así que
+ * salen del mismo CSS que el book. No hay una paleta duplicada en JavaScript que
+ * pueda quedarse atrás el día que alguien retoque un color.
+ *
+ * NO HAY SELECTOR DE ACENTO. Se quitó a propósito: un color libre suelto por el
+ * book —un botón fucsia en un portafolio de moda— le quitaba seriedad al perfil.
+ * El acento sale ahora de la paleta de cada fondo, así que va a juego por
+ * construcción y no hay forma de desafinarlo.
  */
 
-/** Muestra viva: la atmósfera aplicada de verdad, no un cuadrado de color. */
+/** Una muestra viva: la atmósfera aplicada de verdad, no un cuadrado pintado. */
 function Muestra({
   atmosfera,
-  accentDelPerfil,
   texto,
 }: {
-  atmosfera: Atmosfera;
-  accentDelPerfil: string;
+  atmosfera: Pick<Atmosfera, "fondo" | "letra" | "textura">;
   texto: string;
 }) {
   return (
     <span
-      className="og-book-root flex h-14 w-full items-center justify-center overflow-hidden rounded-lg"
+      className="og-book-root relative flex h-14 w-full items-center justify-center overflow-hidden rounded-lg"
       data-fondo={atmosfera.fondo}
       data-letra={atmosfera.letra}
       data-textura={atmosfera.textura}
-      style={
-        {
-          minHeight: 0,
-          "--bk-acento": acentoEfectivo(atmosfera, accentDelPerfil),
-        } as CSSProperties
-      }
+      // La capa de textura del book es `fixed` —el grano no puede viajar con el
+      // scroll o deja de leerse como grano de película— y aquí tiene que quedarse
+      // en su caja. Ver `[data-muestra]` en `book.css`.
+      data-muestra=""
+      style={{ minHeight: 0 }}
     >
       <span className="og-book-display text-lg">{texto}</span>
-      <span
-        className="ml-2 size-2 rounded-full"
-        style={{ background: "var(--bk-acento)" }}
-      />
     </span>
   );
 }
 
+/**
+ * Una fila de opciones. `muestra` es lo que convierte el botón en algo que se
+ * mira en vez de leerse; cuando falta queda el chip de siempre, que es lo
+ * correcto para el ritmo — ahí no hay nada que enseñar sin moverlo.
+ */
 function Fila<T extends string>({
   titulo,
   pista,
   opciones,
   valor,
   etiqueta,
+  muestra,
   onPick,
   children,
 }: {
@@ -74,6 +83,7 @@ function Fila<T extends string>({
   opciones: readonly T[];
   valor: T;
   etiqueta: (v: T) => string;
+  muestra?: (v: T) => ReactNode;
   onPick: (v: T) => void;
   /** Se pinta DEBAJO de los botones: primero se elige, luego se comprueba. */
   children?: ReactNode;
@@ -82,9 +92,39 @@ function Fila<T extends string>({
     <div>
       <p className="text-silver-400 text-xs tracking-[2px] uppercase">{titulo}</p>
       {pista && <p className="text-silver-500 mt-1 text-xs">{pista}</p>}
-      <div className="mt-2 flex flex-wrap gap-2">
+      <div
+        className={
+          muestra
+            ? "mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4"
+            : "mt-2 flex flex-wrap gap-2"
+        }
+      >
         {opciones.map((op) => {
           const on = op === valor;
+          if (muestra) {
+            return (
+              <button
+                key={op}
+                type="button"
+                onClick={() => onPick(op)}
+                aria-pressed={on}
+                className={`flex flex-col gap-1.5 rounded-xl p-1.5 ring-1 transition ring-inset ${
+                  on
+                    ? "ring-amethyst-300/70 bg-amethyst-500/10"
+                    : "ring-white/15 hover:ring-white/40"
+                }`}
+              >
+                {muestra(op)}
+                <span
+                  className={`text-[0.6rem] font-semibold tracking-wide uppercase ${
+                    on ? "text-amethyst-100" : "text-silver-400"
+                  }`}
+                >
+                  {etiqueta(op)}
+                </span>
+              </button>
+            );
+          }
           return (
             <button
               key={op}
@@ -109,13 +149,11 @@ function Fila<T extends string>({
 
 export function AtmosferaPanel({
   atmosfera,
-  accentDelPerfil,
   nombre,
   portadaUrl,
   onChange,
 }: {
   atmosfera: Atmosfera;
-  accentDelPerfil: string;
   nombre: string;
   /** La foto de portada del book: la vista previa se hace con SU imagen. */
   portadaUrl?: string;
@@ -133,6 +171,8 @@ export function AtmosferaPanel({
       p.textura === atmosfera.textura &&
       p.desintegrado === atmosfera.desintegrado,
   );
+
+  const muestraTexto = nombre.slice(0, 8) || "Only G";
 
   return (
     <div className="flex flex-col gap-7">
@@ -157,11 +197,7 @@ export function AtmosferaPanel({
                     : "ring-white/15 hover:ring-white/35"
                 }`}
               >
-                <Muestra
-                  atmosfera={{ ...ejes, acento: atmosfera.acento }}
-                  accentDelPerfil={accentDelPerfil}
-                  texto={nombre.slice(0, 10) || "Only G"}
-                />
+                <Muestra atmosfera={ejes} texto={muestraTexto} />
                 <span
                   className={`text-[0.65rem] font-semibold tracking-wide uppercase ${
                     on ? "text-amethyst-100" : "text-silver-400"
@@ -175,20 +211,37 @@ export function AtmosferaPanel({
         </div>
       </div>
 
+      {/* FONDO. La muestra lleva la letra y la textura que YA tiene elegidas: lo
+          que hay que comparar es cómo queda SU book en ese color, no el color
+          suelto en un cuadrado. */}
       <Fila
         titulo={t("fondoTitle")}
         opciones={FONDOS}
         valor={atmosfera.fondo}
         etiqueta={(v) => t(`fondos.${v}`)}
+        muestra={(fondo) => (
+          <Muestra atmosfera={{ ...atmosfera, fondo }} texto={muestraTexto} />
+        )}
         onPick={(fondo) => set({ fondo })}
       />
+
+      {/* LETRA. Cada botón está escrito en su propia tipografía. "Aa" y no el
+          nombre: media decisión es cómo cae la minúscula al lado de la caja
+          alta, y en mayúsculas condensadas eso no se ve. */}
       <Fila
         titulo={t("letraTitle")}
         opciones={LETRAS}
         valor={atmosfera.letra}
         etiqueta={(v) => t(`letras.${v}`)}
+        muestra={(letra) => (
+          <Muestra atmosfera={{ ...atmosfera, letra }} texto="Aa" />
+        )}
         onPick={(letra) => set({ letra })}
       />
+
+      {/* RITMO. El único eje sin muestra, y a propósito: es movimiento puro y una
+          caja quieta no puede enseñarlo sin mentir. Se describe con palabras,
+          que es lo honesto. */}
       <Fila
         titulo={t("ritmoTitle")}
         pista={t(`ritmosHint.${atmosfera.ritmo}`)}
@@ -197,11 +250,9 @@ export function AtmosferaPanel({
         etiqueta={(v) => t(`ritmos.${v}`)}
         onPick={(ritmo) => set({ ritmo })}
       />
-      {/* CÓMO SE DESHACE LA PORTADA. Es el eje más concreto de los cinco —los
-          otros cuatro tiñen el book entero y este gobierna un único momento—
-          pero es también el momento que más se recuerda, así que se elige
-          igual que lo demás. La pista describe el movimiento, porque un nombre
-          suelto ("remolino") no le dice a nadie qué va a ver. */}
+
+      {/* CÓMO SE DESHACE LA PORTADA. Aquí la muestra no cabe en un botón —es una
+          secuencia— así que va una sola debajo, con la opción activa. */}
       <Fila
         titulo={t("desintegradoTitle")}
         pista={t(`desintegradosHint.${atmosfera.desintegrado}`)}
@@ -215,48 +266,20 @@ export function AtmosferaPanel({
           desintegrado={atmosfera.desintegrado}
         />
       </Fila>
+
+      {/* TEXTURA. Se ve poco a propósito —es un velo, no un estampado— así que la
+          muestra la enseña sobre su propio fondo: en un cuadrado gris no se
+          distinguiría el grano de la viñeta. */}
       <Fila
         titulo={t("texturaTitle")}
         opciones={TEXTURAS}
         valor={atmosfera.textura}
         etiqueta={(v) => t(`texturas.${v}`)}
+        muestra={(textura) => (
+          <Muestra atmosfera={{ ...atmosfera, textura }} texto={muestraTexto} />
+        )}
         onPick={(textura) => set({ textura })}
       />
-
-      {/* ACENTO. Por defecto hereda el del perfil: un book que arranca con el
-          color que la modelo ya eligió es coherente sin que ella toque nada. */}
-      <div>
-        <p className="text-silver-400 text-xs tracking-[2px] uppercase">
-          {t("acentoTitle")}
-        </p>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={() => set({ acento: undefined })}
-            aria-pressed={!atmosfera.acento}
-            className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold tracking-wide uppercase ring-1 transition ring-inset ${
-              !atmosfera.acento
-                ? "bg-amethyst-500/20 text-amethyst-100 ring-amethyst-300/60"
-                : "text-silver-300 bg-white/[0.04] ring-white/15 hover:bg-white/10"
-            }`}
-          >
-            <span
-              className="size-3 rounded-full"
-              style={{ background: accentDelPerfil }}
-            />
-            {t("acentoHeredado")}
-          </button>
-          <label className="text-silver-300 flex cursor-pointer items-center gap-2 rounded-full bg-white/[0.04] px-4 py-2 text-xs font-semibold tracking-wide uppercase ring-1 ring-white/15 transition ring-inset hover:bg-white/10">
-            <input
-              type="color"
-              value={atmosfera.acento ?? accentDelPerfil}
-              onChange={(e) => set({ acento: e.target.value })}
-              className="size-4 cursor-pointer appearance-none border-0 bg-transparent p-0"
-            />
-            {t("acentoPropio")}
-          </label>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2724,9 +2724,13 @@
       "fondoTitle": "Background",
       "fondos": {
         "medianoche": "Midnight",
+        "carbon": "Charcoal",
+        "tinta": "Ink",
+        "petroleo": "Petrol",
         "hueso": "Bone",
         "arena": "Sand",
-        "carbon": "Charcoal"
+        "nieve": "Snow",
+        "vintage": "Vintage"
       },
       "letraTitle": "Type",
       "letras": {
@@ -2752,9 +2756,6 @@
         "grano": "Grain",
         "vineta": "Vignette"
       },
-      "acentoTitle": "Accent",
-      "acentoHeredado": "My profile's",
-      "acentoPropio": "Another colour",
       "desintegradoTitle": "How your cover comes apart",
       "desintegrados": {
         "arena": "Sand",

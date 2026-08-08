@@ -271,17 +271,22 @@ describe("book.css — las rejillas son válidas", () => {
     },
   );
 
-  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h, escenario s", () => {
+  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h, escenario s, capa z", () => {
     // `s` (escenario) NO es una letra libre: la vitrina apila sus cartas con
     // posición absoluta dentro de un escenario, y ese escenario necesita su
     // propia área. Se llamó `e` en el primer intento y esta prueba lo cazó —
     // `e` es la QUINTA ranura de piezas (`areaDeRanura(4)`), así que una escena
     // de cinco fotos habría colocado una encima del escenario de otra.
+    // `z` es la CAPA SUPERPUESTA del cierre (el nombre, las redes, la vuelta al
+    // perfil). Igual que `s`, tenía que salir del abecedario de las piezas: si
+    // fuera `a` —como estaba— la comprobación de más abajo no podría distinguir
+    // una capa de una foto colocada donde no toca.
     const validos = new Set([
       ...Array.from({ length: 6 }, (_, i) => areaDeRanura(i)),
       "n",
       "h",
       "s",
+      "z",
       ".",
     ]);
     for (const { selector, filas } of conAreas) {
@@ -312,7 +317,7 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
       );
       for (const { selector, filas } of filasDe(tipo)) {
         for (const nombre of filas.flat()) {
-          if (["n", "h", "s", "."].includes(nombre)) continue;
+          if (["n", "h", "s", "z", "."].includes(nombre)) continue;
           expect(
             permitidas.has(nombre),
             `${selector}: usa el área "${nombre}" pero la escena admite ${max} pieza(s)`,
@@ -344,6 +349,28 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
           `"${def.tipo}" no declara su rejilla de ${n} pieza(s)`,
         ).toBe(true);
       }
+    }
+  });
+
+  it("toda escena a sangre que no sea la apertura CAPA SU ALTO", () => {
+    // Esta es la prueba de verdad del sistema de respiración, y vive aquí porque
+    // es una cuenta de CSS: `sangre` solo significa "sin margen de página", y eso
+    // es un pantallazo únicamente si además ocupa toda la pantalla de alto. El
+    // metraje y el retrato van pegados a un borde con el texto al otro lado; sin
+    // el tope, siete columnas a 3/4 en un monitor dan una pieza más alta que la
+    // ventana y el book vuelve a ser lo que ya se rechazó una vez.
+    //
+    // La apertura queda fuera a propósito: ES la pantalla completa, y una sola
+    // puede permitírselo.
+    for (const { tipo, medida } of ESCENAS) {
+      if (medida !== "sangre" || tipo === "portada") continue;
+      const capa = REGLAS.some(
+        (r) =>
+          r.selector.includes(`[data-escena="${tipo}"]`) &&
+          r.selector.includes(".og-book-pieza") &&
+          /max-block-size:\s*\d+svh/.test(r.cuerpo),
+      );
+      expect(capa, `"${tipo}" va a sangre y no capa su alto`).toBe(true);
     }
   });
 

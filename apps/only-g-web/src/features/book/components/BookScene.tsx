@@ -168,7 +168,7 @@ export function BookScene({
         <BookVitrina escena={escena} nombre={nombre} />
       ) : (
         <>
-          {escena.encabezado && !sobre && !def.textoEnRejilla && (
+          {escena.encabezado && !sobre && !def.textoEnRejilla && !def.sinEncabezado && (
             <h2 className="og-book-display px-4 pt-4 pb-6 text-3xl sm:px-8 sm:text-5xl">
               {escena.encabezado}
             </h2>
@@ -318,7 +318,7 @@ export function BookScene({
               // La única escena que llega aquí con capa superpuesta es el
               // cierre: la apertura se pinta sola y centra su nombre dentro de
               // su propio escenario.
-              <div className="og-book-sobre" style={{ gridArea: "a" }}>
+              <div className="og-book-sobre" style={{ gridArea: "z" }}>
                 {children}
               </div>
             )}

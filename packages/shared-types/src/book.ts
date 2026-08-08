@@ -227,6 +227,13 @@ export interface EscenaDef {
   /** Admite los cuatro textos de esquina (`EscenaBook.meta`). */
   admiteMeta?: boolean;
   /**
+   * La escena NO lleva línea de encabezado. No es que se pueda dejar vacía: es
+   * que no existe. El retrato ya trae el título de su propia foto justo al lado,
+   * y dos títulos seguidos —uno de la escena y otro de la pieza— es una escalera
+   * de texto delante de la única foto que hay.
+   */
+  sinEncabezado?: boolean;
+  /**
    * Se sigue PINTANDO pero ya no se OFRECE. Los ids viven en Firestore: retirar
    * una escena del catálogo activo no puede dejar sin book a quien ya la usó.
    */
@@ -363,8 +370,19 @@ export const ESCENAS: EscenaDef[] = [
     maxVideos: 1,
     maxNotas: 0,
     admiteTextoPorPieza: true,
-    medida: "contenida",
+    /**
+     * PEGADA A UN LADO, como el metraje pero al contrario. `sangre` aquí no es
+     * pantallazo —el alto lo capa el CSS— sino "sin margen de página por ese
+     * lado", que es lo único que deja a la foto tocar el borde. Se pidió porque
+     * en escritorio, contenida, la foto quedaba pequeña para ser la única de la
+     * escena.
+     *
+     * El precio es que deja de poder elegir medida, y es el precio correcto: si
+     * fuera elegible, "contenida" devolvería exactamente el problema.
+     */
+    medida: "sangre",
     notaEnRejilla: true,
+    sinEncabezado: true,
   },
   {
     tipo: "diptico",
@@ -431,8 +449,17 @@ export const ESCENAS: EscenaDef[] = [
   },
   {
     tipo: "cierre",
+    /**
+     * SIN FOTO. El cierre es un TELÓN: un tono distinto del mismo fondo, el
+     * nombre en grande encima, las redes del perfil y los datos de las esquinas.
+     * Una foto ahí compite con el nombre, que es lo último que tiene que quedar.
+     *
+     * Cero como mínimo Y como máximo. Un book guardado con foto de cierre la
+     * pierde al leerse (`normalizarEscena` recorta a `max`), que es justo lo que
+     * hay que hacer: si no, seguiría publicando una escena que ya no existe.
+     */
     min: 0,
-    max: 1,
+    max: 0,
     maxVideos: 0,
     // Las dos frases célebres. Son exactamente lo que ya es `NotaBook`
     // (`titulo` = a quién se atribuye, `texto` = la frase): no hace falta un
@@ -646,7 +673,17 @@ export function traerAlFrente(ranuras: number[], pieza: number): number[] {
  * superficie, línea) — por eso es un eje y no un "color de fondo": elegir solo
  * el fondo es la receta garantizada para un texto ilegible.
  */
-export type FondoId = "medianoche" | "hueso" | "arena" | "carbon";
+export type FondoId =
+  // Oscuros
+  | "medianoche"
+  | "carbon"
+  | "tinta"
+  | "petroleo"
+  // Claros
+  | "hueso"
+  | "arena"
+  | "nieve"
+  | "vintage";
 
 /** Familia tipográfica del display. */
 export type LetraId = "narrow" | "serif" | "mono" | "grotesca";
@@ -701,7 +738,26 @@ export const DESINTEGRADOS = [
  */
 export type DesintegradoId = (typeof DESINTEGRADOS)[number];
 
-export const FONDOS: FondoId[] = ["medianoche", "hueso", "arena", "carbon"];
+/**
+ * CUATRO OSCUROS Y CUATRO CLAROS, y el orden es el que ve la modelo: van en
+ * pares de familia, no por gusto. `tinta` y `nieve` son el blanco y negro puro
+ * —el mismo book, del derecho y del revés— y `vintage` es el papel envejecido.
+ *
+ * Cada uno arrastra su PALETA COMPLETA en `book.css` (fondo, tinta, tinta suave,
+ * superficie, línea y acento). Por eso esto es un catálogo cerrado y no un
+ * selector de color: elegir solo el fondo es la receta garantizada para un texto
+ * ilegible, y hay una prueba que comprueba que ninguno se deja un token.
+ */
+export const FONDOS: FondoId[] = [
+  "medianoche",
+  "carbon",
+  "tinta",
+  "petroleo",
+  "hueso",
+  "arena",
+  "nieve",
+  "vintage",
+];
 export const LETRAS: LetraId[] = ["narrow", "serif", "mono", "grotesca"];
 export const RITMOS: RitmoId[] = ["sereno", "dinamico", "brusco"];
 export const TEXTURAS: TexturaId[] = ["ninguna", "grano", "vineta"];
@@ -713,11 +769,11 @@ export interface Atmosfera {
   textura: TexturaId;
   desintegrado: DesintegradoId;
   /**
-   * Color de acento. Ausente = HEREDA el `accent` del perfil, que ya existe y ya
-   * tiene selector. Un book que arranca con el color que la modelo ya eligió
-   * para su perfil es coherente sin que ella toque nada.
+   * NO HAY color de acento, y quitarlo fue una decisión: un color libre suelto
+   * por el book —un botón fucsia en un portafolio de moda— le quitaba seriedad
+   * al perfil. Ahora el acento sale de la propia paleta del fondo, así que va a
+   * juego por construcción y no hay forma de desafinarlo.
    */
-  acento?: string;
 }
 
 /** Por defecto: la casa Only G. Quien no toque nada, tiene un book de la marca. */
@@ -775,13 +831,6 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
   },
 ];
 
-/** Color de acento efectivo: el del book si lo eligió, si no el del perfil. */
-export function acentoEfectivo(
-  atmosfera: Atmosfera,
-  accentDelPerfil: string,
-): string {
-  return atmosfera.acento ?? accentDelPerfil;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El book
@@ -1094,12 +1143,6 @@ export function normalizarAtmosfera(raw: unknown): Atmosfera {
       DESINTEGRADOS,
       ATMOSFERA_POR_DEFECTO.desintegrado,
     ),
-    // Solo hex de 6 dígitos: es lo que entiende el CSS del book y lo que produce
-    // el selector de acento del perfil.
-    acento:
-      typeof o.acento === "string" && /^#[0-9a-fA-F]{6}$/.test(o.acento)
-        ? o.acento
-        : undefined,
   };
 }
 

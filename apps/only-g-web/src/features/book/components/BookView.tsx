@@ -1,15 +1,9 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
-  acentoEfectivo,
   redesDelCierre,
   type Book,
 } from "@only-g/shared-types/book";
@@ -52,7 +46,6 @@ export function BookView({
   book,
   slug,
   nombre,
-  accentDelPerfil,
   /** Redes del perfil. El book guarda plataformas; las URLs viven aquí. */
   socials = {},
   /** La dueña viendo un book sin publicar: se le avisa de que nadie más lo ve. */
@@ -61,7 +54,6 @@ export function BookView({
   book: Book;
   slug: string;
   nombre: string;
-  accentDelPerfil: string;
   socials?: Partial<Record<SocialPlatform, string>>;
   esBorrador?: boolean;
 }) {
@@ -111,11 +103,6 @@ export function BookView({
       data-letra={atmosfera.letra}
       data-ritmo={atmosfera.ritmo}
       data-textura={atmosfera.textura}
-      style={
-        {
-          "--bk-acento": acentoEfectivo(atmosfera, accentDelPerfil),
-        } as CSSProperties
-      }
     >
       {/* El proveedor de la VISTA AMPLIA no pinta ningún nodo propio (devuelve
           un fragmento y un portal a `<body>`), así que puede vivir aquí dentro

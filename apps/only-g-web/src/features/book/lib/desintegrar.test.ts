@@ -1,5 +1,73 @@
 import { describe, it, expect } from "vitest";
-import { fasePolvo } from "./desintegrar";
+import {
+  fasePolvo,
+  frenteDePolvo,
+  turnoDeGrano,
+  vueloDeGrano,
+} from "./desintegrar";
+
+/**
+ * EL RELOJ DEL DESINTEGRADO. El sitio de cada grano sobre el eje del viento se
+ * desordena para que el frente no sea una línea recta, y ese desorden tiene que
+ * caber ENTERO dentro del recorrido. Si un turno se sale, ese grano se queda
+ * flotando en una foto que ya está entera —o no llega a salir nunca— y no hay
+ * error que lo delate: el efecto simplemente se ve mal.
+ */
+describe("el turno de cada grano cabe dentro del recorrido", () => {
+  /** Sitios y azares extremos y de en medio: el turno sale de cruzar los dos. */
+  const rejilla = Array.from({ length: 21 }, (_, i) => i / 20);
+
+  it("ningún turno se sale de 0..1", () => {
+    for (const sitio of rejilla) {
+      for (const azar of rejilla) {
+        const turno = turnoDeGrano(sitio, azar);
+        expect(turno).toBeGreaterThanOrEqual(0);
+        expect(turno).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it("al empezar no hay NI UN grano en el aire", () => {
+    // `vuelo <= 0` es "todavía en casa", y en casa el grano ES su píxel de la
+    // foto. Un grano ya despegado con la foto entera es una mota que sobra.
+    const frente = frenteDePolvo(0);
+    for (const sitio of rejilla) {
+      for (const azar of rejilla) {
+        expect(
+          vueloDeGrano(frente, turnoDeGrano(sitio, azar)),
+          `grano suelto al empezar (sitio ${sitio}, azar ${azar})`,
+        ).toBeLessThanOrEqual(0);
+      }
+    }
+  });
+
+  it("al terminar tampoco queda NI UNO", () => {
+    // `vuelo >= 1` es "ya no se ve". Uno solo por debajo se quedaría flotando
+    // encima del fondo de la atmósfera durante el resto de la secuencia.
+    const frente = frenteDePolvo(1);
+    for (const sitio of rejilla) {
+      for (const azar of rejilla) {
+        expect(
+          vueloDeGrano(frente, turnoDeGrano(sitio, azar)),
+          `grano rezagado al terminar (sitio ${sitio}, azar ${azar})`,
+        ).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it("el sitio SIGUE mandando: el barrido conserva su dirección", () => {
+    // El desorden rompe la línea recta del frente, no la dirección. Si llegara a
+    // taparla, el desintegrado dejaría de barrer y pasaría a ser un ruido que
+    // aparece y desaparece por todas partes a la vez.
+    for (const azar of rejilla) {
+      expect(turnoDeGrano(0, azar)).toBeLessThan(turnoDeGrano(1, azar));
+    }
+    // Y el peor caso: el sitio más adelantado con el azar más lento todavía tiene
+    // que ir por delante del sitio más atrasado con el azar más rápido... o no,
+    // y ese solape ES el desorden. Lo que no puede es invertirse del todo.
+    expect(turnoDeGrano(1, 0)).toBeGreaterThan(turnoDeGrano(0, 0));
+  });
+});
 
 /**
  * `fasePolvo` es la FORMA del desintegrado: cuánto polvo hay en cada punto del

@@ -97,12 +97,63 @@ const FOTO_TRAS_POLVO = 0.5;
 const ENCOGE = 0.55;
 
 /**
+ * CUÁNTO SE DESORDENA EL TURNO DE CADA GRANO respecto al de su sitio.
+ *
+ * Sin esto el frente es una LÍNEA RECTA: todos los granos de una diagonal salen
+ * a la vez y llegan a la vez. Se reportó tal cual — "la figura ya está ahí y aún
+ * faltan partículas por llegar": la esquina de abajo quedaba como una cuña
+ * perfectamente recortada, todavía en granos, mientras el resto de la foto ya
+ * estaba entera. Y una cuña de borde recto no se lee como arena, se lee como
+ * algo a medio cargar.
+ *
+ * Con el turno desordenado, el sitio sigue mandando —la dirección del barrido se
+ * conserva— pero los vecinos ya no van a una: el borde se convierte en una franja
+ * ancha y granulada donde unos ya se fueron y otros siguen puestos. Que es como
+ * se deshace algo de verdad.
+ *
+ * El reparto `u·(1-D) + D·ruido` mantiene el turno dentro de 0..1 sin recortar
+ * nada, y eso importa: un turno por encima de 1 dejaría granos en el aire al
+ * final del recorrido, cuando ya no debería quedar ni uno.
+ */
+const DISPERSION = 0.3;
+
+/**
  * Ruido determinista a partir de un entero. Con azar de verdad el desintegrado no
  * se podría rebobinar, y esta secuencia se recorre en los dos sentidos.
  */
 function ruido(n: number): number {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return s - Math.floor(s);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// El reloj del desintegrado
+//
+// Estas tres cuentas son las que reparten el turno de cada grano y las que dicen
+// dónde está el frente. Salen del lienzo a propósito: son aritmética pura, se
+// pueden comprobar sin navegador, y de ellas depende una invariante que falla
+// CALLANDO — que al principio y al final del recorrido no quede ni un grano en
+// el aire. Un grano con el turno fuera de 0..1 se queda flotando para siempre en
+// una foto que ya está entera, y no hay error que lo delate.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Dónde está el frente para un progreso dado (`0` = foto entera, `1` = nada). */
+export function frenteDePolvo(p: number): number {
+  return p * (1 + BANDA) - BANDA;
+}
+
+/**
+ * El turno de un grano: su sitio sobre el eje del viento, desordenado. El reparto
+ * mantiene el resultado dentro de 0..1 sin recortar nada, que es lo que garantiza
+ * la invariante de arriba.
+ */
+export function turnoDeGrano(sitio: number, azar: number): number {
+  return sitio * (1 - DISPERSION) + DISPERSION * azar;
+}
+
+/** Su vuelo: `0` = en casa (es su píxel de la foto), `1` = ya no se ve. */
+export function vueloDeGrano(frente: number, turno: number): number {
+  return (frente + BANDA - turno) / BANDA;
 }
 
 export interface Polvo {
@@ -314,12 +365,17 @@ export async function construirPolvo(
     const empuje = 0.4 + ruido(i) * 0.95;
     const desvio = (ruido(i + 15485863) - 0.5) * 0.6;
 
+    // Su sitio sobre el eje del viento: la cuenta del degradado despejada, no una
+    // diagonal parecida.
+    const sitio =
+      (((c + 0.5) / cols) * w * w + (1 - (f + 0.5) / filas) * h * h) / diagonal;
+
     hx[n] = (c + 0.5) * celdaW;
     hy[n] = oy + (f + 0.5) * celdaH;
     dx[n] = empuje * w;
     dy[n] = (-0.34 * empuje + desvio) * h;
-    uu[n] =
-      (((c + 0.5) / cols) * w * w + (1 - (f + 0.5) / filas) * h * h) / diagonal;
+    // El turno: el sitio manda, pero desordenado. Ver `DISPERSION`.
+    uu[n] = turnoDeGrano(sitio, ruido(i + 2971215073));
     cubos[n] = cubosSinOrdenar[i];
   }
 
@@ -336,8 +392,15 @@ export async function construirPolvo(
   const degradado = (frente: number): CanvasGradient => {
     // La banda de la foto ocupa el PRIMER tramo del vuelo del grano, así que su
     // borde va por DELANTE del frente de los granos, no por detrás.
-    const banda = BANDA * FOTO_TRAS_POLVO;
-    const fin = frente + BANDA;
+    //
+    // Y se divide entre `1 - DISPERSION` porque el turno de los granos está
+    // desordenado: `fin` tiene que ser el sitio donde ni siquiera el grano MÁS
+    // ADELANTADO ha despegado todavía. Con el turno limpio bastaba con el frente;
+    // con el turno desordenado, quedarse ahí dejaría a la foto asomando por
+    // debajo de granos que aún no se han movido — o sea, revelándose antes que
+    // ellos, que es justo lo que costó tres versiones quitar.
+    const banda = (BANDA * FOTO_TRAS_POLVO) / (1 - DISPERSION);
+    const fin = (frente + BANDA) / (1 - DISPERSION);
     const ini = fin - banda;
     const borrado = (s: number) => Math.min(1, Math.max(0, (fin - s) / banda));
     const g = ctx.createLinearGradient(0, oy + h, w, oy);
@@ -358,7 +421,7 @@ export async function construirPolvo(
   const pintar = (progreso: number): void => {
     const p = Math.min(1, Math.max(0, progreso));
     ctx.clearRect(0, 0, lienzo.width, lienzo.height);
-    const frente = p * (1 + BANDA) - BANDA;
+    const frente = frenteDePolvo(p);
 
     if (p < 1) {
       ctx.globalAlpha = 1;
@@ -387,7 +450,7 @@ export async function construirPolvo(
     // muchos granos que haya declarados.
     let cuboActual = -1;
     for (let n = 0; n < total; n++) {
-      const t = (frente + BANDA - uu[n]) / BANDA;
+      const t = vueloDeGrano(frente, uu[n]);
       if (t <= 0 || t >= 1) continue;
 
       const cubo = cubos[n];

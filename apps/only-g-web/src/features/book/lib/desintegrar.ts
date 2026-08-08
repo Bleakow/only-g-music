@@ -1,47 +1,58 @@
 /**
- * EL DESINTEGRADO de la foto de portada — ARENA, no cascotes.
+ * EL DESINTEGRADO de la foto de portada — LAS PARTÍCULAS SON LA FOTO.
  *
- * La primera versión partía la foto en teselas y las hacía volar. Se veía lo que
- * era: pedazos de cuadrado desarmándose. Lo que pedía el brief es otra cosa —
- * partículas diminutas, como arena que se lleva el viento— y eso no es el mismo
- * efecto con las piezas más pequeñas: teselas de dos píxeles serían decenas de
- * miles de nodos del DOM, que ningún móvil aguanta.
+ * Han hecho falta tres intentos y los dos primeros fallaban por la misma razón
+ * de fondo, así que conviene dejarla escrita.
  *
- * ASÍ QUE ESTO ES UN LIENZO, y son dos capas dibujadas en el mismo sitio:
+ *  · v1: teselas del DOM. Se veía lo que era, pedazos de cuadrado.
+ *  · v2: un lienzo con la foto erosionándose y una NUBE de polvo encima. Mejor,
+ *    pero se reportó dos veces "la foto se revela antes de que lleguen las
+ *    partículas" — y no era cuestión de afinar el retardo: eran DOS EFECTOS
+ *    PEGADOS. Una foto que se aclaraba por su cuenta y, aparte, arena volando.
+ *    Por mucho que se sincronicen, el ojo separa lo que no está hecho de lo
+ *    mismo.
  *
- *  1. LA FOTO SE EROSIONA. Se dibuja entera y luego se BORRA con un degradado
- *     diagonal de banda ancha que barre en la dirección del viento
- *     (`destination-out`). No es un desvanecido: es un frente que avanza, y por
- *     eso se lee como algo que se deshace por un lado en vez de como algo que se
- *     apaga.
- *  2. EL POLVO. Miles de granos de uno o dos píxeles que salen JUSTO DEL FRENTE
- *     —su retardo se calcula con la misma proyección que usa el degradado— y se
- *     van de lado subiendo. Ese acoplamiento es lo que hace que el polvo parezca
- *     salir de la foto y no espolvorearse por encima.
+ * De ahí esta versión: CADA PARTÍCULA LLEVA SU PÍXEL. Se muestrea la foto en una
+ * rejilla fina y sale un grano por celda con el color de esa celda; en reposo los
+ * granos tesela con tesela RECONSTRUYEN la imagen, y al volar se dispersan, se
+ * encogen y se apagan. Ya no hay una foto por un lado y polvo por otro: lo que se
+ * ve armarse es literalmente la nube de granos.
  *
- * DETERMINISTA, como la versión de teselas y por el mismo motivo: va atado al
- * SCROLL, y un scroll se recorre en los dos sentidos. Con `Math.random()` la foto
- * se re-desperdigaría distinta al volver a subir. Cada grano deriva su sitio, su
- * viaje y su retardo de su índice.
+ * La foto de verdad SÍ se dibuja, debajo, y se borra por delante de los granos
+ * con un degradado. Pero su papel cambia: ya no es lo que se revela, es lo que
+ * RELLENA los huecos entre granos una vez han aterrizado, para que la foto quieta
+ * tenga calidad de foto y no de mosaico. Por eso su banda va en el PRIMER tramo
+ * del vuelo (ver `FOTO_TRAS_POLVO`): al revés —armando— no termina de cerrarse
+ * hasta que el grano ya está en su sitio.
  *
- * LA TRAMPA QUE RESUELVE ESTE MÓDULO SIGUE SIENDO LA URL. `next/image` no sirve
- * el archivo original sino una variante optimizada por `/_next/image`, así que
- * apuntar a la url de Storage descargaría la foto DOS VECES. Se lee `currentSrc`
- * de la imagen que ya está en la página: mismo recurso, cero bytes de más — y de
- * paso mismo origen, que es lo que permite leer sus píxeles.
+ * DETERMINISTA, y no es un detalle: esto va atado al SCROLL y un scroll se
+ * recorre en los dos sentidos. Con `Math.random()` la foto se re-desperdigaría
+ * distinta al volver a subir. El sitio de cada grano sale de su celda y su viaje,
+ * de un hash de su índice.
+ *
+ * LA TRAMPA DE LA URL. `next/image` no sirve el archivo original sino una
+ * variante optimizada por `/_next/image`, así que apuntar a la url de Storage
+ * descargaría la foto DOS VECES. Se lee `currentSrc` de la imagen que ya está en
+ * la página: mismo recurso, cero bytes de más — y de paso mismo origen, que es lo
+ * que permite leer sus píxeles.
  */
 
 /**
- * Granos. Más en pantalla grande; el móvil no necesita tantos para leerse.
- *
- * Solo se dibujan los que están dentro de la banda del frente —una fracción del
- * total en cada fotograma—, así que el número declarado no es el que se pinta.
+ * Lado de la celda en píxeles de CSS. Es el compromiso del efecto entero: más
+ * fino se parece más a la foto y cuesta más, más grueso se parece a un mosaico.
+ * A 3.4 los granos son diminutos en pantalla y en vuelo se leen como arena.
  */
-const GRANOS_ESTRECHO = 3400;
-const GRANOS_ANCHO = 6400;
+const PASO_CSS = 3.4;
 
-/** Ancho del lienzo de MUESTREO. Solo sirve para sacar colores de polvo. */
-const MUESTRA = 220;
+/**
+ * Tope duro de granos. Por encima de esto el paso se ensancha solo.
+ *
+ * Lo que de verdad cuesta es `BANDA` por esto —los que están en el aire a la vez,
+ * unos 5.800 en escritorio—, y ese es el número que hay que tocar si algún día
+ * esto va justo de fotogramas. Un book abierto en un monitor de 27" no puede
+ * pedir el triple de granos que uno abierto en un móvil solo porque hay sitio.
+ */
+const GRANOS_MAX = 17000;
 
 /** Resolución máxima del lienzo. Más allá no se distingue y cuesta el doble. */
 const DPR_MAX = 1.75;
@@ -52,57 +63,46 @@ const DPR_MAX = 1.75;
  * contra su propio borde: un lienzo recorta lo que se dibuja fuera, así que la
  * arena desaparecería de golpe en una línea recta invisible. Se lee como si
  * chocara con un cristal.
- *
- * No hace falta cubrir el viaje ENTERO: el grano se apaga por el camino, así que
- * basta con llegar hasta donde todavía se ve.
  */
 const VUELO_X = 0.75;
 const VUELO_Y = 0.45;
 
 /**
  * Ancho de la banda del frente, en fracción del recorrido: cuánto dura el vuelo
- * de un grano desde que su trozo de foto empieza a irse.
+ * de un grano. Es también la fracción de granos que están en el aire a la vez, o
+ * sea lo que de verdad cuesta cada fotograma.
  */
 const BANDA = 0.34;
 
 /**
- * LA FOTO VA POR DETRÁS DEL POLVO, y esta fracción es cuánto.
+ * QUÉ PARTE DEL VUELO DE UN GRANO OCUPA LA DESAPARICIÓN DE SU TROZO DE FOTO.
  *
- * Con una sola banda para las dos cosas pasaba lo que se reportó: "la foto se
- * revela mucho antes de que lleguen las partículas". Normal — el degradado de la
- * foto era tan ancho como el vuelo entero, así que empezaba a aclararse en el
- * mismo instante en que los granos salían, y para cuando la arena llegaba a un
- * sitio la foto ya estaba casi puesta ahí.
+ * Esto es lo que se reportó dos veces y estrechar la banda no lo arreglaba,
+ * porque el problema no era su ancho sino DÓNDE estaba puesta.
  *
- * Ahora el borde de la foto es la MITAD de ancho y arranca en el mismo punto: en
- * cualquier sitio, el polvo pasa primero y la foto se cierra detrás. Es lo que
- * convierte "una foto que se aclara mientras vuela polvo al lado" en "el polvo
- * ARMA la foto", que es la petición literal.
+ * Piénsalo al revés, que es como se ve armándose: el grano viaja de fuera hacia
+ * su casa. Si la foto se cierra durante el ÚLTIMO tramo de ese viaje —cuando el
+ * grano todavía está a media distancia— la foto termina ANTES de que la arena
+ * aterrice, que es exactamente lo que se veía. Puesta en el PRIMER tramo, al
+ * derecho la foto se va nada más despegar el grano y al revés no acaba de
+ * cerrarse hasta que el grano ya está en su sitio.
+ *
+ * Y deja un margen a cada extremo del recorrido en el que solo hay arena y
+ * ninguna foto. Ese margen ES el efecto: empieza con polvo que se junta y termina
+ * con polvo que se va.
  */
 const FOTO_TRAS_POLVO = 0.5;
 
+/** Cuánto encoge un grano al final de su vuelo. De tesela a arena. */
+const ENCOGE = 0.55;
+
 /**
- * Ruido determinista a partir de un entero. Mismo motivo que en la versión de
- * teselas: con azar de verdad el desintegrado no se podría rebobinar.
+ * Ruido determinista a partir de un entero. Con azar de verdad el desintegrado no
+ * se podría rebobinar, y esta secuencia se recorre en los dos sentidos.
  */
 function ruido(n: number): number {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return s - Math.floor(s);
-}
-
-interface Grano {
-  /** Casa, en píxeles del lienzo. */
-  hx: number;
-  hy: number;
-  /** Viaje completo, en píxeles del lienzo. */
-  dx: number;
-  dy: number;
-  /** 0..1 sobre el eje del viento: cuándo le toca salir. */
-  u: number;
-  /** Lado del grano, en píxeles del lienzo. */
-  s: number;
-  /** Color ya cuantizado. Los granos van ORDENADOS por este número. */
-  cubo: number;
 }
 
 export interface Polvo {
@@ -143,9 +143,8 @@ function cargar(url: string): Promise<HTMLImageElement | null> {
 /**
  * El recorte que hace `object-fit: cover` con su `object-position`. Hay que
  * replicarlo a mano: el lienzo dibuja la foto entera y el DOM la enseñaba
- * recortada, así que sin esto el polvo saldría de una foto ENCUADRADA DISTINTA a
- * la que el visitante estaba viendo. Es la clase de desajuste que se nota sin
- * saber decir por qué.
+ * recortada, así que sin esto los granos tomarían su color de una foto ENCUADRADA
+ * DISTINTA a la que el visitante estaba viendo.
  */
 function recorteCover(
   iw: number,
@@ -177,10 +176,9 @@ function anclaDe(img: HTMLImageElement): [number, number] {
 }
 
 /**
- * Monta el lienzo de polvo dentro de `capa`, del tamaño de `marco`, con la foto
- * que `img` está enseñando. Devuelve `null` si algo falla — y entonces se queda
- * la foto del DOM, que es una foto perfecta. El desintegrado es un adorno; la
- * foto, no.
+ * Monta el lienzo dentro de `capa`, del tamaño de `marco`, con la foto que `img`
+ * está enseñando. Devuelve `null` si algo falla — y entonces se queda la foto del
+ * DOM, que es una foto perfecta. El desintegrado es un adorno; la foto, no.
  */
 export async function construirPolvo(
   marco: HTMLElement,
@@ -217,20 +215,32 @@ export async function construirPolvo(
   const [fx, fy] = anclaDe(img);
   const cover = recorteCover(foto.naturalWidth, foto.naturalHeight, w, h, fx, fy);
 
-  // ── Colores del polvo ─────────────────────────────────────────────────────
-  // Se muestrean de una copia PEQUEÑA de la foto: para granos de dos píxeles no
-  // hace falta más, y leer los píxeles del lienzo grande costaría megabytes.
-  const mh = Math.max(1, Math.round((MUESTRA * altoCss) / anchoCss));
+  // ── La rejilla ────────────────────────────────────────────────────────────
+  // El paso se ensancha solo si la foto es tan grande que se pasaría del tope.
+  // Un book abierto en un monitor de 27" no puede pedir el triple de granos que
+  // uno abierto en un móvil solo porque hay sitio.
+  const paso = Math.max(
+    PASO_CSS,
+    Math.sqrt((anchoCss * altoCss) / GRANOS_MAX),
+  );
+  const cols = Math.max(16, Math.round(anchoCss / paso));
+  const filas = Math.max(16, Math.round(altoCss / paso));
+  const total = cols * filas;
+
+  // ── Los colores ───────────────────────────────────────────────────────────
+  // El lienzo de muestreo tiene EXACTAMENTE el tamaño de la rejilla: un píxel por
+  // grano. Así cada partícula lleva su píxel y en reposo la nube reconstruye la
+  // foto, que es todo el sentido de esta versión.
   const mini = document.createElement("canvas");
-  mini.width = MUESTRA;
-  mini.height = mh;
+  mini.width = cols;
+  mini.height = filas;
   const mctx = mini.getContext("2d", { willReadFrequently: true });
   if (!mctx) return null;
   const coverMini = recorteCover(
     foto.naturalWidth,
     foto.naturalHeight,
-    MUESTRA,
-    mh,
+    cols,
+    filas,
     fx,
     fy,
   );
@@ -238,93 +248,109 @@ export async function construirPolvo(
 
   let pixeles: Uint8ClampedArray;
   try {
-    pixeles = mctx.getImageData(0, 0, MUESTRA, mh).data;
+    pixeles = mctx.getImageData(0, 0, cols, filas).data;
   } catch {
     // Lienzo contaminado (una pieza de otro dominio sin CORS). Sin colores no
-    // hay polvo, y una foto entera es mejor que un efecto a medias.
+    // hay granos, y una foto entera es mejor que un efecto a medias.
     return null;
   }
 
   // ── Los granos ────────────────────────────────────────────────────────────
-  const total = anchoCss < 300 ? GRANOS_ESTRECHO : GRANOS_ANCHO;
-  const granos: Grano[] = [];
+  // En arrays paralelos y no en objetos: son decenas de miles, se recorren
+  // enteros en cada fotograma, y un array de objetos ahí dentro es medio megabyte
+  // de indirecciones que el recolector tiene que pasear.
+  const hx = new Float32Array(total);
+  const hy = new Float32Array(total);
+  const dx = new Float32Array(total);
+  const dy = new Float32Array(total);
+  const uu = new Float32Array(total);
+  const cubos = new Uint32Array(total);
   const estilos = new Map<number, string>();
 
+  const celdaW = w / cols;
+  const celdaH = h / filas;
   /**
    * El eje del frente va de la esquina de ABAJO-IZQUIERDA a la de ARRIBA-DERECHA,
-   * o sea en la dirección del viento. Este denominador es lo que convierte una
-   * posición del lienzo en su sitio 0..1 sobre ese eje, y sale de despejar la
-   * fórmula del degradado lineal — de ahí que sea exacto y no un apaño.
+   * o sea en la dirección del viento. Este denominador convierte una posición del
+   * lienzo en su sitio 0..1 sobre ese eje, y sale de despejar la fórmula del
+   * degradado lineal — de ahí que sea exacto y no un apaño.
    */
   const diagonal = w * w + h * h;
 
-  for (let i = 0; i < total; i++) {
-    const nx = ruido(i);
-    const ny = ruido(i + 7919);
+  const orden = new Uint32Array(total);
+  for (let i = 0; i < total; i++) orden[i] = i;
 
-    const px = Math.min(MUESTRA - 1, Math.floor(nx * MUESTRA));
-    const py = Math.min(mh - 1, Math.floor(ny * mh));
-    const k = (py * MUESTRA + px) * 4;
-    // Tres bits por canal. El polvo no necesita fidelidad de color y cuantizar
-    // agrupa los granos en pocas decenas de cubos: dibujar ordenado por cubo
-    // convierte miles de cambios de `fillStyle` —que se parsean como texto y son
-    // lo caro de un lienzo— en unas pocas decenas por fotograma.
-    const r = pixeles[k] & 0xe0;
-    const g = pixeles[k + 1] & 0xe0;
-    const b = pixeles[k + 2] & 0xe0;
-    const cubo = (r << 16) | (g << 8) | b;
-    if (!estilos.has(cubo)) estilos.set(cubo, `rgb(${r} ${g} ${b})`);
-
-    // El viento va hacia el lado y hacia arriba, con turbulencia por grano: sin
-    // ella los granos viajarían en haces paralelos y se leería como un barrido.
-    const empuje = 0.45 + ruido(i + 104729) * 0.95;
-    const desvio = (ruido(i + 15485863) - 0.5) * 0.55;
-
-    granos.push({
-      hx: nx * w,
-      hy: oy + ny * h,
-      dx: empuje * w,
-      dy: (-0.34 * empuje + desvio) * h,
-      // Dónde cae este grano sobre el EJE DEL FRENTE, y la cuenta es la del
-      // degradado despejada, no una diagonal parecida. Es lo único que hace que
-      // el polvo salga del borde que se está deshaciendo en vez de espolvorearse
-      // por toda la foto: si las dos proyecciones no son la MISMA, el polvo
-      // adelanta o retrasa al frente y se ve que son dos efectos pegados.
-      u: (nx * w * w + (1 - ny) * h * h) / diagonal,
-      s: (1 + ruido(i + 32452843) * 1.6) * dpr,
-      cubo,
-    });
+  const cubosSinOrdenar = new Uint32Array(total);
+  for (let f = 0; f < filas; f++) {
+    for (let c = 0; c < cols; c++) {
+      const i = f * cols + c;
+      const k = i * 4;
+      // Tres bits por canal. Cuantizar agrupa los granos en pocas decenas de
+      // cubos, y dibujar ORDENADO por cubo convierte miles de cambios de
+      // `fillStyle` —que se parsean como texto y son lo caro de un lienzo— en
+      // unas pocas decenas por fotograma.
+      const r = pixeles[k] & 0xe0;
+      const g = pixeles[k + 1] & 0xe0;
+      const b = pixeles[k + 2] & 0xe0;
+      const cubo = (r << 16) | (g << 8) | b;
+      if (!estilos.has(cubo)) estilos.set(cubo, `rgb(${r} ${g} ${b})`);
+      cubosSinOrdenar[i] = cubo;
+    }
   }
 
-  // Ordenar UNA vez para poder dibujar por cubos en cada fotograma.
-  granos.sort((a, b) => a.cubo - b.cubo);
+  // Ordenar UNA vez, al montar. Después el bucle de pintado ya sale barato.
+  const ordenados = Array.from(orden).sort(
+    (a, b) => cubosSinOrdenar[a] - cubosSinOrdenar[b],
+  );
+
+  for (let n = 0; n < total; n++) {
+    const i = ordenados[n];
+    const c = i % cols;
+    const f = (i - c) / cols;
+
+    // El viento va hacia el lado y hacia arriba, con turbulencia POR GRANO: sin
+    // ella la rejilla viajaría en bloque y se leería como un mosaico que se
+    // desliza, no como arena que se dispersa.
+    const empuje = 0.4 + ruido(i) * 0.95;
+    const desvio = (ruido(i + 15485863) - 0.5) * 0.6;
+
+    hx[n] = (c + 0.5) * celdaW;
+    hy[n] = oy + (f + 0.5) * celdaH;
+    dx[n] = empuje * w;
+    dy[n] = (-0.34 * empuje + desvio) * h;
+    uu[n] =
+      (((c + 0.5) / cols) * w * w + (1 - (f + 0.5) / filas) * h * h) / diagonal;
+    cubos[n] = cubosSinOrdenar[i];
+  }
 
   capa.textContent = "";
   capa.appendChild(lienzo);
   capa.dataset.listo = "si";
 
   /**
-   * El degradado que borra la parte ya convertida en polvo. Sus dos extremos se
-   * calculan con la MISMA función que decide la vida de cada grano, y los topes
-   * van en el alfa de los extremos y no clavando paradas en 0 y 1: con el frente
-   * todavía fuera del lienzo, una parada opaca en 0 borraría de golpe la esquina
-   * entera en el primer fotograma.
+   * El degradado que borra la foto por delante de los granos. Los topes van en el
+   * alfa de los extremos y no clavando paradas en 0 y 1: con el frente todavía
+   * fuera del lienzo, una parada opaca en 0 borraría de golpe la esquina entera
+   * en el primer fotograma.
    */
-  const degradado = (p: number): CanvasGradient => {
-    const frente = p * (1 + BANDA) - BANDA;
-    // La banda de la FOTO, más estrecha que la del polvo y arrancando en el
-    // mismo punto: el polvo pasa primero y la foto se cierra detrás.
+  const degradado = (frente: number): CanvasGradient => {
+    // La banda de la foto ocupa el PRIMER tramo del vuelo del grano, así que su
+    // borde va por DELANTE del frente de los granos, no por detrás.
     const banda = BANDA * FOTO_TRAS_POLVO;
-    const borrado = (s: number) =>
-      Math.min(1, Math.max(0, (frente + banda - s) / banda));
+    const fin = frente + BANDA;
+    const ini = fin - banda;
+    const borrado = (s: number) => Math.min(1, Math.max(0, (fin - s) / banda));
     const g = ctx.createLinearGradient(0, oy + h, w, oy);
     g.addColorStop(0, `rgba(0,0,0,${borrado(0)})`);
-    if (frente > 0 && frente < 1) g.addColorStop(frente, "rgba(0,0,0,1)");
-    const fin = frente + banda;
+    if (ini > 0 && ini < 1) g.addColorStop(ini, "rgba(0,0,0,1)");
     if (fin > 0 && fin < 1) g.addColorStop(fin, "rgba(0,0,0,0)");
     g.addColorStop(1, `rgba(0,0,0,${borrado(1)})`);
     return g;
   };
+
+  // Lado del grano en reposo: la celda entera, redondeada hacia arriba para que
+  // teselen sin dejar juntas. Al volar encoge.
+  const lado = Math.ceil(Math.max(celdaW, celdaH));
 
   // Función FLECHA y no declaración: TypeScript no aplica el estrechamiento del
   // `if (!ctx) return null` de arriba dentro de una `function` —está izada, así
@@ -332,60 +358,51 @@ export async function construirPolvo(
   const pintar = (progreso: number): void => {
     const p = Math.min(1, Math.max(0, progreso));
     ctx.clearRect(0, 0, lienzo.width, lienzo.height);
+    const frente = p * (1 + BANDA) - BANDA;
 
     if (p < 1) {
       ctx.globalAlpha = 1;
-      // RECORTADA A SU CAJA, y esto arregla la franja que se quedaba clavada en
-      // el borde derecho. `object-fit: cover` significa por definición que la
+      // RECORTADA A SU CAJA. `object-fit: cover` significa por definición que la
       // foto SE SALE por uno de los dos ejes; en el DOM lo recortaba el
       // `overflow: hidden` de la pieza, pero un lienzo no recorta nada. Ese
-      // sobrante caía fuera de la caja que borra el degradado, así que no se
-      // desintegraba nunca: un rectángulo largo que se quedaba ahí para siempre.
+      // sobrante caía fuera de la caja que borra el degradado y se quedaba
+      // clavado para siempre: la franja del borde derecho que se reportó.
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, oy, w, h);
       ctx.clip();
       ctx.drawImage(foto, cover.x, cover.y + oy, cover.w, cover.h);
-      ctx.restore();
 
       if (p > 0) {
-        // SE BORRA lo que ya se volvió polvo. El frente barre de `-BANDA` a `1`:
-        // al empezar, su borde de salida está justo en el origen (nada borrado);
-        // al terminar, su borde de entrada ha pasado el final (nada intacto).
         ctx.globalCompositeOperation = "destination-out";
-        ctx.fillStyle = degradado(p);
-        // Solo sobre la caja de la foto: fuera de ella no hay nada que borrar y
-        // el degradado, extendido, se comería el polvo que ya voló.
+        ctx.fillStyle = degradado(frente);
         ctx.fillRect(0, oy, w, h);
         ctx.globalCompositeOperation = "source-over";
       }
+      ctx.restore();
     }
 
-    // EL POLVO. Cada grano vive EXACTAMENTE lo que la banda del frente tarda en
-    // cruzarlo — `borrado(u)` es la misma cuenta que decide cuánta foto queda en
-    // ese punto—, así que el grano nace justo cuando su trozo de foto empieza a
-    // desaparecer. Fuera de su ventana no se dibuja: eso mantiene el coste plano
-    // por muchos granos que haya declarados.
-    const frente = p * (1 + BANDA) - BANDA;
+    // LOS GRANOS. Solo los que están en el aire; el resto o no han despegado —y
+    // ahí está la foto— o ya se fueron. Eso es lo que mantiene el coste plano por
+    // muchos granos que haya declarados.
     let cuboActual = -1;
-    for (let i = 0; i < granos.length; i++) {
-      const gr = granos[i];
-      const t = (frente + BANDA - gr.u) / BANDA;
+    for (let n = 0; n < total; n++) {
+      const t = (frente + BANDA - uu[n]) / BANDA;
       if (t <= 0 || t >= 1) continue;
 
-      if (gr.cubo !== cuboActual) {
-        cuboActual = gr.cubo;
-        ctx.fillStyle = estilos.get(gr.cubo)!;
+      const cubo = cubos[n];
+      if (cubo !== cuboActual) {
+        cuboActual = cubo;
+        ctx.fillStyle = estilos.get(cubo)!;
       }
-      // BRILLA EN CASA Y SE APAGA AL ALEJARSE. Antes subía y bajaba —máximo a
-      // media distancia—, y eso ponía el grano más tenue justo donde la foto se
-      // estaba cerrando: se veía la foto aparecer y, aparte, polvo volando lejos.
-      // Dos efectos. Con el máximo en el punto de partida, la arena se amontona
-      // en el borde que se arma y es ella la que lo dibuja.
-      ctx.globalAlpha = Math.pow(1 - t, 0.55) * 0.95;
-      // Acelera: al principio se despega despacio y luego el viento se lo lleva.
+      // Se apaga al alejarse. En casa vale 1: ahí el grano ES su píxel de la
+      // foto, y es lo que hace que la nube reconstruya la imagen al aterrizar.
+      ctx.globalAlpha = Math.pow(1 - t, 0.75);
+      // Acelera al irse (y frena al llegar, que es el mismo recorrido al revés) y
+      // encoge por el camino: de tesela a grano de arena.
       const v = t * t;
-      ctx.fillRect(gr.hx + gr.dx * v, gr.hy + gr.dy * v, gr.s, gr.s);
+      const s = lado * (1 - ENCOGE * t);
+      ctx.fillRect(hx[n] + dx[n] * v - s / 2, hy[n] + dy[n] * v - s / 2, s, s);
     }
     ctx.globalAlpha = 1;
   };
@@ -401,6 +418,15 @@ export async function construirPolvo(
     },
   };
 }
+
+/** Hasta aquí la foto se está armando. */
+const FIN_ARMADO = 0.46;
+/**
+ * Y de `FIN_ARMADO` hasta aquí NO PASA NADA: la foto está entera y quieta. Ese
+ * silencio es lo único que la convierte en una foto que se mira en vez de en un
+ * efecto que se ve pasar, y es el único tramo del recorrido que no se recorta.
+ */
+const FIN_QUIETO = 0.66;
 
 /**
  * La forma del desintegrado a lo largo de su tramo: SE ARMA, se queda quieta, SE
@@ -421,12 +447,3 @@ export function fasePolvo(t: number): number {
   if (t < FIN_QUIETO) return 0;
   return Math.min(1, (t - FIN_QUIETO) / (1 - FIN_QUIETO));
 }
-
-/** Hasta aquí la foto se está armando. */
-const FIN_ARMADO = 0.46;
-/**
- * Y de `FIN_ARMADO` hasta aquí NO PASA NADA: la foto está entera y quieta. Ese
- * silencio es lo único que la convierte en una foto que se mira en vez de en un
- * efecto que se ve pasar, y es el único tramo del recorrido que no se recorta.
- */
-const FIN_QUIETO = 0.66;

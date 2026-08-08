@@ -661,6 +661,42 @@ export type RitmoId = "sereno" | "dinamico" | "brusco";
 /** Capa de textura sobre todo el book. */
 export type TexturaId = "ninguna" | "grano" | "vineta";
 
+/**
+ * CÓMO SE DESHACE LA FOTO DE PORTADA. Es el eje más concreto de la atmósfera —
+ * los otros cuatro tiñen el book entero y este gobierna un único momento— pero
+ * es también el momento que más se recuerda, así que se elige igual que lo demás.
+ *
+ *  · `arena`    — se posa cayendo y se la lleva el viento de lado. La de casa.
+ *  · `teselas`  — cuadrados grandes que giran. Más gráfico, menos atmosférico.
+ *  · `remolino` — los granos entran girando desde fuera y salen en espiral desde
+ *                 el centro.
+ *  · `cascada`  — llega de lado, en horizontal, y se derrama hacia abajo.
+ *  · `ceniza`   — a resolución de PÍXEL: la foto se reparte en capas de píxeles
+ *                 sueltos que se abren en abanico. La más fina de las cinco.
+ *
+ * El id es lo que se guarda en Firestore: NO renombrar. Añadir uno nuevo es
+ * añadirlo aquí y darle su receta en el motor; quitar uno de la lista lo retira
+ * del selector sin romper a quien ya lo tenga elegido, porque la normalización
+ * cae al de por defecto.
+ */
+export const DESINTEGRADOS = [
+  "arena",
+  "teselas",
+  "remolino",
+  "cascada",
+  "ceniza",
+] as const;
+
+/**
+ * A diferencia de los otros cuatro ejes, el tipo se DERIVA de la lista en vez de
+ * escribirse aparte. Este eje tiene más sitios que mantener en sincronía —el
+ * catálogo de recetas del motor, el selector del editor, dos idiomas— y con dos
+ * declaraciones separadas es posible añadir un id al tipo, darle su receta, y
+ * olvidarse de la lista: el desintegrado existiría y funcionaría, pero no
+ * aparecería en el selector. Nadie lo notaría hasta echarlo de menos.
+ */
+export type DesintegradoId = (typeof DESINTEGRADOS)[number];
+
 export const FONDOS: FondoId[] = ["medianoche", "hueso", "arena", "carbon"];
 export const LETRAS: LetraId[] = ["narrow", "serif", "mono", "grotesca"];
 export const RITMOS: RitmoId[] = ["sereno", "dinamico", "brusco"];
@@ -671,6 +707,7 @@ export interface Atmosfera {
   letra: LetraId;
   ritmo: RitmoId;
   textura: TexturaId;
+  desintegrado: DesintegradoId;
   /**
    * Color de acento. Ausente = HEREDA el `accent` del perfil, que ya existe y ya
    * tiene selector. Un book que arranca con el color que la modelo ya eligió
@@ -685,6 +722,7 @@ export const ATMOSFERA_POR_DEFECTO: Atmosfera = {
   letra: "narrow",
   ritmo: "dinamico",
   textura: "grano",
+  desintegrado: "arena",
 };
 
 export interface AtmosferaPreset extends Atmosfera {
@@ -703,6 +741,7 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
     letra: "narrow",
     ritmo: "dinamico",
     textura: "grano",
+    desintegrado: "arena",
   },
   {
     id: "editorial",
@@ -710,6 +749,9 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
     letra: "serif",
     ritmo: "sereno",
     textura: "ninguna",
+    // Papel y letra de revista: la retícula de cuadrados es la que habla ese
+    // idioma. La arena quedaría atmosférica de más para una atmósfera sobria.
+    desintegrado: "teselas",
   },
   {
     id: "brutal",
@@ -717,6 +759,7 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
     letra: "mono",
     ritmo: "brusco",
     textura: "ninguna",
+    desintegrado: "remolino",
   },
   {
     id: "calido",
@@ -724,6 +767,7 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
     letra: "serif",
     ritmo: "sereno",
     textura: "vineta",
+    desintegrado: "cascada",
   },
 ];
 
@@ -937,7 +981,17 @@ function texto(v: unknown, max: number): string | undefined {
   return t || undefined;
 }
 
-function unoDe<T extends string>(v: unknown, opciones: T[], porDefecto: T): T {
+/**
+ * `readonly` en las opciones: los catálogos que derivan su tipo de la propia
+ * lista se declaran `as const`, y sin esto no encajarían aquí — que es donde más
+ * falta hacen, porque este es el guardarraíl que atrapa los ids viejos de
+ * Firestore.
+ */
+function unoDe<T extends string>(
+  v: unknown,
+  opciones: readonly T[],
+  porDefecto: T,
+): T {
   return opciones.includes(v as T) ? (v as T) : porDefecto;
 }
 
@@ -1028,6 +1082,14 @@ export function normalizarAtmosfera(raw: unknown): Atmosfera {
     letra: unoDe(o.letra, LETRAS, ATMOSFERA_POR_DEFECTO.letra),
     ritmo: unoDe(o.ritmo, RITMOS, ATMOSFERA_POR_DEFECTO.ritmo),
     textura: unoDe(o.textura, TEXTURAS, ATMOSFERA_POR_DEFECTO.textura),
+    // Los books guardados antes de que existiera este eje no lo traen, y un id
+    // retirado del catálogo tampoco vale: en los dos casos cae al de casa en vez
+    // de dejar la portada sin desintegrado.
+    desintegrado: unoDe(
+      o.desintegrado,
+      DESINTEGRADOS,
+      ATMOSFERA_POR_DEFECTO.desintegrado,
+    ),
     // Solo hex de 6 dígitos: es lo que entiende el CSS del book y lo que produce
     // el selector de acento del perfil.
     acento:

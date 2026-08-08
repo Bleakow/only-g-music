@@ -8,6 +8,7 @@ import {
   LETRAS,
   RITMOS,
   TEXTURAS,
+  DESINTEGRADOS,
   acentoEfectivo,
   type Atmosfera,
 } from "@only-g/shared-types/book";
@@ -121,7 +122,8 @@ export function AtmosferaPanel({
       p.fondo === atmosfera.fondo &&
       p.letra === atmosfera.letra &&
       p.ritmo === atmosfera.ritmo &&
-      p.textura === atmosfera.textura,
+      p.textura === atmosfera.textura &&
+      p.desintegrado === atmosfera.desintegrado,
   );
 
   return (
@@ -186,6 +188,19 @@ export function AtmosferaPanel({
         valor={atmosfera.ritmo}
         etiqueta={(v) => t(`ritmos.${v}`)}
         onPick={(ritmo) => set({ ritmo })}
+      />
+      {/* CÓMO SE DESHACE LA PORTADA. Es el eje más concreto de los cinco —los
+          otros cuatro tiñen el book entero y este gobierna un único momento—
+          pero es también el momento que más se recuerda, así que se elige
+          igual que lo demás. La pista describe el movimiento, porque un nombre
+          suelto ("remolino") no le dice a nadie qué va a ver. */}
+      <Fila
+        titulo={t("desintegradoTitle")}
+        pista={t(`desintegradosHint.${atmosfera.desintegrado}`)}
+        opciones={DESINTEGRADOS}
+        valor={atmosfera.desintegrado}
+        etiqueta={(v) => t(`desintegrados.${v}`)}
+        onPick={(desintegrado) => set({ desintegrado })}
       />
       <Fila
         titulo={t("texturaTitle")}

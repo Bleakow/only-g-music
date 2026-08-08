@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ATMOSFERAS,
+  DESINTEGRADOS,
   ATMOSFERA_POR_DEFECTO,
   BOOK_ESCENAS_POR_DEFECTO,
   BOOK_MAX_ESCENAS,
@@ -143,6 +144,35 @@ describe("catálogo de escenas", () => {
     for (const e of aSangre) {
       expect(e.fija, `"${e.tipo}" va a sangre pero se puede añadir`).toBeTruthy();
     }
+  });
+
+  it("todo preset declara los CINCO ejes", () => {
+    // Un preset al que le falte un eje deja ese eje como estaba al pulsarlo: la
+    // modelo elige "Editorial" y se queda con el desintegrado de antes, sin que
+    // nada lo explique. Es el fallo típico al añadir un eje nuevo.
+    for (const p of ATMOSFERAS) {
+      expect(FONDOS, p.id).toContain(p.fondo);
+      expect(LETRAS, p.id).toContain(p.letra);
+      expect(RITMOS, p.id).toContain(p.ritmo);
+      expect(TEXTURAS, p.id).toContain(p.textura);
+      expect(DESINTEGRADOS, p.id).toContain(p.desintegrado);
+    }
+  });
+
+  it("un book guardado ANTES de que existiera el desintegrado sigue abriendo", () => {
+    // El eje se añadió con books ya en Firestore. Sin caída al de casa, esos
+    // documentos abrirían con la portada sin desintegrar y sin un solo error.
+    const viejo = normalizarAtmosfera({
+      fondo: "hueso",
+      letra: "serif",
+      ritmo: "sereno",
+      textura: "ninguna",
+    });
+    expect(viejo.desintegrado).toBe(ATMOSFERA_POR_DEFECTO.desintegrado);
+    // Y un id retirado del catálogo cae igual, en vez de dejar la portada muda.
+    expect(
+      normalizarAtmosfera({ desintegrado: "confeti" }).desintegrado,
+    ).toBe(ATMOSFERA_POR_DEFECTO.desintegrado);
   });
 
   it("`sangre` no es elegible por la modelo", () => {

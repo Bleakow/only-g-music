@@ -2754,7 +2754,22 @@
       },
       "acentoTitle": "Acento",
       "acentoHeredado": "El de mi perfil",
-      "acentoPropio": "Otro color"
+      "acentoPropio": "Otro color",
+      "desintegradoTitle": "Cómo se deshace tu portada",
+      "desintegrados": {
+        "arena": "Arena",
+        "teselas": "Cuadros",
+        "remolino": "Remolino",
+        "cascada": "Cascada",
+        "ceniza": "Ceniza"
+      },
+      "desintegradosHint": {
+        "arena": "Se posa cayendo y se la lleva el viento de lado. Miles de partículas diminutas.",
+        "teselas": "Cuadrados grandes que giran al volar. Más gráfico, menos atmosférico.",
+        "remolino": "Entra girando desde fuera y sale en espiral desde el centro.",
+        "cascada": "Llega de lado, en horizontal, y se derrama hacia abajo.",
+        "ceniza": "A resolución de píxel: la foto se abre en abanico y se deshace en polvo finísimo."
+      }
     }
   },
   "book": {

@@ -88,7 +88,7 @@ export function BookView({
     import("../lib/motion")
       .then(({ montarCoreografia }) => {
         if (cancelado) return;
-        limpiar = montarCoreografia(el, atmosfera.ritmo);
+        limpiar = montarCoreografia(el, atmosfera);
       })
       .catch(() => {
         /* Sin motor, queda la línea base estática. Que es un book que funciona. */
@@ -98,9 +98,10 @@ export function BookView({
       cancelado = true;
       limpiar?.();
     };
-    // El ritmo remonta la coreografía entera: son otros números en las mismas
-    // timelines, y rehacerlas es más barato y más honesto que parchearlas.
-  }, [atmosfera.ritmo, book.escenas]);
+    // El ritmo y el desintegrado remontan la coreografía entera: son otros
+    // números en las mismas timelines —y otra receta de partículas—, y rehacerlas
+    // es más barato y más honesto que parchearlas.
+  }, [atmosfera, book.escenas]);
 
   return (
     <main

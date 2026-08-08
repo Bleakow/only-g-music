@@ -1,7 +1,8 @@
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
-import type { RitmoId } from "@only-g/shared-types/book";
+import type { Atmosfera } from "@only-g/shared-types/book";
+import type { DesintegradoId } from "@only-g/shared-types/book";
 import {
   armandoEn,
   construirPolvo,
@@ -76,6 +77,7 @@ function apertura(
   p: Params,
   movil: boolean,
   alLimpiar: AlLimpiar,
+  desintegrado: DesintegradoId,
 ) {
   const track = escena.querySelector<HTMLElement>(".og-book-apertura");
   if (!track) return;
@@ -234,7 +236,7 @@ function apertura(
   //    Es asíncrono porque hay que esperar a que la foto cargue para saber qué
   //    url está usando de verdad. Por eso la timeline tiene duración fija: lo
   //    que se añade aquí llega tarde y no puede recolocar lo de arriba.
-  montarPortada(escena, tl, alLimpiar);
+  montarPortada(escena, tl, alLimpiar, desintegrado);
 
   // En móvil la diagonal es más estrecha y el viaje, más corto: recorrer 175%
   // en una pantalla alta se siente lento aunque dure lo mismo.
@@ -250,6 +252,7 @@ function montarPortada(
   escena: HTMLElement,
   tl: gsap.core.Timeline,
   alLimpiar: AlLimpiar,
+  desintegrado: DesintegradoId,
 ) {
   const marco = escena.querySelector<HTMLElement>(".og-book-ap-portada-marco");
   const capa = escena.querySelector<HTMLElement>(".og-book-desint");
@@ -278,7 +281,9 @@ function montarPortada(
   });
 
   void urlYaCargada(img)
-    .then((url) => (url ? construirPolvo(marco, capa, img, url) : null))
+    .then((url) =>
+      url ? construirPolvo(marco, capa, img, url, desintegrado) : null,
+    )
     .then((p) => {
       if (cancelado || !p) return;
       polvo = p;
@@ -779,6 +784,7 @@ type Coreografia = (
   p: Params,
   movil: boolean,
   alLimpiar: AlLimpiar,
+  desintegrado: DesintegradoId,
 ) => void;
 
 const POR_TIPO: Record<string, Coreografia> = {
@@ -800,8 +806,11 @@ const POR_TIPO: Record<string, Coreografia> = {
  * Monta la coreografía sobre un book ya renderizado. Devuelve la función de
  * limpieza — llamarla es OBLIGATORIO al desmontar.
  */
-export function montarCoreografia(raiz: HTMLElement, ritmo: RitmoId): () => void {
-  const p = paramsDeRitmo(ritmo);
+export function montarCoreografia(
+  raiz: HTMLElement,
+  atmosfera: Atmosfera,
+): () => void {
+  const p = paramsDeRitmo(atmosfera.ritmo);
   const pendientes: (() => void)[] = [];
   const alLimpiar: AlLimpiar = (fn) => pendientes.push(fn);
 
@@ -859,7 +868,7 @@ export function montarCoreografia(raiz: HTMLElement, ritmo: RitmoId): () => void
             if (ancho) tira(escena, p);
             return;
           }
-          POR_TIPO[tipo]?.(escena, p, !ancho, alLimpiar);
+          POR_TIPO[tipo]?.(escena, p, !ancho, alLimpiar, atmosfera.desintegrado);
         });
       },
     );

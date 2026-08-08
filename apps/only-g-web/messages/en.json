@@ -2754,7 +2754,22 @@
       },
       "acentoTitle": "Accent",
       "acentoHeredado": "My profile's",
-      "acentoPropio": "Another colour"
+      "acentoPropio": "Another colour",
+      "desintegradoTitle": "How your cover comes apart",
+      "desintegrados": {
+        "arena": "Sand",
+        "teselas": "Tiles",
+        "remolino": "Whirl",
+        "cascada": "Cascade",
+        "ceniza": "Ash"
+      },
+      "desintegradosHint": {
+        "arena": "It settles falling and the wind carries it sideways. Thousands of tiny particles.",
+        "teselas": "Large squares that spin as they fly. More graphic, less atmospheric.",
+        "remolino": "Spins in from the outside and spirals out from the centre.",
+        "cascada": "Arrives sideways, horizontally, and spills downward.",
+        "ceniza": "Pixel-level: the photo fans out and breaks into the finest dust."
+      }
     }
   },
   "book": {

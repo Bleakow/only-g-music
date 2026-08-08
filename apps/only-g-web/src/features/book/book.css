@@ -586,6 +586,44 @@
   pointer-events: none;
 }
 
+/* ── Vista previa del desintegrado (editor) ───────────────────────────────
+   El efecto DE VERDAD, en bucle y en pequeño. Cinco nombres en una fila de
+   botones no le dicen a nadie qué va a ver, y menos aquí: el desintegrado es un
+   movimiento, así que en estático las cinco opciones son la misma foto.
+
+   La caja de fuera RECORTA y el marco va dentro con aire alrededor: el lienzo se
+   sale de la foto por donde vuelan las partículas —para eso existe ese margen—,
+   así que sin la caja la arena se pasearía por encima del editor. Y sin el aire
+   se cortaría en seco contra el borde de la caja. */
+
+.og-book-desint-vista {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 5 / 4;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(0 0 0 / 0.28);
+}
+
+/* La foto ocupa poco más de un tercio del alto: el resto es sitio para que se
+   vea volar. Un marco grande deja el efecto sin escenario. */
+.og-book-desint-vista-marco {
+  position: relative;
+  height: 62%;
+  aspect-ratio: 3 / 4;
+  /* NO RECORTA. Quien redondea es la propia foto; si el marco cortara, cortaría
+     también el lienzo que cuelga de él —que es justo lo que tiene que asomar— y
+     las partículas desaparecerían contra el borde de la foto. Mismo fallo que ya
+     tuvo la carta de la vitrina. */
+  overflow: visible;
+}
+.og-book-desint-vista-marco img {
+  border-radius: 0.375rem;
+}
+
 /* ── plena — grande, pero ya no un pantallazo ─────────────────────────────
    Proporción en vez de alto de pantalla, y un tope de alto. El tope es lo que
    garantiza que en un portátil siga asomando el borde de lo que viene, que es

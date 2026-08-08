@@ -1,6 +1,6 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   ATMOSFERAS,
@@ -12,6 +12,7 @@ import {
   acentoEfectivo,
   type Atmosfera,
 } from "@only-g/shared-types/book";
+import { DesintegradoPreview } from "./DesintegradoPreview";
 
 /**
  * Panel de ATMÓSFERA: cómo la modelo pone su estilo sin poder romper el book.
@@ -66,6 +67,7 @@ function Fila<T extends string>({
   valor,
   etiqueta,
   onPick,
+  children,
 }: {
   titulo: string;
   pista?: string;
@@ -73,6 +75,8 @@ function Fila<T extends string>({
   valor: T;
   etiqueta: (v: T) => string;
   onPick: (v: T) => void;
+  /** Se pinta DEBAJO de los botones: primero se elige, luego se comprueba. */
+  children?: ReactNode;
 }) {
   return (
     <div>
@@ -98,6 +102,7 @@ function Fila<T extends string>({
           );
         })}
       </div>
+      {children}
     </div>
   );
 }
@@ -106,11 +111,14 @@ export function AtmosferaPanel({
   atmosfera,
   accentDelPerfil,
   nombre,
+  portadaUrl,
   onChange,
 }: {
   atmosfera: Atmosfera;
   accentDelPerfil: string;
   nombre: string;
+  /** La foto de portada del book: la vista previa se hace con SU imagen. */
+  portadaUrl?: string;
   onChange: (a: Atmosfera) => void;
 }) {
   const t = useTranslations("bookEditor.atmosfera");
@@ -201,7 +209,12 @@ export function AtmosferaPanel({
         valor={atmosfera.desintegrado}
         etiqueta={(v) => t(`desintegrados.${v}`)}
         onPick={(desintegrado) => set({ desintegrado })}
-      />
+      >
+        <DesintegradoPreview
+          url={portadaUrl}
+          desintegrado={atmosfera.desintegrado}
+        />
+      </Fila>
       <Fila
         titulo={t("texturaTitle")}
         opciones={TEXTURAS}

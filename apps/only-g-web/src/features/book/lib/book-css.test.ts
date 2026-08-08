@@ -155,6 +155,27 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBe(false);
   });
 
+  it("la vista previa recorta por FUERA, no en el marco de la foto", () => {
+    // El lienzo del desintegrado se sale de la foto por donde vuelan las
+    // partículas —para eso existe ese margen—, así que quien recorta tiene que
+    // ser la caja de fuera. Si el marco recortara, las partículas se cortarían
+    // en seco contra el borde de la foto y el efecto se vería al revés de como
+    // es. Es el mismo fallo que ya tuvo la carta de la vitrina, y no da error.
+    const caja = REGLAS.find(
+      (r) => r.selector.trim() === ".og-book-desint-vista",
+    );
+    const marco = REGLAS.find(
+      (r) => r.selector.trim() === ".og-book-desint-vista-marco",
+    );
+    expect(caja, "falta la caja de la vista previa").toBeDefined();
+    expect(marco, "falta el marco de la vista previa").toBeDefined();
+    expect(caja!.cuerpo).toMatch(/overflow:\s*hidden/);
+    expect(
+      /overflow:\s*hidden/.test(marco!.cuerpo),
+      "el marco vuelve a recortar: se comería las partículas",
+    ).toBe(false);
+  });
+
   it("la apertura no deja aire detrás", () => {
     // Regresión del "recorrido de scroll entre la foto que se desvanece y la
     // vitrina es muy grande". La apertura TERMINA en una pantalla entera del

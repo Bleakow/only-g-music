@@ -2769,7 +2769,8 @@
         "remolino": "Entra girando desde fuera y sale en espiral desde el centro.",
         "cascada": "Llega de lado, en horizontal, y se derrama hacia abajo.",
         "ceniza": "A resolución de píxel: la foto se abre en abanico y se deshace en polvo finísimo."
-      }
+      },
+      "desintegradoSinFoto": "Sube tu foto de portada (la cuarta de la apertura) para ver el efecto aquí."
     }
   },
   "book": {

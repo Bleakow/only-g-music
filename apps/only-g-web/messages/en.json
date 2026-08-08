@@ -2769,7 +2769,8 @@
         "remolino": "Spins in from the outside and spirals out from the centre.",
         "cascada": "Arrives sideways, horizontally, and spills downward.",
         "ceniza": "Pixel-level: the photo fans out and breaks into the finest dust."
-      }
+      },
+      "desintegradoSinFoto": "Upload your cover photo (the fourth in the opening) to preview the effect here."
     }
   },
   "book": {

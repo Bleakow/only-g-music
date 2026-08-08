@@ -446,6 +446,12 @@ export function BookEditor({
         <p className="text-silver-500 mb-5 text-xs">{t("atmosfera.hint")}</p>
         <AtmosferaPanel
           atmosfera={book.atmosfera}
+          // La foto DE PORTADA (la cuarta de la apertura), que es la que se
+          // desintegra. Con la primera se estaría enseñando el efecto sobre una
+          // foto que nunca lo lleva.
+          portadaUrl={
+            book.escenas.find((e) => e.tipo === "portada")?.piezas[3]?.url
+          }
           accentDelPerfil={perfil.accent}
           nombre={perfil.nombre}
           onChange={(atmosfera) =>

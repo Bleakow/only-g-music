@@ -25,6 +25,7 @@ import {
   YouTubeIcon,
 } from "@/components/icons";
 import { BookScene } from "./BookScene";
+import { ProveedorVistaAmplia } from "./BookVistaAmplia";
 import "../book.css";
 
 /** Icono por red. Exhaustivo: añadir una plataforma rompe el typecheck aquí. */
@@ -115,6 +116,11 @@ export function BookView({
         } as CSSProperties
       }
     >
+      {/* El proveedor de la VISTA AMPLIA no pinta ningún nodo propio (devuelve
+          un fragmento y un portal a `<body>`), así que puede vivir aquí dentro
+          sin romper el `flex` de la raíz — que es quien reparte el aire entre
+          escenas y no admite un `div` de más en medio. */}
+      <ProveedorVistaAmplia>
       {esBorrador && (
         <p
           className="sticky top-0 z-40 px-4 py-2 text-center text-xs tracking-[0.14em] uppercase"
@@ -133,12 +139,12 @@ export function BookView({
         // La APERTURA se pinta sola (`BookApertura`): el nombre va dentro de su
         // escenario porque tiene que dispersarse con la coreografía, no
         // superponerse desde fuera.
-        let sobre: ReactNode = null;
+        const sobre: ReactNode = null;
 
         if (escena.tipo === "cierre") {
           const redes = redesDelCierre(escena, socials);
           return (
-            <BookScene key={escena.id} escena={escena} nombre={nombre} ritmo={atmosfera.ritmo}>
+            <BookScene key={escena.id} escena={escena} nombre={nombre}>
               <div className="flex flex-col items-center">
                 <p className="og-book-cierre-nombre">{nombre}</p>
 
@@ -189,13 +195,13 @@ export function BookView({
             key={escena.id}
             escena={escena}
             nombre={nombre}
-            ritmo={atmosfera.ritmo}
             prioritaria={escena.tipo === "portada"}
           >
             {sobre}
           </BookScene>
         );
       })}
+      </ProveedorVistaAmplia>
     </main>
   );
 }

@@ -9,12 +9,18 @@ import {
   type EscenaBook,
 } from "@only-g/shared-types/book";
 import { BookPiece } from "./BookPiece";
+import { useVistaAmplia } from "./BookVistaAmplia";
 
 /**
  * LA VITRINA: tres fotos con su descripción. Una siempre AL FRENTE y las otras
  * dos regadas a los lados, inclinadas y más pequeñas. Al tocar una de atrás, la
  * del frente sale disparada hacia un lado encogiéndose por el camino y le deja
  * el sitio; las tres se mueven, una tras otra.
+ *
+ * EL MISMO BOTÓN HACE DOS COSAS SEGÚN DÓNDE ESTÉ LA CARTA, y es lo que hace que
+ * no haga falta explicar nada: si está detrás, tocarla la trae al frente; si ya
+ * está al frente, tocarla la abre a pantalla completa. Un segundo botón encima
+ * de la foto para ampliarla habría tapado justo lo que se quiere mirar.
  *
  * EL ESTADO NO ES UN REORDENAR sino un REPARTO DE SITIOS (`ranurasDeVitrina`).
  * Dos motivos, ninguno estético:
@@ -37,6 +43,9 @@ export function BookVitrina({
   nombre: string;
 }) {
   const t = useTranslations("book");
+  // `null` fuera del book (el editor monta la vitrina como una fila de huecos):
+  // allí la carta del frente se queda sin ampliar, que es lo correcto.
+  const ampliar = useVistaAmplia();
   const [ranuras, setRanuras] = useState(() =>
     ranurasDeVitrina(escena.piezas.length),
   );
@@ -68,16 +77,29 @@ export function BookVitrina({
           const ranura = ranuras.indexOf(i);
           const sitio = sitioDeRanura(ranura);
           const enFrente = ranura === 0;
+          // La del frente solo se desactiva si NO hay dónde ampliarla: un botón
+          // vivo que no hace nada al tocarlo es peor que uno apagado.
+          const ampliable = enFrente && ampliar !== null;
           return (
             <button
               key={`${escena.id}-${i}`}
               type="button"
               className="og-book-vit-carta"
               data-slot={sitio}
-              disabled={enFrente}
-              aria-pressed={enFrente}
-              aria-label={t("vitrinaVer", { n: i + 1 })}
-              onClick={() => setRanuras((r) => traerAlFrente(r, i))}
+              data-ampliable={ampliable ? "" : undefined}
+              disabled={enFrente && !ampliable}
+              aria-label={
+                enFrente
+                  ? t("vitrinaAmpliar")
+                  : t("vitrinaAlFrente", { n: i + 1 })
+              }
+              onClick={(e) => {
+                if (!enFrente) {
+                  setRanuras((r) => traerAlFrente(r, i));
+                  return;
+                }
+                ampliar?.(pieza, pieza.titulo || nombre, e.currentTarget);
+              }}
             >
               {/* Capa interior SOLO para la entrada por scroll. El `transform`
                   de la carta ES su sitio en el carrusel y lo gobierna la

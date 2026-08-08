@@ -122,6 +122,20 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBe(false);
   });
 
+  it("la apertura no deja aire detrás", () => {
+    // Regresión del "recorrido de scroll entre la foto que se desvanece y la
+    // vitrina es muy grande". La apertura TERMINA en una pantalla entera del
+    // color de la atmósfera —la foto ya se desenfocó, las teselas ya volaron—,
+    // así que el `gap` de la raíz encima de eso es aire sobre aire. Sin este
+    // margen negativo vuelve el recorrido muerto, y es de los fallos que no dan
+    // ningún error: simplemente se hace largo.
+    const regla = REGLAS.find((r) =>
+      r.selector.includes('.og-book-escena[data-tipo="portada"]'),
+    );
+    expect(regla, "la apertura vuelve a dejar aire detrás").toBeDefined();
+    expect(regla!.cuerpo).toMatch(/margin-block-end:\s*calc\([^)]*--bk-aire[^;]*-1\)/);
+  });
+
   it("no hay bloques de escenas que ya no existan en el dominio", () => {
     const conocidas = new Set<string>(ESCENAS.map((e) => e.tipo));
     for (const m of CSS.matchAll(/\[data-escena="([^"]+)"\]/g)) {
@@ -333,6 +347,46 @@ describe("book.css — las miniaturas animadas del selector", () => {
     expect(usados.size).toBeGreaterThan(5); // guarda anti-parser-mudo
     for (const nombre of usados) {
       expect(declarados.has(nombre), `falta @keyframes ${nombre}`).toBe(true);
+    }
+  });
+});
+
+describe("book.css — la vista amplia se pinta FUERA de la raíz del book", () => {
+  const LUPA = REGLAS.filter((r) => r.selector.includes(".og-book-lupa"));
+
+  it("hay reglas de la vista amplia que comprobar", () => {
+    expect(LUPA.length).toBeGreaterThan(3);
+  });
+
+  it("el marco calca desde la esquina, no desde el centro", () => {
+    // La transformación que deja la caja de destino encima de la foto original
+    // se calcula con `translate(dx, dy) scale(s)`, y esa cuenta ASUME el origen
+    // en la esquina. Con `transform-origin: center` habría que compensar medio
+    // ancho y medio alto en cada término: la foto arrancaría descolocada y
+    // parecería un problema de medición. Nadie miraría el CSS.
+    const marco = LUPA.find((r) => r.selector.trim() === ".og-book-lupa-marco");
+    expect(marco, "falta .og-book-lupa-marco").toBeDefined();
+    expect(marco!.cuerpo).toMatch(/transform-origin:\s*top\s+left/);
+  });
+
+  it("no consume tokens de la atmósfera, que ahí ya no existen", () => {
+    // Se pinta con un PORTAL a `<body>` —obligado: `.og-book-escena` declara
+    // `container-type`, y la contención convierte al contenedor en el bloque
+    // contenedor de sus descendientes `fixed`—, así que `.og-book-root` deja de
+    // ser antepasada. Y un `var(--bk-…)` sin definir NO cae a la regla anterior:
+    // cae al valor INICIAL. Un fondo que se queda transparente sobre la web, un
+    // texto sin familia. Fallo callado de manual.
+    const declarados = new Set<string>();
+    for (const { cuerpo } of LUPA) {
+      for (const m of cuerpo.matchAll(/(--bk-[\w-]+)\s*:/g)) declarados.add(m[1]);
+    }
+    for (const { selector, cuerpo } of LUPA) {
+      for (const m of cuerpo.matchAll(/var\((--bk-[\w-]+)/g)) {
+        expect(
+          declarados.has(m[1]),
+          `${selector}: usa ${m[1]}, que fuera de .og-book-root no está definido`,
+        ).toBe(true);
+      }
     }
   });
 });

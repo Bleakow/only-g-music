@@ -10,7 +10,6 @@ import {
   type EscenaBook,
   type EscenaTipo,
   type PiezaBook,
-  type RitmoId,
 } from "@only-g/shared-types/book";
 import { BookApertura } from "./BookApertura";
 import { BookPiece } from "./BookPiece";
@@ -84,7 +83,6 @@ function Pie({ pieza, sobre }: { pieza: PiezaBook; sobre: boolean }) {
 export function BookScene({
   escena,
   nombre,
-  ritmo,
   /** Solo la portada: es la única pieza que se ve sin haber hecho scroll. */
   prioritaria = false,
   /**
@@ -96,7 +94,6 @@ export function BookScene({
 }: {
   escena: EscenaBook;
   nombre: string;
-  ritmo: RitmoId;
   prioritaria?: boolean;
   children?: ReactNode;
 }) {

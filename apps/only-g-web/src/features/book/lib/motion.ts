@@ -90,7 +90,12 @@ function apertura(
   // Estado inicial de las dos que suben. Va AQUÍ y no en el CSS a propósito: si
   // arrancaran escondidas por hoja de estilos y este módulo no llegara nunca a
   // cargarse, la apertura se quedaría con dos fotos invisibles para siempre.
-  gsap.set(diagonales, { yPercent: 175, opacity: 0 });
+  //
+  // `autoAlpha` y no `opacity`: estas dos fotos son BOTONES (se abren a pantalla
+  // completa) y una opacidad de cero sigue recibiendo clics. `autoAlpha` apaga
+  // también la visibilidad al llegar a cero, así que una foto que ya no está
+  // tampoco se puede tocar — ni con el dedo ni con el tabulador.
+  gsap.set(diagonales, { yPercent: 175, autoAlpha: 0 });
 
   const tl = gsap.timeline({
     scrollTrigger: {
@@ -186,7 +191,7 @@ function apertura(
       diagonales,
       {
         yPercent: 0,
-        opacity: 1,
+        autoAlpha: 1,
         ease: "none",
         duration: 0.26,
         stagger: 0.05,
@@ -215,7 +220,7 @@ function apertura(
         d,
         {
           xPercent: i === 0 ? -60 : 60,
-          opacity: 0,
+          autoAlpha: 0,
           ease: "none",
           duration: 0.12,
         },
@@ -501,7 +506,50 @@ function indice(escena: HTMLElement, p: Params) {
  * Animarlo aquí se lo arrebataría a la transición, y la vitrina dejaría de poder
  * cambiar de carta. Por eso solo entran el escenario entero y los textos.
  */
+/**
+ * De dónde entra cada carta y cuándo. Por ÍNDICE EN EL DOM y no por el sitio
+ * que ocupa: el sitio es estado de React y cambia con cada toque, el índice no
+ * cambia nunca. Dos por la izquierda y una por la derecha, como pide el brief.
+ *
+ * `en` es el retardo dentro de la entrada. La del frente sale la ÚLTIMA y viaja
+ * lo más lejos: primero se llenan los lados y luego aterriza la protagonista,
+ * que es donde queda mirando el ojo.
+ */
+const ENTRADA_VITRINA = [
+  { x: "-78vw", y: 40, rot: -12, en: 0.2 }, // 0 · frente — cruza toda la escena
+  { x: "-62vw", y: 58, rot: -19, en: 0 }, // 1 · izquierda
+  { x: "70vw", y: 52, rot: 16, en: 0.08 }, // 2 · derecha, ella sola
+];
+
+/**
+ * Vitrina: la ENTRADA de las cartas y la de sus textos. El cambio de carta lo
+ * gobierna el CSS —responde a un toque, no al scroll— y es a propósito: así es
+ * reversible y no se queda a medias si este módulo no llega.
+ *
+ * LA ENTRADA ARRANCA EN CUANTO LA ESCENA ASOMA (`top bottom`), que es
+ * exactamente el instante en que la foto de portada termina de desintegrarse
+ * arriba. Antes empezaba en `top 80%` y entre una cosa y otra quedaba una
+ * pantalla entera de nada — el recorrido muerto que se reportó. Ahora ese hueco
+ * ES la entrada: las tres cartas lo cruzan volando.
+ *
+ * Y VAN EN CURVA, no en línea recta. El truco es darle a cada eje su propia
+ * curva de tiempo: la carta avanza de lado antes de terminar de subir, así que
+ * el camino se comba. Con un solo tween para los dos ejes, GSAP interpola en
+ * línea recta y lo que se ve es una foto deslizándose, no volando.
+ *
+ * OJO con las CARTAS: su `transform` es el sitio que ocupan y lo pone el CSS.
+ * Animarlo aquí se lo arrebataría a la transición y la vitrina dejaría de poder
+ * cambiar de carta. Por eso todo esto va sobre la capa INTERIOR.
+ */
 function vitrina(escena: HTMLElement, p: Params) {
+  // El disparador es el ESCENARIO, no la escena. La escena incluye el título y
+  // la cita, y su alto cambia muchísimo entre móvil (todo apilado) y escritorio
+  // (texto al lado): anclando a la escena, las cartas aterrizaban centradas en
+  // escritorio y por debajo del borde inferior en móvil. El escenario mide lo
+  // mismo en proporción en los dos sitios, así que el encuadre sale igual.
+  const pista =
+    escena.querySelector<HTMLElement>(".og-book-vit-escenario") ?? escena;
+
   const textos = q<HTMLElement>(
     escena,
     ".og-book-vit-titulo, .og-book-vit-cita",
@@ -513,25 +561,60 @@ function vitrina(escena: HTMLElement, p: Params) {
       duration: p.duracion,
       ease: p.ease,
       stagger: 0.08,
-      scrollTrigger: { trigger: escena, start: "top 82%" },
+      // Justo antes de que aterricen las cartas: el título llega cuando ya hay
+      // algo que titular. Sin `scrub` a propósito — un texto que va y viene con
+      // el scroll se lee dos veces y no se termina de leer ninguna.
+      scrollTrigger: { trigger: pista, start: "top 78%" },
     });
   }
 
-  // LAS CARTAS entran una detrás de otra, cada una desde un poco más abajo y
-  // más pequeña. Se anima la capa INTERIOR, no la carta: su `transform` es el
-  // sitio que ocupa en el carrusel y lo gobierna la transición del CSS.
   const cuerpos = q<HTMLElement>(escena, ".og-book-vit-cuerpo");
   if (!cuerpos.length) return;
-  gsap.from(cuerpos, {
-    yPercent: 22,
-    scale: 0.86,
-    opacity: 0,
-    duration: p.duracion,
-    ease: p.ease,
-    // De las de atrás hacia la del frente: la principal es la última en
-    // asentarse, que es donde queda mirando el ojo.
-    stagger: { each: 0.11, from: "edges" },
-    scrollTrigger: { trigger: escena, start: "top 80%" },
+
+  const entrada = gsap.timeline({
+    scrollTrigger: {
+      trigger: pista,
+      // En cuanto el escenario asoma por abajo. Es el relevo con el desintegrado
+      // de la apertura, que termina exactamente ahí.
+      start: "top bottom",
+      // Y aterrizan con el escenario ya encuadrado. Si acabaran más tarde, el
+      // final del vuelo pillaría la vitrina a medio salir por arriba.
+      end: "center 58%",
+      scrub: arrastre(p),
+    },
+  });
+
+  cuerpos.forEach((cuerpo, i) => {
+    const d = ENTRADA_VITRINA[i % ENTRADA_VITRINA.length];
+    // El desplazamiento va en `vw` y no en porcentaje de la carta: las cartas de
+    // los lados llegan al 56% de tamaño y su padre escala también la traslación,
+    // así que un porcentaje de sí mismas dejaba a dos de las tres empezando
+    // dentro de la pantalla — "aparecen de los laterales" y no aparecían de
+    // ninguna parte, se materializaban sobre el título.
+    entrada.fromTo(
+      cuerpo,
+      { x: d.x },
+      { x: 0, ease: "power2.out", duration: 0.8 },
+      d.en,
+    );
+    entrada.fromTo(
+      cuerpo,
+      { yPercent: d.y },
+      { yPercent: 0, ease: "power2.in", duration: 0.8 },
+      d.en,
+    );
+    entrada.fromTo(
+      cuerpo,
+      { rotation: d.rot, scale: 0.68, opacity: 0 },
+      {
+        rotation: 0,
+        scale: 1,
+        opacity: 1,
+        ease: "power1.out",
+        duration: 0.62,
+      },
+      d.en,
+    );
   });
 }
 

@@ -1,8 +1,67 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { META_ESQUINAS, type EscenaBook } from "@only-g/shared-types/book";
+import {
+  META_ESQUINAS,
+  type EscenaBook,
+  type PiezaBook,
+} from "@only-g/shared-types/book";
 import { BookPiece } from "./BookPiece";
+import { useVistaAmplia } from "./BookVistaAmplia";
+
+/**
+ * Una de las dos que suben. Es un BOTÓN y no un `div` porque se puede abrir a
+ * pantalla completa: envolverla en algo pulsable por fuera habría dejado el área
+ * de toque desalineada con la foto en cuanto la coreografía la mueve.
+ *
+ * El marco lo sigue gobernando el CSS (`data-orden` decide su esquina) y la
+ * coreografía lo sigue agarrando por `.og-book-ap-diagonal`: cambia la etiqueta,
+ * no el contrato.
+ */
+function Diagonal({
+  pieza,
+  orden,
+  alt,
+}: {
+  pieza: PiezaBook;
+  orden: 1 | 2;
+  alt: string;
+}) {
+  const t = useTranslations("book");
+  const ampliar = useVistaAmplia();
+
+  const contenido = (
+    <BookPiece
+      pieza={pieza}
+      alt=""
+      sizes="(max-width: 48rem) 62vw, 34vw"
+      usarRatio={false}
+    />
+  );
+
+  // Sin proveedor —no debería pasar dentro del book, pero es barato— se queda
+  // como estaba: una foto que sube y se coloca.
+  if (!ampliar) {
+    return (
+      <div className="og-book-ap-diagonal" data-orden={orden}>
+        {contenido}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="og-book-ap-diagonal"
+      data-orden={orden}
+      data-ampliable=""
+      aria-label={t("verEnGrande", { n: orden })}
+      onClick={(e) => ampliar(pieza, alt, e.currentTarget)}
+    >
+      {contenido}
+    </button>
+  );
+}
 
 /**
  * LA APERTURA (§10) — la primera escena, idéntica en todos los books y no
@@ -65,27 +124,10 @@ export function BookApertura({
           </div>
 
           {/* Capas 2 y 3 — suben desde abajo en diagonal. Sin texto: son
-              imagen pura, y así lo pidió el brief. */}
-          {segunda && (
-            <div className="og-book-ap-diagonal" data-orden="1">
-              <BookPiece
-                pieza={segunda}
-                alt=""
-                sizes="(max-width: 48rem) 62vw, 34vw"
-                usarRatio={false}
-              />
-            </div>
-          )}
-          {tercera && (
-            <div className="og-book-ap-diagonal" data-orden="2">
-              <BookPiece
-                pieza={tercera}
-                alt=""
-                sizes="(max-width: 48rem) 62vw, 34vw"
-                usarRatio={false}
-              />
-            </div>
-          )}
+              imagen pura, y así lo pidió el brief. Se pueden abrir a pantalla
+              completa; el texto sigue sin existir para ellas. */}
+          {segunda && <Diagonal pieza={segunda} orden={1} alt={nombre} />}
+          {tercera && <Diagonal pieza={tercera} orden={2} alt={nombre} />}
 
           {/* Capa 4 — LA FOTO DE PORTADA. Contenida, con su texto, y con el
               desintegrado que la arma y la deshace. Debajo de las teselas queda

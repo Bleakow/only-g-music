@@ -333,6 +333,19 @@
   position: relative;
 }
 
+/* SIN AIRE DETRÁS. La apertura termina en una pantalla entera del color de la
+   atmósfera —la foto ya se desenfocó, las teselas ya volaron—, así que el hueco
+   de después sería aire sobre aire. Es la mitad del "recorrido de scroll muy
+   grande" que se reportó entre la foto que se desintegra y la vitrina; la otra
+   mitad la cubre la entrada en curva de las cartas, que arranca justo aquí.
+
+   Un margen NEGATIVO del tamaño del hueco y no un `gap` distinto: sobre un
+   contenedor flex el margen se SUMA al hueco, así que `-aire` lo deja en cero
+   sin tener que declarar excepciones en la raíz. */
+.og-book-escena[data-tipo="portada"] {
+  margin-block-end: calc(var(--bk-aire) * -1);
+}
+
 .og-book-ap-escenario {
   position: sticky;
   top: 0;
@@ -399,6 +412,18 @@
   overflow: hidden;
   border-radius: 0.5rem;
   width: 62%;
+  /* Es un `<button>` (se abre a pantalla completa), así que hay que desmontarle
+     el traje que le pone el navegador: relleno, borde y fondo propios harían que
+     la foto dejara de encajar en su marco. */
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  cursor: zoom-in;
+}
+.og-book-ap-diagonal:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 .og-book-ap-diagonal[data-orden="1"] {
   left: 6%;
@@ -732,7 +757,14 @@
   width: 58%;
   aspect-ratio: 3 / 4;
   border-radius: 0.75rem;
-  overflow: hidden;
+  /* NO RECORTA, y no es un descuido. Quien redondea la foto es la capa interior
+     (`.og-book-vit-cuerpo`, que hereda este mismo radio y sí recorta). Si la
+     carta recortara, la entrada por scroll —que mueve esa capa interior desde
+     fuera de la pantalla— se vería como una carta vacía que se va llenando por
+     un lado: el vuelo entero quedaría cortado contra el borde de su propio
+     hueco. Es el mismo motivo por el que el marco del desintegrado tampoco
+     recorta. */
+  overflow: visible;
   cursor: pointer;
   /* Valores por defecto: si `data-slot` faltara, la carta se queda centrada en
      vez de salir volando a una esquina. */
@@ -756,6 +788,9 @@
   --vr: 0deg;
   z-index: 3;
   cursor: default;
+  /* La que está al frente ya no cambia de sitio: lo que hace es ABRIRSE. El
+     cursor es lo único que lo anuncia, y es suficiente — nadie necesita que se
+     lo expliquen dos veces. */
   /* Llega la ÚLTIMA. Ese retardo es lo que convierte tres movimientos
      simultáneos en un carrusel: primero se abre el hueco, luego lo ocupa. */
   transition-delay: 0.09s;
@@ -778,6 +813,10 @@
 
 /* Las de atrás se apagan: con tres fotos al mismo peso visual ninguna es la
    principal, y la vitrina deja de tener frente. */
+.og-book-vit-carta[data-ampliable] {
+  cursor: zoom-in;
+}
+
 .og-book-vit-carta:not([data-slot="frente"]) {
   filter: brightness(0.6) saturate(0.75);
 }
@@ -1395,6 +1434,122 @@
   }
 }
 
+/* ── LA VISTA AMPLIA ──────────────────────────────────────────────────────
+   La foto crece desde su sitio hasta ocupar la pantalla. Solo en las dos que
+   suben en la apertura y en las tres de la vitrina — las demás cuentan su
+   historia dentro de su escena.
+
+   SE PINTA CON UN PORTAL A `<body>`, fuera de `.og-book-root`, y no es un
+   capricho: `.og-book-escena` declara `container-type`, que implica contención
+   de layout, y un elemento con contención se convierte en el bloque contenedor
+   de sus descendientes `position: fixed`. Dentro de la escena, "pantalla
+   completa" habría significado "la escena completa".
+
+   La consecuencia de estar fuera es que aquí NO se puede consumir la paleta de
+   la atmósfera: cuelga de una raíz que ya no es antepasada, y un `var()` sin
+   definir no cae a la regla anterior, cae al valor inicial. Por eso este bloque
+   escribe sus colores a mano y declara su propio `--bk-display`. Y por eso el
+   fondo es siempre el mismo negro azulado: un visor de fotos es un visor de
+   fotos, y teñirlo con la atmósfera solo serviría para restarle contraste
+   justo donde la foto lo es todo. */
+
+.og-book-lupa {
+  --bk-display: var(--font-narrow), system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  /* Por encima de la textura del book (30) y del aviso de borrador (40). */
+  z-index: 60;
+}
+
+/* El fondo ES el sitio donde se toca para salir: en una foto a pantalla
+   completa, tocar fuera es lo que todo el mundo intenta antes de buscar la
+   cruz. Por eso es un `<button>` y no un `div` con un `onClick`. */
+.og-book-lupa-fondo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgb(6 5 10 / 0.94);
+  backdrop-filter: blur(16px);
+  cursor: zoom-out;
+  animation: bk-lupa-entra 420ms ease both;
+}
+
+.og-book-lupa-marco {
+  position: fixed;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.04);
+  /* La cuenta que calca el destino sobre el origen ASUME ESTE ORIGEN. Con el
+     origen en el centro habría que compensar medio ancho y medio alto en cada
+     término, y esa es justo la clase de aritmética que se equivoca en silencio:
+     la foto arrancaría descolocada y parecería un problema de medición. */
+  transform-origin: top left;
+  will-change: transform;
+}
+
+/* La caja y la transformación las escribe el componente: dependen de dónde esté
+   la foto en ese momento, que solo se sabe al tocarla. */
+
+.og-book-lupa-cerrar {
+  position: fixed;
+  top: clamp(0.75rem, 2vw, 1.5rem);
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  /* Entra DESPUÉS que el fondo: primero se hace el silencio, luego aparece la
+     salida. Al revés, la cruz compite con la foto justo cuando llega. */
+  animation: bk-lupa-entra 420ms 160ms ease both;
+  transition:
+    background 0.25s ease,
+    transform 0.25s ease;
+}
+.og-book-lupa-cerrar:is(:hover, :focus-visible) {
+  background: rgb(255 255 255 / 0.18);
+  transform: scale(1.06);
+}
+
+.og-book-lupa-pie {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(0.75rem, 3vh, 2rem);
+  transform: translateX(-50%);
+  max-width: min(40rem, 90vw);
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.7);
+  pointer-events: none;
+  animation: bk-lupa-entra 420ms 220ms ease both;
+}
+
+@keyframes bk-lupa-entra {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes bk-lupa-sale {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Al cerrar, el marco se queda solo: el fondo y los adornos se apagan mientras
+   la foto todavía está volando de vuelta a su sitio. Es lo que hace que el
+   regreso se lea como "vuelve a su hueco" y no como "se cierra una ventana". */
+.og-book-lupa[data-cerrando]
+  :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie) {
+  animation: bk-lupa-sale 380ms ease both;
+}
+
 /* ── Tipografía del book ──────────────────────────────────────────────── */
 
 .og-book-display {
@@ -1452,5 +1607,13 @@
   /* A quien le molesta el movimiento suele molestarle el texto vibrando. */
   .og-book-cierre-nombre {
     text-shadow: none;
+  }
+  /* La vista amplia SIGUE ABRIÉNDOSE, solo que sin el viaje: quitarla dejaría
+     cinco fotos que no se pueden mirar de cerca. El componente lee la misma
+     preferencia para no esperar a una transición que ya no existe. */
+  .og-book-lupa :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie),
+  .og-book-lupa[data-cerrando]
+    :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie) {
+    animation: none;
   }
 }

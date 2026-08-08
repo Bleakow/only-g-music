@@ -493,14 +493,18 @@ function indice(escena: HTMLElement, p: Params) {
 }
 
 /**
- * Vitrina: solo la ENTRADA. El intercambio al tocar una miniatura lo gobierna el
- * propio componente con Flip, porque responde a un clic y no al scroll — mezclar
- * las dos cosas aquí sería que un scroll pudiera pisar una traslación a medias.
+ * Vitrina: solo la ENTRADA por scroll. El cambio de carta lo gobierna el CSS
+ * —responde a un toque, no al scroll— y es a propósito: así es reversible y no
+ * se queda a medias si este módulo no llega.
+ *
+ * OJO con las CARTAS: su `transform` es el sitio que ocupan, y lo pone el CSS.
+ * Animarlo aquí se lo arrebataría a la transición, y la vitrina dejaría de poder
+ * cambiar de carta. Por eso solo entran el escenario entero y los textos.
  */
 function vitrina(escena: HTMLElement, p: Params) {
   const partes = q<HTMLElement>(
     escena,
-    ".og-book-vit-titulo, .og-book-vit-figura, .og-book-vit-cita",
+    ".og-book-vit-titulo, .og-book-vit-escenario, .og-book-vit-cita",
   );
   if (!partes.length) return;
   gsap.from(partes, {

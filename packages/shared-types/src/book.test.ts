@@ -15,6 +15,7 @@ import {
   MEDIDAS_ELEGIBLES,
   META_ESQUINAS,
   ROLES_APERTURA,
+  SITIOS_VITRINA,
   RITMOS,
   TEXTURAS,
   acentoEfectivo,
@@ -31,6 +32,7 @@ import {
   esFotoDePortada,
   medidaDeEscena,
   rolDePiezaApertura,
+  sitioDeRanura,
   moverEscena,
   normalizarAtmosfera,
   normalizarBook,
@@ -609,6 +611,18 @@ describe("anadirEscena", () => {
 });
 
 describe("vitrina — el reparto de ranuras", () => {
+  it("hay un sitio por ranura, ni más ni menos", () => {
+    // Tres cartas y tres sitios. Si el catálogo admitiera una cuarta foto,
+    // `sitioDeRanura` devolvería undefined y esa carta se quedaría sin sitio —
+    // apilada en el centro encima de la del frente.
+    const def = escenaDef("vitrina")!;
+    expect(def.min).toBe(SITIOS_VITRINA.length);
+    expect(def.max).toBe(SITIOS_VITRINA.length);
+    expect(sitioDeRanura(0)).toBe("frente");
+    expect(sitioDeRanura(def.max - 1)).toBeDefined();
+    expect(sitioDeRanura(def.max)).toBeUndefined();
+  });
+
   it("arranca con cada pieza en su ranura", () => {
     expect(ranurasDeVitrina(4)).toEqual([0, 1, 2, 3]);
   });

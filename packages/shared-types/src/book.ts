@@ -254,16 +254,22 @@ export const ESCENAS: EscenaDef[] = [
   },
   {
     tipo: "vitrina",
+    /**
+     * TRES cartas y tres sitios: una al frente y dos regadas a los lados. El
+     * número no es una preferencia, es la coreografía — hay exactamente tres
+     * posiciones, y admitir una cuarta obligaría a inventarle un sitio que la
+     * composición no tiene.
+     */
     min: 3,
-    max: 5,
-    // Un clip puede ser la principal, pero no la mitad de la vitrina: cada
-    // miniatura es candidata a saltar al hueco grande, y cuatro vídeos esperando
-    // turno son cuatro descargas que nadie ha pedido.
+    max: 3,
+    // Un clip puede estar al frente, pero no media vitrina: las tres cartas se
+    // ven a la vez y tres vídeos ahí son tres descargas simultáneas.
     maxVideos: 1,
     maxNotas: 0,
     admiteTextoPorPieza: true,
     medida: "amplia",
-    textoEnRejilla: true,
+    // La descripción de la carta que está al frente va en el área `n` de la
+    // rejilla, al lado del escenario — no debajo de cada foto.
     notaEnRejilla: true,
   },
   {
@@ -490,6 +496,20 @@ export function esFotoDePortada(tipo: EscenaTipo, i: number): boolean {
  */
 export function ranurasDeVitrina(piezas: number): number[] {
   return Array.from({ length: Math.max(0, piezas) }, (_, i) => i);
+}
+
+/**
+ * Los tres sitios de la vitrina, en orden de ranura. La ranura 0 es la carta que
+ * está AL FRENTE; las otras dos quedan regadas a los lados, cada una con su
+ * inclinación y su tamaño (que declara el CSS) para que se lea como un montón
+ * desordenado y no como una fila.
+ */
+export const SITIOS_VITRINA = ["frente", "izq", "der"] as const;
+export type SitioVitrina = (typeof SITIOS_VITRINA)[number];
+
+/** En qué sitio cae la ranura `r`. */
+export function sitioDeRanura(r: number): SitioVitrina | undefined {
+  return SITIOS_VITRINA[r];
 }
 
 /**

@@ -1,160 +1,111 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { areaDeRanura } from "@only-g/shared-types/gallery-layout";
 import {
   ranurasDeVitrina,
+  sitioDeRanura,
   traerAlFrente,
   type EscenaBook,
-  type RitmoId,
 } from "@only-g/shared-types/book";
 import { BookPiece } from "./BookPiece";
-import type { EstadoVitrina } from "../lib/vitrina-flip";
 
 /**
- * LA VITRINA: una foto grande con su cita y 2-4 miniaturas al lado. Al tocar una
- * miniatura, esa foto y la grande SE CAMBIAN EL SITIO con una traslación.
+ * LA VITRINA: tres fotos con su descripción. Una siempre AL FRENTE y las otras
+ * dos regadas a los lados, inclinadas y más pequeñas. Al tocar una de atrás, la
+ * del frente sale disparada hacia un lado encogiéndose por el camino y le deja
+ * el sitio; las tres se mueven, una tras otra.
  *
- * El estado NO es un reordenar de `escena.piezas` sino un REPARTO de ranuras
- * (`ranurasDeVitrina`). Dos motivos, ninguno estético:
- *  1. `escena.piezas` es el dato que guardó la modelo — si mirar el book lo
+ * EL ESTADO NO ES UN REORDENAR sino un REPARTO DE SITIOS (`ranurasDeVitrina`).
+ * Dos motivos, ninguno estético:
+ *  1. `escena.piezas` es el dato que guardó la modelo. Si mirar el book lo
  *     reordenara, mirar sería editar.
- *  2. Si el array cambiara de orden, React movería los nodos del DOM, y mover
- *     nodos rompe a la vez el foco del teclado y la identidad que necesita la
- *     animación: el elemento que se mide ANTES tiene que ser el MISMO que se
- *     anima después. Aquí lo único que cambia es el `grid-area` de cada figura.
+ *  2. Si el array cambiara de orden, React movería los nodos del DOM — y mover
+ *     un nodo cancela su transición a medias y le roba el foco al teclado. Aquí
+ *     cada carta se queda en su sitio del DOM y lo único que cambia es su
+ *     `data-slot`; de interpolar entre un sitio y otro se encarga el CSS.
  *
- * La coordinación con React es la parte delicada. Se captura la geometría en el
- * MANEJADOR del clic —entre el clic y el commit no cabe ni un scroll— y se anima
- * en un `useLayoutEffect`, que corre tras la mutación del DOM y ANTES del
- * pintado. Con `useEffect` se vería el salto y luego la animación; capturando
- * dentro del efecto se mediría el DOM ya movido y no habría nada que interpolar.
+ * Por eso este componente no tiene ni una línea de animación: toda la
+ * coreografía vive en `book.css`. Es lo que la hace reversible (tocar dos veces
+ * deja todo donde estaba) y a prueba de que el motor de scroll no llegue.
  */
 export function BookVitrina({
   escena,
   nombre,
-  ritmo,
 }: {
   escena: EscenaBook;
   nombre: string;
-  ritmo: RitmoId;
 }) {
   const t = useTranslations("book");
-  const raiz = useRef<HTMLDivElement>(null);
-  const capturado = useRef<EstadoVitrina | null>(null);
   const [ranuras, setRanuras] = useState(() =>
     ranurasDeVitrina(escena.piezas.length),
   );
 
   // Si la modelo añade o quita fotos en el editor, el reparto se rehace.
-  const esperado = escena.piezas.length;
-  if (ranuras.length !== esperado) {
-    setRanuras(ranurasDeVitrina(esperado));
-  }
-
-  useLayoutEffect(() => {
-    const estado = capturado.current;
-    if (!estado) return;
-    capturado.current = null;
-
-    let tl: { kill: () => void } | null = null;
-    let cancelado = false;
-    // El módulo de la animación se carga aparte: si no llega, el intercambio ya
-    // ocurrió — solo falta el viaje.
-    import("../lib/vitrina-flip")
-      .then(({ animar }) => {
-        if (cancelado) return;
-        tl = animar(estado, ritmo);
-      })
-      .catch(() => {});
-
-    return () => {
-      cancelado = true;
-      tl?.kill(); // StrictMode monta dos veces
-    };
-  }, [ranuras, ritmo]);
-
-  async function seleccionar(pieza: number) {
-    const el = raiz.current;
-    if (!el) return;
-    const siguiente = traerAlFrente(ranuras, pieza);
-    // Misma referencia = ya estaba delante. Ni se captura ni se re-renderiza.
-    if (siguiente === ranuras) return;
-
-    try {
-      const { capturar } = await import("../lib/vitrina-flip");
-      capturado.current = capturar(
-        Array.from(el.querySelectorAll(".og-book-vit-figura")),
-      );
-    } catch {
-      /* sin animación: el cambio será seco, que sigue siendo el cambio */
-    }
-    setRanuras(siguiente);
+  if (ranuras.length !== escena.piezas.length) {
+    setRanuras(ranurasDeVitrina(escena.piezas.length));
   }
 
   const alFrente = escena.piezas[ranuras[0]];
 
   return (
     <div
-      ref={raiz}
       className="og-book-grid"
       data-escena="vitrina"
-      data-piezas={escena.piezas.length}
       data-medida="amplia"
+      data-piezas={escena.piezas.length}
     >
       {escena.encabezado && (
-        <h2
-          className="og-book-display og-book-vit-titulo"
-          style={{ gridArea: "h" }}
-        >
+        <h2 className="og-book-display og-book-vit-titulo">
           {escena.encabezado}
         </h2>
       )}
 
-      {ranuras.map((pieza, ranura) => {
-        const p = escena.piezas[pieza];
-        if (!p) return null;
-        const principal = ranura === 0;
-        return (
-          <figure
-            // La clave es la PIEZA, no la ranura: así React conserva el mismo
-            // nodo cuando cambia de sitio, que es lo que necesita la traslación
-            // para saber qué está moviendo.
-            key={`${escena.id}-${pieza}`}
-            className="og-book-figura og-book-vit-figura"
-            data-vit={principal ? "principal" : "miniatura"}
-            style={{ gridArea: areaDeRanura(ranura) }}
-          >
-            <BookPiece
-              pieza={p}
-              alt={p.titulo || nombre}
-              // La principal ocupa media escena y las miniaturas un cuarto:
-              // servirles la misma foto multiplica por cuatro los bytes justo
-              // en la escena que más se mira.
-              sizes={
-                principal
-                  ? "(max-width: 48rem) 100vw, 42vw"
-                  : "(max-width: 48rem) 33vw, 22vw"
-              }
-              usarRatio={false}
-            />
+      <div className="og-book-vit-escenario">
+        {escena.piezas.map((pieza, i) => {
+          // Dónde está ESTA pieza ahora mismo. El índice del array es su sitio
+          // en el DOM y no cambia nunca; lo que cambia es en qué ranura está.
+          const ranura = ranuras.indexOf(i);
+          const sitio = sitioDeRanura(ranura);
+          const enFrente = ranura === 0;
+          return (
             <button
+              key={`${escena.id}-${i}`}
               type="button"
-              className="og-book-vit-boton"
-              onClick={() => void seleccionar(pieza)}
-              disabled={principal}
-              aria-pressed={principal}
-              aria-label={t("vitrinaVer", { n: pieza + 1 })}
-            />
-          </figure>
-        );
-      })}
+              className="og-book-vit-carta"
+              data-slot={sitio}
+              disabled={enFrente}
+              aria-pressed={enFrente}
+              aria-label={t("vitrinaVer", { n: i + 1 })}
+              onClick={() => setRanuras((r) => traerAlFrente(r, i))}
+            >
+              <BookPiece
+                pieza={pieza}
+                alt={pieza.titulo || nombre}
+                // La del frente ocupa media escena; las de atrás, poco más de un
+                // cuarto. Servirles la misma foto multiplicaría los bytes en la
+                // escena que más se mira.
+                sizes={
+                  enFrente
+                    ? "(max-width: 48rem) 58vw, 24vw"
+                    : "(max-width: 48rem) 34vw, 14vw"
+                }
+                usarRatio={false}
+              />
+            </button>
+          );
+        })}
+      </div>
 
-      {(alFrente?.nota || alFrente?.titulo) && (
-        <figcaption className="og-book-vit-cita" style={{ gridArea: "n" }}>
+      {(alFrente?.titulo || alFrente?.nota) && (
+        // La `key` es lo que hace que el texto vuelva a entrar al cambiar de
+        // carta: sin ella React reutilizaría el nodo, el contenido cambiaría de
+        // golpe a mitad del viaje y se perdería el relevo.
+        <figcaption key={ranuras[0]} className="og-book-vit-cita">
           {alFrente.nota && (
-            <blockquote className="og-book-vit-frase">{alFrente.nota}</blockquote>
+            <blockquote className="og-book-vit-frase">
+              {alFrente.nota}
+            </blockquote>
           )}
           {alFrente.titulo && (
             <p className="og-book-vit-firma">

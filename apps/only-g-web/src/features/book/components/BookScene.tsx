@@ -136,7 +136,7 @@ export function BookScene({
           no una colocación fija. Delega ENTERA en vez de llenar esta función de
           condicionales que solo valen para ella. */}
       {escena.tipo === "vitrina" ? (
-        <BookVitrina escena={escena} nombre={nombre} ritmo={ritmo} />
+        <BookVitrina escena={escena} nombre={nombre} />
       ) : (
         <>
           {escena.encabezado && !sobre && !def.textoEnRejilla && (

@@ -176,11 +176,17 @@ describe("book.css — las rejillas son válidas", () => {
     },
   );
 
-  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h", () => {
+  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h, escenario s", () => {
+    // `s` (escenario) NO es una letra libre: la vitrina apila sus cartas con
+    // posición absoluta dentro de un escenario, y ese escenario necesita su
+    // propia área. Se llamó `e` en el primer intento y esta prueba lo cazó —
+    // `e` es la QUINTA ranura de piezas (`areaDeRanura(4)`), así que una escena
+    // de cinco fotos habría colocado una encima del escenario de otra.
     const validos = new Set([
       ...Array.from({ length: 6 }, (_, i) => areaDeRanura(i)),
       "n",
       "h",
+      "s",
       ".",
     ]);
     for (const { selector, filas } of conAreas) {
@@ -211,7 +217,7 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
       );
       for (const { selector, filas } of filasDe(tipo)) {
         for (const nombre of filas.flat()) {
-          if (nombre === "n" || nombre === "h" || nombre === ".") continue;
+          if (["n", "h", "s", "."].includes(nombre)) continue;
           expect(
             permitidas.has(nombre),
             `${selector}: usa el área "${nombre}" pero la escena admite ${max} pieza(s)`,

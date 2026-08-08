@@ -685,109 +685,141 @@
       Es el fallo clásico de Flip dentro de un grid, y parece otra cosa: "las
       fotos saltan". */
 
+/* ── vitrina — el CARRUSEL de tres cartas ──────────────────────────────────
+   Tres fotos con su descripción: una siempre AL FRENTE y las otras dos regadas
+   a los lados, inclinadas y más pequeñas. Al tocar una de las de atrás, la del
+   frente sale disparada hacia un lado encogiéndose por el camino y le deja el
+   sitio; las tres se mueven, una tras otra.
+
+   POR QUÉ CON TRANSICIONES CSS Y NO CON GSAP. El cambio de carta responde a un
+   toque, no al scroll, y esto es exactamente lo que las transiciones hacen bien:
+   es reversible (tocar dos veces deja todo donde estaba), no puede quedarse a
+   medias si el motor de animación no llega, y con `prefers-reduced-motion` se
+   apaga con una línea. Traer GSAP para interpolar cuatro números sería pagar un
+   módulo entero por algo que el navegador ya sabe hacer.
+
+   Cada sitio se declara como cuatro variables y hay UNA sola regla de
+   `transform` que las compone. Así las tres cartas interpolan entre listas de
+   transformación con la misma forma —requisito para que el navegador anime en
+   vez de saltar— sin repetir la fórmula tres veces. */
+
 .og-book-grid[data-escena="vitrina"] {
-  /* Las figuras absolutas del intercambio se cuelgan de la caja posicionada más
-     cercana. Sin esto se cuelgan de la escena, cuyo padding queda fuera, y el
-     vuelo empieza desplazado justo lo que mide ese padding. */
-  position: relative;
-  --bk-vit-hueco: 0.55rem;
-  --bk-vit-alto: 118cqw;
-  gap: var(--bk-vit-hueco);
-}
-
-.og-book-grid[data-escena="vitrina"],
-.og-book-grid[data-escena="vitrina"][data-piezas="3"] {
-  --bk-cols: 2;
-  grid-template-areas: "h h" "a a" "n n" "b c";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 26cqw;
-}
-.og-book-grid[data-escena="vitrina"][data-piezas="4"] {
-  --bk-cols: 3;
-  grid-template-areas: "h h h" "a a a" "n n n" "b c d";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 24cqw;
-}
-.og-book-grid[data-escena="vitrina"][data-piezas="5"] {
-  --bk-cols: 4;
-  grid-template-areas: "h h h h" "a a a a" "n n n n" "b c d e";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 22cqw;
-}
-
-/* La figura ocupa su celda entera y la foto recorta: las ranuras de la vitrina
-   tienen proporciones distintas —la grande vertical, las miniaturas casi
-   cuadradas— y es LA MISMA foto la que pasa por las dos. */
-.og-book-grid[data-escena="vitrina"] .og-book-figura,
-.og-book-grid[data-escena="vitrina"] .og-book-pieza {
-  height: 100%;
-  aspect-ratio: auto;
-}
-.og-book-grid[data-escena="vitrina"] .og-book-pieza {
-  border-radius: inherit;
-}
-
-/* El redondeo cambia con el sitio y la animación lo interpola: sin declararlo
-   por separado saltaría de golpe en el primer fotograma del vuelo. */
-.og-book-vit-figura[data-vit="principal"] {
-  border-radius: 0.9rem;
-}
-.og-book-vit-figura[data-vit="miniatura"] {
-  border-radius: 0.55rem;
-}
-
-/* El botón es TODA la celda, no un icono dentro: apuntar a 32 px en un móvil es
-   pedir puntería. Va como capa aparte y no envolviendo la foto porque un `<div>`
-   dentro de un `<button>` es HTML inválido, y porque así el texto alternativo de
-   la imagen sigue siendo suyo y no el nombre del botón. */
-.og-book-vit-boton {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  cursor: pointer;
-}
-.og-book-vit-figura[data-vit="principal"] .og-book-vit-boton {
-  cursor: default;
-}
-.og-book-vit-boton:focus-visible {
-  outline: 2px solid var(--bk-acento);
-  outline-offset: 3px;
-}
-
-/* Las miniaturas se apagan un poco: con cinco fotos al mismo peso visual
-   ninguna es la principal. */
-.og-book-vit-figura .og-book-pieza {
-  transition: filter 0.45s ease;
-}
-.og-book-vit-figura[data-vit="miniatura"] .og-book-pieza {
-  filter: grayscale(0.4) brightness(0.78);
-}
-.og-book-vit-figura[data-vit="miniatura"]:hover .og-book-pieza,
-.og-book-vit-figura[data-vit="miniatura"]:focus-within .og-book-pieza {
-  filter: grayscale(0) brightness(1);
+  --bk-cols: 1;
+  grid-template-areas: "h" "s" "n";
+  gap: 1.5rem;
 }
 
 .og-book-vit-titulo {
-  align-self: start;
-  font-size: clamp(2rem, 8.5cqw, 4.5rem);
+  grid-area: h;
+  font-size: clamp(1.75rem, 6cqi, 3.5rem);
 }
 
+/* El escenario: las tres cartas se apilan encima con posición absoluta, así que
+   necesita alto propio o se desploma a cero. */
+.og-book-vit-escenario {
+  grid-area: s;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  /* Las cartas de los lados salen del ancho del escenario a propósito: es lo que
+     las hace ver "regadas" y no metidas en una caja. */
+  overflow: visible;
+}
+
+.og-book-vit-carta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58%;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  cursor: pointer;
+  /* Valores por defecto: si `data-slot` faltara, la carta se queda centrada en
+     vez de salir volando a una esquina. */
+  --vx: 0%;
+  --vy: 0%;
+  --vs: 1;
+  --vr: 0deg;
+  transform: translate(-50%, -50%) translate(var(--vx), var(--vy))
+    scale(var(--vs)) rotate(var(--vr));
+  /* Sale rápido y se posa despacio: es el "se mueve rápidamente hacia un lado"
+     del brief. Una curva simétrica se sentiría floja. */
+  transition:
+    transform 0.62s cubic-bezier(0.16, 0.84, 0.3, 1),
+    filter 0.5s ease;
+}
+
+.og-book-vit-carta[data-slot="frente"] {
+  --vx: 0%;
+  --vy: 0%;
+  --vs: 1;
+  --vr: 0deg;
+  z-index: 3;
+  cursor: default;
+  /* Llega la ÚLTIMA. Ese retardo es lo que convierte tres movimientos
+     simultáneos en un carrusel: primero se abre el hueco, luego lo ocupa. */
+  transition-delay: 0.09s;
+}
+.og-book-vit-carta[data-slot="izq"] {
+  --vx: -74%;
+  --vy: -7%;
+  --vs: 0.56;
+  --vr: -9deg;
+  z-index: 1;
+}
+.og-book-vit-carta[data-slot="der"] {
+  --vx: 76%;
+  --vy: 9%;
+  --vs: 0.6;
+  --vr: 7deg;
+  z-index: 2;
+  transition-delay: 0.04s;
+}
+
+/* Las de atrás se apagan: con tres fotos al mismo peso visual ninguna es la
+   principal, y la vitrina deja de tener frente. */
+.og-book-vit-carta:not([data-slot="frente"]) {
+  filter: brightness(0.6) saturate(0.75);
+}
+.og-book-vit-carta:not([data-slot="frente"]):is(:hover, :focus-visible) {
+  filter: brightness(0.9) saturate(1);
+}
+.og-book-vit-carta:focus-visible {
+  outline: 2px solid var(--bk-acento);
+  outline-offset: 4px;
+}
+
+.og-book-vit-carta .og-book-pieza {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+/* La descripción de la que está al frente. Cambia con la carta, así que entra
+   con su propia animación en vez de aparecer de golpe a media transición. */
 .og-book-vit-cita {
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.35rem;
+  grid-area: n;
+  min-height: 5.5rem;
+  animation: bk-vit-cita 0.5s 0.18s backwards ease-out;
+}
+@keyframes bk-vit-cita {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 }
 /* La familia del display SIN el `text-transform` de `.og-book-display`: una cita
    en mayúsculas condensadas no se lee, se descifra. */
 .og-book-vit-frase {
   margin: 0;
-  max-width: 42ch;
+  max-width: 46ch;
   font-family: var(--bk-display);
-  font-size: clamp(1.05rem, 2.6cqw, 1.65rem);
+  font-size: clamp(1.05rem, 2.6cqi, 1.6rem);
   line-height: 1.35;
   text-wrap: pretty;
 }
 .og-book-vit-firma {
+  margin-top: 0.6rem;
   font-size: 0.7rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -923,47 +955,31 @@
     grid-template-areas: "h h h h" "a b c d";
   }
 
-  /* `--bk-cols` se REDECLARA en cada bloque: la regla estrecha lleva
-     `[data-piezas]` y es más específica que esta, así que sin repetirlo aquí
-     ganaría el valor de móvil y la rejilla de doce columnas nunca aparecería.
-     Es la misma trampa que ya tenía resuelta `rejilla`. */
+  /* En ancho el escenario se tumba y el texto se va al lado: el título arriba a
+     la izquierda, las cartas ocupando el centro y la descripción debajo del
+     título, que es donde el ojo vuelve después de mirar la foto. */
   .og-book-grid[data-escena="vitrina"] {
-    --bk-vit-hueco: clamp(0.75rem, 1.6cqw, 1.5rem);
-    --bk-vit-alto: 56cqw;
-  }
-  .og-book-grid[data-escena="vitrina"],
-  .og-book-grid[data-escena="vitrina"][data-piezas="3"] {
     --bk-cols: 12;
     grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(2, calc((var(--bk-vit-alto) - var(--bk-vit-hueco)) / 2))
-      minmax(8rem, auto);
+      "h h h h s s s s s s s s"
+      "n n n n s s s s s s s s";
+    grid-template-rows: auto 1fr;
+    column-gap: 3rem;
+    align-items: start;
   }
-  .og-book-grid[data-escena="vitrina"][data-piezas="4"] {
-    --bk-cols: 12;
-    grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h a a a a a a d d d"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(3, calc((var(--bk-vit-alto) - 2 * var(--bk-vit-hueco)) / 3))
-      minmax(8rem, auto);
+  .og-book-vit-escenario {
+    aspect-ratio: 4 / 3;
   }
-  .og-book-grid[data-escena="vitrina"][data-piezas="5"] {
-    --bk-cols: 12;
-    grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h a a a a a a d d d"
-      "h h h a a a a a a e e e"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(4, calc((var(--bk-vit-alto) - 3 * var(--bk-vit-hueco)) / 4))
-      minmax(8rem, auto);
+  .og-book-vit-carta {
+    width: 46%;
+  }
+  .og-book-vit-carta[data-slot="izq"] {
+    --vx: -72%;
+    --vy: -9%;
+  }
+  .og-book-vit-carta[data-slot="der"] {
+    --vx: 74%;
+    --vy: 11%;
   }
 
   .og-book-grid[data-escena="tira"] > .og-book-figura {
@@ -1400,8 +1416,15 @@
     clip-path: inset(15% 20% 15% 20% round 2px);
     transition: none;
   }
-  .og-book-vit-figura .og-book-pieza {
+  /* La vitrina SIGUE funcionando: el cambio de carta es instantáneo en vez de
+     animado. Quitarlo dejaría tres fotos que no se pueden mirar de cerca, o sea
+     menos web para quien pidió menos movimiento. */
+  .og-book-vit-carta {
     transition: none;
+    transition-delay: 0s;
+  }
+  .og-book-vit-cita {
+    animation: none;
   }
   /* A quien le molesta el movimiento suele molestarle el texto vibrando. */
   .og-book-cierre-nombre {

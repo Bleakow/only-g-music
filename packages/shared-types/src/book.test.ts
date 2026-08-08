@@ -14,6 +14,7 @@ import {
   MEDIDAS,
   MEDIDAS_ELEGIBLES,
   META_ESQUINAS,
+  ROLES_APERTURA,
   RITMOS,
   TEXTURAS,
   acentoEfectivo,
@@ -27,7 +28,9 @@ import {
   escenasDeContenido,
   escenasElegibles,
   esEscenaTipo,
+  esFotoDePortada,
   medidaDeEscena,
+  rolDePiezaApertura,
   moverEscena,
   normalizarAtmosfera,
   normalizarBook,
@@ -188,8 +191,13 @@ describe("cupos", () => {
 });
 
 describe("bookPublicable", () => {
-  /** Las TRES fotos de la apertura: la que abre y las dos que suben. */
-  const apertura = () => [foto("ap1.jpg"), foto("ap2.jpg"), foto("ap3.jpg")];
+  /** Las CUATRO de la apertura: la que abre, las dos que suben y la de portada. */
+  const apertura = () => [
+    foto("ap1.jpg"),
+    foto("ap2.jpg"),
+    foto("ap3.jpg"),
+    foto("ap4.jpg"),
+  ];
 
   it("un book recién creado no se publica", () => {
     expect(bookPublicable(bookNuevo("p", "c"))).toBe(false);
@@ -226,17 +234,35 @@ describe("bookPublicable", () => {
 describe("la apertura es una secuencia cerrada", () => {
   const def = escenaDef("portada")!;
 
-  it("pide exactamente tres fotos, ni una más ni una menos", () => {
-    // Las tres son obligatorias: la que abre y las dos que suben en diagonal.
-    expect(def.min).toBe(3);
-    expect(def.max).toBe(3);
+  it("pide exactamente las fotos que tienen papel asignado", () => {
+    // Si alguien sube el máximo sin dar papel a la ranura nueva, el editor la
+    // pintaría como un hueco mudo y la coreografía no la tocaría.
+    expect(def.min).toBe(ROLES_APERTURA.length);
+    expect(def.max).toBe(ROLES_APERTURA.length);
   });
 
-  it("no admite vídeo ni texto por pieza", () => {
-    // La primera se desenfoca hasta cero y las otras dos viajan con parallax:
-    // tres clips decodificando en la primera pantalla es el peor gasto posible.
+  it("los papeles son: la que abre, dos que suben y la de portada", () => {
+    expect(ROLES_APERTURA).toEqual(["abre", "sube", "sube", "portada"]);
+    expect(rolDePiezaApertura(0)).toBe("abre");
+    expect(rolDePiezaApertura(3)).toBe("portada");
+    expect(rolDePiezaApertura(9)).toBeUndefined();
+  });
+
+  it("solo la foto DE PORTADA lleva texto", () => {
+    expect(esFotoDePortada("portada", 3)).toBe(true);
+    for (const i of [0, 1, 2]) {
+      expect(esFotoDePortada("portada", i), `la ranura ${i} no escribe`).toBe(
+        false,
+      );
+    }
+    // El papel es cosa de la apertura: en otra escena no significa nada.
+    expect(esFotoDePortada("diptico", 3)).toBe(false);
+  });
+
+  it("no admite vídeo", () => {
+    // Una se desenfoca hasta cero, dos viajan con parallax y la última se parte
+    // en cientos de teselas: clips decodificando ahí es el peor gasto posible.
     expect(def.maxVideos).toBe(0);
-    expect(def.admiteTextoPorPieza).toBe(false);
     expect(def.maxNotas).toBe(0);
   });
 
@@ -426,11 +452,16 @@ describe("normalizarBook", () => {
     const b = normalizarBook({
       publicado: true,
       escenas: [
-        // La apertura son TRES fotos: la que abre y las dos que suben.
+        // La apertura son CUATRO: la que abre, las dos que suben y la de portada.
         {
           id: "p",
           tipo: "portada",
-          piezas: [{ url: "a.jpg" }, { url: "b.jpg" }, { url: "c.jpg" }],
+          piezas: [
+            { url: "a.jpg" },
+            { url: "b.jpg" },
+            { url: "c.jpg" },
+            { url: "d.jpg" },
+          ],
         },
         { id: "d", tipo: "diptico", piezas: [{ url: "1.jpg" }, { url: "2.jpg" }] },
       ],

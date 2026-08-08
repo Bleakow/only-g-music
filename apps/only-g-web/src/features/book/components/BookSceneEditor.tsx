@@ -13,7 +13,9 @@ import {
   MEDIDAS_ELEGIBLES,
   META_ESQUINAS,
   escenaDef,
+  esFotoDePortada,
   medidaDeEscena,
+  rolDePiezaApertura,
   videosDeEscena,
   type EscenaBook,
   type MedidaEscena,
@@ -56,6 +58,19 @@ export function BookSceneEditor({
 
   const def = escenaDef(escena.tipo);
   if (!def) return null;
+
+  /**
+   * Qué es cada ranura de la APERTURA. Cuatro huecos idénticos y un "sube tus
+   * fotos" no le cuentan a nadie que la primera va a pantalla completa, dos
+   * suben en diagonal y la última se desintegra. Solo la apertura lo necesita:
+   * en las demás escenas todas las ranuras hacen lo mismo.
+   */
+  const rol = (i: number) =>
+    escena.tipo === "portada" ? rolDePiezaApertura(i) : undefined;
+  const etiquetaRol = (i: number) => {
+    const r = rol(i);
+    return r ? t(`rolApertura.${r}`) : null;
+  };
 
   const set = (parcial: Partial<EscenaBook>) => onChange({ ...escena, ...parcial });
   const setPieza = (i: number, parcial: Partial<PiezaBook>) =>
@@ -175,6 +190,14 @@ export function BookSceneEditor({
                   </span>
                 )}
 
+                {/* Qué papel juega esta foto en la secuencia. La apertura no
+                    admite vídeo, así que nunca choca con la etiqueta de clip. */}
+                {etiquetaRol(i) && (
+                  <span className="absolute top-2 left-2 rounded-full bg-black/65 px-2 py-0.5 text-[0.6rem] font-semibold tracking-wide text-white uppercase backdrop-blur-sm">
+                    {etiquetaRol(i)}
+                  </span>
+                )}
+
                 {/* Con una pieza "levantada", TODA la celda destino es el botón:
                     apuntar a un icono de 32px en un móvil es pedir puntería. */}
                 {esDestino ? (
@@ -229,12 +252,19 @@ export function BookSceneEditor({
                 multiple
                 disabled={subiendo || !puedeSubir}
                 onFiles={onFiles}
-                className="og-book-hueco flex items-center justify-center text-white/45 transition hover:border-white/50 hover:text-white disabled:opacity-40"
+                className="og-book-hueco flex flex-col items-center justify-center gap-1.5 px-2 text-center text-white/45 transition hover:border-white/50 hover:text-white disabled:opacity-40"
               >
                 {subiendo ? (
                   <SpinnerIcon className="size-5 animate-spin" />
                 ) : (
                   <PlusIcon className="size-5" />
+                )}
+                {/* El hueco vacío DICE qué va en él. Es donde de verdad hace
+                    falta: con la foto ya puesta se adivina; vacío, no. */}
+                {etiquetaRol(i) && (
+                  <span className="text-[0.6rem] leading-tight font-semibold tracking-wide uppercase">
+                    {etiquetaRol(i)}
+                  </span>
                 )}
               </UploadButton>
             );
@@ -293,10 +323,17 @@ export function BookSceneEditor({
           book cuente algo en vez de ser fotos bonitas seguidas. */}
       {def.admiteTextoPorPieza && escena.piezas.length > 0 && (
         <div className="flex flex-col gap-3">
-          {escena.piezas.map((pieza, i) => (
+          {escena.piezas.map((pieza, i) => {
+            // En la apertura solo escribe la foto DE PORTADA. Las otras tres son
+            // imagen pura y ofrecerles campos de texto sería invitar a rellenar
+            // algo que la secuencia no pinta en ninguna parte.
+            if (escena.tipo === "portada" && !esFotoDePortada(escena.tipo, i)) {
+              return null;
+            }
+            return (
             <div key={`txt-${i}`} className="flex flex-col gap-1.5">
               <p className="text-silver-500 text-[0.65rem] tracking-[2px] uppercase">
-                {t("piezaN", { n: i + 1 })}
+                {etiquetaRol(i) ?? t("piezaN", { n: i + 1 })}
               </p>
               {/* El crédito de la ficha del índice: va arriba, sobre una línea,
                   en mono-mayúsculas. Es lo que convierte una foto en una entrada
@@ -322,11 +359,16 @@ export function BookSceneEditor({
                 onChange={(e) => setPieza(i, { nota: e.target.value })}
                 maxLength={BOOK_NOTA_MAX}
                 rows={2}
-                placeholder={t("notaPlaceholder")}
+                placeholder={
+                  escena.tipo === "portada"
+                    ? t("portadaNotaPlaceholder")
+                    : t("notaPlaceholder")
+                }
                 className="focus:border-amethyst-300/70 resize-none rounded-lg border border-white/15 bg-white/[0.04] px-3 py-2 text-sm text-white outline-none placeholder:text-white/35"
               />
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

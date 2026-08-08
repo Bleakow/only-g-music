@@ -39,7 +39,8 @@ export function BookApertura({
   nombre: string;
 }) {
   const t = useTranslations("book");
-  const [principal, segunda, tercera] = escena.piezas;
+  // El orden es el contrato de la apertura: ver `ROLES_APERTURA` en el dominio.
+  const [principal, segunda, tercera, portada] = escena.piezas;
   if (!principal) return null;
 
   return (
@@ -83,6 +84,39 @@ export function BookApertura({
                 sizes="(max-width: 48rem) 62vw, 34vw"
                 usarRatio={false}
               />
+            </div>
+          )}
+
+          {/* Capa 4 — LA FOTO DE PORTADA. Contenida, con su texto, y con el
+              desintegrado que la arma y la deshace. Debajo de las teselas queda
+              la foto entera: si el motor no llega, es lo único que se ve, y es
+              una foto perfecta. */}
+          {portada && (
+            <div className="og-book-ap-portada">
+              <div className="og-book-ap-portada-marco">
+                <div className="og-book-ap-portada-plena">
+                  <BookPiece
+                    pieza={portada}
+                    alt={portada.titulo || nombre}
+                    sizes="(max-width: 48rem) 74vw, 30vw"
+                    usarRatio={false}
+                  />
+                </div>
+                {/* Las teselas las construye el motor: dependen del tamaño real
+                    del marco, que solo se sabe en el navegador. */}
+                <div className="og-book-desint" data-src={portada.url} />
+              </div>
+
+              {(portada.titulo || portada.nota) && (
+                <div className="og-book-ap-portada-texto">
+                  {portada.titulo && (
+                    <p className="og-book-ap-portada-titulo">{portada.titulo}</p>
+                  )}
+                  {portada.nota && (
+                    <p className="og-book-ap-portada-nota">{portada.nota}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

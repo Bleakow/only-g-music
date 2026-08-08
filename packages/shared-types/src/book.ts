@@ -227,25 +227,25 @@ export const ESCENAS: EscenaDef[] = [
   {
     tipo: "portada",
     /**
-     * LA APERTURA. Tres fotos, ni una más ni una menos, y las tres OBLIGATORIAS:
-     * la primera abre a pantalla completa con el nombre encima, y las otras dos
-     * son las que suben en diagonal mientras la primera se desenfoca hasta
-     * desaparecer en el color de fondo.
+     * LA APERTURA. Cuatro fotos, ni una más ni una menos, y las cuatro
+     * OBLIGATORIAS. Ver `ROLES_APERTURA`: la que abre, las dos que suben y la
+     * de portada.
      *
      * No es una escena que se compone: es una secuencia CERRADA, igual en todos
-     * los books. Por eso las tres piezas son un mínimo Y un máximo, ninguna
-     * lleva texto, y la escena no se puede quitar ni mover.
+     * los books. Por eso las piezas son un mínimo Y un máximo y la escena no se
+     * puede quitar ni mover.
      */
-    min: 3,
-    max: 3,
-    // Sin vídeo: la primera foto se desenfoca hasta cero y las otras dos viajan
-    // con parallax interno. Tres clips decodificando a la vez en la primera
-    // pantalla es el peor sitio posible para gastar.
+    min: 4,
+    max: 4,
+    // Sin vídeo: la primera se desenfoca hasta cero, dos viajan con parallax y
+    // la de portada se desintegra en cientos de piezas. Clips decodificando a
+    // la vez en la primera pantalla es el peor sitio posible para gastar.
     maxVideos: 0,
     maxNotas: 0,
-    // Solo la primera pieza lleva algo escrito, y es el nombre — que sale del
-    // perfil, no de un campo de la escena.
-    admiteTextoPorPieza: false,
+    // Solo la de PORTADA lleva texto (su título y su descripción, lo que la
+    // modelo quiera). El editor lo pide únicamente en esa ranura; las otras tres
+    // son imagen pura. El nombre grande no es texto de la escena: sale del perfil.
+    admiteTextoPorPieza: true,
     // La ÚNICA escena a pantalla completa de todo el book. Una apertura puede
     // permitírselo; ocho seguidas es lo que se sintió abrumador.
     medida: "sangre",
@@ -434,6 +434,41 @@ export function videosDeEscena(escena: EscenaBook): number {
  */
 export function numeroDeFicha(i: number): string {
   return String(i + 1).padStart(3, "0");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apertura — qué papel juega cada una de sus cuatro fotos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * El papel de cada ranura de la apertura. No es decoración: es lo que el editor
+ * necesita para poder DECIR cuál es cuál. Cuatro huecos idénticos y "sube tres
+ * fotos" no le explica a nadie que la primera va a pantalla completa y la última
+ * se desintegra.
+ *
+ *  · `abre`    — a pantalla completa, con el nombre encima. Se desenfoca hasta
+ *                desaparecer en el color de fondo.
+ *  · `sube`    — las dos que entran desde abajo en diagonal. Sin texto.
+ *  · `portada` — una sola, contenida (NO a pantalla completa), con su título y
+ *                su descripción. Aparece y se va desintegrándose.
+ */
+export type RolPiezaApertura = "abre" | "sube" | "portada";
+
+export const ROLES_APERTURA: RolPiezaApertura[] = [
+  "abre",
+  "sube",
+  "sube",
+  "portada",
+];
+
+/** Papel de la ranura `i` de la apertura (undefined si se sale). */
+export function rolDePiezaApertura(i: number): RolPiezaApertura | undefined {
+  return ROLES_APERTURA[i];
+}
+
+/** ¿Esta ranura de esta escena es la foto DE PORTADA (la que lleva texto)? */
+export function esFotoDePortada(tipo: EscenaTipo, i: number): boolean {
+  return tipo === "portada" && rolDePiezaApertura(i) === "portada";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

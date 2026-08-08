@@ -2,6 +2,11 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import type { RitmoId } from "@only-g/shared-types/book";
+import {
+  construirTeselas,
+  limpiarTeselas,
+  urlYaCargada,
+} from "./desintegrar";
 import { paramsDeRitmo, type ParamsRitmo } from "./ritmo";
 
 /**
@@ -96,6 +101,16 @@ function apertura(
     },
   });
 
+  /**
+   * Duración FIJA de 1: todo se coloca en 0..1 como si fuera el porcentaje del
+   * recorrido. No es cosmético — las teselas del desintegrado se construyen
+   * después (hay que esperar a que cargue la foto para saber su url real), y con
+   * `scrub` GSAP reparte el scroll sobre la duración TOTAL de la timeline. Sin
+   * este relleno, añadir tweens más tarde recalcularía el total y todo lo ya
+   * colocado se desplazaría a mitad de scroll.
+   */
+  tl.to({}, { duration: 1 }, 0);
+
   // 1. El nombre se dispersa. Por CARACTERES y desde el centro: es lo que hace
   //    que se lea como "se dispersa" y no como "se va hacia arriba en bloque".
   if (titulo) {
@@ -106,7 +121,8 @@ function apertura(
         yPercent: -180,
         opacity: 0,
         ease: "none",
-        stagger: { from: "center", amount: 0.35 },
+        duration: 0.16,
+        stagger: { from: "center", amount: 0.05 },
       },
       0,
     );
@@ -114,10 +130,38 @@ function apertura(
     // hay que revertirlo a mano o el nombre se queda troceado en fragmentos.
     alLimpiar(() => split.revert());
   } else if (nombre) {
-    tl.to(nombre.children, { yPercent: -180, opacity: 0, ease: "none" }, 0);
+    tl.to(
+      nombre.children,
+      { yPercent: -180, opacity: 0, ease: "none", duration: 0.16 },
+      0,
+    );
   }
 
-  if (pista) tl.to(pista, { opacity: 0, ease: "none" }, 0);
+  if (pista) tl.to(pista, { opacity: 0, ease: "none", duration: 0.1 }, 0);
+
+  /**
+   * 1b. LOS TEXTOS DE LAS ESQUINAS se van cada uno POR SU ESQUINA, abriéndose
+   * hacia fuera. Es a propósito distinto del nombre: ese se dispersa hacia
+   * arriba, y si las esquinas hicieran lo mismo la pantalla entera se iría en
+   * bloque en vez de leerse como dos cosas. Aquí el marco se abre y la foto
+   * queda sola, que es justo lo que va a pasar a continuación.
+   */
+  const esquinas = q<HTMLElement>(escena, ".og-book-meta > *");
+  esquinas.forEach((el, i) => {
+    const haciaFin = i % 2 === 1; // 0,2 = lado de inicio · 1,3 = lado de fin
+    const haciaAbajo = i > 1;
+    tl.to(
+      el,
+      {
+        x: haciaFin ? 120 : -120,
+        y: haciaAbajo ? 60 : -60,
+        opacity: 0,
+        ease: "none",
+        duration: 0.15,
+      },
+      0.02,
+    );
+  });
 
   // 2. La foto que abre se desenfoca hasta dejar ver el fondo de la atmósfera.
   //    La escala acompaña: un desenfoque sin movimiento se lee como un fallo de
@@ -130,12 +174,13 @@ function apertura(
         scale: 1.14,
         opacity: 0,
         ease: "none",
+        duration: 0.28,
       },
       0.06,
     );
   }
 
-  // 3. Las dos suben y se colocan, una detrás de la otra.
+  // 3. Las dos suben, se colocan… y se van cuando llega la de portada.
   if (diagonales.length) {
     tl.to(
       diagonales,
@@ -143,7 +188,8 @@ function apertura(
         yPercent: 0,
         opacity: 1,
         ease: "none",
-        stagger: 0.14,
+        duration: 0.26,
+        stagger: 0.05,
       },
       0.14,
     );
@@ -157,15 +203,127 @@ function apertura(
       tl.fromTo(
         img,
         { yPercent: -6, scale: 1.16 },
-        { yPercent: 6, scale: 1.16, ease: "none" },
-        0.14 + i * 0.06,
+        { yPercent: 6, scale: 1.16, ease: "none", duration: 0.42 },
+        0.14 + i * 0.04,
+      );
+    });
+
+    // Salen hacia los lados para dejar el centro libre: la de portada va
+    // centrada, y con las dos diagonales todavía puestas competirían por el ojo.
+    diagonales.forEach((d, i) => {
+      tl.to(
+        d,
+        {
+          xPercent: i === 0 ? -60 : 60,
+          opacity: 0,
+          ease: "none",
+          duration: 0.12,
+        },
+        0.46,
       );
     });
   }
 
+  // 5. LA FOTO DE PORTADA: se arma desintegrándose y se deshace igual.
+  //    Es asíncrono porque hay que esperar a que la foto cargue para saber qué
+  //    url está usando de verdad. Por eso la timeline tiene duración fija: lo
+  //    que se añade aquí llega tarde y no puede recolocar lo de arriba.
+  montarPortada(escena, tl, alLimpiar);
+
   // En móvil la diagonal es más estrecha y el viaje, más corto: recorrer 175%
   // en una pantalla alta se siente lento aunque dure lo mismo.
   if (movil) tl.timeScale(1);
+}
+
+/**
+ * La cuarta capa de la apertura. Se separa de `apertura` porque es lo único
+ * asíncrono de toda la coreografía y mezclarlo dentro convertiría una función
+ * lineal en una madeja de condicionales.
+ */
+function montarPortada(
+  escena: HTMLElement,
+  tl: gsap.core.Timeline,
+  alLimpiar: AlLimpiar,
+) {
+  const marco = escena.querySelector<HTMLElement>(".og-book-ap-portada-marco");
+  const capa = escena.querySelector<HTMLElement>(".og-book-desint");
+  const plena = escena.querySelector<HTMLElement>(".og-book-ap-portada-plena");
+  const texto = escena.querySelector<HTMLElement>(".og-book-ap-portada-texto");
+  const img = plena?.querySelector("img");
+  if (!marco || !capa || !plena || !img) return;
+
+  // El texto entra con la foto y se va antes que ella: leerlo mientras la foto
+  // ya se deshace es pedirle al ojo dos cosas a la vez.
+  if (texto) {
+    tl.fromTo(
+      texto,
+      { y: 26, opacity: 0 },
+      { y: 0, opacity: 1, ease: "none", duration: 0.1 },
+      0.6,
+    );
+    tl.to(texto, { y: -20, opacity: 0, ease: "none", duration: 0.08 }, 0.84);
+  }
+
+  let cancelado = false;
+  alLimpiar(() => {
+    cancelado = true;
+    limpiarTeselas(capa);
+  });
+
+  void urlYaCargada(img).then((url) => {
+    if (cancelado || !url) return;
+    const teselas = construirTeselas(marco, capa, url);
+    if (!teselas.length) return;
+
+    // La foto entera se apaga en cuanto las teselas existen: mientras el motor
+    // no ha llegado —o si falla— es lo único que se ve, y es una foto perfecta.
+    gsap.set(plena, { opacity: 0 });
+
+    const els = teselas.map((t) => t.el);
+    const en = <K extends "x" | "y" | "rot">(k: K) => (i: number) =>
+      k === "rot" ? teselas[i].rot : teselas[i][k as "x" | "y"];
+
+    // SE ARMA: las piezas llegan desde su desperdigado hasta su sitio. Desde el
+    // centro hacia fuera, que es como se reconoce una cara antes que un borde.
+    tl.fromTo(
+      els,
+      {
+        x: en("x"),
+        y: en("y"),
+        rotation: en("rot"),
+        opacity: 0,
+        scale: 0.55,
+      },
+      {
+        x: 0,
+        y: 0,
+        rotation: 0,
+        opacity: 1,
+        scale: 1,
+        ease: "none",
+        duration: 0.2,
+        stagger: { from: "center", amount: 0.07 },
+      },
+      0.52,
+    );
+
+    // SE DESHACE: ahora desde los bordes, para que la cara sea lo último en
+    // irse. Al revés se perdería justo lo que se quiere mirar.
+    tl.to(
+      els,
+      {
+        x: en("x"),
+        y: en("y"),
+        rotation: en("rot"),
+        opacity: 0,
+        scale: 0.55,
+        ease: "none",
+        duration: 0.16,
+        stagger: { from: "edges", amount: 0.07 },
+      },
+      0.84,
+    );
+  });
 }
 
 /** A sangre: se abre como un telón y la imagen respira por dentro. */

@@ -280,7 +280,8 @@
   padding: var(--bk-margen);
   pointer-events: none;
   font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
-  font-size: clamp(0.5625rem, 1cqi, 0.6875rem);
+  font-size: clamp(0.75rem, 1.5cqi, 1.0625rem);
+  font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -293,11 +294,14 @@
   text-align: end;
 }
 
-/* Sobre foto, tinta blanca; sobre el fondo de la atmósfera, la tinta suave. El
-   atributo lo pone la escena según si tiene pieza o no — unas líneas blancas
-   sobre papel `hueso` serían invisibles. */
+/* Sobre foto, BLANCO PURO — no un blanco al 74%, que sobre una foto clara se
+   convierte en un gris que hay que adivinar. La sombra no es decoración: es lo
+   que mantiene legible el blanco cuando debajo cae una zona quemada. Sobre el
+   fondo de la atmósfera se usa la tinta suave, porque unas letras blancas sobre
+   papel `hueso` serían invisibles. */
 .og-book-escena[data-sobre-foto="si"] .og-book-meta {
-  color: rgb(255 255 255 / 0.74);
+  color: #fff;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.55);
 }
 .og-book-escena[data-sobre-foto="no"] .og-book-meta {
   color: var(--bk-ink-soft);
@@ -322,9 +326,10 @@
    al bajar, y la apertura arrancaría recortada. */
 
 .og-book-apertura {
-  /* Tres pantallas: una para leer el nombre, una para la transición y otra para
-     que las dos fotos se coloquen sin prisa. Es lo que consume la coreografía. */
-  height: 300svh;
+  /* Cinco pantallas, una por tiempo de la secuencia: leer el nombre, la
+     transición, las dos que suben, la foto de portada que se arma, y la que se
+     desintegra. Es el scroll que consume la coreografía. */
+  height: 500svh;
   position: relative;
 }
 
@@ -422,6 +427,105 @@
     right: 10%;
     bottom: 8%;
   }
+}
+
+/* ── Cuarta capa: LA FOTO DE PORTADA ──────────────────────────────────────
+   Una sola foto con su título y su descripción, la que la modelo quiera. NO va
+   a pantalla completa: ocupa una parte del escenario y respira alrededor. Se
+   arma desintegrándose al entrar y se deshace igual al salir. */
+
+.og-book-ap-portada {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: var(--bk-margen);
+  pointer-events: none;
+}
+
+.og-book-ap-portada-marco {
+  position: relative;
+  width: 74%;
+  max-width: 22rem;
+  aspect-ratio: 3 / 4;
+  /* El marco NO recorta: las teselas salen volando fuera de sus límites y con
+     `overflow: hidden` el desintegrado se cortaría en seco contra el borde. */
+  overflow: visible;
+}
+
+.og-book-ap-portada-texto {
+  max-width: 30rem;
+  text-align: center;
+  color: #fff;
+}
+.og-book-ap-portada-titulo {
+  font-family: var(--bk-display);
+  font-size: clamp(1.25rem, 3.4cqi, 2rem);
+  line-height: 1.05;
+}
+.og-book-ap-portada-nota {
+  margin-top: 0.6rem;
+  font-size: clamp(0.8125rem, 1.5cqi, 0.95rem);
+  line-height: 1.55;
+  color: rgb(255 255 255 / 0.8);
+}
+
+@container bk (min-width: 48rem) {
+  .og-book-ap-portada {
+    flex-direction: row;
+    gap: 3.5rem;
+  }
+  .og-book-ap-portada-marco {
+    width: 30%;
+    max-width: 26rem;
+  }
+  .og-book-ap-portada-texto {
+    text-align: start;
+    max-width: 24rem;
+  }
+}
+
+/* ── El DESINTEGRADO ──────────────────────────────────────────────────────
+   La foto se parte en teselas que muestran cada una su trozo (por
+   `background-position`) y vuelan. Tamaño, posición y recorte los pone el motor
+   por estilo inline: dependen del tamaño real del marco, que solo se conoce en
+   el navegador.
+
+   Debajo queda la foto ENTERA (`og-book-ap-portada-plena`): mientras la
+   secuencia está montada se oculta, pero si el motor no llega —o el visitante
+   pide menos movimiento— es lo único que se ve, y es una foto perfecta. El
+   desintegrado es un adorno; la foto, no. */
+
+.og-book-ap-portada-plena {
+  position: absolute;
+  inset: 0;
+}
+.og-book-ap-portada-plena img {
+  border-radius: 0.5rem;
+}
+
+.og-book-desint {
+  position: absolute;
+  inset: 0;
+  /* Lo enciende el motor al terminar de construir las teselas. Así nunca se ve
+     el instante en que existen las dos capas a la vez. */
+  display: none;
+}
+.og-book-desint[data-listo] {
+  display: block;
+}
+
+.og-book-desint-tesela {
+  position: absolute;
+  background-repeat: no-repeat;
+  border-radius: 1px;
+  /* `transform` y `opacity` los mueve el compositor: son cientos de teselas y
+     es la única forma de que esto no cueste fotogramas. */
+  will-change: transform, opacity;
 }
 
 /* ── plena — grande, pero ya no un pantallazo ─────────────────────────────

@@ -2641,6 +2641,12 @@
     "moveAria": "Mover la pieza {n}",
     "removeAria": "Quitar la pieza {n}",
     "piezaN": "Pieza {n}",
+    "rolApertura": {
+      "abre": "La que abre",
+      "sube": "Sube en diagonal",
+      "portada": "De portada"
+    },
+    "portadaNotaPlaceholder": "Lo que quieras contar de esta foto.",
     "clip": "Clip",
     "faltanPiezas": "Te faltan {count} piezas para que esta escena se vea.",
     "topeVideos": "Máximo {count} clips en esta escena.",

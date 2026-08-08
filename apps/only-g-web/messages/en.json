@@ -2641,6 +2641,12 @@
     "moveAria": "Move piece {n}",
     "removeAria": "Remove piece {n}",
     "piezaN": "Piece {n}",
+    "rolApertura": {
+      "abre": "The opener",
+      "sube": "Rises diagonally",
+      "portada": "Cover photo"
+    },
+    "portadaNotaPlaceholder": "Whatever you want to say about this photo.",
     "clip": "Clip",
     "faltanPiezas": "You need {count} more pieces for this scene to show.",
     "topeVideos": "Up to {count} clips in this scene.",

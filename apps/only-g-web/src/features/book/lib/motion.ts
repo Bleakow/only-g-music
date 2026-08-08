@@ -556,35 +556,26 @@ function retrato(escena: HTMLElement, p: Params) {
 }
 
 /**
- * Serie: se ancla la escena y la fila se recorre de lado mientras bajas.
- * SOLO en escritorio — en el móvil la fila ya es un carrusel con imán y dedo,
- * que es mejor que cualquier pin: anclar el scroll de un móvil le quita al
- * visitante el control de la página.
+ * SERIE. Ya no ancla el scroll: se reportó como "en escritorio es muy torpe", y
+ * lo era. Anclar la página para mover una fila de lado le quita al visitante el
+ * control de su propio scroll, y encima obliga a adivinar cuánto queda — no hay
+ * barra, no hay gesto, solo una fila que se desplaza sola mientras bajas.
+ *
+ * Ahora la fila se AGARRA con el ratón (`useArrastreLateral`) y se desliza con el
+ * dedo en el móvil, que es el mismo gesto en los dos sitios. Aquí solo queda la
+ * entrada, que es lo que GSAP hace bien: las fotos llegan una detrás de otra
+ * desde el lado por el que se va a seguir tirando.
  */
 function tira(escena: HTMLElement, p: Params) {
-  const fila = escena.querySelector<HTMLElement>(".og-book-grid");
-  if (!fila) return;
-  fila.dataset.pin = "true";
-
-  const recorrido = () => Math.max(0, fila.scrollWidth - fila.clientWidth);
-  if (recorrido() <= 0) return;
-
-  gsap.to(fila, {
-    x: () => -recorrido(),
-    ease: "none",
-    scrollTrigger: {
-      trigger: escena,
-      start: "top top",
-      // El alto del pin ES el recorrido horizontal: así una tira de seis fotos
-      // pide más scroll que una de tres, en vez de ir a distinta velocidad.
-      end: () => `+=${recorrido()}`,
-      pin: true,
-      scrub: arrastre(p),
-      // Al rotar el móvil o cambiar el ancho, `scrollWidth` cambia. Sin esto, el
-      // recorrido se queda con la medida vieja y la tira acaba a medias.
-      invalidateOnRefresh: true,
-      anticipatePin: 1,
-    },
+  const figuras = q<HTMLElement>(escena, ".og-book-figura");
+  if (!figuras.length) return;
+  gsap.from(figuras, {
+    xPercent: 26,
+    opacity: 0,
+    duration: p.duracion,
+    ease: p.ease,
+    stagger: 0.09,
+    scrollTrigger: { trigger: escena, start: "top 84%" },
   });
 }
 
@@ -794,12 +785,14 @@ const POR_TIPO: Record<string, Coreografia> = {
   ancla: (e, p) => ancla(e, p),
   rejilla: (e, p) => rejilla(e, p),
   indice: (e, p) => indice(e, p),
+  // La tira ya no es un caso aparte: su recorrido lo lleva el dedo o el ratón,
+  // y aquí solo entra como cualquier otra escena.
+  tira: (e, p) => tira(e, p),
   vitrina: (e, p, movil) => vitrina(e, p, movil),
   metraje: (e, p, _movil, alLimpiar) => metraje(e, p, alLimpiar),
   pliego: (e, p) => pliego(e, p),
   retrato: (e, p) => retrato(e, p),
   cierre: (e, p) => cierre(e, p),
-  // `tira` no está aquí: solo se monta en escritorio, más abajo.
 };
 
 /**
@@ -863,11 +856,6 @@ export function montarCoreografia(
 
         escenas.forEach((escena) => {
           const tipo = escena.dataset.tipo ?? "";
-          if (tipo === "tira") {
-            // En estrecho la tira se queda como está: carrusel con dedo e imán.
-            if (ancho) tira(escena, p);
-            return;
-          }
           POR_TIPO[tipo]?.(escena, p, !ancho, alLimpiar, atmosfera.desintegrado);
         });
       },

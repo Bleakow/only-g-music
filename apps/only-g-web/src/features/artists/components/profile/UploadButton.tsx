@@ -15,6 +15,8 @@ export function UploadButton({
   disabled,
   onFiles,
   className,
+  /** Para colocarlo en su celda cuando el botón ES una ranura de una rejilla. */
+  style,
   children,
   glass,
   title,
@@ -25,6 +27,7 @@ export function UploadButton({
   disabled?: boolean;
   onFiles: (files: File[]) => void;
   className?: string;
+  style?: React.CSSProperties;
   children: React.ReactNode;
   glass?: boolean;
   title?: string;
@@ -49,6 +52,7 @@ export function UploadButton({
           disabled={disabled}
           onClick={() => ref.current?.click()}
           className={className}
+          style={style}
         >
           {children}
         </button>

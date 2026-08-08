@@ -176,6 +176,33 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBe(false);
   });
 
+  it("la serie se agarra con la mano, y el imán se aparta mientras se tira", () => {
+    // Dos mitades de lo mismo. El cursor es lo ÚNICO que anuncia que la fila se
+    // puede arrastrar —la barra de scroll se esconde a propósito—, así que sin
+    // él el gesto existe y nadie lo encuentra.
+    //
+    // Y el imán tiene que apagarse mientras la mano tira: `scroll-snap-type:
+    // mandatory` pelea con cada asignación a `scrollLeft`, el navegador arrastra
+    // hacia una foto mientras la mano arrastra hacia otra, y la fila se siente
+    // como si se resistiera. Eso se diagnostica mirando el código del arrastre,
+    // donde no está el problema.
+    const mano = REGLAS.find(
+      (r) =>
+        r.selector.includes('[data-escena="tira"]') &&
+        /cursor:\s*grab\b/.test(r.cuerpo),
+    );
+    const tirando = REGLAS.find((r) => r.selector.includes("[data-agarrando]"));
+    expect(mano, "la serie no anuncia que se puede arrastrar").toBeDefined();
+    expect(tirando, "falta el estado de arrastre").toBeDefined();
+    expect(tirando!.cuerpo).toMatch(/scroll-snap-type:\s*none/);
+
+    // Y que no vuelva el anclado: se quitó porque le robaba el scroll al
+    // visitante, no porque estorbara.
+    expect(CSS.includes("[data-pin]"), "vuelve el anclado de la serie").toBe(
+      false,
+    );
+  });
+
   it("la apertura no deja aire detrás", () => {
     // Regresión del "recorrido de scroll entre la foto que se desvanece y la
     // vitrina es muy grande". La apertura TERMINA en una pantalla entera del

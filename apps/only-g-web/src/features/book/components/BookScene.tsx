@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import { useArrastreLateral } from "../lib/use-arrastre-lateral";
 import { areaDeRanura } from "@only-g/shared-types/gallery-layout";
 import {
   META_ESQUINAS,
@@ -48,6 +49,16 @@ const SIZES: Record<EscenaTipo, string> = {
   vitrina: "(max-width: 48rem) 100vw, 42vw",
   indice: "(max-width: 48rem) 100vw, 24vw",
 };
+
+/**
+ * Escenas cuyas fotos se abren a pantalla completa al tocarlas.
+ *
+ * NO son todas a propósito. En la vitrina y en la apertura el toque ya significa
+ * otra cosa (traer al frente, y ahí tienen su propio botón), y en las escenas que
+ * llevan texto al lado la foto no es lo único que hay que mirar. Estas dos son
+ * las que se leen como "una serie de fotos y ya".
+ */
+const AMPLIABLES: ReadonlySet<EscenaTipo> = new Set(["pliego", "tira"]);
 
 /** Escenas a sangre: el pie va SOBRE la foto, no debajo. */
 const PIE_SOBRE: ReadonlySet<EscenaTipo> = new Set(["portada", "cierre"]);
@@ -107,6 +118,9 @@ export function BookScene({
   children?: ReactNode;
 }) {
   const t = useTranslations("book");
+  // La SERIE se recorre agarrándola con el ratón. En táctil no se toca nada: el
+  // scroll nativo del dedo ya lo hace mejor de lo que se puede escribir aquí.
+  const fila = useArrastreLateral<HTMLDivElement>(escena.tipo === "tira");
   // `null` fuera del book (el editor monta las escenas sin proveedor): allí las
   // fotos del pliego se pintan sin envolverse en un botón que no haría nada.
   const ampliar = useVistaAmplia();
@@ -130,7 +144,7 @@ export function BookScene({
   // El pliego: sus fotos se abren a pantalla completa al tocarlas y, al pasar
   // por encima, se ENCOGEN dejando ver alrededor la misma foto desenfocada — el
   // revelado del índice al revés.
-  const esPliego = escena.tipo === "pliego";
+  const ampliable = AMPLIABLES.has(escena.tipo);
   // La pieza de `ancla` se queda quieta mientras el texto pasa. El `sticky` va
   // en la CELDA de la rejilla, no en la foto: dentro de la figura no hay
   // recorrido donde pegarse, porque la figura mide justo lo que mide la foto.
@@ -161,6 +175,7 @@ export function BookScene({
           )}
 
           <div
+            ref={fila}
             className="og-book-grid"
             data-escena={escena.tipo}
             data-medida={medida}
@@ -186,7 +201,7 @@ export function BookScene({
                     gridArea: areaDeRanura(i),
                     // Las variables CSS heredan: puesta aquí, la lee el
                     // `::before` de la pieza sin tener que atravesar props.
-                    ...(esIndice || esPliego
+                    ...(esIndice || escena.tipo === "pliego"
                       ? { "--bk-fondo": fondoBorroso(pieza.url) }
                       : {}),
                   } as CSSProperties
@@ -215,15 +230,16 @@ export function BookScene({
                       // proporciones del CSS: fotos de cámaras distintas con su
                       // ratio real dan una cuadrícula dentada.
                       usarRatio={
-                        escena.tipo !== "rejilla" && !esIndice && !esPliego
+                        escena.tipo !== "rejilla" &&
+                        !esIndice &&
+                        escena.tipo !== "pliego"
                       }
                     />
                   );
-                  // Solo el pliego se amplía aquí. Las otras dos que se abren a
-                  // pantalla completa —las diagonales de la apertura y las
-                  // cartas de la vitrina— tienen su propio botón porque ya eran
+                  // Las diagonales de la apertura y las cartas de la vitrina se
+                  // amplían también, pero tienen su propio botón: allí ya eran
                   // pulsables por otra razón.
-                  if (!esPliego || !ampliar) return media;
+                  if (!ampliable || !ampliar) return media;
                   return (
                     <button
                       type="button"

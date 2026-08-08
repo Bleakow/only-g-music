@@ -1064,10 +1064,15 @@
 }
 
 /* ── tira — la serie ──────────────────────────────────────────────────────
-   En estrecho es un CARRUSEL de verdad, con swipe e imán, no un recorte de lo
-   que hace el escritorio. En ancho, GSAP lo convierte en scroll horizontal
-   anclado; mientras tanto —y siempre que se pida menos movimiento— esto ya es
-   una tira usable. */
+   UN CARRUSEL DE VERDAD EN LOS DOS SITIOS: con el dedo en el móvil y agarrándola
+   con el ratón en escritorio. Antes GSAP anclaba la página y desplazaba la fila
+   según bajabas, y se reportó como "muy torpe" — con razón: anclar el scroll le
+   quita al visitante el control de su propia página, y encima no hay forma de
+   saber cuánto queda porque no hay ni barra ni gesto.
+
+   La barra se esconde a propósito (`scrollbar-width: none`): lo que invita a
+   arrastrar es el cursor de mano, no una barra gris en una pieza a pantalla
+   completa. */
 
 .og-book-grid[data-escena="tira"] {
   display: flex;
@@ -1075,6 +1080,9 @@
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  /* Que la fila se pueda arrastrar y que el texto se seleccione al hacerlo son
+     incompatibles: al tirar quedaría medio pie de foto en azul. */
+  user-select: none;
 }
 .og-book-grid[data-escena="tira"]::-webkit-scrollbar {
   display: none;
@@ -1084,13 +1092,25 @@
   scroll-snap-align: center;
 }
 
-/* Cuando GSAP toma el mando de la tira (escritorio), la fila deja de ser un
-   scroller: la desplaza la timeline. Con `overflow-x: auto` puesto, el navegador
-   y GSAP moverían la misma fila a la vez y el resultado es una tira que se pelea
-   con el dedo. Lo pone el propio motor con `data-pin`, nunca a mano. */
-.og-book-grid[data-escena="tira"][data-pin] {
-  overflow-x: visible;
-  scroll-snap-type: none;
+/* La mano SOLO donde hay puntero: en un móvil no hay cursor que enseñar, y el
+   dedo ya sabe qué hacer con una fila que se desborda. */
+@media (hover: hover) and (pointer: fine) {
+  .og-book-grid[data-escena="tira"] {
+    cursor: grab;
+  }
+  .og-book-grid[data-escena="tira"][data-agarrando] {
+    cursor: grabbing;
+    /* El IMÁN se apaga mientras la mano tira. `scroll-snap-type: mandatory`
+       pelea con cada asignación a `scrollLeft`: el navegador arrastra hacia la
+       foto más cercana mientras la mano arrastra hacia el otro lado, y la fila
+       se siente como si se resistiera. Al soltar vuelve y encaja. */
+    scroll-snap-type: none;
+  }
+  /* Arrastrar una imagen es un gesto del navegador y aquí estorba: al tirar de
+     la fila saldría el fantasma de la foto pegado al cursor. */
+  .og-book-grid[data-escena="tira"] :is(img, video) {
+    -webkit-user-drag: none;
+  }
 }
 
 /* ── cierre ───────────────────────────────────────────────────────────────
@@ -1302,6 +1322,15 @@
 .og-book-editor .og-book-grid[data-escena="vitrina"] {
   --bk-cols: 3;
   grid-template-areas: "a b c";
+}
+
+/* LA SERIE en el editor es una FILA, no una rejilla: `grid-area` no pinta nada
+   ahí, así que sus ranuras necesitan una base propia o se aplastan a cero. Es la
+   otra mitad del bug de "solo se ven unas líneas": las fotos ya subidas caían
+   sin ancho porque la regla de la vista real apunta a `.og-book-figura` y el
+   editor pinta `.og-book-pieza`. */
+.og-book-editor .og-book-grid[data-escena="tira"] > * {
+  flex: 0 0 clamp(5.5rem, 30%, 11rem);
 }
 
 /* La rejilla vacía del editor tiene que ocupar sitio para poder soltar fotos:

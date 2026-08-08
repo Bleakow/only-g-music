@@ -161,10 +161,24 @@ export function BookSceneEditor({
       )}
 
       <div className="og-book-escena">
+        {/* `data-piezas` va con el MÁXIMO de la escena, no con las fotos que ya
+            hay, y ahí estaba el bug reportado ("al ir agregando, el contenedor
+            se vuelve torpe y se daña").
+
+            El editor pinta SIEMPRE `max` celdas —las fotos más los huecos que
+            faltan—, pero declaraba la rejilla del número de fotos SUBIDAS. Con
+            una foto en un índice de cuatro, el CSS busca la composición de una
+            pieza, no la encuentra (solo existen las de 3 y 4), se queda sin
+            `grid-template-areas`… y los `grid-area: a` que este componente sigue
+            poniendo caen en pistas implícitas. De ahí las tiras finas: celdas
+            colocadas fuera de la composición, sin ancho que las sostenga.
+
+            Con el máximo, la rejilla es la misma desde la primera foto hasta la
+            última, que además es lo que hay que ver mientras se compone. */}
         <div
           className="og-book-grid"
           data-escena={escena.tipo}
-          data-piezas={escena.piezas.length}
+          data-piezas={def.max}
         >
           {escena.piezas.map((pieza, i) => {
             const esOrigen = moviendo === i;
@@ -253,6 +267,10 @@ export function BookSceneEditor({
             return (
               <UploadButton
                 key={`hueco-${i}`}
+                // El hueco ocupa SU ranura de la composición. Sin esto se
+                // autocoloca, y una rejilla con áreas nombradas más piezas
+                // autocolocadas mezcla las dos cosas de la peor manera.
+                style={{ gridArea: areaDeRanura(i) }}
                 accept="image/*,video/*"
                 multiple
                 disabled={subiendo || !puedeSubir}

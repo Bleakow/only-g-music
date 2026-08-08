@@ -50,7 +50,9 @@ import type { DesintegradoId } from "@only-g/shared-types/book";
  * sus píxeles.
  */
 
+import { construirBruma } from "./bruma";
 import { construirCeniza } from "./ceniza";
+import { construirLamas } from "./lamas";
 import {
   BANDA,
   DISPERSION,
@@ -95,15 +97,15 @@ interface Geo {
  * El eje sobre el que barre el frente. El degradado de la foto se construye con
  * ÉL, y el sitio de cada grano se despeja de ÉL: no pueden discrepar.
  */
-type Eje =
-  | { tipo: "linea"; x0: number; y0: number; x1: number; y1: number }
-  | { tipo: "radio"; cx: number; cy: number; r: number };
+interface Eje {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
 
 /** Dónde cae un punto del lienzo sobre el eje, en 0..1. */
 function sitioEn(eje: Eje, x: number, y: number): number {
-  if (eje.tipo === "radio") {
-    return Math.min(1, Math.hypot(x - eje.cx, y - eje.cy) / eje.r);
-  }
   const vx = eje.x1 - eje.x0;
   const vy = eje.y1 - eje.y0;
   return ((x - eje.x0) * vx + (y - eje.y0) * vy) / (vx * vx + vy * vy);
@@ -154,7 +156,6 @@ interface Receta {
 
 /** Eje vertical de abajo (0) a arriba (1). */
 const subiendo = (g: Geo): Eje => ({
-  tipo: "linea",
   x0: g.ox,
   y0: g.oy + g.h,
   x1: g.ox,
@@ -163,7 +164,6 @@ const subiendo = (g: Geo): Eje => ({
 
 /** Eje vertical de arriba (0) a abajo (1). */
 const bajando = (g: Geo): Eje => ({
-  tipo: "linea",
   x0: g.ox,
   y0: g.oy,
   x1: g.ox,
@@ -172,7 +172,6 @@ const bajando = (g: Geo): Eje => ({
 
 /** Eje horizontal de izquierda (0) a derecha (1). */
 const haciaLaDerecha = (g: Geo): Eje => ({
-  tipo: "linea",
   x0: g.ox,
   y0: g.oy,
   x1: g.ox + g.w,
@@ -181,19 +180,10 @@ const haciaLaDerecha = (g: Geo): Eje => ({
 
 /** Eje horizontal de derecha (0) a izquierda (1). */
 const haciaLaIzquierda = (g: Geo): Eje => ({
-  tipo: "linea",
   x0: g.ox + g.w,
   y0: g.oy,
   x1: g.ox,
   y1: g.oy,
-});
-
-/** Eje radial: 0 en el centro, 1 en la esquina más lejana. */
-const desdeElCentro = (g: Geo): Eje => ({
-  tipo: "radio",
-  cx: g.ox + g.w / 2,
-  cy: g.oy + g.h / 2,
-  r: Math.hypot(g.w, g.h) / 2,
 });
 
 /**
@@ -204,7 +194,37 @@ const desdeElCentro = (g: Geo): Eje => ({
  * buenas. Si la llegada y la salida usan el mismo eje y el mismo viaje, la
  * segunda mitad de la secuencia es la primera rebobinada y se nota.
  */
-const RECETAS: Record<Exclude<DesintegradoId, "ceniza">, Receta> = {
+type MotorAparte = (
+  capaHost: HTMLElement,
+  anchoCss: number,
+  altoCss: number,
+  dibujarFoto: (ctx: CanvasRenderingContext2D, w: number, h: number) => void,
+) => Polvo | null;
+
+/**
+ * Los efectos que NO son una receta de este motor. Cada uno tiene su módulo
+ * porque su mecanismo es otro, no porque sus números sean otros — y esa es la
+ * línea: si algo se puede contar con un eje y un viaje, es una receta; si
+ * necesita girar tiras o precocinar desenfoques, es un motor.
+ */
+const MOTORES_APARTE = {
+  ceniza: construirCeniza,
+  lamas: construirLamas,
+  bruma: construirBruma,
+  // `satisfies` y no una anotación: así las claves quedan como el literal exacto
+  // y `RECETAS` puede excluirlas. Anotado como `Partial<Record<DesintegradoId,…>>`,
+  // `keyof` sería TODO el catálogo, la exclusión lo vaciaría, y las recetas se
+  // quedarían sin tipo — que fue justo lo que pasó al escribirlo así.
+} satisfies Partial<Record<DesintegradoId, MotorAparte>>;
+
+type ConMotorPropio = keyof typeof MOTORES_APARTE;
+
+/**
+ * Y esto es lo que cierra el catálogo: un id que no tenga motor propio TIENE que
+ * tener receta, o no compila. No hay forma de añadir un desintegrado y olvidarse
+ * de darle movimiento.
+ */
+const RECETAS: Record<Exclude<DesintegradoId, ConMotorPropio>, Receta> = {
   /**
    * ARENA — la de casa. Se posa cayendo desde arriba y se la lleva el viento de
    * lado. Granos diminutos, color plano, miles de ellos.
@@ -280,28 +300,6 @@ const RECETAS: Record<Exclude<DesintegradoId, "ceniza">, Receta> = {
   },
 
   /**
-   * REMOLINO — los granos entran girando desde fuera del marco y salen en
-   * espiral desde el centro. Mismo eje radial en los dos vuelos, y aun así no
-   * son el mismo movimiento: al armar, el frente retrocede del borde al centro
-   * (la imagen cuaja de fuera adentro) y al deshacerse avanza del centro al
-   * borde. Y giran en sentidos contrarios.
-   */
-  remolino: {
-    paso: 3.6,
-    trozo: false,
-    encoge: 0.6,
-    margen: { arriba: 0.5, derecha: 0.5, abajo: 0.5, izquierda: 0.5 },
-    llega: {
-      eje: desdeElCentro,
-      viaje: (i, nx, ny, g) => espiral(i, nx, ny, g, 1, 0.55),
-    },
-    seVa: {
-      eje: desdeElCentro,
-      viaje: (i, nx, ny, g) => espiral(i, nx, ny, g, -1, 0.75),
-    },
-  },
-
-  /**
    * CASCADA — llega de lado, en horizontal, y se derrama hacia abajo. Es la más
    * tranquila de las cuatro: ni gira ni estalla, se llena y se vacía.
    */
@@ -332,33 +330,6 @@ const RECETAS: Record<Exclude<DesintegradoId, "ceniza">, Receta> = {
     },
   },
 };
-
-/** El viaje del remolino: tangencial más radial, con `sentido` al gusto. */
-function espiral(
-  i: number,
-  nx: number,
-  ny: number,
-  g: Geo,
-  sentido: 1 | -1,
-  alcance: number,
-): Viaje {
-  // Ángulo desde el centro. El `+0.001` evita el caso degenerado del grano que
-  // cae justo en el centro, donde el ángulo no existe y `atan2` daría 0 para
-  // todos: saldrían decenas de granos en fila por el mismo sitio.
-  const ex = nx - 0.5 + 0.001;
-  const ey = ny - 0.5;
-  const ang = Math.atan2(ey, ex);
-  const radio = Math.min(0.71, Math.hypot(ex, ey));
-  // Cuanto más fuera, más lejos vuela: es lo que abre la espiral en vez de
-  // dejarla como un anillo que se ensancha.
-  const fuerza = (0.35 + radio) * alcance * (0.6 + ruido(i + 217645177) * 0.8);
-  const giroTangente = ang + sentido * 1.15;
-  return {
-    dx: Math.cos(giroTangente) * fuerza * g.w,
-    dy: Math.sin(giroTangente) * fuerza * g.h,
-    giro: 0,
-  };
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // El motor
@@ -457,12 +428,13 @@ export async function construirPolvo(
 
   const [fx, fy] = anclaDe(img);
 
-  // CENIZA no es una receta de este motor: es OTRO motor. Aquí cada grano se
-  // dibuja por su cuenta, así que no puede bajar de tres píxeles sin arruinar
-  // los fotogramas; allí se mueven CAPAS de píxeles sueltos y el grano es el
-  // píxel. Se despacha desde aquí para que quien llama solo conozca una puerta.
-  if (desintegrado === "ceniza") {
-    return construirCeniza(capa, anchoCss, altoCss, (c, cw, ch) => {
+  // Tres de los efectos NO son recetas de este motor: son OTROS motores. Aquí
+  // cada grano se dibuja por su cuenta, así que no puede bajar de tres píxeles
+  // (ceniza), ni girar sobre un eje (lamas), ni dejar de ser un grano (bruma).
+  // Se despachan desde aquí para que quien llama solo conozca una puerta, y
+  // todos reciben lo mismo: dónde colgarse, cuánto miden y cómo pintar la foto.
+  if (Object.hasOwn(MOTORES_APARTE, desintegrado)) {
+    return MOTORES_APARTE[desintegrado as ConMotorPropio](capa, anchoCss, altoCss, (c, cw, ch) => {
       const recorte = recorteCover(
         foto.naturalWidth,
         foto.naturalHeight,
@@ -477,7 +449,13 @@ export async function construirPolvo(
     });
   }
 
-  const receta = RECETAS[desintegrado] ?? RECETAS.arena;
+  // Aquí el id YA no puede ser de los que tienen motor propio —el `return` de
+  // arriba se los llevó— pero TypeScript no lo sabe: el estrechamiento de
+  // `Object.hasOwn` no viaja hasta este tipo. El `??` no es un por si acaso, es
+  // la red de un documento con un id que ya no existe en el catálogo.
+  const receta: Receta =
+    (RECETAS as Partial<Record<DesintegradoId, Receta>>)[desintegrado] ??
+    RECETAS.arena;
 
   const dpr = Math.min(DPR_MAX, window.devicePixelRatio || 1);
   // `w`/`h` son la caja de LA FOTO; el lienzo es más grande y la foto vive
@@ -648,10 +626,7 @@ export async function construirPolvo(
     const fin = (frente + BANDA) / (1 - DISPERSION);
     const ini = fin - banda;
     const borrado = (s: number) => Math.min(1, Math.max(0, (fin - s) / banda));
-    const g =
-      eje.tipo === "radio"
-        ? ctx.createRadialGradient(eje.cx, eje.cy, 0, eje.cx, eje.cy, eje.r)
-        : ctx.createLinearGradient(eje.x0, eje.y0, eje.x1, eje.y1);
+    const g = ctx.createLinearGradient(eje.x0, eje.y0, eje.x1, eje.y1);
     g.addColorStop(0, `rgba(0,0,0,${borrado(0)})`);
     if (ini > 0 && ini < 1) g.addColorStop(ini, "rgba(0,0,0,1)");
     if (fin > 0 && fin < 1) g.addColorStop(fin, "rgba(0,0,0,0)");

@@ -668,9 +668,12 @@ export type TexturaId = "ninguna" | "grano" | "vineta";
  *
  *  · `arena`    — se posa cayendo y se la lleva el viento de lado. La de casa.
  *  · `teselas`  — cuadrados grandes que giran. Más gráfico, menos atmosférico.
- *  · `remolino` — los granos entran girando desde fuera y salen en espiral desde
- *                 el centro.
  *  · `cascada`  — llega de lado, en horizontal, y se derrama hacia abajo.
+ *  · `lamas`    — NO se rompe: la foto es una persiana y sus tiras giran sobre
+ *                 su eje hasta ponerse de canto.
+ *  · `bruma`    — tampoco se rompe: se condensa desde un borrón de luz y se
+ *                 evapora hinchándose. Óptica pura, para quien no quiere que su
+ *                 portada se desmenuce.
  *  · `ceniza`   — a resolución de PÍXEL: la foto se reparte en capas de píxeles
  *                 sueltos que se abren en abanico. La más fina de las cinco.
  *
@@ -682,9 +685,10 @@ export type TexturaId = "ninguna" | "grano" | "vineta";
 export const DESINTEGRADOS = [
   "arena",
   "teselas",
-  "remolino",
   "cascada",
   "ceniza",
+  "lamas",
+  "bruma",
 ] as const;
 
 /**
@@ -759,7 +763,7 @@ export const ATMOSFERAS: AtmosferaPreset[] = [
     letra: "mono",
     ritmo: "brusco",
     textura: "ninguna",
-    desintegrado: "remolino",
+    desintegrado: "lamas",
   },
   {
     id: "calido",

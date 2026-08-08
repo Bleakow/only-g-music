@@ -2759,16 +2759,18 @@
       "desintegrados": {
         "arena": "Arena",
         "teselas": "Cuadros",
-        "remolino": "Remolino",
         "cascada": "Cascada",
-        "ceniza": "Ceniza"
+        "ceniza": "Ceniza",
+        "lamas": "Persiana",
+        "bruma": "Bruma"
       },
       "desintegradosHint": {
         "arena": "Se posa cayendo y se la lleva el viento de lado. Miles de partículas diminutas.",
         "teselas": "Cuadrados grandes que giran al volar. Más gráfico, menos atmosférico.",
-        "remolino": "Entra girando desde fuera y sale en espiral desde el centro.",
         "cascada": "Llega de lado, en horizontal, y se derrama hacia abajo.",
-        "ceniza": "A resolución de píxel: la foto se abre en abanico y se deshace en polvo finísimo."
+        "ceniza": "A resolución de píxel: la foto se abre en abanico y se deshace en polvo finísimo.",
+        "lamas": "No se rompe: la foto es una persiana y sus tiras giran hasta ponerse de canto.",
+        "bruma": "Tampoco se rompe: se condensa desde un borrón de luz y se evapora hinchándose."
       },
       "desintegradoSinFoto": "Sube tu foto de portada (la cuarta de la apertura) para ver el efecto aquí."
     }

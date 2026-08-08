@@ -169,9 +169,12 @@ describe("catálogo de escenas", () => {
       textura: "ninguna",
     });
     expect(viejo.desintegrado).toBe(ATMOSFERA_POR_DEFECTO.desintegrado);
-    // Y un id retirado del catálogo cae igual, en vez de dejar la portada muda.
+    // Y un id RETIRADO cae igual, en vez de dejar la portada muda. `remolino`
+    // existió y se quitó: quien lo tuviera elegido abre con el de casa, que es
+    // preferible a una portada que no se desintegra y nadie sabe por qué.
+    expect(DESINTEGRADOS).not.toContain("remolino");
     expect(
-      normalizarAtmosfera({ desintegrado: "confeti" }).desintegrado,
+      normalizarAtmosfera({ desintegrado: "remolino" }).desintegrado,
     ).toBe(ATMOSFERA_POR_DEFECTO.desintegrado);
   });
 

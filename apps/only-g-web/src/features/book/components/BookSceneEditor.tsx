@@ -15,6 +15,7 @@ import {
   escenaDef,
   esFotoDePortada,
   medidaDeEscena,
+  piezasQueFaltan,
   rolDePiezaApertura,
   videosDeEscena,
   type EscenaBook,
@@ -87,7 +88,11 @@ export function BookSceneEditor({
   // Ranuras vacías hasta el máximo de la composición: hay que VER los huecos que
   // faltan por llenar, no adivinar cuántas fotos pide la escena.
   const huecos = Math.max(0, def.max - escena.piezas.length);
-  const faltan = Math.max(0, def.min - escena.piezas.length);
+  // Cuántas faltan para la siguiente cuenta VÁLIDA, no para el mínimo. Con
+  // `def.min` bastaba hasta que apareció el pliego: con tres fotos ya pasó del
+  // mínimo, así que la resta daba cero y el aviso no salía — pero con tres no se
+  // publica, y la modelo se quedaba mirando un botón apagado sin explicación.
+  const faltan = piezasQueFaltan(escena);
 
   return (
     <div className="og-book-editor flex flex-col gap-4">

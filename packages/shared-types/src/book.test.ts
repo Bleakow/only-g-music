@@ -26,6 +26,8 @@ import {
   bookPublicable,
   contarPiezas,
   escenaCompleta,
+  cuentasValidas,
+  piezasQueFaltan,
   escenaDef,
   escenasDeContenido,
   escenasElegibles,
@@ -125,18 +127,91 @@ describe("catálogo de escenas", () => {
     expect(escenaDef("rejilla")!.retirada).toBe(true);
   });
 
-  it("toda escena declara su medida, y SOLO la portada va a sangre", () => {
+  it("toda escena declara su medida, y a sangre solo van las ESTRUCTURALES", () => {
     // Es el motivo por el que existe todo el sistema de respiración: el book se
-    // sintió abrumador porque tres escenas ocupaban la pantalla entera. Si
-    // mañana alguien pone otra a sangre, que lo diga esta prueba y no el usuario.
+    // sintió abrumador porque tres escenas ocupaban la pantalla entera.
+    //
+    // La regla ya no es "solo la portada" sino "solo las que la modelo no puede
+    // repetir", y es más fuerte de lo que parece: una escena a sangre que se
+    // pudiera AÑADIR devuelve el book a ser una sucesión de pantallazos en dos
+    // clics, mientras que las fijas están puestas una vez y no se multiplican.
+    // Hoy son la apertura (pantalla completa) y el metraje (pegado a un borde,
+    // que es otra cosa: el alto lo capa el CSS).
     for (const e of ESCENAS) expect(MEDIDAS).toContain(e.medida);
-    expect(ESCENAS.filter((e) => e.medida === "sangre").map((e) => e.tipo)).toEqual(
-      ["portada"],
-    );
+    const aSangre = ESCENAS.filter((e) => e.medida === "sangre");
+    expect(aSangre.map((e) => e.tipo)).toEqual(["portada", "metraje"]);
+    for (const e of aSangre) {
+      expect(e.fija, `"${e.tipo}" va a sangre pero se puede añadir`).toBeTruthy();
+    }
   });
 
   it("`sangre` no es elegible por la modelo", () => {
     expect(MEDIDAS_ELEGIBLES).not.toContain("sangre");
+  });
+
+  it("las cuentas declaradas caben en el rango de la escena y van en orden", () => {
+    // `cuentas` no sustituye a `min`/`max`, los AFINA: el editor sigue pintando
+    // `max` huecos y sigue impidiendo pasar de ahí. Una cuenta fuera del rango
+    // sería una escena imposible de completar y el botón de publicar apagado
+    // para siempre, sin nada que explique por qué.
+    for (const e of ESCENAS) {
+      if (!e.cuentas) continue;
+      expect(e.cuentas.length, `"${e.tipo}" declara cuentas vacías`).toBeGreaterThan(0);
+      expect(Math.min(...e.cuentas)).toBe(e.min);
+      expect(Math.max(...e.cuentas)).toBe(e.max);
+      expect([...e.cuentas].sort((a, b) => a - b)).toEqual(e.cuentas);
+    }
+  });
+
+  it("el pliego son DOS O CUATRO fotos, nunca tres", () => {
+    const def = escenaDef("pliego")!;
+    expect(cuentasValidas(def)).toEqual([2, 4]);
+    const con = (n: number): EscenaBook => ({
+      id: "p",
+      tipo: "pliego",
+      piezas: Array.from({ length: n }, (_, i) => foto(`p${i}.jpg`)),
+    });
+    expect(escenaCompleta(con(2))).toBe(true);
+    expect(escenaCompleta(con(3))).toBe(false);
+    expect(escenaCompleta(con(4))).toBe(true);
+  });
+
+  it("piezasQueFaltan apunta a la siguiente cuenta válida, no al mínimo", () => {
+    // La trampa: con tres fotos el pliego YA pasó del mínimo, así que restar
+    // `min` da cero y el editor no avisaría de nada — pero con tres no se
+    // publica. Es exactamente el hueco que esta función existe para tapar.
+    const con = (n: number): EscenaBook => ({
+      id: "p",
+      tipo: "pliego",
+      piezas: Array.from({ length: n }, (_, i) => foto(`p${i}.jpg`)),
+    });
+    expect(piezasQueFaltan(con(0))).toBe(2);
+    expect(piezasQueFaltan(con(1))).toBe(1);
+    expect(piezasQueFaltan(con(2))).toBe(0);
+    expect(piezasQueFaltan(con(3))).toBe(1);
+    expect(piezasQueFaltan(con(4))).toBe(0);
+  });
+
+  it("el sitio para escenas PROPIAS no encoge al crecer las estructurales", () => {
+    // `normalizarBook` recorta el contenido a `BOOK_MAX_ESCENAS - fijas`. Si el
+    // tope no acompaña al añadir una estructural, a quien tuviera el book lleno
+    // se le caen escenas propias AL LEERLO — sin avisar, sin haberlas borrado y
+    // sin que ningún test lo note. De ahí que la cuenta se compruebe aquí.
+    expect(BOOK_MAX_ESCENAS - ESCENAS_FIJAS.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("el arranque obligatorio es apertura, vitrina, metraje y pliego", () => {
+    // El orden ES la secuencia que pidió el usuario. Se deriva del catálogo, así
+    // que esta prueba comprueba que `fija` y `POSICION_FIJA` siguen contando lo
+    // mismo que el brief — un `fija` mal puesto no da error, solo mueve la
+    // escena de sitio.
+    expect(ESCENAS_FIJAS).toEqual([
+      "portada",
+      "vitrina",
+      "metraje",
+      "pliego",
+      "cierre",
+    ]);
   });
 
   it("un book lleno de la escena más pequeña no revienta el tope de piezas", () => {

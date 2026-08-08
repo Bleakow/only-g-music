@@ -412,6 +412,123 @@ function diptico(escena: HTMLElement, p: Params) {
   });
 }
 
+/**
+ * METRAJE: el clip entra DESDE EL BORDE al que está pegado —se descubre de
+ * izquierda a derecha, como si asomara por fuera de la pantalla— y su
+ * descripción SE ENCIENDE PALABRA A PALABRA mientras se baja.
+ *
+ * El texto se revela con `scrub` y no con una entrada de golpe porque es la
+ * petición literal ("se va revelando progresivamente al llegar al vídeo") y
+ * porque es lo que hace que se LEA: el ojo sigue a la palabra que se enciende en
+ * vez de encontrarse un párrafo entero de una vez y saltárselo.
+ *
+ * Las palabras van de casi apagadas a encendidas, nunca de invisibles: un texto
+ * que aparece de la nada obliga a releer desde el principio, y un párrafo con
+ * huecos no se puede seleccionar ni buscar. Lo que cambia es el foco, no si el
+ * texto existe.
+ */
+function metraje(escena: HTMLElement, p: Params, alLimpiar: AlLimpiar) {
+  const figura = escena.querySelector<HTMLElement>(".og-book-figura");
+  if (figura) {
+    // Las dos formas con los CUATRO valores: `inset(0 100% 0 0)` e `inset(0)`
+    // tienen distinto número de componentes y hay motores que se niegan a
+    // interpolar entre ellas. Es la misma cautela que ya lleva el índice.
+    gsap.fromTo(
+      figura,
+      { clipPath: "inset(0% 100% 0% 0%)" },
+      {
+        clipPath: "inset(0% 0% 0% 0%)",
+        ease: "none",
+        scrollTrigger: {
+          trigger: escena,
+          start: "top 92%",
+          end: "top 38%",
+          scrub: arrastre(p),
+        },
+      },
+    );
+  }
+
+  const nota = escena.querySelector<HTMLElement>(".og-book-pie-nota");
+  if (!nota) return;
+
+  const split = new SplitText(nota, { type: "words" });
+  // `gsap.context` deshace los tweens pero NO el DOM que SplitText partió: sin
+  // esto el párrafo se queda troceado en `<div>`s al desmontar.
+  alLimpiar(() => split.revert());
+
+  gsap.fromTo(
+    split.words,
+    { opacity: 0.16 },
+    {
+      opacity: 1,
+      ease: "none",
+      duration: 0.6,
+      // El relevo corto respecto a la duración deja varias palabras encendidas a
+      // la vez: es una luz que recorre el párrafo, no un teletipo.
+      stagger: { each: 0.05, from: "start" },
+      scrollTrigger: {
+        trigger: escena,
+        start: "top 74%",
+        end: "bottom 80%",
+        scrub: true,
+      },
+    },
+  );
+}
+
+/**
+ * PLIEGO: dos o cuatro fotos que entran y salen. Nada más — es el respiro entre
+ * el arranque y lo que monte cada modelo.
+ *
+ * UNA SOLA TIMELINE por foto, y no dos tweens sueltos. Con `scrub`, un tween
+ * fuera de su tramo no se queda quieto: se aparca en su valor de inicio o de
+ * fin. Así que un tween de salida creado después del de entrada estaría
+ * escribiendo `opacity: 1` durante toda la entrada y pisándola — el de después
+ * manda. Dentro de una timeline solo hay un dueño de la propiedad y el problema
+ * no existe.
+ */
+function pliego(escena: HTMLElement, p: Params) {
+  const figuras = q<HTMLElement>(escena, ".og-book-figura");
+  figuras.forEach((fig) => {
+    gsap
+      .timeline({
+        scrollTrigger: {
+          // El disparador es LA FOTO, no la escena: en el cuadro de 2×2 la fila
+          // de abajo entra media pantalla después que la de arriba, y atarlas a
+          // la escena las haría moverse a la vez desde sitios distintos.
+          trigger: fig,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: arrastre(p),
+        },
+      })
+      .fromTo(
+        fig,
+        { yPercent: 12, scale: 0.94, opacity: 0 },
+        {
+          yPercent: 0,
+          scale: 1,
+          opacity: 1,
+          ease: "none",
+          duration: 0.3,
+        },
+        0,
+      )
+      .to(
+        fig,
+        {
+          yPercent: -12,
+          scale: 0.94,
+          opacity: 0,
+          ease: "none",
+          duration: 0.28,
+        },
+        0.72,
+      );
+  });
+}
+
 /** Foto anclada: el `sticky` lo hace el CSS; aquí solo desfilan los textos. */
 function ancla(escena: HTMLElement, p: Params) {
   const notas = q<HTMLElement>(escena, ".og-book-notas > *");
@@ -704,6 +821,8 @@ const POR_TIPO: Record<string, Coreografia> = {
   rejilla: (e, p) => rejilla(e, p),
   indice: (e, p) => indice(e, p),
   vitrina: (e, p, movil) => vitrina(e, p, movil),
+  metraje: (e, p, _movil, alLimpiar) => metraje(e, p, alLimpiar),
+  pliego: (e, p) => pliego(e, p),
   retrato: (e, p) => retrato(e, p),
   cierre: (e, p) => cierre(e, p),
   // `tira` no está aquí: solo se monta en escritorio, más abajo.

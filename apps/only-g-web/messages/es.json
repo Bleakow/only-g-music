@@ -2657,6 +2657,8 @@
     "encabezadoPlaceholder": {
       "portada": "Una línea que te presente (opcional)",
       "vitrina": "Título grande de la vitrina (opcional)",
+      "metraje": "Título de la escena (opcional)",
+      "pliego": "Título de la escena (opcional)",
       "plena": "Título de la escena (opcional)",
       "diptico": "Título de la escena (opcional)",
       "retrato": "Título de la escena (opcional)",
@@ -2669,6 +2671,8 @@
     "escenas": {
       "portada": "Portada",
       "vitrina": "Vitrina",
+      "metraje": "Metraje",
+      "pliego": "Pliego",
       "plena": "Foto grande",
       "diptico": "Díptico",
       "retrato": "Retrato con nota",
@@ -2681,6 +2685,8 @@
     "escenasHint": {
       "portada": "Tu nombre sobre una foto a pantalla completa, con datos en las esquinas. Abre el book.",
       "vitrina": "Una foto grande con su frase y varias al lado. Al tocar una, cambian de sitio.",
+      "metraje": "Un clip en bucle pegado al borde y tu descripción al lado, que se enciende palabra a palabra al bajar.",
+      "pliego": "Dos o cuatro fotos, sin texto. Entran y salen al pasar.",
       "plena": "Una foto grande que se abre como un telón al bajar.",
       "diptico": "Dos fotos lado a lado que se mueven a distinta velocidad.",
       "retrato": "Una foto vertical con espacio para contar algo al lado.",

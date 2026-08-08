@@ -35,6 +35,9 @@ const SIZES: Record<EscenaTipo, string> = {
   portada: "100vw",
   plena: "(max-width: 48rem) 100vw, 82rem",
   cierre: "100vw",
+  // El clip va pegado al borde y ocupa siete de doce columnas: casi 60vw.
+  metraje: "(max-width: 48rem) 100vw, 60vw",
+  pliego: "(max-width: 48rem) 100vw, 42vw",
   diptico: "(max-width: 48rem) 100vw, 40vw",
   retrato: "(max-width: 48rem) 100vw, 45vw",
   ancla: "(max-width: 48rem) 100vw, 45vw",
@@ -67,8 +70,12 @@ function Pie({ pieza, sobre }: { pieza: PiezaBook; sobre: boolean }) {
         </p>
       )}
       {pieza.nota && (
+        // La clase es el asa por la que la coreografía del `metraje` agarra el
+        // párrafo para revelarlo palabra a palabra. Buscarlo por su etiqueta
+        // (`p`) funcionaría hasta el día que el título deje de ser un `p`, y
+        // entonces se revelaría el título en vez de la descripción.
         <p
-          className="mt-1.5 max-w-prose text-sm leading-relaxed"
+          className="og-book-pie-nota mt-1.5 max-w-prose text-sm leading-relaxed"
           style={{
             color: sobre ? "rgb(255 255 255 / 0.82)" : "var(--bk-ink-soft)",
           }}

@@ -279,6 +279,31 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
     },
   );
 
+  it("la escena que declara variantes por nº de piezas las declara TODAS", () => {
+    // Una escena que compone distinto según cuántas fotos tenga necesita un
+    // bloque por cada cuenta posible del rango. Si falta una —la de tres del
+    // pliego, por ejemplo, que solo se ve un momento mientras se sube la
+    // cuarta—, esa rejilla se queda sin `grid-template-areas` mientras el
+    // componente sigue pidiendo `grid-area: c`: la pieza cae en una pista
+    // implícita y se ve torcida. Es EXACTAMENTE el bug que se reportó en el
+    // editor con la foto de portada, y la unica forma de que no vuelva es
+    // comprobar la cobertura, no la existencia.
+    for (const def of ESCENAS) {
+      const declaradas = new Set(
+        [...CSS.matchAll(/\[data-escena="([^"]+)"\]\[data-piezas="(\d+)"\]/g)]
+          .filter((m) => m[1] === def.tipo)
+          .map((m) => Number(m[2])),
+      );
+      if (!declaradas.size) continue; // no compone por cuenta: nada que cubrir
+      for (let n = def.min; n <= def.max; n++) {
+        expect(
+          declaradas.has(n),
+          `"${def.tipo}" no declara su rejilla de ${n} pieza(s)`,
+        ).toBe(true);
+      }
+    }
+  });
+
   it("cada medida tiene su bloque de anchos en el CSS", () => {
     // El sistema de respiración entero cuelga de estos tres bloques. Si falta
     // uno, esa escena se pinta al 100% del ancho sin margen — que es justo el

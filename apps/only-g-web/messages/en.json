@@ -2657,6 +2657,8 @@
     "encabezadoPlaceholder": {
       "portada": "A line to introduce you (optional)",
       "vitrina": "Large title for the showcase (optional)",
+      "metraje": "Scene title (optional)",
+      "pliego": "Scene title (optional)",
       "plena": "Scene title (optional)",
       "diptico": "Scene title (optional)",
       "retrato": "Scene title (optional)",
@@ -2669,6 +2671,8 @@
     "escenas": {
       "portada": "Cover",
       "vitrina": "Showcase",
+      "metraje": "Footage",
+      "pliego": "Spread",
       "plena": "Large photo",
       "diptico": "Diptych",
       "retrato": "Portrait with note",
@@ -2681,6 +2685,8 @@
     "escenasHint": {
       "portada": "Your name over a full-screen photo, with details in the corners. Opens the book.",
       "vitrina": "One large photo with its quote and others beside it. Tap one and they swap places.",
+      "metraje": "A looping clip flush to the edge with your description beside it, lighting up word by word as you scroll.",
+      "pliego": "Two or four photos, no text. They come in and go out as you pass.",
       "plena": "A large photo that opens like a curtain as you scroll.",
       "diptico": "Two photos side by side, moving at different speeds.",
       "retrato": "A vertical photo with room to tell something beside it.",

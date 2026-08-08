@@ -40,8 +40,17 @@ import { SOCIAL_PLATFORMS, type SocialPlatform } from "./artist";
 // Límites
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Escenas de un book, portada y cierre incluidas. */
-export const BOOK_MAX_ESCENAS = 12;
+/**
+ * Escenas de un book, las estructurales incluidas.
+ *
+ * SUBIÓ DE 12 A 14 AL ENTRAR `metraje` Y `pliego` en el arranque obligatorio, y
+ * no por generosidad: `normalizarBook` recorta el contenido a
+ * `BOOK_MAX_ESCENAS - fijas`, así que dejarlo en 12 le habría quitado dos
+ * escenas propias a quien ya tuviera el book lleno — al LEERLO, sin avisar y sin
+ * que nadie las hubiera borrado. Las estructurales crecen; el sitio para lo que
+ * monta cada modelo, no se toca.
+ */
+export const BOOK_MAX_ESCENAS = 14;
 
 /**
  * Piezas (fotos + vídeos) en todo el book. El tope no es estético: son las
@@ -158,6 +167,8 @@ export const META_ESQUINAS = [
 export type EscenaTipo =
   | "portada"
   | "vitrina"
+  | "metraje"
+  | "pliego"
   | "retrato"
   | "diptico"
   | "indice"
@@ -174,6 +185,16 @@ export interface EscenaDef {
   min: number;
   /** Piezas máximas que caben en su composición. */
   max: number;
+  /**
+   * Cuentas de piezas VÁLIDAS, cuando no son todas las del rango. Existe por el
+   * `pliego`: dos o cuatro, sin punto medio. Con tres fotos su composición no
+   * cuadra —quedaría un hueco o una fila coja— y `min`/`max` no saben decir eso:
+   * describen un rango contiguo y aquí el rango tiene un agujero.
+   *
+   * Se sigue pudiendo ESTAR en tres mientras se sube la cuarta; lo que no se
+   * puede es publicar así. Ver `escenaCompleta` y `piezasQueFaltan`.
+   */
+  cuentas?: number[];
   /**
    * Vídeos que admite. No es un límite artístico: cuatro vídeos en bucle en la
    * misma pantalla son cuatro descargas y cuatro decodificaciones a la vez.
@@ -213,16 +234,18 @@ export interface EscenaDef {
   /**
    * Escenas ESTRUCTURALES: no se añaden, no se borran y no se mueven, y sus
    * fotos son obligatorias. Son el arranque y el cierre que comparten todos los
-   * books: la apertura, el carrusel de tres cartas y la despedida. Lo que va en
-   * medio ya es cosa de cada modelo.
+   * books: la apertura, el carrusel de tres cartas, el metraje, el pliego y la
+   * despedida. Lo que va en medio ya es cosa de cada modelo.
    */
-  fija?: "primera" | "segunda" | "ultima";
+  fija?: "primera" | "segunda" | "tercera" | "cuarta" | "ultima";
 }
 
 /** Dónde va cada escena fija. Lo usan la normalización y el orden del editor. */
 const POSICION_FIJA: Record<NonNullable<EscenaDef["fija"]>, number> = {
   primera: 0,
   segunda: 1,
+  tercera: 2,
+  cuarta: 3,
   ultima: 99,
 };
 
@@ -282,6 +305,56 @@ export const ESCENAS: EscenaDef[] = [
     // SEGUNDA y obligatoria: va siempre justo después de la apertura, con sus
     // tres fotos puestas. Es parte del arranque que comparten todos los books.
     fija: "segunda",
+  },
+  {
+    tipo: "metraje",
+    /**
+     * EL CLIP. Uno, en bucle, pegado al borde de la pantalla, con su descripción
+     * al otro lado revelándose palabra a palabra según se baja.
+     *
+     * `maxVideos: 1` con `max: 1` significa "puede ser un vídeo", no "tiene que
+     * serlo": si la modelo sube una foto, la escena sigue funcionando. Obligar a
+     * un vídeo sería dejar sin publicar a quien no tiene uno, y por una escena
+     * que no puede quitar.
+     */
+    min: 1,
+    max: 1,
+    maxVideos: 1,
+    maxNotas: 0,
+    admiteTextoPorPieza: true,
+    /**
+     * `sangre` aquí NO significa pantallazo —eso solo lo hace la apertura—: es
+     * lo que le quita el margen de página a ESE lado para que el clip llegue a
+     * tocar el borde. El texto conserva el suyo, y el alto lo capa el CSS. Va
+     * como propiedad del tipo, así que tampoco es algo que se pueda elegir.
+     */
+    medida: "sangre",
+    // La descripción vive en el área `n`, al otro lado del clip. Es la escena
+    // entera: sin esto el texto caería debajo del vídeo y el hueco de la derecha
+    // quedaría en blanco.
+    notaEnRejilla: true,
+    fija: "tercera",
+  },
+  {
+    tipo: "pliego",
+    /**
+     * DOS O CUATRO, sin punto medio. No es una manía: con dos van hombro con
+     * hombro y con cuatro forman un cuadro de 2×2; con tres, una fila se queda
+     * coja y el ojo lo lee como un hueco. `min`/`max` no saben expresar un rango
+     * con un agujero, y por eso existe `cuentas`.
+     *
+     * Fotos SENCILLAS: sin título, sin nota, sin encabezado. Entran y salen. Es
+     * el respiro entre el carrusel y lo que cada modelo monte después, y un
+     * respiro con letra deja de ser un respiro.
+     */
+    min: 2,
+    max: 4,
+    cuentas: [2, 4],
+    maxVideos: 1,
+    maxNotas: 0,
+    admiteTextoPorPieza: false,
+    medida: "amplia",
+    fija: "cuarta",
   },
   {
     tipo: "retrato",
@@ -432,12 +505,38 @@ export function medidaDeEscena(escena: EscenaBook): MedidaEscena {
     : def.medida;
 }
 
+/**
+ * Cuentas de piezas con las que una escena SE VE BIEN. Casi siempre es todo el
+ * rango; `pliego` es la excepción (dos o cuatro) y por eso esto no se calcula en
+ * dos sitios distintos.
+ */
+export function cuentasValidas(def: EscenaDef): number[] {
+  if (def.cuentas) return def.cuentas;
+  return Array.from({ length: def.max - def.min + 1 }, (_, i) => def.min + i);
+}
+
 /** ¿Esta escena tiene las piezas que su composición necesita? */
 export function escenaCompleta(escena: EscenaBook): boolean {
   const def = escenaDef(escena.tipo);
   if (!def) return false;
+  return cuentasValidas(def).includes(escena.piezas.length);
+}
+
+/**
+ * Cuántas piezas faltan para la siguiente cuenta VÁLIDA — no para el mínimo.
+ *
+ * La diferencia importa exactamente una vez y es la que se le olvida a
+ * cualquiera: un `pliego` con tres fotos ya pasó del mínimo, así que restar
+ * `min` da cero y el editor no avisaría de nada. Pero con tres no se publica.
+ * Aquí devuelve 1, y el editor puede decir qué falta en vez de dejar a la modelo
+ * mirando un botón apagado sin explicación.
+ */
+export function piezasQueFaltan(escena: EscenaBook): number {
+  const def = escenaDef(escena.tipo);
+  if (!def) return 0;
   const n = escena.piezas.length;
-  return n >= def.min && n <= def.max;
+  const objetivo = cuentasValidas(def).find((c) => c >= n);
+  return objetivo === undefined ? 0 : objetivo - n;
 }
 
 /** Vídeos que ya tiene una escena (para saber si cabe otro). */
@@ -684,6 +783,10 @@ export const ESCENAS_FIJAS: EscenaTipo[] = ESCENAS.filter((e) => e.fija)
 export const BOOK_ESCENAS_POR_DEFECTO: EscenaTipo[] = [
   "portada",
   "vitrina",
+  // El arranque OBLIGATORIO termina aquí: apertura, carrusel, clip y pliego. A
+  // partir de la siguiente, todo es sugerencia y se puede quitar.
+  "metraje",
+  "pliego",
   "retrato",
   "diptico",
   "indice",

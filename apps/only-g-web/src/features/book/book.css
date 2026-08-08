@@ -605,6 +605,63 @@
   grid-template-areas: "a" "b";
 }
 
+/* ── metraje — el clip pegado al borde y su descripción al lado ────────────
+   Un vídeo en bucle que TOCA el borde de la pantalla, con la descripción al otro
+   lado revelándose palabra a palabra según se baja.
+
+   Va a `sangre`, y aquí eso NO significa pantallazo: significa "sin margen de
+   página", que es lo único que permite que la imagen llegue al borde. El aire lo
+   recupera el texto, que lleva su padding propio, y el alto lo capa
+   `max-block-size` — sin ese tope, siete columnas de ancho a 4/5 en un monitor
+   dan una pieza más alta que la pantalla, que es justo lo que el sistema de
+   respiración existe para evitar. */
+
+.og-book-grid[data-escena="metraje"] {
+  --bk-cols: 1;
+  grid-template-areas: "a" "n";
+  gap: 1.75rem;
+  --bk-ratio: 4 / 5;
+}
+.og-book-grid[data-escena="metraje"] .og-book-pieza {
+  max-block-size: 86svh;
+}
+
+/* La descripción del metraje NO es un pie de foto: es media escena. Se lee
+   despacio, palabra a palabra, mientras se baja — así que necesita cuerpo y
+   medida de lectura, no el tamaño de un crédito. */
+.og-book-grid[data-escena="metraje"] .og-book-pie-nota {
+  margin-top: 1rem;
+  max-width: 34ch;
+  font-size: clamp(1rem, 2.2cqi, 1.35rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+/* El que va pegado al borde es el clip, no la letra. */
+.og-book-grid[data-escena="metraje"] .og-book-notas {
+  padding-inline: var(--bk-margen);
+}
+
+/* ── pliego — dos o cuatro fotos, sin texto ────────────────────────────────
+   El respiro entre el arranque y lo que monte cada modelo. Dos o cuatro, nunca
+   tres: con tres, una fila se queda coja y se lee como un hueco. La variante de
+   TRES existe igualmente porque el editor pasa por ahí al subir la cuarta, y una
+   rejilla sin áreas declaradas coloca las piezas en pistas implícitas — se ve
+   torcida, que es peor que rota. */
+
+.og-book-grid[data-escena="pliego"] {
+  --bk-cols: 1;
+  --bk-ratio: 3 / 4;
+}
+.og-book-grid[data-escena="pliego"][data-piezas="2"] {
+  grid-template-areas: "a" "b";
+}
+.og-book-grid[data-escena="pliego"][data-piezas="3"] {
+  grid-template-areas: "a" "b" "c";
+}
+.og-book-grid[data-escena="pliego"][data-piezas="4"] {
+  grid-template-areas: "a" "b" "c" "d";
+}
+
 /* ── retrato — una pieza vertical y su nota ────────────────────────────── */
 
 .og-book-grid[data-escena="retrato"] {
@@ -1015,6 +1072,37 @@
   }
   .og-book-grid[data-escena="ancla"] {
     grid-template-areas: "a a a a a a n n n n n n";
+  }
+
+  /* El clip ocupa siete de doce y arranca en la columna cero —o sea, en el borde
+     de la pantalla—; el texto se centra a su lado. `align-items: center` y no
+     `start`: una descripción corta pegada al techo de un vídeo de dos tercios de
+     pantalla se lee como un desajuste, no como una composición. */
+  .og-book-grid[data-escena="metraje"] {
+    --bk-cols: 12;
+    grid-template-areas: "a a a a a a a n n n n n";
+    gap: 0;
+    align-items: center;
+    --bk-ratio: 3 / 4;
+  }
+  .og-book-grid[data-escena="metraje"] .og-book-notas {
+    /* Gana al `self-start` que trae la columna de texto por defecto: aquí el
+       texto se centra contra el clip. Selector de tres, así que no hay empate. */
+    align-self: center;
+    padding-inline: clamp(2.5rem, 6cqw, 6rem);
+  }
+
+  .og-book-grid[data-escena="pliego"] {
+    --bk-cols: 2;
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="2"] {
+    grid-template-areas: "a b";
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="3"] {
+    grid-template-areas: "a b" "c c";
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="4"] {
+    grid-template-areas: "a b" "c d";
   }
 
   .og-book-grid[data-escena="rejilla"][data-piezas="3"] {

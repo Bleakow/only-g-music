@@ -326,11 +326,21 @@
    al bajar, y la apertura arrancaría recortada. */
 
 .og-book-apertura {
-  /* Cinco pantallas, una por tiempo de la secuencia: leer el nombre, la
-     transición, las dos que suben, la foto de portada que se arma, y la que se
-     desintegra. Es el scroll que consume la coreografía. */
-  height: 500svh;
+  /* Una pantalla por tiempo de la secuencia: leer el nombre, la transición, las
+     dos que suben, la foto de portada que se arma y la que se desintegra. Es el
+     scroll que consume la coreografía.
+
+     EN ESTRECHO SON MENOS, y no es una concesión: en el móvil se baja a base de
+     impulsos largos, así que las mismas cinco pantallas se sienten el doble. Se
+     reportó tal cual — "en móviles debo hacer mucho scroll para llegar a la
+     vitrina". La secuencia es idéntica; lo que cambia es cuánto dedo cuesta. */
+  height: 340svh;
   position: relative;
+}
+@container bk (min-width: 48rem) {
+  .og-book-apertura {
+    height: 500svh;
+  }
 }
 
 /* SIN AIRE DETRÁS. La apertura termina en una pantalla entera del color de la
@@ -370,7 +380,10 @@
   background: none;
 }
 
-/* El nombre, en medio. */
+/* El nombre, en medio. SIN caja detrás: se probó una placa de cristal y se
+   descartó — tapaba la foto justo donde más se mira. Lo único que se le añade a
+   las letras es una sombra difusa, que no se ve pero sostiene el blanco cuando
+   debajo cae una zona clara. */
 .og-book-ap-nombre {
   position: absolute;
   inset: 0;
@@ -383,6 +396,7 @@
   padding-inline: var(--bk-margen);
   text-align: center;
   color: #fff;
+  text-shadow: 0 2px 26px rgb(0 0 0 / 0.55);
   pointer-events: none;
 }
 
@@ -482,10 +496,17 @@
   overflow: visible;
 }
 
+/* EL TEXTO DE LA FOTO DE PORTADA VA CON LA TINTA DE LA ATMÓSFERA, no en blanco.
+   Cuando aparece, la foto que abría ya se desenfocó del todo y lo que hay detrás
+   es el color de fondo del book: en las atmósferas de papel, blanco sobre
+   blanco. Se reportó como "el texto de la foto de portada es blanco" y era
+   exactamente eso — un texto invisible en dos de las cuatro atmósferas.
+
+   Aquí NO hace falta placa: esto no cae sobre una foto, cae sobre el fondo. */
 .og-book-ap-portada-texto {
   max-width: 30rem;
   text-align: center;
-  color: #fff;
+  color: var(--bk-ink);
 }
 .og-book-ap-portada-titulo {
   font-family: var(--bk-display);
@@ -496,7 +517,7 @@
   margin-top: 0.6rem;
   font-size: clamp(0.8125rem, 1.5cqi, 0.95rem);
   line-height: 1.55;
-  color: rgb(255 255 255 / 0.8);
+  color: var(--bk-ink-soft);
 }
 
 @container bk (min-width: 48rem) {
@@ -544,13 +565,22 @@
   display: block;
 }
 
+/* SIN `border-radius` Y SIN `will-change`, y las dos ausencias son el arreglo de
+   la "rejilla de líneas blancas" que se veía sobre la foto en el móvil:
+
+   · el radio recortaba las cuatro esquinas de cada tesela, y donde se juntan
+     cuatro teselas eso es un agujerito por el que se ve el fondo — en las
+     atmósferas de papel, blanco. Multiplicado por un centenar de cruces, una
+     cuadrícula.
+   · `will-change` convertía CADA tesela en su propia capa de composición. Son
+     más de cien; un móvil las rasteriza por separado, cada una con sus bordes
+     suavizados, y las junta con redondeo de subpíxel. El resultado son juntas
+     visibles entre capa y capa por mucho que las cajas se solapen. Sin la
+     pista, el navegador las compone juntas y las juntas desaparecen. GSAP sigue
+     animando `transform` y `opacity`, que se mueven igual de bien. */
 .og-book-desint-tesela {
   position: absolute;
   background-repeat: no-repeat;
-  border-radius: 1px;
-  /* `transform` y `opacity` los mueve el compositor: son cientos de teselas y
-     es la única forma de que esto no cueste fotogramas. */
-  will-change: transform, opacity;
 }
 
 /* ── plena — grande, pero ya no un pantallazo ─────────────────────────────

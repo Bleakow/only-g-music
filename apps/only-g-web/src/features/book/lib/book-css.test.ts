@@ -122,6 +122,44 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBe(false);
   });
 
+  it("el recorrido de la apertura es más corto en estrecho que en ancho", () => {
+    // En el móvil se baja a base de impulsos largos: las mismas pantallas de
+    // recorrido se sienten el doble, y se reportó como "en móviles debo hacer
+    // mucho scroll para llegar a la vitrina". Unificar las dos alturas "para
+    // simplificar" devuelve el problema sin romper nada — de ahí esta prueba.
+    const alturas = REGLAS.filter((r) => r.selector.trim() === ".og-book-apertura")
+      .map((r) => /height:\s*(\d+)svh/.exec(r.cuerpo)?.[1])
+      .filter((v): v is string => Boolean(v))
+      .map(Number);
+    expect(alturas.length, "la apertura ya no declara dos alturas").toBe(2);
+    expect(
+      alturas[0],
+      "el recorrido de estrecho no es más corto que el de ancho",
+    ).toBeLessThan(alturas[1]);
+  });
+
+  it("las teselas del desintegrado no se componen por separado ni se redondean", () => {
+    // Las dos cosas producían la MISMA avería: una rejilla de líneas claras
+    // sobre la foto en el móvil. El radio abre un agujerito en cada cruce de
+    // cuatro teselas; `will-change` convierte a cada una en su propia capa de
+    // composición —son más de cien— y el móvil las junta con redondeo de
+    // subpíxel, dejando juntas visibles por mucho que las cajas se pisen.
+    // Volver a poner cualquiera de las dos "por rendimiento" es el camino
+    // directo al mismo bug.
+    const tesela = REGLAS.find(
+      (r) => r.selector.trim() === ".og-book-desint-tesela",
+    );
+    expect(tesela, "falta .og-book-desint-tesela").toBeDefined();
+    expect(
+      /will-change/.test(tesela!.cuerpo),
+      "vuelve el will-change: cien capas y cien juntas",
+    ).toBe(false);
+    expect(
+      /border-radius/.test(tesela!.cuerpo),
+      "vuelve el radio: un agujero en cada cruce de teselas",
+    ).toBe(false);
+  });
+
   it("la apertura no deja aire detrás", () => {
     // Regresión del "recorrido de scroll entre la foto que se desvanece y la
     // vitrina es muy grande". La apertura TERMINA en una pantalla entera del

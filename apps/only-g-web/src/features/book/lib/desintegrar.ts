@@ -30,10 +30,24 @@ export interface Tesela {
 
 /** Columnas según el ancho real: en móvil menos teselas, que son menos capas. */
 function columnasPara(ancho: number): number {
-  if (ancho < 260) return 9;
-  if (ancho < 420) return 12;
+  if (ancho < 300) return 8;
+  if (ancho < 460) return 11;
   return 16;
 }
+
+/**
+ * Cuánto se pisan dos teselas vecinas. NO es un margen de seguridad genérico: es
+ * lo único que tapa la REJILLA DE LÍNEAS que se veía sobre la foto —blanca en
+ * las atmósferas de papel, porque lo que asomaba por las juntas era el fondo—.
+ *
+ * Un píxel no bastaba. Cada tesela lleva su propia posición fraccionaria y el
+ * navegador la rasteriza con sus bordes suavizados, así que entre dos vecinas
+ * queda medio píxel translúcido a cada lado; y en cuanto el vuelo empieza a
+ * encoger o girar una tesela, la junta se abre de verdad. Con dos píxeles la
+ * tesela enseña un trozo de su vecina en vez de un trozo del fondo, que es
+ * exactamente lo que hay que ver mientras la foto está montada.
+ */
+const SOLAPE = 2;
 
 /**
  * Ruido determinista a partir de un entero. Se usa en vez de `Math.random()`
@@ -89,10 +103,12 @@ export function construirTeselas(
       el.className = "og-book-desint-tesela";
       el.style.left = `${c * tw}px`;
       el.style.top = `${f * th}px`;
-      // +1px de solape: sin él, el redondeo a subpíxel deja una rejilla de
-      // líneas finas del fondo entre tesela y tesela cuando están montadas.
-      el.style.width = `${tw + 1}px`;
-      el.style.height = `${th + 1}px`;
+      // La última columna y la última fila NO se solapan: ahí no hay vecina que
+      // enseñar, así que el sobrante caería fuera de la imagen y pintaría una
+      // franja transparente justo en el borde de la foto — la misma línea clara
+      // que se intenta quitar, pero en el sitio donde más se nota.
+      el.style.width = `${c === cols - 1 ? tw : tw + SOLAPE}px`;
+      el.style.height = `${f === filas - 1 ? th : th + SOLAPE}px`;
       el.style.backgroundImage = `url("${url}")`;
       el.style.backgroundSize = `${w}px ${h}px`;
       el.style.backgroundPosition = `${-c * tw}px ${-f * th}px`;

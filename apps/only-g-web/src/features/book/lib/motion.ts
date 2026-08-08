@@ -263,10 +263,10 @@ function montarPortada(
     tl.fromTo(
       texto,
       { y: 26, opacity: 0 },
-      { y: 0, opacity: 1, ease: "none", duration: 0.1 },
-      0.6,
+      { y: 0, opacity: 1, ease: "none", duration: 0.09 },
+      0.58,
     );
-    tl.to(texto, { y: -20, opacity: 0, ease: "none", duration: 0.08 }, 0.84);
+    tl.to(texto, { y: -20, opacity: 0, ease: "none", duration: 0.06 }, 0.76);
   }
 
   let cancelado = false;
@@ -288,6 +288,22 @@ function montarPortada(
     const en = <K extends "x" | "y" | "rot">(k: K) => (i: number) =>
       k === "rot" ? teselas[i].rot : teselas[i][k as "x" | "y"];
 
+    /**
+     * CADA TESELA VIAJA CORTO Y EL RELEVO ES LARGO, y esa proporción —no los
+     * números sueltos— es la mitad del arreglo de la "rejilla de líneas
+     * blancas".
+     *
+     * Antes cada tesela tardaba 0.2 y el escalonado repartía 0.07: o sea, TODAS
+     * estaban a medio camino a la vez. Y una tesela a medio camino está girada
+     * y encogida un poquito respecto a sus vecinas, así que entre ellas se abre
+     * una junta por la que se ve el fondo. Cien juntas a la vez son una
+     * cuadrícula sobre la foto.
+     *
+     * Con el viaje corto (0.07) y el relevo largo (0.18), en cada instante solo
+     * una franja de teselas se está moviendo: el resto están EXACTAMENTE en su
+     * sitio, pisándose con sus vecinas, sin junta ninguna. Además es como se
+     * deshace algo de verdad, y es lo que hace la demo de GSAP.
+     */
     // SE ARMA: las piezas llegan desde su desperdigado hasta su sitio. Desde el
     // centro hacia fuera, que es como se reconoce una cara antes que un borde.
     tl.fromTo(
@@ -306,11 +322,15 @@ function montarPortada(
         opacity: 1,
         scale: 1,
         ease: "none",
-        duration: 0.2,
-        stagger: { from: "center", amount: 0.07 },
+        duration: 0.07,
+        stagger: { from: "center", amount: 0.18 },
       },
-      0.52,
+      0.46,
     );
+
+    // De 0.71 a 0.82 no pasa NADA: la foto está entera y quieta. Ese silencio es
+    // lo que la convierte en una foto que se mira en vez de en un efecto que se
+    // ve pasar, y es el único tramo del track que no se puede recortar.
 
     // SE DESHACE: ahora desde los bordes, para que la cara sea lo último en
     // irse. Al revés se perdería justo lo que se quiere mirar.
@@ -323,10 +343,10 @@ function montarPortada(
         opacity: 0,
         scale: 0.55,
         ease: "none",
-        duration: 0.16,
-        stagger: { from: "edges", amount: 0.07 },
+        duration: 0.05,
+        stagger: { from: "edges", amount: 0.13 },
       },
-      0.84,
+      0.82,
     );
   });
 }
@@ -515,11 +535,29 @@ function indice(escena: HTMLElement, p: Params) {
  * lo más lejos: primero se llenan los lados y luego aterriza la protagonista,
  * que es donde queda mirando el ojo.
  */
-const ENTRADA_VITRINA = [
-  { x: "-78vw", y: 40, rot: -12, en: 0.2 }, // 0 · frente — cruza toda la escena
-  { x: "-62vw", y: 58, rot: -19, en: 0 }, // 1 · izquierda
-  { x: "70vw", y: 52, rot: 16, en: 0.08 }, // 2 · derecha, ella sola
-];
+const ENTRADA_VITRINA = {
+  ancho: [
+    { x: "-78vw", y: 40, rot: -12, en: 0.2 }, // 0 · frente — cruza la escena
+    { x: "-62vw", y: 58, rot: -19, en: 0 }, // 1 · izquierda
+    { x: "70vw", y: 52, rot: 16, en: 0.08 }, // 2 · derecha, ella sola
+  ],
+  /**
+   * En estrecho ARRANCAN MÁS CERCA, y no por prudencia. La carta del frente mide
+   * media pantalla de ancho: saliendo desde -78vw se pasaba casi todo el vuelo
+   * fuera del móvil y lo poco que se veía era el final. Se reportó tal cual —
+   * "las fotos están muy lejos y el efecto es muy rápido". Desde -52vw ya asoma
+   * por el borde al empezar, así que el recorrido se ve ENTERO.
+   *
+   * Las de los lados llevan más número por una razón que engaña: su padre está
+   * al 56% y 60%, y el navegador escala también la traslación del hijo. 58vw
+   * ahí dentro son 32vw en pantalla.
+   */
+  estrecho: [
+    { x: "-52vw", y: 32, rot: -10, en: 0.22 },
+    { x: "-58vw", y: 46, rot: -16, en: 0 },
+    { x: "62vw", y: 40, rot: 14, en: 0.1 },
+  ],
+};
 
 /**
  * Vitrina: la ENTRADA de las cartas y la de sus textos. El cambio de carta lo
@@ -541,7 +579,7 @@ const ENTRADA_VITRINA = [
  * Animarlo aquí se lo arrebataría a la transición y la vitrina dejaría de poder
  * cambiar de carta. Por eso todo esto va sobre la capa INTERIOR.
  */
-function vitrina(escena: HTMLElement, p: Params) {
+function vitrina(escena: HTMLElement, p: Params, movil: boolean) {
   // El disparador es el ESCENARIO, no la escena. La escena incluye el título y
   // la cita, y su alto cambia muchísimo entre móvil (todo apilado) y escritorio
   // (texto al lado): anclando a la escena, las cartas aterrizaban centradas en
@@ -579,13 +617,22 @@ function vitrina(escena: HTMLElement, p: Params) {
       start: "top bottom",
       // Y aterrizan con el escenario ya encuadrado. Si acabaran más tarde, el
       // final del vuelo pillaría la vitrina a medio salir por arriba.
-      end: "center 58%",
+      //
+      // En estrecho el recorrido es MÁS LARGO (el escenario sube hasta el 32% de
+      // la pantalla en vez de quedarse en el 58%). Es lo que arregla el "efecto
+      // muy rápido": el vuelo dura lo que dura el scroll que lo arrastra, así
+      // que la única forma de darle tiempo es darle recorrido. Y el scroll que
+      // cuesta se paga de sobra con las pantallas que se le quitaron arriba a la
+      // apertura.
+      end: movil ? "center 32%" : "center 58%",
       scrub: arrastre(p),
     },
   });
 
+  const desde = movil ? ENTRADA_VITRINA.estrecho : ENTRADA_VITRINA.ancho;
+
   cuerpos.forEach((cuerpo, i) => {
-    const d = ENTRADA_VITRINA[i % ENTRADA_VITRINA.length];
+    const d = desde[i % desde.length];
     // El desplazamiento va en `vw` y no en porcentaje de la carta: las cartas de
     // los lados llegan al 56% de tamaño y su padre escala también la traslación,
     // así que un porcentaje de sí mismas dejaba a dos de las tres empezando
@@ -594,7 +641,14 @@ function vitrina(escena: HTMLElement, p: Params) {
     entrada.fromTo(
       cuerpo,
       { x: d.x },
-      { x: 0, ease: "power2.out", duration: 0.8 },
+      {
+        x: 0,
+        // En estrecho, una curva menos frontal. `power2.out` se come la mitad
+        // del recorrido en el primer 25% del vuelo, y en una pantalla pequeña
+        // eso es justo el tramo que pasa fuera: se veía llegar, no volar.
+        ease: movil ? "power1.out" : "power2.out",
+        duration: 0.8,
+      },
       d.en,
     );
     entrada.fromTo(
@@ -649,7 +703,7 @@ const POR_TIPO: Record<string, Coreografia> = {
   ancla: (e, p) => ancla(e, p),
   rejilla: (e, p) => rejilla(e, p),
   indice: (e, p) => indice(e, p),
-  vitrina: (e, p) => vitrina(e, p),
+  vitrina: (e, p, movil) => vitrina(e, p, movil),
   retrato: (e, p) => retrato(e, p),
   cierre: (e, p) => cierre(e, p),
   // `tira` no está aquí: solo se monta en escritorio, más abajo.

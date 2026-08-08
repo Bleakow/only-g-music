@@ -117,7 +117,9 @@ export function BookApertura({
             />
           </div>
 
-          {/* El nombre, en medio. Se dispersa hacia arriba al bajar. */}
+          {/* El nombre, en medio. Se dispersa hacia arriba al bajar. Sin caja
+              detrás: se probó una placa de cristal y se descartó — tapaba la
+              foto justo donde más se mira. */}
           <div className="og-book-ap-nombre">
             <h1 className="og-book-titulo-portada">{nombre}</h1>
             <p className="og-book-pista">{t("scrollHint")}</p>

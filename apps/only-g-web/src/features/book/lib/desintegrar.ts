@@ -31,9 +31,14 @@
  * paso mismo origen, que es lo que permite leer sus píxeles.
  */
 
-/** Granos. Más en pantalla grande; el móvil no necesita tantos para leerse. */
-const GRANOS_ESTRECHO = 2200;
-const GRANOS_ANCHO = 4200;
+/**
+ * Granos. Más en pantalla grande; el móvil no necesita tantos para leerse.
+ *
+ * Solo se dibujan los que están dentro de la banda del frente —una fracción del
+ * total en cada fotograma—, así que el número declarado no es el que se pinta.
+ */
+const GRANOS_ESTRECHO = 3400;
+const GRANOS_ANCHO = 6400;
 
 /** Ancho del lienzo de MUESTREO. Solo sirve para sacar colores de polvo. */
 const MUESTRA = 220;
@@ -55,11 +60,26 @@ const VUELO_X = 0.75;
 const VUELO_Y = 0.45;
 
 /**
- * Ancho de la banda del frente, en fracción del recorrido. Es lo que separa
- * "algo que se deshace" de "una cortina que pasa": con la banda estrecha se ve
- * el borde recto del degradado.
+ * Ancho de la banda del frente, en fracción del recorrido: cuánto dura el vuelo
+ * de un grano desde que su trozo de foto empieza a irse.
  */
-const BANDA = 0.42;
+const BANDA = 0.34;
+
+/**
+ * LA FOTO VA POR DETRÁS DEL POLVO, y esta fracción es cuánto.
+ *
+ * Con una sola banda para las dos cosas pasaba lo que se reportó: "la foto se
+ * revela mucho antes de que lleguen las partículas". Normal — el degradado de la
+ * foto era tan ancho como el vuelo entero, así que empezaba a aclararse en el
+ * mismo instante en que los granos salían, y para cuando la arena llegaba a un
+ * sitio la foto ya estaba casi puesta ahí.
+ *
+ * Ahora el borde de la foto es la MITAD de ancho y arranca en el mismo punto: en
+ * cualquier sitio, el polvo pasa primero y la foto se cierra detrás. Es lo que
+ * convierte "una foto que se aclara mientras vuela polvo al lado" en "el polvo
+ * ARMA la foto", que es la petición literal.
+ */
+const FOTO_TRAS_POLVO = 0.5;
 
 /**
  * Ruido determinista a partir de un entero. Mismo motivo que en la versión de
@@ -292,12 +312,15 @@ export async function construirPolvo(
    */
   const degradado = (p: number): CanvasGradient => {
     const frente = p * (1 + BANDA) - BANDA;
+    // La banda de la FOTO, más estrecha que la del polvo y arrancando en el
+    // mismo punto: el polvo pasa primero y la foto se cierra detrás.
+    const banda = BANDA * FOTO_TRAS_POLVO;
     const borrado = (s: number) =>
-      Math.min(1, Math.max(0, (frente + BANDA - s) / BANDA));
+      Math.min(1, Math.max(0, (frente + banda - s) / banda));
     const g = ctx.createLinearGradient(0, oy + h, w, oy);
     g.addColorStop(0, `rgba(0,0,0,${borrado(0)})`);
     if (frente > 0 && frente < 1) g.addColorStop(frente, "rgba(0,0,0,1)");
-    const fin = frente + BANDA;
+    const fin = frente + banda;
     if (fin > 0 && fin < 1) g.addColorStop(fin, "rgba(0,0,0,0)");
     g.addColorStop(1, `rgba(0,0,0,${borrado(1)})`);
     return g;
@@ -312,7 +335,18 @@ export async function construirPolvo(
 
     if (p < 1) {
       ctx.globalAlpha = 1;
+      // RECORTADA A SU CAJA, y esto arregla la franja que se quedaba clavada en
+      // el borde derecho. `object-fit: cover` significa por definición que la
+      // foto SE SALE por uno de los dos ejes; en el DOM lo recortaba el
+      // `overflow: hidden` de la pieza, pero un lienzo no recorta nada. Ese
+      // sobrante caía fuera de la caja que borra el degradado, así que no se
+      // desintegraba nunca: un rectángulo largo que se quedaba ahí para siempre.
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, oy, w, h);
+      ctx.clip();
       ctx.drawImage(foto, cover.x, cover.y + oy, cover.w, cover.h);
+      ctx.restore();
 
       if (p > 0) {
         // SE BORRA lo que ya se volvió polvo. El frente barre de `-BANDA` a `1`:
@@ -343,9 +377,12 @@ export async function construirPolvo(
         cuboActual = gr.cubo;
         ctx.fillStyle = estilos.get(gr.cubo)!;
       }
-      // Sube y baja: aparece al despegar y se apaga al alejarse. Un grano que se
-      // corta de golpe al final del viaje se ve como un parpadeo.
-      ctx.globalAlpha = Math.sin(Math.PI * t) * 0.85;
+      // BRILLA EN CASA Y SE APAGA AL ALEJARSE. Antes subía y bajaba —máximo a
+      // media distancia—, y eso ponía el grano más tenue justo donde la foto se
+      // estaba cerrando: se veía la foto aparecer y, aparte, polvo volando lejos.
+      // Dos efectos. Con el máximo en el punto de partida, la arena se amontona
+      // en el borde que se arma y es ella la que lo dibuja.
+      ctx.globalAlpha = Math.pow(1 - t, 0.55) * 0.95;
       // Acelera: al principio se despega despacio y luego el viento se lo lleva.
       const v = t * t;
       ctx.fillRect(gr.hx + gr.dx * v, gr.hy + gr.dy * v, gr.s, gr.s);

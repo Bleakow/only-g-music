@@ -1,10 +1,32 @@
 import { describe, it, expect } from "vitest";
 import {
+  armandoEn,
   fasePolvo,
   frenteDePolvo,
   turnoDeGrano,
   vueloDeGrano,
 } from "./desintegrar";
+
+describe("el cambio de vuelo cae donde no se ve", () => {
+  it("la foto está QUIETA cuando se cambia de vuelo", () => {
+    // La foto se posa de una manera y se la lleva el viento de otra, así que a
+    // mitad del recorrido los granos cambian de rumbo y de eje. Si ese cambio
+    // pillara a un solo grano en el aire, ese grano SALTARÍA de un sitio a otro
+    // en un fotograma — y con `scrub` sería un tirón cada vez que se pasa por
+    // ahí. Por eso el corte tiene que caer dentro del tramo quieto.
+    const pasos = 1000;
+    let corte = -1;
+    for (let i = 0; i <= pasos; i++) {
+      if (!armandoEn(i / pasos)) {
+        corte = i;
+        break;
+      }
+    }
+    expect(corte, "nunca se llega a la fase de salida").toBeGreaterThan(0);
+    expect(fasePolvo((corte - 1) / pasos), "hay polvo justo antes").toBe(0);
+    expect(fasePolvo(corte / pasos), "hay polvo justo después").toBe(0);
+  });
+});
 
 /**
  * EL RELOJ DEL DESINTEGRADO. El sitio de cada grano sobre el eje del viento se

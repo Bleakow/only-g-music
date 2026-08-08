@@ -2,7 +2,12 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import type { RitmoId } from "@only-g/shared-types/book";
-import { construirPolvo, fasePolvo, urlYaCargada } from "./desintegrar";
+import {
+  armandoEn,
+  construirPolvo,
+  fasePolvo,
+  urlYaCargada,
+} from "./desintegrar";
 import { paramsDeRitmo, type ParamsRitmo } from "./ritmo";
 
 /**
@@ -302,7 +307,12 @@ function montarPortada(
           t: 1,
           ease: "none",
           duration: 0.54,
-          onUpdate: () => p.pintar(fasePolvo(estado.t)),
+          // La CANTIDAD de polvo y CON QUÉ VUELO se pinta son dos preguntas
+          // distintas: a mitad de recorrido hay el mismo polvo yendo que
+          // viniendo, y sin embargo la foto se posa de una manera y se la lleva
+          // el viento de otra.
+          onUpdate: () =>
+            p.pintar(fasePolvo(estado.t), armandoEn(estado.t)),
         },
         0.46,
       );

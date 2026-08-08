@@ -65,7 +65,7 @@ const DPR_MAX = 1.75;
  * chocara con un cristal.
  */
 const VUELO_X = 0.75;
-const VUELO_Y = 0.45;
+const VUELO_Y = 0.7;
 
 /**
  * Ancho de la banda del frente, en fracción del recorrido: cuánto dura el vuelo
@@ -159,9 +159,14 @@ export function vueloDeGrano(frente: number, turno: number): number {
 export interface Polvo {
   /**
    * Pinta el estado. `0` = foto entera y quieta, `1` = ya no queda nada.
+   *
+   * `armando` elige CON QUÉ VUELO se pinta: la foto se posa de una manera y se
+   * la lleva el viento de otra. Lo decide `armandoEn`, no el propio módulo:
+   * quién llama sabe en qué punto de la secuencia va y aquí solo se dibuja.
+   *
    * Se llama desde el `onUpdate` de una timeline con `scrub`.
    */
-  pintar(progreso: number): void;
+  pintar(progreso: number, armando: boolean): void;
   destruir(): void;
 }
 
@@ -312,11 +317,47 @@ export async function construirPolvo(
   // de indirecciones que el recolector tiene que pasear.
   const hx = new Float32Array(total);
   const hy = new Float32Array(total);
-  const dx = new Float32Array(total);
-  const dy = new Float32Array(total);
-  const uu = new Float32Array(total);
   const cubos = new Uint32Array(total);
   const estilos = new Map<number, string>();
+
+  /**
+   * DOS VUELOS, uno para llegar y otro para irse.
+   *
+   * Con uno solo, la salida era la entrada rebobinada: exactamente la misma
+   * película al revés. Y se nota, porque el ojo ya ha visto ese movimiento hace
+   * cuatro pantallas y lo reconoce.
+   *
+   * Ahora la foto SE POSA y luego SE LA LLEVA EL VIENTO, que son dos cosas
+   * distintas y ninguna es la otra del revés:
+   *   · llega — los granos caen desde arriba con muy poca deriva lateral, y la
+   *     imagen cuaja de arriba abajo. Arena que se asienta.
+   *   · se va — salen de lado y hacia arriba, y el barrido va en diagonal desde
+   *     la esquina de abajo a la izquierda. Arena que se lleva una racha.
+   *
+   * Cada vuelo trae SU EJE de degradado, porque el borde de la foto tiene que
+   * seguir a sus granos: con el eje del otro, la foto se cerraría por un lado
+   * mientras la arena llega por otro, que es peor que no tener dos vuelos.
+   */
+  interface Vuelo {
+    dx: Float32Array;
+    dy: Float32Array;
+    turno: Float32Array;
+    /** Eje del degradado en píxeles del lienzo: `[x0, y0, x1, y1]`. */
+    eje: readonly [number, number, number, number];
+  }
+
+  const nuevoVuelo = (eje: Vuelo["eje"]): Vuelo => ({
+    dx: new Float32Array(total),
+    dy: new Float32Array(total),
+    turno: new Float32Array(total),
+    eje,
+  });
+
+  // Llegada: eje VERTICAL, de abajo (0) a arriba (1). Al armar, el frente
+  // retrocede de 1 a 0, así que la imagen cuaja del techo hacia el suelo.
+  const llegada = nuevoVuelo([0, oy + h, 0, oy]);
+  // Salida: la diagonal del viento, de abajo-izquierda a arriba-derecha.
+  const salida = nuevoVuelo([0, oy + h, w, oy]);
 
   const celdaW = w / cols;
   const celdaH = h / filas;
@@ -359,24 +400,33 @@ export async function construirPolvo(
     const c = i % cols;
     const f = (i - c) / cols;
 
-    // El viento va hacia el lado y hacia arriba, con turbulencia POR GRANO: sin
-    // ella la rejilla viajaría en bloque y se leería como un mosaico que se
-    // desliza, no como arena que se dispersa.
-    const empuje = 0.4 + ruido(i) * 0.95;
-    const desvio = (ruido(i + 15485863) - 0.5) * 0.6;
-
-    // Su sitio sobre el eje del viento: la cuenta del degradado despejada, no una
-    // diagonal parecida.
-    const sitio =
-      (((c + 0.5) / cols) * w * w + (1 - (f + 0.5) / filas) * h * h) / diagonal;
+    const nx = (c + 0.5) / cols;
+    const ny = (f + 0.5) / filas;
 
     hx[n] = (c + 0.5) * celdaW;
     hy[n] = oy + (f + 0.5) * celdaH;
-    dx[n] = empuje * w;
-    dy[n] = (-0.34 * empuje + desvio) * h;
-    // El turno: el sitio manda, pero desordenado. Ver `DISPERSION`.
-    uu[n] = turnoDeGrano(sitio, ruido(i + 2971215073));
     cubos[n] = cubosSinOrdenar[i];
+
+    // Turbulencia POR GRANO en los dos vuelos: sin ella la rejilla viajaría en
+    // bloque y se leería como un mosaico que se desliza, no como arena.
+
+    // LLEGA cayendo. Poca deriva de lado —y hacia el mismo lado que el techo del
+    // lienzo, que solo sobra por la derecha— para que ningún grano se salga por
+    // el borde izquierdo, donde el lienzo sí corta.
+    const caida = 0.45 + ruido(i + 5772019) * 0.75;
+    llegada.dx[n] = (ruido(i + 8121581) - 0.35) * 0.2 * w;
+    llegada.dy[n] = -caida * h;
+    // Su sitio en el eje vertical: 1 arriba, 0 abajo — la cuenta del degradado
+    // `[0, oy+h] → [0, oy]` despejada, no una vertical parecida.
+    llegada.turno[n] = turnoDeGrano(1 - ny, ruido(i + 2971215073));
+
+    // SE VA de lado y hacia arriba, en la diagonal del viento.
+    const empuje = 0.4 + ruido(i) * 0.95;
+    const desvio = (ruido(i + 15485863) - 0.5) * 0.6;
+    salida.dx[n] = empuje * w;
+    salida.dy[n] = (-0.34 * empuje + desvio) * h;
+    salida.turno[n] =
+      turnoDeGrano((nx * w * w + (1 - ny) * h * h) / diagonal, ruido(i + 49979687));
   }
 
   capa.textContent = "";
@@ -389,7 +439,7 @@ export async function construirPolvo(
    * fuera del lienzo, una parada opaca en 0 borraría de golpe la esquina entera
    * en el primer fotograma.
    */
-  const degradado = (frente: number): CanvasGradient => {
+  const degradado = (frente: number, eje: Vuelo["eje"]): CanvasGradient => {
     // La banda de la foto ocupa el PRIMER tramo del vuelo del grano, así que su
     // borde va por DELANTE del frente de los granos, no por detrás.
     //
@@ -403,7 +453,7 @@ export async function construirPolvo(
     const fin = (frente + BANDA) / (1 - DISPERSION);
     const ini = fin - banda;
     const borrado = (s: number) => Math.min(1, Math.max(0, (fin - s) / banda));
-    const g = ctx.createLinearGradient(0, oy + h, w, oy);
+    const g = ctx.createLinearGradient(eje[0], eje[1], eje[2], eje[3]);
     g.addColorStop(0, `rgba(0,0,0,${borrado(0)})`);
     if (ini > 0 && ini < 1) g.addColorStop(ini, "rgba(0,0,0,1)");
     if (fin > 0 && fin < 1) g.addColorStop(fin, "rgba(0,0,0,0)");
@@ -418,10 +468,14 @@ export async function construirPolvo(
   // Función FLECHA y no declaración: TypeScript no aplica el estrechamiento del
   // `if (!ctx) return null` de arriba dentro de una `function` —está izada, así
   // que podría llamarse antes—, y quedaría un archivo lleno de `ctx!`.
-  const pintar = (progreso: number): void => {
+  const pintar = (progreso: number, armando: boolean): void => {
     const p = Math.min(1, Math.max(0, progreso));
     ctx.clearRect(0, 0, lienzo.width, lienzo.height);
     const frente = frenteDePolvo(p);
+    // El vuelo manda sobre TODO: los granos y el borde de la foto. Cambiar uno
+    // sin el otro dejaría la foto cerrándose por un lado mientras la arena llega
+    // por otro, que es peor que no haber partido el vuelo en dos.
+    const vuelo = armando ? llegada : salida;
 
     if (p < 1) {
       ctx.globalAlpha = 1;
@@ -438,7 +492,7 @@ export async function construirPolvo(
 
       if (p > 0) {
         ctx.globalCompositeOperation = "destination-out";
-        ctx.fillStyle = degradado(frente);
+        ctx.fillStyle = degradado(frente, vuelo.eje);
         ctx.fillRect(0, oy, w, h);
         ctx.globalCompositeOperation = "source-over";
       }
@@ -450,7 +504,7 @@ export async function construirPolvo(
     // muchos granos que haya declarados.
     let cuboActual = -1;
     for (let n = 0; n < total; n++) {
-      const t = vueloDeGrano(frente, uu[n]);
+      const t = vueloDeGrano(frente, vuelo.turno[n]);
       if (t <= 0 || t >= 1) continue;
 
       const cubo = cubos[n];
@@ -465,13 +519,18 @@ export async function construirPolvo(
       // encoge por el camino: de tesela a grano de arena.
       const v = t * t;
       const s = lado * (1 - ENCOGE * t);
-      ctx.fillRect(hx[n] + dx[n] * v - s / 2, hy[n] + dy[n] * v - s / 2, s, s);
+      ctx.fillRect(
+        hx[n] + vuelo.dx[n] * v - s / 2,
+        hy[n] + vuelo.dy[n] * v - s / 2,
+        s,
+        s,
+      );
     }
     ctx.globalAlpha = 1;
   };
 
   // Estado inicial: la foto todavía no ha llegado a su sitio en la secuencia.
-  pintar(1);
+  pintar(1, true);
 
   return {
     pintar,
@@ -501,6 +560,21 @@ const FIN_QUIETO = 0.66;
  * estaría escribiendo "foto entera" durante toda la fase de armado. El resultado
  * es que la foto aparece de golpe antes de tiempo, y solo a veces.
  */
+/**
+ * ¿Este punto del tramo pertenece a la LLEGADA o a la SALIDA?
+ *
+ * Va aparte de `fasePolvo` —que solo dice cuánto polvo hay— porque el punto
+ * medio del recorrido tiene la misma cantidad de polvo yendo que viniendo, y sin
+ * embargo hay que pintarlo con vuelos distintos. La cantidad no basta para saber
+ * hacia dónde va la cosa.
+ *
+ * El corte cae dentro del tramo QUIETO, donde no hay ni un grano en el aire: así
+ * el cambio de vuelo ocurre mientras no se ve nada moverse y no hay salto.
+ */
+export function armandoEn(t: number): boolean {
+  return t < FIN_QUIETO;
+}
+
 export function fasePolvo(t: number): number {
   // Los extremos se devuelven a mano y no salen de la cuenta: `1 - 0.66` no da
   // `0.34` en coma flotante, así que la división terminaba en 0.999… y el último

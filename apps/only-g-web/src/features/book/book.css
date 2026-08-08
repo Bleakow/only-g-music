@@ -789,6 +789,17 @@
   outline-offset: 4px;
 }
 
+/* Capa interior: es la que anima la ENTRADA por scroll. Existe porque el
+   `transform` de la carta ya está ocupado siendo su sitio en el carrusel, y dos
+   dueños para la misma propiedad significa que uno de los dos pierde. */
+.og-book-vit-cuerpo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
 .og-book-vit-carta .og-book-pieza {
   position: absolute;
   inset: 0;
@@ -1016,15 +1027,27 @@
    serían dos pantallas de scroll por escena. Se le da proporción en vez de alto.
    La composición no se toca. */
 
-/* La APERTURA en el editor. Aquí sí es una rejilla —tres huecos, uno grande
-   arriba y los dos que suben debajo— porque lo que hace falta es SUBIR TRES
-   FOTOS y ver cuál es cuál. La secuencia de verdad no se puede editar ni
-   previsualizar dentro de una tarjeta: para eso está el botón de ver el book. */
+/* La APERTURA en el editor. Aquí sí es una rejilla porque lo que hace falta es
+   SUBIR LAS CUATRO FOTOS y ver cuál es cuál; la secuencia de verdad no cabe en
+   una tarjeta (para eso está el botón de ver el book).
+
+   CUATRO áreas, una por foto. Con tres —como estaba— la cuarta caía en una
+   pista IMPLÍCITA: un cuadradito deformado en una esquina en vez de la foto de
+   portada ocupando su sitio. Es el fallo callado de siempre: `grid-area: d` sin
+   área declarada no da error, solo coloca la pieza fuera de la composición. */
 .og-book-editor .og-book-grid[data-escena="portada"] {
   --bk-cols: 2;
-  grid-template-areas: "a a" "b c";
+  grid-template-areas: "a a" "b c" "d d";
   min-height: 0;
   aspect-ratio: auto;
+}
+
+/* La VITRINA en el editor es una fila de tres huecos, no el escenario apilado:
+   ahí no se elige cuál va delante —eso lo hace quien mira el book—, se suben
+   tres fotos y se les escribe su descripción. */
+.og-book-editor .og-book-grid[data-escena="vitrina"] {
+  --bk-cols: 3;
+  grid-template-areas: "a b c";
 }
 
 /* La rejilla vacía del editor tiene que ocupar sitio para poder soltar fotos:

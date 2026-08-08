@@ -9,6 +9,7 @@ import {
   BOOK_NOTA_MAX,
   BOOK_TITULO_MAX,
   ESCENAS,
+  ESCENAS_FIJAS,
   FONDOS,
   LETRAS,
   MEDIDAS,
@@ -49,14 +50,37 @@ import {
 } from "./book";
 import { areaDeRanura } from "./gallery-layout";
 
-/** Book de pruebas: portada + las escenas que se pidan + cierre. */
-function book(...contenido: EscenaBook[]): Book {
-  const b = bookNuevo("p", "c");
-  return { ...b, escenas: [b.escenas[0], ...contenido, b.escenas[1]] };
-}
-
 const foto = (url = "f.jpg") => ({ url, tipo: "foto" as const });
 const video = (url = "v.mp4") => ({ url, tipo: "video" as const });
+
+/**
+ * Book de pruebas: las estructurales vacías con las escenas pedidas en medio.
+ * Se apoya en `ESCENAS_FIJAS` y no en índices para que añadir una cuarta escena
+ * fija no obligue a renumerar medio archivo de pruebas.
+ */
+function book(...contenido: EscenaBook[]): Book {
+  const b = bookNuevo((i) => `f${i}`);
+  return {
+    ...b,
+    escenas: [...b.escenas.slice(0, -1), ...contenido, b.escenas.at(-1)!],
+  };
+}
+
+/** La escena de ese tipo, para no depender de en qué posición cayó. */
+const escenaDe = (b: Book, tipo: EscenaBook["tipo"]) =>
+  b.escenas.find((e) => e.tipo === tipo)!;
+
+/** Deja TODAS las estructurales completas: es el arranque obligatorio. */
+function conArranque(...contenido: EscenaBook[]): Book {
+  const b = book(...contenido);
+  for (const tipo of ESCENAS_FIJAS) {
+    const e = escenaDe(b, tipo);
+    e.piezas = Array.from({ length: escenaDef(tipo)!.min }, (_, i) =>
+      foto(`${tipo}${i}.jpg`),
+    );
+  }
+  return b;
+}
 
 describe("catálogo de escenas", () => {
   it("no hay tipos repetidos", () => {
@@ -153,7 +177,7 @@ describe("escenaCompleta", () => {
 describe("cupos", () => {
   it("no admite más piezas de las que tiene la composición", () => {
     const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    expect(puedeAnadirPieza(b, b.escenas[1])).toBe(false);
+    expect(puedeAnadirPieza(b, escenaDe(b, "diptico"))).toBe(false);
   });
 
   it("respeta el tope de vídeos aunque queden ranuras libres", () => {
@@ -174,11 +198,11 @@ describe("cupos", () => {
       ...Array.from({ length: 10 }, (_, i) => ({ ...llena, id: `t${i}` })),
     );
     expect(contarPiezas(b)).toBeGreaterThanOrEqual(BOOK_MAX_PIEZAS);
-    expect(puedeAnadirPieza(b, b.escenas[1])).toBe(false);
+    expect(puedeAnadirPieza(b, escenaDe(b, "tira"))).toBe(false);
   });
 
   it("puedeAnadirEscena se cierra al llegar al tope", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     expect(puedeAnadirEscena(b)).toBe(true);
     const lleno: Book = {
       ...b,
@@ -193,43 +217,40 @@ describe("cupos", () => {
 });
 
 describe("bookPublicable", () => {
-  /** Las CUATRO de la apertura: la que abre, las dos que suben y la de portada. */
-  const apertura = () => [
-    foto("ap1.jpg"),
-    foto("ap2.jpg"),
-    foto("ap3.jpg"),
-    foto("ap4.jpg"),
-  ];
+  const diptico = (): EscenaBook => ({
+    id: "d",
+    tipo: "diptico",
+    piezas: [foto("1"), foto("2")],
+  });
 
   it("un book recién creado no se publica", () => {
-    expect(bookPublicable(bookNuevo("p", "c"))).toBe(false);
+    expect(bookPublicable(bookNuevo((i) => `f${i}`))).toBe(false);
   });
 
-  it("una apertura A MEDIAS no habilita la publicación", () => {
-    // Con una o dos de sus tres fotos, la secuencia se rompe: el nombre se
-    // dispersa y detrás no sube nada. Peor que no tener book.
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    b.escenas[0].piezas = [foto("ap1.jpg"), foto("ap2.jpg")];
-    expect(escenaCompleta(b.escenas[0])).toBe(false);
+  it.each(ESCENAS_FIJAS.filter((t) => escenaDef(t)!.min > 0))(
+    "la estructural %s a medias bloquea la publicación",
+    (tipo) => {
+      // El arranque lo comparten todos los books y a medias se rompe: el nombre
+      // se dispersa y detrás no sube nada, o el carrusel se queda con un hueco.
+      const b = conArranque(diptico());
+      escenaDe(b, tipo).piezas.pop();
+      expect(escenaCompleta(escenaDe(b, tipo))).toBe(false);
+      expect(bookPublicable(b)).toBe(false);
+    },
+  );
+
+  it("el arranque completo SOLO no basta: falta contenido propio", () => {
+    // Un book que es solo el arranque no es un portafolio, es una presentación.
+    expect(bookPublicable(conArranque())).toBe(false);
+  });
+
+  it("una escena de contenido INCOMPLETA tampoco", () => {
+    const b = conArranque({ id: "d", tipo: "diptico", piezas: [foto()] });
     expect(bookPublicable(b)).toBe(false);
   });
 
-  it("apertura completa sola tampoco: sería una apertura y un cierre", () => {
-    const b = bookNuevo("p", "c");
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(false);
-  });
-
-  it("una escena de contenido INCOMPLETA no habilita la publicación", () => {
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto()] }); // pide 2
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(false);
-  });
-
-  it("apertura completa + una escena completa sí", () => {
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(true);
+  it("arranque completo + una escena completa sí", () => {
+    expect(bookPublicable(conArranque(diptico()))).toBe(true);
   });
 });
 
@@ -283,29 +304,34 @@ describe("moverEscena", () => {
     { id: "a", tipo: "plena", piezas: [] },
     { id: "b", tipo: "retrato", piezas: [] },
   );
+  // Las de contenido van justo detrás de las estructurales de cabecera.
+  const iA = b.escenas.findIndex((e) => e.id === "a");
+  const iB = iA + 1;
 
   it("intercambia dos escenas de contenido", () => {
-    expect(moverEscena(b, 1, 2).escenas.map((e) => e.id)).toEqual([
-      "p",
-      "b",
-      "a",
-      "c",
-    ]);
+    const r = moverEscena(b, iA, iB);
+    expect(r.escenas[iA].id).toBe("b");
+    expect(r.escenas[iB].id).toBe("a");
   });
 
   it("no muta el original", () => {
-    moverEscena(b, 1, 2);
-    expect(b.escenas.map((e) => e.id)).toEqual(["p", "a", "b", "c"]);
+    moverEscena(b, iA, iB);
+    expect(b.escenas[iA].id).toBe("a");
+    expect(b.escenas[iB].id).toBe("b");
   });
 
-  it("la portada y el cierre no se mueven", () => {
-    expect(moverEscena(b, 0, 1)).toBe(b);
-    expect(moverEscena(b, 2, 3)).toBe(b);
+  it("NINGUNA estructural se mueve", () => {
+    // Ni entre ellas ni arrastrada por una de contenido: son el arranque.
+    for (let i = 0; i < b.escenas.length; i++) {
+      if (!escenaDef(b.escenas[i].tipo)?.fija) continue;
+      expect(moverEscena(b, i, iA), `la fija ${i} se movió`).toBe(b);
+      expect(moverEscena(b, iA, i), `algo empujó a la fija ${i}`).toBe(b);
+    }
   });
 
   it("índices fuera de rango: devuelve lo mismo", () => {
-    expect(moverEscena(b, 1, 9)).toBe(b);
-    expect(moverEscena(b, -1, 1)).toBe(b);
+    expect(moverEscena(b, iA, 99)).toBe(b);
+    expect(moverEscena(b, -1, iA)).toBe(b);
   });
 });
 
@@ -318,19 +344,19 @@ describe("resumen y portada", () => {
   });
 
   it("si la portada es un vídeo, la miniatura es su póster", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     b.escenas[0].piezas = [{ ...video(), poster: "frame.jpg" }];
     expect(portadaDelBook(b)).toBe("frame.jpg");
   });
 
   it("vídeo sin póster cae a la propia url antes que a nada", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     b.escenas[0].piezas = [video("clip.mp4")];
     expect(portadaDelBook(b)).toBe("clip.mp4");
   });
 
   it("sin portada, no hay miniatura", () => {
-    expect(portadaDelBook(bookNuevo("p", "c"))).toBeUndefined();
+    expect(portadaDelBook(bookNuevo((i) => `f${i}`))).toBeUndefined();
   });
 });
 
@@ -370,7 +396,7 @@ describe("atmósfera", () => {
 describe("normalizarBook", () => {
   it("de la nada sale un book con estructura", () => {
     const b = normalizarBook(undefined);
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "cierre"]);
+    expect(b.escenas.map((e) => e.tipo)).toEqual(ESCENAS_FIJAS);
     expect(b.publicado).toBe(false);
     expect(b.atmosfera).toEqual({
       ...ATMOSFERA_POR_DEFECTO,
@@ -386,7 +412,11 @@ describe("normalizarBook", () => {
         { id: "p", tipo: "portada", piezas: [{ url: "b.jpg" }] },
       ],
     });
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "plena", "cierre"]);
+    expect(b.escenas.map((e) => e.tipo)).toEqual([
+      ...ESCENAS_FIJAS.slice(0, -1),
+      "plena",
+      ...ESCENAS_FIJAS.slice(-1),
+    ]);
   });
 
   it("descarta escenas y piezas basura sin tirar el resto", () => {
@@ -396,9 +426,13 @@ describe("normalizarBook", () => {
         { id: "x", tipo: "plena", piezas: [{ url: "" }, null, { url: "ok.jpg" }] },
       ],
     });
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "plena", "cierre"]);
-    expect(b.escenas[1].piezas).toHaveLength(1);
-    expect(b.escenas[1].piezas[0].url).toBe("ok.jpg");
+    expect(b.escenas.map((e) => e.tipo)).toEqual([
+      ...ESCENAS_FIJAS.slice(0, -1),
+      "plena",
+      ...ESCENAS_FIJAS.slice(-1),
+    ]);
+    expect(escenaDe(b, "plena").piezas).toHaveLength(1);
+    expect(escenaDe(b, "plena").piezas[0].url).toBe("ok.jpg");
   });
 
   it("recorta las piezas que no caben en la composición", () => {
@@ -411,7 +445,7 @@ describe("normalizarBook", () => {
         },
       ],
     });
-    expect(b.escenas[1].piezas).toHaveLength(escenaDef("diptico")!.max);
+    expect(escenaDe(b, "diptico").piezas).toHaveLength(escenaDef("diptico")!.max);
   });
 
   it("recorta los textos largos en vez de rechazarlos", () => {
@@ -424,8 +458,9 @@ describe("normalizarBook", () => {
         },
       ],
     });
-    expect(b.escenas[1].piezas[0].titulo).toHaveLength(BOOK_TITULO_MAX);
-    expect(b.escenas[1].piezas[0].nota).toHaveLength(BOOK_NOTA_MAX);
+    const pz = escenaDe(b, "plena").piezas[0];
+    expect(pz.titulo).toHaveLength(BOOK_TITULO_MAX);
+    expect(pz.nota).toHaveLength(BOOK_NOTA_MAX);
   });
 
   it("las notas sueltas solo sobreviven donde la escena las admite", () => {
@@ -433,12 +468,12 @@ describe("normalizarBook", () => {
     const conAncla = normalizarBook({
       escenas: [{ id: "a", tipo: "ancla", piezas: [{ url: "a.jpg" }], notas }],
     });
-    expect(conAncla.escenas[1].notas).toHaveLength(1);
+    expect(escenaDe(conAncla, "ancla").notas).toHaveLength(1);
 
     const conPlena = normalizarBook({
       escenas: [{ id: "x", tipo: "plena", piezas: [{ url: "a.jpg" }], notas }],
     });
-    expect(conPlena.escenas[1].notas).toBeUndefined();
+    expect(escenaDe(conPlena, "plena").notas).toBeUndefined();
   });
 
   it("un book publicado que se quedó sin contenido se despublica solo", () => {
@@ -453,18 +488,16 @@ describe("normalizarBook", () => {
   it("un book publicado y completo se queda publicado", () => {
     const b = normalizarBook({
       publicado: true,
+      // TODAS las estructurales completas (apertura de cuatro, vitrina de tres)
+      // más una escena propia: es el mínimo para que un book sea publicable.
       escenas: [
-        // La apertura son CUATRO: la que abre, las dos que suben y la de portada.
-        {
-          id: "p",
-          tipo: "portada",
-          piezas: [
-            { url: "a.jpg" },
-            { url: "b.jpg" },
-            { url: "c.jpg" },
-            { url: "d.jpg" },
-          ],
-        },
+        ...ESCENAS_FIJAS.map((tipo) => ({
+          id: tipo,
+          tipo,
+          piezas: Array.from({ length: escenaDef(tipo)!.min }, (_, i) => ({
+            url: `${tipo}${i}.jpg`,
+          })),
+        })),
         { id: "d", tipo: "diptico", piezas: [{ url: "1.jpg" }, { url: "2.jpg" }] },
       ],
     });
@@ -487,7 +520,7 @@ describe("normalizarBook", () => {
     const conPortada = normalizarBook({
       escenas: [{ id: "p", tipo: "portada", piezas: [{ url: "a.jpg" }], meta }],
     });
-    expect(conPortada.escenas[0].meta).toEqual(meta);
+    expect(escenaDe(conPortada, "portada").meta).toEqual(meta);
 
     // `diptico` no declara `admiteMeta`: guardarlos ahí sería un dato muerto.
     const conDiptico = normalizarBook({
@@ -495,7 +528,7 @@ describe("normalizarBook", () => {
         { id: "d", tipo: "diptico", piezas: [{ url: "1" }, { url: "2" }], meta },
       ],
     });
-    expect(conDiptico.escenas[1].meta).toBeUndefined();
+    expect(escenaDe(conDiptico, "diptico").meta).toBeUndefined();
   });
 
   it("recorta los textos de esquina largos", () => {
@@ -504,7 +537,7 @@ describe("normalizarBook", () => {
         { id: "p", tipo: "portada", piezas: [], meta: { arribaFin: "x".repeat(99) } },
       ],
     });
-    expect(b.escenas[0].meta!.arribaFin).toHaveLength(BOOK_META_MAX);
+    expect(escenaDe(b, "portada").meta!.arribaFin).toHaveLength(BOOK_META_MAX);
   });
 
   it("la medida elegida solo se guarda si el tipo la admite", () => {
@@ -517,9 +550,9 @@ describe("normalizarBook", () => {
         { id: "x", tipo: "plena", piezas: [{ url: "3" }], medida: "sangre" },
       ],
     });
-    expect(b.escenas[0].medida).toBeUndefined(); // portada: no elegible
-    expect(b.escenas[1].medida).toBe("contenida"); // válida
-    expect(b.escenas[2].medida).toBeUndefined(); // "sangre" no es elegible
+    expect(escenaDe(b, "portada").medida).toBeUndefined(); // no elegible
+    expect(escenaDe(b, "diptico").medida).toBe("contenida"); // válida
+    expect(escenaDe(b, "plena").medida).toBeUndefined(); // "sangre" no lo es
   });
 
   it("las redes solo se guardan en el cierre y sin repetir", () => {
@@ -529,8 +562,8 @@ describe("normalizarBook", () => {
         { id: "c", tipo: "cierre", piezas: [], redes: ["instagram", "instagram", "nomeinvento"] },
       ],
     });
-    expect(b.escenas[1].redes).toBeUndefined(); // plena no lleva redes
-    expect(b.escenas[2].redes).toEqual(["instagram"]);
+    expect(escenaDe(b, "plena").redes).toBeUndefined(); // plena no lleva redes
+    expect(escenaDe(b, "cierre").redes).toEqual(["instagram"]);
   });
 });
 

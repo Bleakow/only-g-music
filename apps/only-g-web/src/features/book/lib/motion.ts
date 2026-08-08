@@ -502,18 +502,36 @@ function indice(escena: HTMLElement, p: Params) {
  * cambiar de carta. Por eso solo entran el escenario entero y los textos.
  */
 function vitrina(escena: HTMLElement, p: Params) {
-  const partes = q<HTMLElement>(
+  const textos = q<HTMLElement>(
     escena,
-    ".og-book-vit-titulo, .og-book-vit-escenario, .og-book-vit-cita",
+    ".og-book-vit-titulo, .og-book-vit-cita",
   );
-  if (!partes.length) return;
-  gsap.from(partes, {
-    y: p.recorrido * 0.35,
+  if (textos.length) {
+    gsap.from(textos, {
+      y: p.recorrido * 0.35,
+      opacity: 0,
+      duration: p.duracion,
+      ease: p.ease,
+      stagger: 0.08,
+      scrollTrigger: { trigger: escena, start: "top 82%" },
+    });
+  }
+
+  // LAS CARTAS entran una detrás de otra, cada una desde un poco más abajo y
+  // más pequeña. Se anima la capa INTERIOR, no la carta: su `transform` es el
+  // sitio que ocupa en el carrusel y lo gobierna la transición del CSS.
+  const cuerpos = q<HTMLElement>(escena, ".og-book-vit-cuerpo");
+  if (!cuerpos.length) return;
+  gsap.from(cuerpos, {
+    yPercent: 22,
+    scale: 0.86,
     opacity: 0,
     duration: p.duracion,
     ease: p.ease,
-    stagger: 0.07,
-    scrollTrigger: { trigger: escena, start: "top 82%" },
+    // De las de atrás hacia la del frente: la principal es la última en
+    // asentarse, que es donde queda mirando el ojo.
+    stagger: { each: 0.11, from: "edges" },
+    scrollTrigger: { trigger: escena, start: "top 80%" },
   });
 }
 

@@ -79,19 +79,25 @@ export function BookVitrina({
               aria-label={t("vitrinaVer", { n: i + 1 })}
               onClick={() => setRanuras((r) => traerAlFrente(r, i))}
             >
-              <BookPiece
-                pieza={pieza}
-                alt={pieza.titulo || nombre}
-                // La del frente ocupa media escena; las de atrás, poco más de un
-                // cuarto. Servirles la misma foto multiplicaría los bytes en la
-                // escena que más se mira.
-                sizes={
-                  enFrente
-                    ? "(max-width: 48rem) 58vw, 24vw"
-                    : "(max-width: 48rem) 34vw, 14vw"
-                }
-                usarRatio={false}
-              />
+              {/* Capa interior SOLO para la entrada por scroll. El `transform`
+                  de la carta ES su sitio en el carrusel y lo gobierna la
+                  transición del CSS: si la coreografía lo animara, se lo
+                  arrebataría y la vitrina dejaría de poder cambiar de carta. */}
+              <span className="og-book-vit-cuerpo">
+                <BookPiece
+                  pieza={pieza}
+                  alt={pieza.titulo || nombre}
+                  // La del frente ocupa media escena; las de atrás, poco más de
+                  // un cuarto. Servirles la misma foto multiplicaría los bytes
+                  // en la escena que más se mira.
+                  sizes={
+                    enFrente
+                      ? "(max-width: 48rem) 58vw, 24vw"
+                      : "(max-width: 48rem) 34vw, 14vw"
+                  }
+                  usarRatio={false}
+                />
+              </span>
             </button>
           );
         })}

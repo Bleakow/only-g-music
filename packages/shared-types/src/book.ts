@@ -211,12 +211,20 @@ export interface EscenaDef {
    */
   retirada?: boolean;
   /**
-   * Escenas ESTRUCTURALES: no se añaden, no se borran y no se mueven. Un book
-   * siempre abre con portada y cierra con cierre — es lo que lo hace un book y
-   * no una lista de fotos grandes.
+   * Escenas ESTRUCTURALES: no se añaden, no se borran y no se mueven, y sus
+   * fotos son obligatorias. Son el arranque y el cierre que comparten todos los
+   * books: la apertura, el carrusel de tres cartas y la despedida. Lo que va en
+   * medio ya es cosa de cada modelo.
    */
-  fija?: "primera" | "ultima";
+  fija?: "primera" | "segunda" | "ultima";
 }
+
+/** Dónde va cada escena fija. Lo usan la normalización y el orden del editor. */
+const POSICION_FIJA: Record<NonNullable<EscenaDef["fija"]>, number> = {
+  primera: 0,
+  segunda: 1,
+  ultima: 99,
+};
 
 /**
  * Catálogo. El ORDEN es el que ve la modelo al añadir una escena, y también el
@@ -271,6 +279,9 @@ export const ESCENAS: EscenaDef[] = [
     // La descripción de la carta que está al frente va en el área `n` de la
     // rejilla, al lado del escenario — no debajo de cada foto.
     notaEnRejilla: true,
+    // SEGUNDA y obligatoria: va siempre justo después de la apertura, con sus
+    // tres fotos puestas. Es parte del arranque que comparten todos los books.
+    fija: "segunda",
   },
   {
     tipo: "retrato",
@@ -644,16 +655,23 @@ export interface Book {
  * la usan las pruebas y sirve de red para `normalizarBook`. Para crear el book
  * de una modelo se usa `bookGuiado`.
  */
-export function bookNuevo(idPortada: string, idCierre: string): Book {
+export function bookNuevo(id: (i: number) => string): Book {
   return {
-    escenas: [
-      { id: idPortada, tipo: "portada", piezas: [] },
-      { id: idCierre, tipo: "cierre", piezas: [] },
-    ],
+    escenas: ESCENAS_FIJAS.map((tipo, i) => ({ id: id(i), tipo, piezas: [] })),
     atmosfera: { ...ATMOSFERA_POR_DEFECTO },
     publicado: false,
   };
 }
+
+/**
+ * Las escenas estructurales, EN SU ORDEN. Se deriva del catálogo en vez de
+ * escribirse a mano para que marcar una escena como fija baste: si la lista
+ * viviera aparte, añadir una cuarta obligaría a acordarse de tocar también la
+ * normalización, y ese olvido no da error — solo coloca la escena en otro sitio.
+ */
+export const ESCENAS_FIJAS: EscenaTipo[] = ESCENAS.filter((e) => e.fija)
+  .sort((a, b) => POSICION_FIJA[a.fija!] - POSICION_FIJA[b.fija!])
+  .map((e) => e.tipo);
 
 /**
  * La secuencia con la que nace un book. No es una lista de escenas bonitas: es
@@ -757,11 +775,15 @@ export function puedeAnadirPieza(
  * pegados, que no es un portafolio.
  */
 export function bookPublicable(book: Book): boolean {
-  // La apertura tiene que estar COMPLETA, no solo empezada: con una o dos de
-  // sus tres fotos la secuencia se queda a medias —el nombre se dispersa y
-  // detrás no sube nada— y eso es peor que no tener book.
-  const portada = book.escenas.find((e) => e.tipo === "portada");
-  if (!portada || !escenaCompleta(portada)) return false;
+  // TODAS las estructurales completas, no solo empezadas: son el arranque que
+  // comparten los books, y a medias la secuencia se rompe —el nombre se
+  // dispersa y detrás no sube nada, o el carrusel se queda con un hueco—.
+  const fijas = ESCENAS_FIJAS.map((tipo) =>
+    book.escenas.find((e) => e.tipo === tipo),
+  );
+  if (!fijas.every((e) => e && escenaCompleta(e))) return false;
+  // Y al menos una escena propia: un book que es solo el arranque no es un
+  // portafolio, es una presentación.
   return escenasDeContenido(book).some(escenaCompleta);
 }
 
@@ -923,24 +945,27 @@ export function normalizarBook(raw: unknown): Book {
     .map(normalizarEscena)
     .filter((e): e is EscenaBook => e !== null);
 
-  const portada = crudas.find((e) => e.tipo === "portada") ?? {
-    id: "portada",
-    tipo: "portada" as const,
-    piezas: [],
-  };
-  const cierre = crudas.find((e) => e.tipo === "cierre") ?? {
-    id: "cierre",
-    tipo: "cierre" as const,
-    piezas: [],
-  };
-  // El recorte va sobre el CONTENIDO, no sobre la lista cruda: portada y cierre
-  // se ponen siempre, así que recortar antes dejaría un book de MAX+2 escenas.
+  // Las estructurales se recuperan por tipo y se recolocan en SU sitio. Si el
+  // documento no las trae (o llegan desordenadas), se reponen vacías: un book
+  // sin arranque no es un book, y rechazar el documento dejaría a la modelo sin
+  // portafolio en vez de con uno reparable.
+  const fijas = ESCENAS_FIJAS.map(
+    (tipo) =>
+      crudas.find((e) => e.tipo === tipo) ?? { id: tipo, tipo, piezas: [] },
+  );
+  const esFija = new Set<EscenaTipo>(ESCENAS_FIJAS);
+  // El recorte va sobre el CONTENIDO, no sobre la lista cruda: las fijas se
+  // ponen siempre, así que recortar antes dejaría un book más largo que el tope.
   const contenido = crudas
-    .filter((e) => e.tipo !== "portada" && e.tipo !== "cierre")
-    .slice(0, BOOK_MAX_ESCENAS - 2);
+    .filter((e) => !esFija.has(e.tipo))
+    .slice(0, BOOK_MAX_ESCENAS - fijas.length);
+
+  // Todas las fijas menos la última van delante; la última, al final.
+  const delante = fijas.slice(0, -1);
+  const detras = fijas.slice(-1);
 
   const book: Book = {
-    escenas: [portada, ...contenido, cierre],
+    escenas: [...delante, ...contenido, ...detras],
     atmosfera: normalizarAtmosfera(o.atmosfera),
     publicado: o.publicado === true,
   };

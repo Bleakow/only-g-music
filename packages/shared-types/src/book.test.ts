@@ -9,11 +9,14 @@ import {
   BOOK_NOTA_MAX,
   BOOK_TITULO_MAX,
   ESCENAS,
+  ESCENAS_FIJAS,
   FONDOS,
   LETRAS,
   MEDIDAS,
   MEDIDAS_ELEGIBLES,
   META_ESQUINAS,
+  ROLES_APERTURA,
+  SITIOS_VITRINA,
   RITMOS,
   TEXTURAS,
   acentoEfectivo,
@@ -23,11 +26,16 @@ import {
   bookPublicable,
   contarPiezas,
   escenaCompleta,
+  cuentasValidas,
+  piezasQueFaltan,
   escenaDef,
   escenasDeContenido,
   escenasElegibles,
   esEscenaTipo,
+  esFotoDePortada,
   medidaDeEscena,
+  rolDePiezaApertura,
+  sitioDeRanura,
   moverEscena,
   normalizarAtmosfera,
   normalizarBook,
@@ -44,14 +52,37 @@ import {
 } from "./book";
 import { areaDeRanura } from "./gallery-layout";
 
-/** Book de pruebas: portada + las escenas que se pidan + cierre. */
-function book(...contenido: EscenaBook[]): Book {
-  const b = bookNuevo("p", "c");
-  return { ...b, escenas: [b.escenas[0], ...contenido, b.escenas[1]] };
-}
-
 const foto = (url = "f.jpg") => ({ url, tipo: "foto" as const });
 const video = (url = "v.mp4") => ({ url, tipo: "video" as const });
+
+/**
+ * Book de pruebas: las estructurales vacías con las escenas pedidas en medio.
+ * Se apoya en `ESCENAS_FIJAS` y no en índices para que añadir una cuarta escena
+ * fija no obligue a renumerar medio archivo de pruebas.
+ */
+function book(...contenido: EscenaBook[]): Book {
+  const b = bookNuevo((i) => `f${i}`);
+  return {
+    ...b,
+    escenas: [...b.escenas.slice(0, -1), ...contenido, b.escenas.at(-1)!],
+  };
+}
+
+/** La escena de ese tipo, para no depender de en qué posición cayó. */
+const escenaDe = (b: Book, tipo: EscenaBook["tipo"]) =>
+  b.escenas.find((e) => e.tipo === tipo)!;
+
+/** Deja TODAS las estructurales completas: es el arranque obligatorio. */
+function conArranque(...contenido: EscenaBook[]): Book {
+  const b = book(...contenido);
+  for (const tipo of ESCENAS_FIJAS) {
+    const e = escenaDe(b, tipo);
+    e.piezas = Array.from({ length: escenaDef(tipo)!.min }, (_, i) =>
+      foto(`${tipo}${i}.jpg`),
+    );
+  }
+  return b;
+}
 
 describe("catálogo de escenas", () => {
   it("no hay tipos repetidos", () => {
@@ -96,18 +127,91 @@ describe("catálogo de escenas", () => {
     expect(escenaDef("rejilla")!.retirada).toBe(true);
   });
 
-  it("toda escena declara su medida, y SOLO la portada va a sangre", () => {
+  it("toda escena declara su medida, y a sangre solo van las ESTRUCTURALES", () => {
     // Es el motivo por el que existe todo el sistema de respiración: el book se
-    // sintió abrumador porque tres escenas ocupaban la pantalla entera. Si
-    // mañana alguien pone otra a sangre, que lo diga esta prueba y no el usuario.
+    // sintió abrumador porque tres escenas ocupaban la pantalla entera.
+    //
+    // La regla ya no es "solo la portada" sino "solo las que la modelo no puede
+    // repetir", y es más fuerte de lo que parece: una escena a sangre que se
+    // pudiera AÑADIR devuelve el book a ser una sucesión de pantallazos en dos
+    // clics, mientras que las fijas están puestas una vez y no se multiplican.
+    // Hoy son la apertura (pantalla completa) y el metraje (pegado a un borde,
+    // que es otra cosa: el alto lo capa el CSS).
     for (const e of ESCENAS) expect(MEDIDAS).toContain(e.medida);
-    expect(ESCENAS.filter((e) => e.medida === "sangre").map((e) => e.tipo)).toEqual(
-      ["portada"],
-    );
+    const aSangre = ESCENAS.filter((e) => e.medida === "sangre");
+    expect(aSangre.map((e) => e.tipo)).toEqual(["portada", "metraje"]);
+    for (const e of aSangre) {
+      expect(e.fija, `"${e.tipo}" va a sangre pero se puede añadir`).toBeTruthy();
+    }
   });
 
   it("`sangre` no es elegible por la modelo", () => {
     expect(MEDIDAS_ELEGIBLES).not.toContain("sangre");
+  });
+
+  it("las cuentas declaradas caben en el rango de la escena y van en orden", () => {
+    // `cuentas` no sustituye a `min`/`max`, los AFINA: el editor sigue pintando
+    // `max` huecos y sigue impidiendo pasar de ahí. Una cuenta fuera del rango
+    // sería una escena imposible de completar y el botón de publicar apagado
+    // para siempre, sin nada que explique por qué.
+    for (const e of ESCENAS) {
+      if (!e.cuentas) continue;
+      expect(e.cuentas.length, `"${e.tipo}" declara cuentas vacías`).toBeGreaterThan(0);
+      expect(Math.min(...e.cuentas)).toBe(e.min);
+      expect(Math.max(...e.cuentas)).toBe(e.max);
+      expect([...e.cuentas].sort((a, b) => a - b)).toEqual(e.cuentas);
+    }
+  });
+
+  it("el pliego son DOS O CUATRO fotos, nunca tres", () => {
+    const def = escenaDef("pliego")!;
+    expect(cuentasValidas(def)).toEqual([2, 4]);
+    const con = (n: number): EscenaBook => ({
+      id: "p",
+      tipo: "pliego",
+      piezas: Array.from({ length: n }, (_, i) => foto(`p${i}.jpg`)),
+    });
+    expect(escenaCompleta(con(2))).toBe(true);
+    expect(escenaCompleta(con(3))).toBe(false);
+    expect(escenaCompleta(con(4))).toBe(true);
+  });
+
+  it("piezasQueFaltan apunta a la siguiente cuenta válida, no al mínimo", () => {
+    // La trampa: con tres fotos el pliego YA pasó del mínimo, así que restar
+    // `min` da cero y el editor no avisaría de nada — pero con tres no se
+    // publica. Es exactamente el hueco que esta función existe para tapar.
+    const con = (n: number): EscenaBook => ({
+      id: "p",
+      tipo: "pliego",
+      piezas: Array.from({ length: n }, (_, i) => foto(`p${i}.jpg`)),
+    });
+    expect(piezasQueFaltan(con(0))).toBe(2);
+    expect(piezasQueFaltan(con(1))).toBe(1);
+    expect(piezasQueFaltan(con(2))).toBe(0);
+    expect(piezasQueFaltan(con(3))).toBe(1);
+    expect(piezasQueFaltan(con(4))).toBe(0);
+  });
+
+  it("el sitio para escenas PROPIAS no encoge al crecer las estructurales", () => {
+    // `normalizarBook` recorta el contenido a `BOOK_MAX_ESCENAS - fijas`. Si el
+    // tope no acompaña al añadir una estructural, a quien tuviera el book lleno
+    // se le caen escenas propias AL LEERLO — sin avisar, sin haberlas borrado y
+    // sin que ningún test lo note. De ahí que la cuenta se compruebe aquí.
+    expect(BOOK_MAX_ESCENAS - ESCENAS_FIJAS.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it("el arranque obligatorio es apertura, vitrina, metraje y pliego", () => {
+    // El orden ES la secuencia que pidió el usuario. Se deriva del catálogo, así
+    // que esta prueba comprueba que `fija` y `POSICION_FIJA` siguen contando lo
+    // mismo que el brief — un `fija` mal puesto no da error, solo mueve la
+    // escena de sitio.
+    expect(ESCENAS_FIJAS).toEqual([
+      "portada",
+      "vitrina",
+      "metraje",
+      "pliego",
+      "cierre",
+    ]);
   });
 
   it("un book lleno de la escena más pequeña no revienta el tope de piezas", () => {
@@ -148,7 +252,7 @@ describe("escenaCompleta", () => {
 describe("cupos", () => {
   it("no admite más piezas de las que tiene la composición", () => {
     const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    expect(puedeAnadirPieza(b, b.escenas[1])).toBe(false);
+    expect(puedeAnadirPieza(b, escenaDe(b, "diptico"))).toBe(false);
   });
 
   it("respeta el tope de vídeos aunque queden ranuras libres", () => {
@@ -169,11 +273,11 @@ describe("cupos", () => {
       ...Array.from({ length: 10 }, (_, i) => ({ ...llena, id: `t${i}` })),
     );
     expect(contarPiezas(b)).toBeGreaterThanOrEqual(BOOK_MAX_PIEZAS);
-    expect(puedeAnadirPieza(b, b.escenas[1])).toBe(false);
+    expect(puedeAnadirPieza(b, escenaDe(b, "tira"))).toBe(false);
   });
 
   it("puedeAnadirEscena se cierra al llegar al tope", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     expect(puedeAnadirEscena(b)).toBe(true);
     const lleno: Book = {
       ...b,
@@ -188,55 +292,75 @@ describe("cupos", () => {
 });
 
 describe("bookPublicable", () => {
-  /** Las TRES fotos de la apertura: la que abre y las dos que suben. */
-  const apertura = () => [foto("ap1.jpg"), foto("ap2.jpg"), foto("ap3.jpg")];
+  const diptico = (): EscenaBook => ({
+    id: "d",
+    tipo: "diptico",
+    piezas: [foto("1"), foto("2")],
+  });
 
   it("un book recién creado no se publica", () => {
-    expect(bookPublicable(bookNuevo("p", "c"))).toBe(false);
+    expect(bookPublicable(bookNuevo((i) => `f${i}`))).toBe(false);
   });
 
-  it("una apertura A MEDIAS no habilita la publicación", () => {
-    // Con una o dos de sus tres fotos, la secuencia se rompe: el nombre se
-    // dispersa y detrás no sube nada. Peor que no tener book.
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    b.escenas[0].piezas = [foto("ap1.jpg"), foto("ap2.jpg")];
-    expect(escenaCompleta(b.escenas[0])).toBe(false);
+  it.each(ESCENAS_FIJAS.filter((t) => escenaDef(t)!.min > 0))(
+    "la estructural %s a medias bloquea la publicación",
+    (tipo) => {
+      // El arranque lo comparten todos los books y a medias se rompe: el nombre
+      // se dispersa y detrás no sube nada, o el carrusel se queda con un hueco.
+      const b = conArranque(diptico());
+      escenaDe(b, tipo).piezas.pop();
+      expect(escenaCompleta(escenaDe(b, tipo))).toBe(false);
+      expect(bookPublicable(b)).toBe(false);
+    },
+  );
+
+  it("el arranque completo SOLO no basta: falta contenido propio", () => {
+    // Un book que es solo el arranque no es un portafolio, es una presentación.
+    expect(bookPublicable(conArranque())).toBe(false);
+  });
+
+  it("una escena de contenido INCOMPLETA tampoco", () => {
+    const b = conArranque({ id: "d", tipo: "diptico", piezas: [foto()] });
     expect(bookPublicable(b)).toBe(false);
   });
 
-  it("apertura completa sola tampoco: sería una apertura y un cierre", () => {
-    const b = bookNuevo("p", "c");
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(false);
-  });
-
-  it("una escena de contenido INCOMPLETA no habilita la publicación", () => {
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto()] }); // pide 2
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(false);
-  });
-
-  it("apertura completa + una escena completa sí", () => {
-    const b = book({ id: "d", tipo: "diptico", piezas: [foto("1"), foto("2")] });
-    b.escenas[0].piezas = apertura();
-    expect(bookPublicable(b)).toBe(true);
+  it("arranque completo + una escena completa sí", () => {
+    expect(bookPublicable(conArranque(diptico()))).toBe(true);
   });
 });
 
 describe("la apertura es una secuencia cerrada", () => {
   const def = escenaDef("portada")!;
 
-  it("pide exactamente tres fotos, ni una más ni una menos", () => {
-    // Las tres son obligatorias: la que abre y las dos que suben en diagonal.
-    expect(def.min).toBe(3);
-    expect(def.max).toBe(3);
+  it("pide exactamente las fotos que tienen papel asignado", () => {
+    // Si alguien sube el máximo sin dar papel a la ranura nueva, el editor la
+    // pintaría como un hueco mudo y la coreografía no la tocaría.
+    expect(def.min).toBe(ROLES_APERTURA.length);
+    expect(def.max).toBe(ROLES_APERTURA.length);
   });
 
-  it("no admite vídeo ni texto por pieza", () => {
-    // La primera se desenfoca hasta cero y las otras dos viajan con parallax:
-    // tres clips decodificando en la primera pantalla es el peor gasto posible.
+  it("los papeles son: la que abre, dos que suben y la de portada", () => {
+    expect(ROLES_APERTURA).toEqual(["abre", "sube", "sube", "portada"]);
+    expect(rolDePiezaApertura(0)).toBe("abre");
+    expect(rolDePiezaApertura(3)).toBe("portada");
+    expect(rolDePiezaApertura(9)).toBeUndefined();
+  });
+
+  it("solo la foto DE PORTADA lleva texto", () => {
+    expect(esFotoDePortada("portada", 3)).toBe(true);
+    for (const i of [0, 1, 2]) {
+      expect(esFotoDePortada("portada", i), `la ranura ${i} no escribe`).toBe(
+        false,
+      );
+    }
+    // El papel es cosa de la apertura: en otra escena no significa nada.
+    expect(esFotoDePortada("diptico", 3)).toBe(false);
+  });
+
+  it("no admite vídeo", () => {
+    // Una se desenfoca hasta cero, dos viajan con parallax y la última se parte
+    // en cientos de teselas: clips decodificando ahí es el peor gasto posible.
     expect(def.maxVideos).toBe(0);
-    expect(def.admiteTextoPorPieza).toBe(false);
     expect(def.maxNotas).toBe(0);
   });
 
@@ -255,29 +379,34 @@ describe("moverEscena", () => {
     { id: "a", tipo: "plena", piezas: [] },
     { id: "b", tipo: "retrato", piezas: [] },
   );
+  // Las de contenido van justo detrás de las estructurales de cabecera.
+  const iA = b.escenas.findIndex((e) => e.id === "a");
+  const iB = iA + 1;
 
   it("intercambia dos escenas de contenido", () => {
-    expect(moverEscena(b, 1, 2).escenas.map((e) => e.id)).toEqual([
-      "p",
-      "b",
-      "a",
-      "c",
-    ]);
+    const r = moverEscena(b, iA, iB);
+    expect(r.escenas[iA].id).toBe("b");
+    expect(r.escenas[iB].id).toBe("a");
   });
 
   it("no muta el original", () => {
-    moverEscena(b, 1, 2);
-    expect(b.escenas.map((e) => e.id)).toEqual(["p", "a", "b", "c"]);
+    moverEscena(b, iA, iB);
+    expect(b.escenas[iA].id).toBe("a");
+    expect(b.escenas[iB].id).toBe("b");
   });
 
-  it("la portada y el cierre no se mueven", () => {
-    expect(moverEscena(b, 0, 1)).toBe(b);
-    expect(moverEscena(b, 2, 3)).toBe(b);
+  it("NINGUNA estructural se mueve", () => {
+    // Ni entre ellas ni arrastrada por una de contenido: son el arranque.
+    for (let i = 0; i < b.escenas.length; i++) {
+      if (!escenaDef(b.escenas[i].tipo)?.fija) continue;
+      expect(moverEscena(b, i, iA), `la fija ${i} se movió`).toBe(b);
+      expect(moverEscena(b, iA, i), `algo empujó a la fija ${i}`).toBe(b);
+    }
   });
 
   it("índices fuera de rango: devuelve lo mismo", () => {
-    expect(moverEscena(b, 1, 9)).toBe(b);
-    expect(moverEscena(b, -1, 1)).toBe(b);
+    expect(moverEscena(b, iA, 99)).toBe(b);
+    expect(moverEscena(b, -1, iA)).toBe(b);
   });
 });
 
@@ -290,19 +419,19 @@ describe("resumen y portada", () => {
   });
 
   it("si la portada es un vídeo, la miniatura es su póster", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     b.escenas[0].piezas = [{ ...video(), poster: "frame.jpg" }];
     expect(portadaDelBook(b)).toBe("frame.jpg");
   });
 
   it("vídeo sin póster cae a la propia url antes que a nada", () => {
-    const b = bookNuevo("p", "c");
+    const b = bookNuevo((i) => `f${i}`);
     b.escenas[0].piezas = [video("clip.mp4")];
     expect(portadaDelBook(b)).toBe("clip.mp4");
   });
 
   it("sin portada, no hay miniatura", () => {
-    expect(portadaDelBook(bookNuevo("p", "c"))).toBeUndefined();
+    expect(portadaDelBook(bookNuevo((i) => `f${i}`))).toBeUndefined();
   });
 });
 
@@ -342,7 +471,7 @@ describe("atmósfera", () => {
 describe("normalizarBook", () => {
   it("de la nada sale un book con estructura", () => {
     const b = normalizarBook(undefined);
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "cierre"]);
+    expect(b.escenas.map((e) => e.tipo)).toEqual(ESCENAS_FIJAS);
     expect(b.publicado).toBe(false);
     expect(b.atmosfera).toEqual({
       ...ATMOSFERA_POR_DEFECTO,
@@ -358,7 +487,11 @@ describe("normalizarBook", () => {
         { id: "p", tipo: "portada", piezas: [{ url: "b.jpg" }] },
       ],
     });
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "plena", "cierre"]);
+    expect(b.escenas.map((e) => e.tipo)).toEqual([
+      ...ESCENAS_FIJAS.slice(0, -1),
+      "plena",
+      ...ESCENAS_FIJAS.slice(-1),
+    ]);
   });
 
   it("descarta escenas y piezas basura sin tirar el resto", () => {
@@ -368,9 +501,13 @@ describe("normalizarBook", () => {
         { id: "x", tipo: "plena", piezas: [{ url: "" }, null, { url: "ok.jpg" }] },
       ],
     });
-    expect(b.escenas.map((e) => e.tipo)).toEqual(["portada", "plena", "cierre"]);
-    expect(b.escenas[1].piezas).toHaveLength(1);
-    expect(b.escenas[1].piezas[0].url).toBe("ok.jpg");
+    expect(b.escenas.map((e) => e.tipo)).toEqual([
+      ...ESCENAS_FIJAS.slice(0, -1),
+      "plena",
+      ...ESCENAS_FIJAS.slice(-1),
+    ]);
+    expect(escenaDe(b, "plena").piezas).toHaveLength(1);
+    expect(escenaDe(b, "plena").piezas[0].url).toBe("ok.jpg");
   });
 
   it("recorta las piezas que no caben en la composición", () => {
@@ -383,7 +520,7 @@ describe("normalizarBook", () => {
         },
       ],
     });
-    expect(b.escenas[1].piezas).toHaveLength(escenaDef("diptico")!.max);
+    expect(escenaDe(b, "diptico").piezas).toHaveLength(escenaDef("diptico")!.max);
   });
 
   it("recorta los textos largos en vez de rechazarlos", () => {
@@ -396,8 +533,9 @@ describe("normalizarBook", () => {
         },
       ],
     });
-    expect(b.escenas[1].piezas[0].titulo).toHaveLength(BOOK_TITULO_MAX);
-    expect(b.escenas[1].piezas[0].nota).toHaveLength(BOOK_NOTA_MAX);
+    const pz = escenaDe(b, "plena").piezas[0];
+    expect(pz.titulo).toHaveLength(BOOK_TITULO_MAX);
+    expect(pz.nota).toHaveLength(BOOK_NOTA_MAX);
   });
 
   it("las notas sueltas solo sobreviven donde la escena las admite", () => {
@@ -405,12 +543,12 @@ describe("normalizarBook", () => {
     const conAncla = normalizarBook({
       escenas: [{ id: "a", tipo: "ancla", piezas: [{ url: "a.jpg" }], notas }],
     });
-    expect(conAncla.escenas[1].notas).toHaveLength(1);
+    expect(escenaDe(conAncla, "ancla").notas).toHaveLength(1);
 
     const conPlena = normalizarBook({
       escenas: [{ id: "x", tipo: "plena", piezas: [{ url: "a.jpg" }], notas }],
     });
-    expect(conPlena.escenas[1].notas).toBeUndefined();
+    expect(escenaDe(conPlena, "plena").notas).toBeUndefined();
   });
 
   it("un book publicado que se quedó sin contenido se despublica solo", () => {
@@ -425,13 +563,16 @@ describe("normalizarBook", () => {
   it("un book publicado y completo se queda publicado", () => {
     const b = normalizarBook({
       publicado: true,
+      // TODAS las estructurales completas (apertura de cuatro, vitrina de tres)
+      // más una escena propia: es el mínimo para que un book sea publicable.
       escenas: [
-        // La apertura son TRES fotos: la que abre y las dos que suben.
-        {
-          id: "p",
-          tipo: "portada",
-          piezas: [{ url: "a.jpg" }, { url: "b.jpg" }, { url: "c.jpg" }],
-        },
+        ...ESCENAS_FIJAS.map((tipo) => ({
+          id: tipo,
+          tipo,
+          piezas: Array.from({ length: escenaDef(tipo)!.min }, (_, i) => ({
+            url: `${tipo}${i}.jpg`,
+          })),
+        })),
         { id: "d", tipo: "diptico", piezas: [{ url: "1.jpg" }, { url: "2.jpg" }] },
       ],
     });
@@ -454,7 +595,7 @@ describe("normalizarBook", () => {
     const conPortada = normalizarBook({
       escenas: [{ id: "p", tipo: "portada", piezas: [{ url: "a.jpg" }], meta }],
     });
-    expect(conPortada.escenas[0].meta).toEqual(meta);
+    expect(escenaDe(conPortada, "portada").meta).toEqual(meta);
 
     // `diptico` no declara `admiteMeta`: guardarlos ahí sería un dato muerto.
     const conDiptico = normalizarBook({
@@ -462,7 +603,7 @@ describe("normalizarBook", () => {
         { id: "d", tipo: "diptico", piezas: [{ url: "1" }, { url: "2" }], meta },
       ],
     });
-    expect(conDiptico.escenas[1].meta).toBeUndefined();
+    expect(escenaDe(conDiptico, "diptico").meta).toBeUndefined();
   });
 
   it("recorta los textos de esquina largos", () => {
@@ -471,7 +612,7 @@ describe("normalizarBook", () => {
         { id: "p", tipo: "portada", piezas: [], meta: { arribaFin: "x".repeat(99) } },
       ],
     });
-    expect(b.escenas[0].meta!.arribaFin).toHaveLength(BOOK_META_MAX);
+    expect(escenaDe(b, "portada").meta!.arribaFin).toHaveLength(BOOK_META_MAX);
   });
 
   it("la medida elegida solo se guarda si el tipo la admite", () => {
@@ -484,9 +625,9 @@ describe("normalizarBook", () => {
         { id: "x", tipo: "plena", piezas: [{ url: "3" }], medida: "sangre" },
       ],
     });
-    expect(b.escenas[0].medida).toBeUndefined(); // portada: no elegible
-    expect(b.escenas[1].medida).toBe("contenida"); // válida
-    expect(b.escenas[2].medida).toBeUndefined(); // "sangre" no es elegible
+    expect(escenaDe(b, "portada").medida).toBeUndefined(); // no elegible
+    expect(escenaDe(b, "diptico").medida).toBe("contenida"); // válida
+    expect(escenaDe(b, "plena").medida).toBeUndefined(); // "sangre" no lo es
   });
 
   it("las redes solo se guardan en el cierre y sin repetir", () => {
@@ -496,8 +637,8 @@ describe("normalizarBook", () => {
         { id: "c", tipo: "cierre", piezas: [], redes: ["instagram", "instagram", "nomeinvento"] },
       ],
     });
-    expect(b.escenas[1].redes).toBeUndefined(); // plena no lleva redes
-    expect(b.escenas[2].redes).toEqual(["instagram"]);
+    expect(escenaDe(b, "plena").redes).toBeUndefined(); // plena no lleva redes
+    expect(escenaDe(b, "cierre").redes).toEqual(["instagram"]);
   });
 });
 
@@ -578,6 +719,18 @@ describe("anadirEscena", () => {
 });
 
 describe("vitrina — el reparto de ranuras", () => {
+  it("hay un sitio por ranura, ni más ni menos", () => {
+    // Tres cartas y tres sitios. Si el catálogo admitiera una cuarta foto,
+    // `sitioDeRanura` devolvería undefined y esa carta se quedaría sin sitio —
+    // apilada en el centro encima de la del frente.
+    const def = escenaDef("vitrina")!;
+    expect(def.min).toBe(SITIOS_VITRINA.length);
+    expect(def.max).toBe(SITIOS_VITRINA.length);
+    expect(sitioDeRanura(0)).toBe("frente");
+    expect(sitioDeRanura(def.max - 1)).toBeDefined();
+    expect(sitioDeRanura(def.max)).toBeUndefined();
+  });
+
   it("arranca con cada pieza en su ranura", () => {
     expect(ranurasDeVitrina(4)).toEqual([0, 1, 2, 3]);
   });

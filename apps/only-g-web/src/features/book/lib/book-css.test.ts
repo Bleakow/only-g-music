@@ -122,6 +122,53 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBe(false);
   });
 
+  it("el recorrido de la apertura es más corto en estrecho que en ancho", () => {
+    // En el móvil se baja a base de impulsos largos: las mismas pantallas de
+    // recorrido se sienten el doble, y se reportó como "en móviles debo hacer
+    // mucho scroll para llegar a la vitrina". Unificar las dos alturas "para
+    // simplificar" devuelve el problema sin romper nada — de ahí esta prueba.
+    const alturas = REGLAS.filter((r) => r.selector.trim() === ".og-book-apertura")
+      .map((r) => /height:\s*(\d+)svh/.exec(r.cuerpo)?.[1])
+      .filter((v): v is string => Boolean(v))
+      .map(Number);
+    expect(alturas.length, "la apertura ya no declara dos alturas").toBe(2);
+    expect(
+      alturas[0],
+      "el recorrido de estrecho no es más corto que el de ancho",
+    ).toBeLessThan(alturas[1]);
+  });
+
+  it("el desintegrado es UN lienzo, no cientos de nodos", () => {
+    // La versión de teselas era un `div` por trozo y se veía lo que era: pedazos
+    // de cuadrado desarmándose, con una rejilla de juntas entre ellos en cuanto
+    // se movían (se reportó como "líneas de cuadrícula blancas"). Para que se
+    // lea como ARENA hacen falta miles de granos de dos píxeles, y eso en el DOM
+    // no lo aguanta ningún móvil. Si algún día vuelve un selector de tesela, es
+    // que alguien deshizo el cambio sin querer.
+    const lienzo = REGLAS.find(
+      (r) => r.selector.trim() === ".og-book-desint-lienzo",
+    );
+    expect(lienzo, "falta .og-book-desint-lienzo").toBeDefined();
+    expect(
+      CSS.includes("og-book-desint-tesela"),
+      "vuelven las teselas del DOM",
+    ).toBe(false);
+  });
+
+  it("la apertura no deja aire detrás", () => {
+    // Regresión del "recorrido de scroll entre la foto que se desvanece y la
+    // vitrina es muy grande". La apertura TERMINA en una pantalla entera del
+    // color de la atmósfera —la foto ya se desenfocó, las teselas ya volaron—,
+    // así que el `gap` de la raíz encima de eso es aire sobre aire. Sin este
+    // margen negativo vuelve el recorrido muerto, y es de los fallos que no dan
+    // ningún error: simplemente se hace largo.
+    const regla = REGLAS.find((r) =>
+      r.selector.includes('.og-book-escena[data-tipo="portada"]'),
+    );
+    expect(regla, "la apertura vuelve a dejar aire detrás").toBeDefined();
+    expect(regla!.cuerpo).toMatch(/margin-block-end:\s*calc\([^)]*--bk-aire[^;]*-1\)/);
+  });
+
   it("no hay bloques de escenas que ya no existan en el dominio", () => {
     const conocidas = new Set<string>(ESCENAS.map((e) => e.tipo));
     for (const m of CSS.matchAll(/\[data-escena="([^"]+)"\]/g)) {
@@ -176,11 +223,17 @@ describe("book.css — las rejillas son válidas", () => {
     },
   );
 
-  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h", () => {
+  it("solo se usan nombres de área conocidos: piezas a…f, texto n, encabezado h, escenario s", () => {
+    // `s` (escenario) NO es una letra libre: la vitrina apila sus cartas con
+    // posición absoluta dentro de un escenario, y ese escenario necesita su
+    // propia área. Se llamó `e` en el primer intento y esta prueba lo cazó —
+    // `e` es la QUINTA ranura de piezas (`areaDeRanura(4)`), así que una escena
+    // de cinco fotos habría colocado una encima del escenario de otra.
     const validos = new Set([
       ...Array.from({ length: 6 }, (_, i) => areaDeRanura(i)),
       "n",
       "h",
+      "s",
       ".",
     ]);
     for (const { selector, filas } of conAreas) {
@@ -211,7 +264,7 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
       );
       for (const { selector, filas } of filasDe(tipo)) {
         for (const nombre of filas.flat()) {
-          if (nombre === "n" || nombre === "h" || nombre === ".") continue;
+          if (["n", "h", "s", "."].includes(nombre)) continue;
           expect(
             permitidas.has(nombre),
             `${selector}: usa el área "${nombre}" pero la escena admite ${max} pieza(s)`,
@@ -220,6 +273,31 @@ describe("book.css — las ranuras cuadran con el dominio", () => {
       }
     },
   );
+
+  it("la escena que declara variantes por nº de piezas las declara TODAS", () => {
+    // Una escena que compone distinto según cuántas fotos tenga necesita un
+    // bloque por cada cuenta posible del rango. Si falta una —la de tres del
+    // pliego, por ejemplo, que solo se ve un momento mientras se sube la
+    // cuarta—, esa rejilla se queda sin `grid-template-areas` mientras el
+    // componente sigue pidiendo `grid-area: c`: la pieza cae en una pista
+    // implícita y se ve torcida. Es EXACTAMENTE el bug que se reportó en el
+    // editor con la foto de portada, y la unica forma de que no vuelva es
+    // comprobar la cobertura, no la existencia.
+    for (const def of ESCENAS) {
+      const declaradas = new Set(
+        [...CSS.matchAll(/\[data-escena="([^"]+)"\]\[data-piezas="(\d+)"\]/g)]
+          .filter((m) => m[1] === def.tipo)
+          .map((m) => Number(m[2])),
+      );
+      if (!declaradas.size) continue; // no compone por cuenta: nada que cubrir
+      for (let n = def.min; n <= def.max; n++) {
+        expect(
+          declaradas.has(n),
+          `"${def.tipo}" no declara su rejilla de ${n} pieza(s)`,
+        ).toBe(true);
+      }
+    }
+  });
 
   it("cada medida tiene su bloque de anchos en el CSS", () => {
     // El sistema de respiración entero cuelga de estos tres bloques. Si falta
@@ -327,6 +405,46 @@ describe("book.css — las miniaturas animadas del selector", () => {
     expect(usados.size).toBeGreaterThan(5); // guarda anti-parser-mudo
     for (const nombre of usados) {
       expect(declarados.has(nombre), `falta @keyframes ${nombre}`).toBe(true);
+    }
+  });
+});
+
+describe("book.css — la vista amplia se pinta FUERA de la raíz del book", () => {
+  const LUPA = REGLAS.filter((r) => r.selector.includes(".og-book-lupa"));
+
+  it("hay reglas de la vista amplia que comprobar", () => {
+    expect(LUPA.length).toBeGreaterThan(3);
+  });
+
+  it("el marco calca desde la esquina, no desde el centro", () => {
+    // La transformación que deja la caja de destino encima de la foto original
+    // se calcula con `translate(dx, dy) scale(s)`, y esa cuenta ASUME el origen
+    // en la esquina. Con `transform-origin: center` habría que compensar medio
+    // ancho y medio alto en cada término: la foto arrancaría descolocada y
+    // parecería un problema de medición. Nadie miraría el CSS.
+    const marco = LUPA.find((r) => r.selector.trim() === ".og-book-lupa-marco");
+    expect(marco, "falta .og-book-lupa-marco").toBeDefined();
+    expect(marco!.cuerpo).toMatch(/transform-origin:\s*top\s+left/);
+  });
+
+  it("no consume tokens de la atmósfera, que ahí ya no existen", () => {
+    // Se pinta con un PORTAL a `<body>` —obligado: `.og-book-escena` declara
+    // `container-type`, y la contención convierte al contenedor en el bloque
+    // contenedor de sus descendientes `fixed`—, así que `.og-book-root` deja de
+    // ser antepasada. Y un `var(--bk-…)` sin definir NO cae a la regla anterior:
+    // cae al valor INICIAL. Un fondo que se queda transparente sobre la web, un
+    // texto sin familia. Fallo callado de manual.
+    const declarados = new Set<string>();
+    for (const { cuerpo } of LUPA) {
+      for (const m of cuerpo.matchAll(/(--bk-[\w-]+)\s*:/g)) declarados.add(m[1]);
+    }
+    for (const { selector, cuerpo } of LUPA) {
+      for (const m of cuerpo.matchAll(/var\((--bk-[\w-]+)/g)) {
+        expect(
+          declarados.has(m[1]),
+          `${selector}: usa ${m[1]}, que fuera de .og-book-root no está definido`,
+        ).toBe(true);
+      }
     }
   });
 });

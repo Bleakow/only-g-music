@@ -40,8 +40,17 @@ import { SOCIAL_PLATFORMS, type SocialPlatform } from "./artist";
 // Límites
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Escenas de un book, portada y cierre incluidas. */
-export const BOOK_MAX_ESCENAS = 12;
+/**
+ * Escenas de un book, las estructurales incluidas.
+ *
+ * SUBIÓ DE 12 A 14 AL ENTRAR `metraje` Y `pliego` en el arranque obligatorio, y
+ * no por generosidad: `normalizarBook` recorta el contenido a
+ * `BOOK_MAX_ESCENAS - fijas`, así que dejarlo en 12 le habría quitado dos
+ * escenas propias a quien ya tuviera el book lleno — al LEERLO, sin avisar y sin
+ * que nadie las hubiera borrado. Las estructurales crecen; el sitio para lo que
+ * monta cada modelo, no se toca.
+ */
+export const BOOK_MAX_ESCENAS = 14;
 
 /**
  * Piezas (fotos + vídeos) en todo el book. El tope no es estético: son las
@@ -158,6 +167,8 @@ export const META_ESQUINAS = [
 export type EscenaTipo =
   | "portada"
   | "vitrina"
+  | "metraje"
+  | "pliego"
   | "retrato"
   | "diptico"
   | "indice"
@@ -174,6 +185,16 @@ export interface EscenaDef {
   min: number;
   /** Piezas máximas que caben en su composición. */
   max: number;
+  /**
+   * Cuentas de piezas VÁLIDAS, cuando no son todas las del rango. Existe por el
+   * `pliego`: dos o cuatro, sin punto medio. Con tres fotos su composición no
+   * cuadra —quedaría un hueco o una fila coja— y `min`/`max` no saben decir eso:
+   * describen un rango contiguo y aquí el rango tiene un agujero.
+   *
+   * Se sigue pudiendo ESTAR en tres mientras se sube la cuarta; lo que no se
+   * puede es publicar así. Ver `escenaCompleta` y `piezasQueFaltan`.
+   */
+  cuentas?: number[];
   /**
    * Vídeos que admite. No es un límite artístico: cuatro vídeos en bucle en la
    * misma pantalla son cuatro descargas y cuatro decodificaciones a la vez.
@@ -211,12 +232,22 @@ export interface EscenaDef {
    */
   retirada?: boolean;
   /**
-   * Escenas ESTRUCTURALES: no se añaden, no se borran y no se mueven. Un book
-   * siempre abre con portada y cierra con cierre — es lo que lo hace un book y
-   * no una lista de fotos grandes.
+   * Escenas ESTRUCTURALES: no se añaden, no se borran y no se mueven, y sus
+   * fotos son obligatorias. Son el arranque y el cierre que comparten todos los
+   * books: la apertura, el carrusel de tres cartas, el metraje, el pliego y la
+   * despedida. Lo que va en medio ya es cosa de cada modelo.
    */
-  fija?: "primera" | "ultima";
+  fija?: "primera" | "segunda" | "tercera" | "cuarta" | "ultima";
 }
+
+/** Dónde va cada escena fija. Lo usan la normalización y el orden del editor. */
+const POSICION_FIJA: Record<NonNullable<EscenaDef["fija"]>, number> = {
+  primera: 0,
+  segunda: 1,
+  tercera: 2,
+  cuarta: 3,
+  ultima: 99,
+};
 
 /**
  * Catálogo. El ORDEN es el que ve la modelo al añadir una escena, y también el
@@ -227,25 +258,25 @@ export const ESCENAS: EscenaDef[] = [
   {
     tipo: "portada",
     /**
-     * LA APERTURA. Tres fotos, ni una más ni una menos, y las tres OBLIGATORIAS:
-     * la primera abre a pantalla completa con el nombre encima, y las otras dos
-     * son las que suben en diagonal mientras la primera se desenfoca hasta
-     * desaparecer en el color de fondo.
+     * LA APERTURA. Cuatro fotos, ni una más ni una menos, y las cuatro
+     * OBLIGATORIAS. Ver `ROLES_APERTURA`: la que abre, las dos que suben y la
+     * de portada.
      *
      * No es una escena que se compone: es una secuencia CERRADA, igual en todos
-     * los books. Por eso las tres piezas son un mínimo Y un máximo, ninguna
-     * lleva texto, y la escena no se puede quitar ni mover.
+     * los books. Por eso las piezas son un mínimo Y un máximo y la escena no se
+     * puede quitar ni mover.
      */
-    min: 3,
-    max: 3,
-    // Sin vídeo: la primera foto se desenfoca hasta cero y las otras dos viajan
-    // con parallax interno. Tres clips decodificando a la vez en la primera
-    // pantalla es el peor sitio posible para gastar.
+    min: 4,
+    max: 4,
+    // Sin vídeo: la primera se desenfoca hasta cero, dos viajan con parallax y
+    // la de portada se desintegra en cientos de piezas. Clips decodificando a
+    // la vez en la primera pantalla es el peor sitio posible para gastar.
     maxVideos: 0,
     maxNotas: 0,
-    // Solo la primera pieza lleva algo escrito, y es el nombre — que sale del
-    // perfil, no de un campo de la escena.
-    admiteTextoPorPieza: false,
+    // Solo la de PORTADA lleva texto (su título y su descripción, lo que la
+    // modelo quiera). El editor lo pide únicamente en esa ranura; las otras tres
+    // son imagen pura. El nombre grande no es texto de la escena: sale del perfil.
+    admiteTextoPorPieza: true,
     // La ÚNICA escena a pantalla completa de todo el book. Una apertura puede
     // permitírselo; ocho seguidas es lo que se sintió abrumador.
     medida: "sangre",
@@ -254,17 +285,76 @@ export const ESCENAS: EscenaDef[] = [
   },
   {
     tipo: "vitrina",
+    /**
+     * TRES cartas y tres sitios: una al frente y dos regadas a los lados. El
+     * número no es una preferencia, es la coreografía — hay exactamente tres
+     * posiciones, y admitir una cuarta obligaría a inventarle un sitio que la
+     * composición no tiene.
+     */
     min: 3,
-    max: 5,
-    // Un clip puede ser la principal, pero no la mitad de la vitrina: cada
-    // miniatura es candidata a saltar al hueco grande, y cuatro vídeos esperando
-    // turno son cuatro descargas que nadie ha pedido.
+    max: 3,
+    // Un clip puede estar al frente, pero no media vitrina: las tres cartas se
+    // ven a la vez y tres vídeos ahí son tres descargas simultáneas.
     maxVideos: 1,
     maxNotas: 0,
     admiteTextoPorPieza: true,
     medida: "amplia",
-    textoEnRejilla: true,
+    // La descripción de la carta que está al frente va en el área `n` de la
+    // rejilla, al lado del escenario — no debajo de cada foto.
     notaEnRejilla: true,
+    // SEGUNDA y obligatoria: va siempre justo después de la apertura, con sus
+    // tres fotos puestas. Es parte del arranque que comparten todos los books.
+    fija: "segunda",
+  },
+  {
+    tipo: "metraje",
+    /**
+     * EL CLIP. Uno, en bucle, pegado al borde de la pantalla, con su descripción
+     * al otro lado revelándose palabra a palabra según se baja.
+     *
+     * `maxVideos: 1` con `max: 1` significa "puede ser un vídeo", no "tiene que
+     * serlo": si la modelo sube una foto, la escena sigue funcionando. Obligar a
+     * un vídeo sería dejar sin publicar a quien no tiene uno, y por una escena
+     * que no puede quitar.
+     */
+    min: 1,
+    max: 1,
+    maxVideos: 1,
+    maxNotas: 0,
+    admiteTextoPorPieza: true,
+    /**
+     * `sangre` aquí NO significa pantallazo —eso solo lo hace la apertura—: es
+     * lo que le quita el margen de página a ESE lado para que el clip llegue a
+     * tocar el borde. El texto conserva el suyo, y el alto lo capa el CSS. Va
+     * como propiedad del tipo, así que tampoco es algo que se pueda elegir.
+     */
+    medida: "sangre",
+    // La descripción vive en el área `n`, al otro lado del clip. Es la escena
+    // entera: sin esto el texto caería debajo del vídeo y el hueco de la derecha
+    // quedaría en blanco.
+    notaEnRejilla: true,
+    fija: "tercera",
+  },
+  {
+    tipo: "pliego",
+    /**
+     * DOS O CUATRO, sin punto medio. No es una manía: con dos van hombro con
+     * hombro y con cuatro forman un cuadro de 2×2; con tres, una fila se queda
+     * coja y el ojo lo lee como un hueco. `min`/`max` no saben expresar un rango
+     * con un agujero, y por eso existe `cuentas`.
+     *
+     * Fotos SENCILLAS: sin título, sin nota, sin encabezado. Entran y salen. Es
+     * el respiro entre el carrusel y lo que cada modelo monte después, y un
+     * respiro con letra deja de ser un respiro.
+     */
+    min: 2,
+    max: 4,
+    cuentas: [2, 4],
+    maxVideos: 1,
+    maxNotas: 0,
+    admiteTextoPorPieza: false,
+    medida: "amplia",
+    fija: "cuarta",
   },
   {
     tipo: "retrato",
@@ -415,12 +505,38 @@ export function medidaDeEscena(escena: EscenaBook): MedidaEscena {
     : def.medida;
 }
 
+/**
+ * Cuentas de piezas con las que una escena SE VE BIEN. Casi siempre es todo el
+ * rango; `pliego` es la excepción (dos o cuatro) y por eso esto no se calcula en
+ * dos sitios distintos.
+ */
+export function cuentasValidas(def: EscenaDef): number[] {
+  if (def.cuentas) return def.cuentas;
+  return Array.from({ length: def.max - def.min + 1 }, (_, i) => def.min + i);
+}
+
 /** ¿Esta escena tiene las piezas que su composición necesita? */
 export function escenaCompleta(escena: EscenaBook): boolean {
   const def = escenaDef(escena.tipo);
   if (!def) return false;
+  return cuentasValidas(def).includes(escena.piezas.length);
+}
+
+/**
+ * Cuántas piezas faltan para la siguiente cuenta VÁLIDA — no para el mínimo.
+ *
+ * La diferencia importa exactamente una vez y es la que se le olvida a
+ * cualquiera: un `pliego` con tres fotos ya pasó del mínimo, así que restar
+ * `min` da cero y el editor no avisaría de nada. Pero con tres no se publica.
+ * Aquí devuelve 1, y el editor puede decir qué falta en vez de dejar a la modelo
+ * mirando un botón apagado sin explicación.
+ */
+export function piezasQueFaltan(escena: EscenaBook): number {
+  const def = escenaDef(escena.tipo);
+  if (!def) return 0;
   const n = escena.piezas.length;
-  return n >= def.min && n <= def.max;
+  const objetivo = cuentasValidas(def).find((c) => c >= n);
+  return objetivo === undefined ? 0 : objetivo - n;
 }
 
 /** Vídeos que ya tiene una escena (para saber si cabe otro). */
@@ -434,6 +550,41 @@ export function videosDeEscena(escena: EscenaBook): number {
  */
 export function numeroDeFicha(i: number): string {
   return String(i + 1).padStart(3, "0");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apertura — qué papel juega cada una de sus cuatro fotos
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * El papel de cada ranura de la apertura. No es decoración: es lo que el editor
+ * necesita para poder DECIR cuál es cuál. Cuatro huecos idénticos y "sube tres
+ * fotos" no le explica a nadie que la primera va a pantalla completa y la última
+ * se desintegra.
+ *
+ *  · `abre`    — a pantalla completa, con el nombre encima. Se desenfoca hasta
+ *                desaparecer en el color de fondo.
+ *  · `sube`    — las dos que entran desde abajo en diagonal. Sin texto.
+ *  · `portada` — una sola, contenida (NO a pantalla completa), con su título y
+ *                su descripción. Aparece y se va desintegrándose.
+ */
+export type RolPiezaApertura = "abre" | "sube" | "portada";
+
+export const ROLES_APERTURA: RolPiezaApertura[] = [
+  "abre",
+  "sube",
+  "sube",
+  "portada",
+];
+
+/** Papel de la ranura `i` de la apertura (undefined si se sale). */
+export function rolDePiezaApertura(i: number): RolPiezaApertura | undefined {
+  return ROLES_APERTURA[i];
+}
+
+/** ¿Esta ranura de esta escena es la foto DE PORTADA (la que lleva texto)? */
+export function esFotoDePortada(tipo: EscenaTipo, i: number): boolean {
+  return tipo === "portada" && rolDePiezaApertura(i) === "portada";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -455,6 +606,20 @@ export function numeroDeFicha(i: number): string {
  */
 export function ranurasDeVitrina(piezas: number): number[] {
   return Array.from({ length: Math.max(0, piezas) }, (_, i) => i);
+}
+
+/**
+ * Los tres sitios de la vitrina, en orden de ranura. La ranura 0 es la carta que
+ * está AL FRENTE; las otras dos quedan regadas a los lados, cada una con su
+ * inclinación y su tamaño (que declara el CSS) para que se lea como un montón
+ * desordenado y no como una fila.
+ */
+export const SITIOS_VITRINA = ["frente", "izq", "der"] as const;
+export type SitioVitrina = (typeof SITIOS_VITRINA)[number];
+
+/** En qué sitio cae la ranura `r`. */
+export function sitioDeRanura(r: number): SitioVitrina | undefined {
+  return SITIOS_VITRINA[r];
 }
 
 /**
@@ -589,16 +754,23 @@ export interface Book {
  * la usan las pruebas y sirve de red para `normalizarBook`. Para crear el book
  * de una modelo se usa `bookGuiado`.
  */
-export function bookNuevo(idPortada: string, idCierre: string): Book {
+export function bookNuevo(id: (i: number) => string): Book {
   return {
-    escenas: [
-      { id: idPortada, tipo: "portada", piezas: [] },
-      { id: idCierre, tipo: "cierre", piezas: [] },
-    ],
+    escenas: ESCENAS_FIJAS.map((tipo, i) => ({ id: id(i), tipo, piezas: [] })),
     atmosfera: { ...ATMOSFERA_POR_DEFECTO },
     publicado: false,
   };
 }
+
+/**
+ * Las escenas estructurales, EN SU ORDEN. Se deriva del catálogo en vez de
+ * escribirse a mano para que marcar una escena como fija baste: si la lista
+ * viviera aparte, añadir una cuarta obligaría a acordarse de tocar también la
+ * normalización, y ese olvido no da error — solo coloca la escena en otro sitio.
+ */
+export const ESCENAS_FIJAS: EscenaTipo[] = ESCENAS.filter((e) => e.fija)
+  .sort((a, b) => POSICION_FIJA[a.fija!] - POSICION_FIJA[b.fija!])
+  .map((e) => e.tipo);
 
 /**
  * La secuencia con la que nace un book. No es una lista de escenas bonitas: es
@@ -611,6 +783,10 @@ export function bookNuevo(idPortada: string, idCierre: string): Book {
 export const BOOK_ESCENAS_POR_DEFECTO: EscenaTipo[] = [
   "portada",
   "vitrina",
+  // El arranque OBLIGATORIO termina aquí: apertura, carrusel, clip y pliego. A
+  // partir de la siguiente, todo es sugerencia y se puede quitar.
+  "metraje",
+  "pliego",
   "retrato",
   "diptico",
   "indice",
@@ -702,11 +878,15 @@ export function puedeAnadirPieza(
  * pegados, que no es un portafolio.
  */
 export function bookPublicable(book: Book): boolean {
-  // La apertura tiene que estar COMPLETA, no solo empezada: con una o dos de
-  // sus tres fotos la secuencia se queda a medias —el nombre se dispersa y
-  // detrás no sube nada— y eso es peor que no tener book.
-  const portada = book.escenas.find((e) => e.tipo === "portada");
-  if (!portada || !escenaCompleta(portada)) return false;
+  // TODAS las estructurales completas, no solo empezadas: son el arranque que
+  // comparten los books, y a medias la secuencia se rompe —el nombre se
+  // dispersa y detrás no sube nada, o el carrusel se queda con un hueco—.
+  const fijas = ESCENAS_FIJAS.map((tipo) =>
+    book.escenas.find((e) => e.tipo === tipo),
+  );
+  if (!fijas.every((e) => e && escenaCompleta(e))) return false;
+  // Y al menos una escena propia: un book que es solo el arranque no es un
+  // portafolio, es una presentación.
   return escenasDeContenido(book).some(escenaCompleta);
 }
 
@@ -868,24 +1048,27 @@ export function normalizarBook(raw: unknown): Book {
     .map(normalizarEscena)
     .filter((e): e is EscenaBook => e !== null);
 
-  const portada = crudas.find((e) => e.tipo === "portada") ?? {
-    id: "portada",
-    tipo: "portada" as const,
-    piezas: [],
-  };
-  const cierre = crudas.find((e) => e.tipo === "cierre") ?? {
-    id: "cierre",
-    tipo: "cierre" as const,
-    piezas: [],
-  };
-  // El recorte va sobre el CONTENIDO, no sobre la lista cruda: portada y cierre
-  // se ponen siempre, así que recortar antes dejaría un book de MAX+2 escenas.
+  // Las estructurales se recuperan por tipo y se recolocan en SU sitio. Si el
+  // documento no las trae (o llegan desordenadas), se reponen vacías: un book
+  // sin arranque no es un book, y rechazar el documento dejaría a la modelo sin
+  // portafolio en vez de con uno reparable.
+  const fijas = ESCENAS_FIJAS.map(
+    (tipo) =>
+      crudas.find((e) => e.tipo === tipo) ?? { id: tipo, tipo, piezas: [] },
+  );
+  const esFija = new Set<EscenaTipo>(ESCENAS_FIJAS);
+  // El recorte va sobre el CONTENIDO, no sobre la lista cruda: las fijas se
+  // ponen siempre, así que recortar antes dejaría un book más largo que el tope.
   const contenido = crudas
-    .filter((e) => e.tipo !== "portada" && e.tipo !== "cierre")
-    .slice(0, BOOK_MAX_ESCENAS - 2);
+    .filter((e) => !esFija.has(e.tipo))
+    .slice(0, BOOK_MAX_ESCENAS - fijas.length);
+
+  // Todas las fijas menos la última van delante; la última, al final.
+  const delante = fijas.slice(0, -1);
+  const detras = fijas.slice(-1);
 
   const book: Book = {
-    escenas: [portada, ...contenido, cierre],
+    escenas: [...delante, ...contenido, ...detras],
     atmosfera: normalizarAtmosfera(o.atmosfera),
     publicado: o.publicado === true,
   };

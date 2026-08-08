@@ -31,7 +31,6 @@ import {
   puedeAnadirPieza,
   puedeAnadirEscena,
   type Book,
-  type EscenaBook,
   type EscenaTipo,
   type PiezaBook,
 } from "@only-g/shared-types/book";

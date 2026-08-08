@@ -280,7 +280,8 @@
   padding: var(--bk-margen);
   pointer-events: none;
   font-family: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, monospace;
-  font-size: clamp(0.5625rem, 1cqi, 0.6875rem);
+  font-size: clamp(0.75rem, 1.5cqi, 1.0625rem);
+  font-weight: 600;
   letter-spacing: 0.18em;
   text-transform: uppercase;
 }
@@ -293,11 +294,14 @@
   text-align: end;
 }
 
-/* Sobre foto, tinta blanca; sobre el fondo de la atmósfera, la tinta suave. El
-   atributo lo pone la escena según si tiene pieza o no — unas líneas blancas
-   sobre papel `hueso` serían invisibles. */
+/* Sobre foto, BLANCO PURO — no un blanco al 74%, que sobre una foto clara se
+   convierte en un gris que hay que adivinar. La sombra no es decoración: es lo
+   que mantiene legible el blanco cuando debajo cae una zona quemada. Sobre el
+   fondo de la atmósfera se usa la tinta suave, porque unas letras blancas sobre
+   papel `hueso` serían invisibles. */
 .og-book-escena[data-sobre-foto="si"] .og-book-meta {
-  color: rgb(255 255 255 / 0.74);
+  color: #fff;
+  text-shadow: 0 1px 12px rgb(0 0 0 / 0.55);
 }
 .og-book-escena[data-sobre-foto="no"] .og-book-meta {
   color: var(--bk-ink-soft);
@@ -322,10 +326,34 @@
    al bajar, y la apertura arrancaría recortada. */
 
 .og-book-apertura {
-  /* Tres pantallas: una para leer el nombre, una para la transición y otra para
-     que las dos fotos se coloquen sin prisa. Es lo que consume la coreografía. */
-  height: 300svh;
+  /* Una pantalla por tiempo de la secuencia: leer el nombre, la transición, las
+     dos que suben, la foto de portada que se arma y la que se desintegra. Es el
+     scroll que consume la coreografía.
+
+     EN ESTRECHO SON MENOS, y no es una concesión: en el móvil se baja a base de
+     impulsos largos, así que las mismas cinco pantallas se sienten el doble. Se
+     reportó tal cual — "en móviles debo hacer mucho scroll para llegar a la
+     vitrina". La secuencia es idéntica; lo que cambia es cuánto dedo cuesta. */
+  height: 340svh;
   position: relative;
+}
+@container bk (min-width: 48rem) {
+  .og-book-apertura {
+    height: 500svh;
+  }
+}
+
+/* SIN AIRE DETRÁS. La apertura termina en una pantalla entera del color de la
+   atmósfera —la foto ya se desenfocó, las teselas ya volaron—, así que el hueco
+   de después sería aire sobre aire. Es la mitad del "recorrido de scroll muy
+   grande" que se reportó entre la foto que se desintegra y la vitrina; la otra
+   mitad la cubre la entrada en curva de las cartas, que arranca justo aquí.
+
+   Un margen NEGATIVO del tamaño del hueco y no un `gap` distinto: sobre un
+   contenedor flex el margen se SUMA al hueco, así que `-aire` lo deja en cero
+   sin tener que declarar excepciones en la raíz. */
+.og-book-escena[data-tipo="portada"] {
+  margin-block-end: calc(var(--bk-aire) * -1);
 }
 
 .og-book-ap-escenario {
@@ -352,7 +380,10 @@
   background: none;
 }
 
-/* El nombre, en medio. */
+/* El nombre, en medio. SIN caja detrás: se probó una placa de cristal y se
+   descartó — tapaba la foto justo donde más se mira. Lo único que se le añade a
+   las letras es una sombra difusa, que no se ve pero sostiene el blanco cuando
+   debajo cae una zona clara. */
 .og-book-ap-nombre {
   position: absolute;
   inset: 0;
@@ -365,6 +396,7 @@
   padding-inline: var(--bk-margen);
   text-align: center;
   color: #fff;
+  text-shadow: 0 2px 26px rgb(0 0 0 / 0.55);
   pointer-events: none;
 }
 
@@ -394,6 +426,18 @@
   overflow: hidden;
   border-radius: 0.5rem;
   width: 62%;
+  /* Es un `<button>` (se abre a pantalla completa), así que hay que desmontarle
+     el traje que le pone el navegador: relleno, borde y fondo propios harían que
+     la foto dejara de encajar en su marco. */
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  cursor: zoom-in;
+}
+.og-book-ap-diagonal:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 .og-book-ap-diagonal[data-orden="1"] {
   left: 6%;
@@ -424,6 +468,124 @@
   }
 }
 
+/* ── Cuarta capa: LA FOTO DE PORTADA ──────────────────────────────────────
+   Una sola foto con su título y su descripción, la que la modelo quiera. NO va
+   a pantalla completa: ocupa una parte del escenario y respira alrededor. Se
+   arma desintegrándose al entrar y se deshace igual al salir. */
+
+.og-book-ap-portada {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: var(--bk-margen);
+  pointer-events: none;
+}
+
+.og-book-ap-portada-marco {
+  position: relative;
+  width: 74%;
+  max-width: 22rem;
+  aspect-ratio: 3 / 4;
+  /* El marco NO recorta: las teselas salen volando fuera de sus límites y con
+     `overflow: hidden` el desintegrado se cortaría en seco contra el borde. */
+  overflow: visible;
+}
+
+/* EL TEXTO DE LA FOTO DE PORTADA VA CON LA TINTA DE LA ATMÓSFERA, no en blanco.
+   Cuando aparece, la foto que abría ya se desenfocó del todo y lo que hay detrás
+   es el color de fondo del book: en las atmósferas de papel, blanco sobre
+   blanco. Se reportó como "el texto de la foto de portada es blanco" y era
+   exactamente eso — un texto invisible en dos de las cuatro atmósferas.
+
+   Aquí NO hace falta placa: esto no cae sobre una foto, cae sobre el fondo. */
+.og-book-ap-portada-texto {
+  max-width: 30rem;
+  text-align: center;
+  color: var(--bk-ink);
+}
+.og-book-ap-portada-titulo {
+  font-family: var(--bk-display);
+  font-size: clamp(1.25rem, 3.4cqi, 2rem);
+  line-height: 1.05;
+}
+.og-book-ap-portada-nota {
+  margin-top: 0.6rem;
+  font-size: clamp(0.8125rem, 1.5cqi, 0.95rem);
+  line-height: 1.55;
+  color: var(--bk-ink-soft);
+}
+
+@container bk (min-width: 48rem) {
+  .og-book-ap-portada {
+    flex-direction: row;
+    gap: 3.5rem;
+  }
+  .og-book-ap-portada-marco {
+    width: 30%;
+    max-width: 26rem;
+  }
+  .og-book-ap-portada-texto {
+    text-align: start;
+    max-width: 24rem;
+  }
+}
+
+/* ── El DESINTEGRADO ──────────────────────────────────────────────────────
+   La foto se parte en teselas que muestran cada una su trozo (por
+   `background-position`) y vuelan. Tamaño, posición y recorte los pone el motor
+   por estilo inline: dependen del tamaño real del marco, que solo se conoce en
+   el navegador.
+
+   Debajo queda la foto ENTERA (`og-book-ap-portada-plena`): mientras la
+   secuencia está montada se oculta, pero si el motor no llega —o el visitante
+   pide menos movimiento— es lo único que se ve, y es una foto perfecta. El
+   desintegrado es un adorno; la foto, no. */
+
+.og-book-ap-portada-plena {
+  position: absolute;
+  inset: 0;
+}
+.og-book-ap-portada-plena img {
+  border-radius: 0.5rem;
+}
+
+.og-book-desint {
+  position: absolute;
+  inset: 0;
+  /* Lo enciende el motor al terminar de construir las teselas. Así nunca se ve
+     el instante en que existen las dos capas a la vez. */
+  display: none;
+}
+.og-book-desint[data-listo] {
+  display: block;
+}
+
+/* UN LIENZO, no cientos de nodos. La versión de teselas era un `div` por trozo y
+   se veía lo que era: pedazos de cuadrado desarmándose, con una rejilla de
+   juntas entre ellos en cuanto se movían. Para que se lea como ARENA hacen falta
+   miles de granos de dos píxeles, y eso en el DOM no lo aguanta ningún móvil.
+
+   El lienzo se dibuja a la resolución del marco al montarlo y luego lo ESCALA el
+   CSS. Vale porque el marco tiene proporción fija (`aspect-ratio: 3/4`): un
+   cambio de tamaño de ventana es un escalado UNIFORME, así que a lo sumo se ve
+   algo más suave — nunca deformado. */
+.og-book-desint-lienzo {
+  display: block;
+  /* SE SALE DEL MARCO a propósito, hacia donde va el viento. Un lienzo recorta
+     lo que se dibuja fuera, así que con la caja pegada a la foto la arena
+     desaparecería de golpe en una línea recta invisible — como si chocara con un
+     cristal. La caja exacta la pone el motor por estilo inline: depende de
+     cuánto vuela el polvo, que es cosa suya y no del CSS. */
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+}
+
 /* ── plena — grande, pero ya no un pantallazo ─────────────────────────────
    Proporción en vez de alto de pantalla, y un tope de alto. El tope es lo que
    garantiza que en un portátil siga asomando el borde de lo que viene, que es
@@ -444,6 +606,119 @@
 .og-book-grid[data-escena="diptico"] {
   --bk-cols: 1;
   grid-template-areas: "a" "b";
+}
+
+/* ── metraje — el clip pegado al borde y su descripción al lado ────────────
+   Un vídeo en bucle que TOCA el borde de la pantalla, con la descripción al otro
+   lado revelándose palabra a palabra según se baja.
+
+   Va a `sangre`, y aquí eso NO significa pantallazo: significa "sin margen de
+   página", que es lo único que permite que la imagen llegue al borde. El aire lo
+   recupera el texto, que lleva su padding propio, y el alto lo capa
+   `max-block-size` — sin ese tope, siete columnas de ancho a 4/5 en un monitor
+   dan una pieza más alta que la pantalla, que es justo lo que el sistema de
+   respiración existe para evitar. */
+
+.og-book-grid[data-escena="metraje"] {
+  --bk-cols: 1;
+  grid-template-areas: "a" "n";
+  gap: 1.75rem;
+  --bk-ratio: 4 / 5;
+}
+.og-book-grid[data-escena="metraje"] .og-book-pieza {
+  max-block-size: 86svh;
+}
+
+/* La descripción del metraje NO es un pie de foto: es media escena. Se lee
+   despacio, palabra a palabra, mientras se baja — así que necesita cuerpo y
+   medida de lectura, no el tamaño de un crédito. */
+.og-book-grid[data-escena="metraje"] .og-book-pie-nota {
+  margin-top: 1rem;
+  max-width: 34ch;
+  font-size: clamp(1rem, 2.2cqi, 1.35rem);
+  line-height: 1.6;
+  text-wrap: pretty;
+}
+/* El que va pegado al borde es el clip, no la letra. */
+.og-book-grid[data-escena="metraje"] .og-book-notas {
+  padding-inline: var(--bk-margen);
+}
+
+/* ── pliego — dos o cuatro fotos, sin texto ────────────────────────────────
+   El respiro entre el arranque y lo que monte cada modelo. Dos o cuatro, nunca
+   tres: con tres, una fila se queda coja y se lee como un hueco. La variante de
+   TRES existe igualmente porque el editor pasa por ahí al subir la cuarta, y una
+   rejilla sin áreas declaradas coloca las piezas en pistas implícitas — se ve
+   torcida, que es peor que rota. */
+
+.og-book-grid[data-escena="pliego"] {
+  --bk-cols: 1;
+  --bk-ratio: 3 / 4;
+}
+.og-book-grid[data-escena="pliego"][data-piezas="2"] {
+  grid-template-areas: "a" "b";
+}
+.og-book-grid[data-escena="pliego"][data-piezas="3"] {
+  grid-template-areas: "a" "b" "c";
+}
+.og-book-grid[data-escena="pliego"][data-piezas="4"] {
+  grid-template-areas: "a" "b" "c" "d";
+}
+
+/* EL REVELADO DEL PLIEGO ES EL DEL ÍNDICE AL REVÉS, y esa inversión es todo el
+   gesto. En el índice la foto empieza recortada y el hover la ABRE; aquí empieza
+   entera y el hover la ENCOGE, dejando ver alrededor la misma foto ampliada y
+   desenfocada. La segunda lectura de una foto que ya habías visto.
+
+   El fondo es la misma imagen a 64 px por el mismo optimizador (`--bk-fondo`,
+   ver `fondoBorroso`): para un desenfoque de 22 px sobra, y pesa unos 2 KB.
+   `scale(1.25)` no es gusto — `blur()` difumina también hacia fuera de la caja y
+   deja los bordes translúcidos; escalar tapa ese halo. */
+.og-book-grid[data-escena="pliego"] .og-book-pieza::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--bk-fondo);
+  background-size: cover;
+  background-position: center;
+  filter: blur(20px) saturate(0.8) brightness(0.7);
+  transform: scale(1.25);
+}
+
+/* Las dos formas del recorte, con los CUATRO valores y con `round`: `inset(0)` e
+   `inset(12% 14%)` tienen distinto número de componentes y hay motores que se
+   niegan a interpolar entre ellas. */
+.og-book-grid[data-escena="pliego"] .og-book-pieza > :is(img, video) {
+  position: relative;
+  z-index: 1;
+  clip-path: inset(0% 0% 0% 0% round 2px);
+  transition: clip-path 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .og-book-grid[data-escena="pliego"]
+    .og-book-figura:is(:hover, :focus-within)
+    .og-book-pieza
+    > :is(img, video) {
+    clip-path: inset(12% 14% 12% 14% round 8px);
+  }
+}
+
+/* El asa para ampliar. Es un `<button>`, así que hay que quitarle el traje que
+   le pone el navegador: relleno y borde propios sacarían la foto de su celda. */
+.og-book-ampliar {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  cursor: zoom-in;
+}
+.og-book-ampliar:focus-visible {
+  outline: 2px solid var(--bk-acento);
+  outline-offset: 4px;
 }
 
 /* ── retrato — una pieza vertical y su nota ────────────────────────────── */
@@ -581,109 +856,166 @@
       Es el fallo clásico de Flip dentro de un grid, y parece otra cosa: "las
       fotos saltan". */
 
+/* ── vitrina — el CARRUSEL de tres cartas ──────────────────────────────────
+   Tres fotos con su descripción: una siempre AL FRENTE y las otras dos regadas
+   a los lados, inclinadas y más pequeñas. Al tocar una de las de atrás, la del
+   frente sale disparada hacia un lado encogiéndose por el camino y le deja el
+   sitio; las tres se mueven, una tras otra.
+
+   POR QUÉ CON TRANSICIONES CSS Y NO CON GSAP. El cambio de carta responde a un
+   toque, no al scroll, y esto es exactamente lo que las transiciones hacen bien:
+   es reversible (tocar dos veces deja todo donde estaba), no puede quedarse a
+   medias si el motor de animación no llega, y con `prefers-reduced-motion` se
+   apaga con una línea. Traer GSAP para interpolar cuatro números sería pagar un
+   módulo entero por algo que el navegador ya sabe hacer.
+
+   Cada sitio se declara como cuatro variables y hay UNA sola regla de
+   `transform` que las compone. Así las tres cartas interpolan entre listas de
+   transformación con la misma forma —requisito para que el navegador anime en
+   vez de saltar— sin repetir la fórmula tres veces. */
+
 .og-book-grid[data-escena="vitrina"] {
-  /* Las figuras absolutas del intercambio se cuelgan de la caja posicionada más
-     cercana. Sin esto se cuelgan de la escena, cuyo padding queda fuera, y el
-     vuelo empieza desplazado justo lo que mide ese padding. */
-  position: relative;
-  --bk-vit-hueco: 0.55rem;
-  --bk-vit-alto: 118cqw;
-  gap: var(--bk-vit-hueco);
-}
-
-.og-book-grid[data-escena="vitrina"],
-.og-book-grid[data-escena="vitrina"][data-piezas="3"] {
-  --bk-cols: 2;
-  grid-template-areas: "h h" "a a" "n n" "b c";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 26cqw;
-}
-.og-book-grid[data-escena="vitrina"][data-piezas="4"] {
-  --bk-cols: 3;
-  grid-template-areas: "h h h" "a a a" "n n n" "b c d";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 24cqw;
-}
-.og-book-grid[data-escena="vitrina"][data-piezas="5"] {
-  --bk-cols: 4;
-  grid-template-areas: "h h h h" "a a a a" "n n n n" "b c d e";
-  grid-template-rows: auto var(--bk-vit-alto) minmax(5.25rem, auto) 22cqw;
-}
-
-/* La figura ocupa su celda entera y la foto recorta: las ranuras de la vitrina
-   tienen proporciones distintas —la grande vertical, las miniaturas casi
-   cuadradas— y es LA MISMA foto la que pasa por las dos. */
-.og-book-grid[data-escena="vitrina"] .og-book-figura,
-.og-book-grid[data-escena="vitrina"] .og-book-pieza {
-  height: 100%;
-  aspect-ratio: auto;
-}
-.og-book-grid[data-escena="vitrina"] .og-book-pieza {
-  border-radius: inherit;
-}
-
-/* El redondeo cambia con el sitio y la animación lo interpola: sin declararlo
-   por separado saltaría de golpe en el primer fotograma del vuelo. */
-.og-book-vit-figura[data-vit="principal"] {
-  border-radius: 0.9rem;
-}
-.og-book-vit-figura[data-vit="miniatura"] {
-  border-radius: 0.55rem;
-}
-
-/* El botón es TODA la celda, no un icono dentro: apuntar a 32 px en un móvil es
-   pedir puntería. Va como capa aparte y no envolviendo la foto porque un `<div>`
-   dentro de un `<button>` es HTML inválido, y porque así el texto alternativo de
-   la imagen sigue siendo suyo y no el nombre del botón. */
-.og-book-vit-boton {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  border-radius: inherit;
-  cursor: pointer;
-}
-.og-book-vit-figura[data-vit="principal"] .og-book-vit-boton {
-  cursor: default;
-}
-.og-book-vit-boton:focus-visible {
-  outline: 2px solid var(--bk-acento);
-  outline-offset: 3px;
-}
-
-/* Las miniaturas se apagan un poco: con cinco fotos al mismo peso visual
-   ninguna es la principal. */
-.og-book-vit-figura .og-book-pieza {
-  transition: filter 0.45s ease;
-}
-.og-book-vit-figura[data-vit="miniatura"] .og-book-pieza {
-  filter: grayscale(0.4) brightness(0.78);
-}
-.og-book-vit-figura[data-vit="miniatura"]:hover .og-book-pieza,
-.og-book-vit-figura[data-vit="miniatura"]:focus-within .og-book-pieza {
-  filter: grayscale(0) brightness(1);
+  --bk-cols: 1;
+  grid-template-areas: "h" "s" "n";
+  gap: 1.5rem;
 }
 
 .og-book-vit-titulo {
-  align-self: start;
-  font-size: clamp(2rem, 8.5cqw, 4.5rem);
+  grid-area: h;
+  font-size: clamp(1.75rem, 6cqi, 3.5rem);
 }
 
+/* El escenario: las tres cartas se apilan encima con posición absoluta, así que
+   necesita alto propio o se desploma a cero. */
+.og-book-vit-escenario {
+  grid-area: s;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  /* Las cartas de los lados salen del ancho del escenario a propósito: es lo que
+     las hace ver "regadas" y no metidas en una caja. */
+  overflow: visible;
+}
+
+.og-book-vit-carta {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 58%;
+  aspect-ratio: 3 / 4;
+  border-radius: 0.75rem;
+  /* NO RECORTA, y no es un descuido. Quien redondea la foto es la capa interior
+     (`.og-book-vit-cuerpo`, que hereda este mismo radio y sí recorta). Si la
+     carta recortara, la entrada por scroll —que mueve esa capa interior desde
+     fuera de la pantalla— se vería como una carta vacía que se va llenando por
+     un lado: el vuelo entero quedaría cortado contra el borde de su propio
+     hueco. Es el mismo motivo por el que el marco del desintegrado tampoco
+     recorta. */
+  overflow: visible;
+  cursor: pointer;
+  /* Valores por defecto: si `data-slot` faltara, la carta se queda centrada en
+     vez de salir volando a una esquina. */
+  --vx: 0%;
+  --vy: 0%;
+  --vs: 1;
+  --vr: 0deg;
+  transform: translate(-50%, -50%) translate(var(--vx), var(--vy))
+    scale(var(--vs)) rotate(var(--vr));
+  /* Sale rápido y se posa despacio: es el "se mueve rápidamente hacia un lado"
+     del brief. Una curva simétrica se sentiría floja. */
+  transition:
+    transform 0.62s cubic-bezier(0.16, 0.84, 0.3, 1),
+    filter 0.5s ease;
+}
+
+.og-book-vit-carta[data-slot="frente"] {
+  --vx: 0%;
+  --vy: 0%;
+  --vs: 1;
+  --vr: 0deg;
+  z-index: 3;
+  cursor: default;
+  /* La que está al frente ya no cambia de sitio: lo que hace es ABRIRSE. El
+     cursor es lo único que lo anuncia, y es suficiente — nadie necesita que se
+     lo expliquen dos veces. */
+  /* Llega la ÚLTIMA. Ese retardo es lo que convierte tres movimientos
+     simultáneos en un carrusel: primero se abre el hueco, luego lo ocupa. */
+  transition-delay: 0.09s;
+}
+.og-book-vit-carta[data-slot="izq"] {
+  --vx: -74%;
+  --vy: -7%;
+  --vs: 0.56;
+  --vr: -9deg;
+  z-index: 1;
+}
+.og-book-vit-carta[data-slot="der"] {
+  --vx: 76%;
+  --vy: 9%;
+  --vs: 0.6;
+  --vr: 7deg;
+  z-index: 2;
+  transition-delay: 0.04s;
+}
+
+/* Las de atrás se apagan: con tres fotos al mismo peso visual ninguna es la
+   principal, y la vitrina deja de tener frente. */
+.og-book-vit-carta[data-ampliable] {
+  cursor: zoom-in;
+}
+
+.og-book-vit-carta:not([data-slot="frente"]) {
+  filter: brightness(0.6) saturate(0.75);
+}
+.og-book-vit-carta:not([data-slot="frente"]):is(:hover, :focus-visible) {
+  filter: brightness(0.9) saturate(1);
+}
+.og-book-vit-carta:focus-visible {
+  outline: 2px solid var(--bk-acento);
+  outline-offset: 4px;
+}
+
+/* Capa interior: es la que anima la ENTRADA por scroll. Existe porque el
+   `transform` de la carta ya está ocupado siendo su sitio en el carrusel, y dos
+   dueños para la misma propiedad significa que uno de los dos pierde. */
+.og-book-vit-cuerpo {
+  position: absolute;
+  inset: 0;
+  display: block;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.og-book-vit-carta .og-book-pieza {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+/* La descripción de la que está al frente. Cambia con la carta, así que entra
+   con su propia animación en vez de aparecer de golpe a media transición. */
 .og-book-vit-cita {
-  align-self: start;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.35rem;
+  grid-area: n;
+  min-height: 5.5rem;
+  animation: bk-vit-cita 0.5s 0.18s backwards ease-out;
+}
+@keyframes bk-vit-cita {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
 }
 /* La familia del display SIN el `text-transform` de `.og-book-display`: una cita
    en mayúsculas condensadas no se lee, se descifra. */
 .og-book-vit-frase {
   margin: 0;
-  max-width: 42ch;
+  max-width: 46ch;
   font-family: var(--bk-display);
-  font-size: clamp(1.05rem, 2.6cqw, 1.65rem);
+  font-size: clamp(1.05rem, 2.6cqi, 1.6rem);
   line-height: 1.35;
   text-wrap: pretty;
 }
 .og-book-vit-firma {
+  margin-top: 0.6rem;
   font-size: 0.7rem;
   letter-spacing: 0.24em;
   text-transform: uppercase;
@@ -801,6 +1133,37 @@
     grid-template-areas: "a a a a a a n n n n n n";
   }
 
+  /* El clip ocupa siete de doce y arranca en la columna cero —o sea, en el borde
+     de la pantalla—; el texto se centra a su lado. `align-items: center` y no
+     `start`: una descripción corta pegada al techo de un vídeo de dos tercios de
+     pantalla se lee como un desajuste, no como una composición. */
+  .og-book-grid[data-escena="metraje"] {
+    --bk-cols: 12;
+    grid-template-areas: "a a a a a a a n n n n n";
+    gap: 0;
+    align-items: center;
+    --bk-ratio: 3 / 4;
+  }
+  .og-book-grid[data-escena="metraje"] .og-book-notas {
+    /* Gana al `self-start` que trae la columna de texto por defecto: aquí el
+       texto se centra contra el clip. Selector de tres, así que no hay empate. */
+    align-self: center;
+    padding-inline: clamp(2.5rem, 6cqw, 6rem);
+  }
+
+  .og-book-grid[data-escena="pliego"] {
+    --bk-cols: 2;
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="2"] {
+    grid-template-areas: "a b";
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="3"] {
+    grid-template-areas: "a b" "c c";
+  }
+  .og-book-grid[data-escena="pliego"][data-piezas="4"] {
+    grid-template-areas: "a b" "c d";
+  }
+
   .og-book-grid[data-escena="rejilla"][data-piezas="3"] {
     --bk-cols: 3;
     grid-template-areas: "a b c";
@@ -819,47 +1182,31 @@
     grid-template-areas: "h h h h" "a b c d";
   }
 
-  /* `--bk-cols` se REDECLARA en cada bloque: la regla estrecha lleva
-     `[data-piezas]` y es más específica que esta, así que sin repetirlo aquí
-     ganaría el valor de móvil y la rejilla de doce columnas nunca aparecería.
-     Es la misma trampa que ya tenía resuelta `rejilla`. */
+  /* En ancho el escenario se tumba y el texto se va al lado: el título arriba a
+     la izquierda, las cartas ocupando el centro y la descripción debajo del
+     título, que es donde el ojo vuelve después de mirar la foto. */
   .og-book-grid[data-escena="vitrina"] {
-    --bk-vit-hueco: clamp(0.75rem, 1.6cqw, 1.5rem);
-    --bk-vit-alto: 56cqw;
-  }
-  .og-book-grid[data-escena="vitrina"],
-  .og-book-grid[data-escena="vitrina"][data-piezas="3"] {
     --bk-cols: 12;
     grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(2, calc((var(--bk-vit-alto) - var(--bk-vit-hueco)) / 2))
-      minmax(8rem, auto);
+      "h h h h s s s s s s s s"
+      "n n n n s s s s s s s s";
+    grid-template-rows: auto 1fr;
+    column-gap: 3rem;
+    align-items: start;
   }
-  .og-book-grid[data-escena="vitrina"][data-piezas="4"] {
-    --bk-cols: 12;
-    grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h a a a a a a d d d"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(3, calc((var(--bk-vit-alto) - 2 * var(--bk-vit-hueco)) / 3))
-      minmax(8rem, auto);
+  .og-book-vit-escenario {
+    aspect-ratio: 4 / 3;
   }
-  .og-book-grid[data-escena="vitrina"][data-piezas="5"] {
-    --bk-cols: 12;
-    grid-template-areas:
-      "h h h a a a a a a b b b"
-      "h h h a a a a a a c c c"
-      "h h h a a a a a a d d d"
-      "h h h a a a a a a e e e"
-      "h h h n n n n n n . . .";
-    grid-template-rows:
-      repeat(4, calc((var(--bk-vit-alto) - 3 * var(--bk-vit-hueco)) / 4))
-      minmax(8rem, auto);
+  .og-book-vit-carta {
+    width: 46%;
+  }
+  .og-book-vit-carta[data-slot="izq"] {
+    --vx: -72%;
+    --vy: -9%;
+  }
+  .og-book-vit-carta[data-slot="der"] {
+    --vx: 74%;
+    --vy: 11%;
   }
 
   .og-book-grid[data-escena="tira"] > .og-book-figura {
@@ -896,15 +1243,27 @@
    serían dos pantallas de scroll por escena. Se le da proporción en vez de alto.
    La composición no se toca. */
 
-/* La APERTURA en el editor. Aquí sí es una rejilla —tres huecos, uno grande
-   arriba y los dos que suben debajo— porque lo que hace falta es SUBIR TRES
-   FOTOS y ver cuál es cuál. La secuencia de verdad no se puede editar ni
-   previsualizar dentro de una tarjeta: para eso está el botón de ver el book. */
+/* La APERTURA en el editor. Aquí sí es una rejilla porque lo que hace falta es
+   SUBIR LAS CUATRO FOTOS y ver cuál es cuál; la secuencia de verdad no cabe en
+   una tarjeta (para eso está el botón de ver el book).
+
+   CUATRO áreas, una por foto. Con tres —como estaba— la cuarta caía en una
+   pista IMPLÍCITA: un cuadradito deformado en una esquina en vez de la foto de
+   portada ocupando su sitio. Es el fallo callado de siempre: `grid-area: d` sin
+   área declarada no da error, solo coloca la pieza fuera de la composición. */
 .og-book-editor .og-book-grid[data-escena="portada"] {
   --bk-cols: 2;
-  grid-template-areas: "a a" "b c";
+  grid-template-areas: "a a" "b c" "d d";
   min-height: 0;
   aspect-ratio: auto;
+}
+
+/* La VITRINA en el editor es una fila de tres huecos, no el escenario apilado:
+   ahí no se elige cuál va delante —eso lo hace quien mira el book—, se suben
+   tres fotos y se les escribe su descripción. */
+.og-book-editor .og-book-grid[data-escena="vitrina"] {
+  --bk-cols: 3;
+  grid-template-areas: "a b c";
 }
 
 /* La rejilla vacía del editor tiene que ocupar sitio para poder soltar fotos:
@@ -1252,6 +1611,122 @@
   }
 }
 
+/* ── LA VISTA AMPLIA ──────────────────────────────────────────────────────
+   La foto crece desde su sitio hasta ocupar la pantalla. Solo en las dos que
+   suben en la apertura y en las tres de la vitrina — las demás cuentan su
+   historia dentro de su escena.
+
+   SE PINTA CON UN PORTAL A `<body>`, fuera de `.og-book-root`, y no es un
+   capricho: `.og-book-escena` declara `container-type`, que implica contención
+   de layout, y un elemento con contención se convierte en el bloque contenedor
+   de sus descendientes `position: fixed`. Dentro de la escena, "pantalla
+   completa" habría significado "la escena completa".
+
+   La consecuencia de estar fuera es que aquí NO se puede consumir la paleta de
+   la atmósfera: cuelga de una raíz que ya no es antepasada, y un `var()` sin
+   definir no cae a la regla anterior, cae al valor inicial. Por eso este bloque
+   escribe sus colores a mano y declara su propio `--bk-display`. Y por eso el
+   fondo es siempre el mismo negro azulado: un visor de fotos es un visor de
+   fotos, y teñirlo con la atmósfera solo serviría para restarle contraste
+   justo donde la foto lo es todo. */
+
+.og-book-lupa {
+  --bk-display: var(--font-narrow), system-ui, sans-serif;
+  position: fixed;
+  inset: 0;
+  /* Por encima de la textura del book (30) y del aviso de borrador (40). */
+  z-index: 60;
+}
+
+/* El fondo ES el sitio donde se toca para salir: en una foto a pantalla
+   completa, tocar fuera es lo que todo el mundo intenta antes de buscar la
+   cruz. Por eso es un `<button>` y no un `div` con un `onClick`. */
+.og-book-lupa-fondo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgb(6 5 10 / 0.94);
+  backdrop-filter: blur(16px);
+  cursor: zoom-out;
+  animation: bk-lupa-entra 420ms ease both;
+}
+
+.og-book-lupa-marco {
+  position: fixed;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 0.04);
+  /* La cuenta que calca el destino sobre el origen ASUME ESTE ORIGEN. Con el
+     origen en el centro habría que compensar medio ancho y medio alto en cada
+     término, y esa es justo la clase de aritmética que se equivoca en silencio:
+     la foto arrancaría descolocada y parecería un problema de medición. */
+  transform-origin: top left;
+  will-change: transform;
+}
+
+/* La caja y la transformación las escribe el componente: dependen de dónde esté
+   la foto en ese momento, que solo se sabe al tocarla. */
+
+.og-book-lupa-cerrar {
+  position: fixed;
+  top: clamp(0.75rem, 2vw, 1.5rem);
+  right: clamp(0.75rem, 2vw, 1.5rem);
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.18);
+  background: rgb(255 255 255 / 0.08);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  cursor: pointer;
+  /* Entra DESPUÉS que el fondo: primero se hace el silencio, luego aparece la
+     salida. Al revés, la cruz compite con la foto justo cuando llega. */
+  animation: bk-lupa-entra 420ms 160ms ease both;
+  transition:
+    background 0.25s ease,
+    transform 0.25s ease;
+}
+.og-book-lupa-cerrar:is(:hover, :focus-visible) {
+  background: rgb(255 255 255 / 0.18);
+  transform: scale(1.06);
+}
+
+.og-book-lupa-pie {
+  position: fixed;
+  left: 50%;
+  bottom: clamp(0.75rem, 3vh, 2rem);
+  transform: translateX(-50%);
+  max-width: min(40rem, 90vw);
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 1px 14px rgb(0 0 0 / 0.7);
+  pointer-events: none;
+  animation: bk-lupa-entra 420ms 220ms ease both;
+}
+
+@keyframes bk-lupa-entra {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes bk-lupa-sale {
+  to {
+    opacity: 0;
+  }
+}
+
+/* Al cerrar, el marco se queda solo: el fondo y los adornos se apagan mientras
+   la foto todavía está volando de vuelta a su sitio. Es lo que hace que el
+   regreso se lea como "vuelve a su hueco" y no como "se cierra una ventana". */
+.og-book-lupa[data-cerrando]
+  :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie) {
+  animation: bk-lupa-sale 380ms ease both;
+}
+
 /* ── Tipografía del book ──────────────────────────────────────────────── */
 
 .og-book-display {
@@ -1296,11 +1771,30 @@
     clip-path: inset(15% 20% 15% 20% round 2px);
     transition: none;
   }
-  .og-book-vit-figura .og-book-pieza {
+  /* El pliego se queda con la foto ENTERA, que es su estado en reposo. */
+  .og-book-grid[data-escena="pliego"] .og-book-pieza > :is(img, video) {
     transition: none;
+  }
+  /* La vitrina SIGUE funcionando: el cambio de carta es instantáneo en vez de
+     animado. Quitarlo dejaría tres fotos que no se pueden mirar de cerca, o sea
+     menos web para quien pidió menos movimiento. */
+  .og-book-vit-carta {
+    transition: none;
+    transition-delay: 0s;
+  }
+  .og-book-vit-cita {
+    animation: none;
   }
   /* A quien le molesta el movimiento suele molestarle el texto vibrando. */
   .og-book-cierre-nombre {
     text-shadow: none;
+  }
+  /* La vista amplia SIGUE ABRIÉNDOSE, solo que sin el viaje: quitarla dejaría
+     cinco fotos que no se pueden mirar de cerca. El componente lee la misma
+     preferencia para no esperar a una transición que ya no existe. */
+  .og-book-lupa :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie),
+  .og-book-lupa[data-cerrando]
+    :is(.og-book-lupa-fondo, .og-book-lupa-cerrar, .og-book-lupa-pie) {
+    animation: none;
   }
 }

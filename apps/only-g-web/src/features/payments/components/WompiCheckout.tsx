@@ -68,13 +68,14 @@ const METODOS: {
 ];
 
 /**
- * Logos de marca de tarjeta. Solo están los que tenemos en oficial: Amex y
- * Diners se detectan igual (y recortan bien el número), pero sin logo — mejor
- * ninguno que uno dibujado a ojo.
+ * Logos de marca de tarjeta. Diners se detecta igual (y recorta bien el número)
+ * pero sigue sin logo oficial — mejor ninguno que uno dibujado a ojo.
  */
 const LOGO_MARCA: Partial<Record<NonNullable<MarcaTarjeta>, string>> = {
   visa: "/logo/pagos/visa.png",
+  // Vector: 1 KB y nítido a cualquier tamaño. No hay PNG que lo mejore.
   mastercard: "/logo/pagos/mastercard.svg",
+  amex: "/logo/pagos/amex.png",
 };
 
 /** Minutos que Nequi deja para aprobar desde la app antes de expirar. */
@@ -332,17 +333,19 @@ export function WompiCheckout({
                           }`}
                         >
                           {logo ? (
-                            // Los logos de marca vienen sobre fondo claro; en
-                            // oscuro se dejan tal cual (son de color) y solo se
-                            // atenúan cuando el método no está elegido.
+                            // SIEMPRE en su color de marca. Antes los no
+                            // elegidos llevaban `opacity-60 grayscale`, y entre
+                            // eso y unos PNG con fondo blanco cocido, los logos
+                            // se veían como recuadros grises: lo contrario de la
+                            // confianza que da reconocer el banco propio. Qué
+                            // método está elegido ya lo dicen el borde y el
+                            // fondo de la ficha; no hace falta apagar la marca.
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={logo}
                               alt=""
                               aria-hidden="true"
-                              className={`h-5 w-auto max-w-16 object-contain transition ${
-                                metodo === id ? "" : "opacity-60 grayscale"
-                              }`}
+                              className="h-5 w-auto max-w-16 object-contain"
                             />
                           ) : (
                             Icon && <Icon className="size-5" />

@@ -1,6 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import { areaDeRanura } from "@only-g/shared-types/gallery-layout";
 import {
   META_ESQUINAS,
@@ -10,11 +11,11 @@ import {
   type EscenaBook,
   type EscenaTipo,
   type PiezaBook,
-  type RitmoId,
 } from "@only-g/shared-types/book";
 import { BookApertura } from "./BookApertura";
 import { BookPiece } from "./BookPiece";
 import { BookVitrina } from "./BookVitrina";
+import { useVistaAmplia } from "./BookVistaAmplia";
 
 /**
  * Una ESCENA del book. Coloca sus piezas en las ranuras que declara el CSS
@@ -36,6 +37,9 @@ const SIZES: Record<EscenaTipo, string> = {
   portada: "100vw",
   plena: "(max-width: 48rem) 100vw, 82rem",
   cierre: "100vw",
+  // El clip va pegado al borde y ocupa siete de doce columnas: casi 60vw.
+  metraje: "(max-width: 48rem) 100vw, 60vw",
+  pliego: "(max-width: 48rem) 100vw, 42vw",
   diptico: "(max-width: 48rem) 100vw, 40vw",
   retrato: "(max-width: 48rem) 100vw, 45vw",
   ancla: "(max-width: 48rem) 100vw, 45vw",
@@ -68,8 +72,12 @@ function Pie({ pieza, sobre }: { pieza: PiezaBook; sobre: boolean }) {
         </p>
       )}
       {pieza.nota && (
+        // La clase es el asa por la que la coreografía del `metraje` agarra el
+        // párrafo para revelarlo palabra a palabra. Buscarlo por su etiqueta
+        // (`p`) funcionaría hasta el día que el título deje de ser un `p`, y
+        // entonces se revelaría el título en vez de la descripción.
         <p
-          className="mt-1.5 max-w-prose text-sm leading-relaxed"
+          className="og-book-pie-nota mt-1.5 max-w-prose text-sm leading-relaxed"
           style={{
             color: sobre ? "rgb(255 255 255 / 0.82)" : "var(--bk-ink-soft)",
           }}
@@ -84,7 +92,6 @@ function Pie({ pieza, sobre }: { pieza: PiezaBook; sobre: boolean }) {
 export function BookScene({
   escena,
   nombre,
-  ritmo,
   /** Solo la portada: es la única pieza que se ve sin haber hecho scroll. */
   prioritaria = false,
   /**
@@ -96,10 +103,14 @@ export function BookScene({
 }: {
   escena: EscenaBook;
   nombre: string;
-  ritmo: RitmoId;
   prioritaria?: boolean;
   children?: ReactNode;
 }) {
+  const t = useTranslations("book");
+  // `null` fuera del book (el editor monta las escenas sin proveedor): allí las
+  // fotos del pliego se pintan sin envolverse en un botón que no haría nada.
+  const ampliar = useVistaAmplia();
+
   const def = escenaDef(escena.tipo);
   if (!def) return null;
 
@@ -116,6 +127,10 @@ export function BookScene({
   const sobre = PIE_SOBRE.has(escena.tipo);
   const conNotas = def.maxNotas > 0 && (escena.notas?.length ?? 0) > 0;
   const esIndice = escena.tipo === "indice";
+  // El pliego: sus fotos se abren a pantalla completa al tocarlas y, al pasar
+  // por encima, se ENCOGEN dejando ver alrededor la misma foto desenfocada — el
+  // revelado del índice al revés.
+  const esPliego = escena.tipo === "pliego";
   // La pieza de `ancla` se queda quieta mientras el texto pasa. El `sticky` va
   // en la CELDA de la rejilla, no en la foto: dentro de la figura no hay
   // recorrido donde pegarse, porque la figura mide justo lo que mide la foto.
@@ -136,7 +151,7 @@ export function BookScene({
           no una colocación fija. Delega ENTERA en vez de llenar esta función de
           condicionales que solo valen para ella. */}
       {escena.tipo === "vitrina" ? (
-        <BookVitrina escena={escena} nombre={nombre} ritmo={ritmo} />
+        <BookVitrina escena={escena} nombre={nombre} />
       ) : (
         <>
           {escena.encabezado && !sobre && !def.textoEnRejilla && (
@@ -171,7 +186,9 @@ export function BookScene({
                     gridArea: areaDeRanura(i),
                     // Las variables CSS heredan: puesta aquí, la lee el
                     // `::before` de la pieza sin tener que atravesar props.
-                    ...(esIndice ? { "--bk-fondo": fondoBorroso(pieza.url) } : {}),
+                    ...(esIndice || esPliego
+                      ? { "--bk-fondo": fondoBorroso(pieza.url) }
+                      : {}),
                   } as CSSProperties
                 }
               >
@@ -183,19 +200,43 @@ export function BookScene({
                   </div>
                 )}
 
-                <BookPiece
-                  pieza={pieza}
-                  // El título de la pieza ("Editorial · Bogotá Fashion Week") es
-                  // mejor texto alternativo que el nombre repetido veintiocho
-                  // veces, que es lo que oiría quien use un lector de pantalla.
-                  alt={pieza.titulo || nombre}
-                  sizes={SIZES[escena.tipo]}
-                  priority={prioritaria && i === 0}
-                  // En la rejilla y el índice mandan las proporciones del CSS:
-                  // fotos de cámaras distintas con su ratio real dan una
-                  // cuadrícula dentada.
-                  usarRatio={escena.tipo !== "rejilla" && !esIndice}
-                />
+                {(() => {
+                  const media = (
+                    <BookPiece
+                      pieza={pieza}
+                      // El título de la pieza ("Editorial · Bogotá Fashion
+                      // Week") es mejor texto alternativo que el nombre repetido
+                      // veintiocho veces, que es lo que oiría quien use un
+                      // lector de pantalla.
+                      alt={pieza.titulo || nombre}
+                      sizes={SIZES[escena.tipo]}
+                      priority={prioritaria && i === 0}
+                      // En la rejilla, el índice y el pliego mandan las
+                      // proporciones del CSS: fotos de cámaras distintas con su
+                      // ratio real dan una cuadrícula dentada.
+                      usarRatio={
+                        escena.tipo !== "rejilla" && !esIndice && !esPliego
+                      }
+                    />
+                  );
+                  // Solo el pliego se amplía aquí. Las otras dos que se abren a
+                  // pantalla completa —las diagonales de la apertura y las
+                  // cartas de la vitrina— tienen su propio botón porque ya eran
+                  // pulsables por otra razón.
+                  if (!esPliego || !ampliar) return media;
+                  return (
+                    <button
+                      type="button"
+                      className="og-book-ampliar"
+                      aria-label={t("verEnGrande", { n: i + 1 })}
+                      onClick={(e) =>
+                        ampliar(pieza, pieza.titulo || nombre, e.currentTarget)
+                      }
+                    >
+                      {media}
+                    </button>
+                  );
+                })()}
 
                 {esIndice ? (
                   <div className="og-book-ficha-pie">

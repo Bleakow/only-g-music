@@ -1,8 +1,67 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { META_ESQUINAS, type EscenaBook } from "@only-g/shared-types/book";
+import {
+  META_ESQUINAS,
+  type EscenaBook,
+  type PiezaBook,
+} from "@only-g/shared-types/book";
 import { BookPiece } from "./BookPiece";
+import { useVistaAmplia } from "./BookVistaAmplia";
+
+/**
+ * Una de las dos que suben. Es un BOTÓN y no un `div` porque se puede abrir a
+ * pantalla completa: envolverla en algo pulsable por fuera habría dejado el área
+ * de toque desalineada con la foto en cuanto la coreografía la mueve.
+ *
+ * El marco lo sigue gobernando el CSS (`data-orden` decide su esquina) y la
+ * coreografía lo sigue agarrando por `.og-book-ap-diagonal`: cambia la etiqueta,
+ * no el contrato.
+ */
+function Diagonal({
+  pieza,
+  orden,
+  alt,
+}: {
+  pieza: PiezaBook;
+  orden: 1 | 2;
+  alt: string;
+}) {
+  const t = useTranslations("book");
+  const ampliar = useVistaAmplia();
+
+  const contenido = (
+    <BookPiece
+      pieza={pieza}
+      alt=""
+      sizes="(max-width: 48rem) 62vw, 34vw"
+      usarRatio={false}
+    />
+  );
+
+  // Sin proveedor —no debería pasar dentro del book, pero es barato— se queda
+  // como estaba: una foto que sube y se coloca.
+  if (!ampliar) {
+    return (
+      <div className="og-book-ap-diagonal" data-orden={orden}>
+        {contenido}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className="og-book-ap-diagonal"
+      data-orden={orden}
+      data-ampliable=""
+      aria-label={t("verEnGrande", { n: orden })}
+      onClick={(e) => ampliar(pieza, alt, e.currentTarget)}
+    >
+      {contenido}
+    </button>
+  );
+}
 
 /**
  * LA APERTURA (§10) — la primera escena, idéntica en todos los books y no
@@ -39,7 +98,8 @@ export function BookApertura({
   nombre: string;
 }) {
   const t = useTranslations("book");
-  const [principal, segunda, tercera] = escena.piezas;
+  // El orden es el contrato de la apertura: ver `ROLES_APERTURA` en el dominio.
+  const [principal, segunda, tercera, portada] = escena.piezas;
   if (!principal) return null;
 
   return (
@@ -57,32 +117,50 @@ export function BookApertura({
             />
           </div>
 
-          {/* El nombre, en medio. Se dispersa hacia arriba al bajar. */}
+          {/* El nombre, en medio. Se dispersa hacia arriba al bajar. Sin caja
+              detrás: se probó una placa de cristal y se descartó — tapaba la
+              foto justo donde más se mira. */}
           <div className="og-book-ap-nombre">
             <h1 className="og-book-titulo-portada">{nombre}</h1>
             <p className="og-book-pista">{t("scrollHint")}</p>
           </div>
 
           {/* Capas 2 y 3 — suben desde abajo en diagonal. Sin texto: son
-              imagen pura, y así lo pidió el brief. */}
-          {segunda && (
-            <div className="og-book-ap-diagonal" data-orden="1">
-              <BookPiece
-                pieza={segunda}
-                alt=""
-                sizes="(max-width: 48rem) 62vw, 34vw"
-                usarRatio={false}
-              />
-            </div>
-          )}
-          {tercera && (
-            <div className="og-book-ap-diagonal" data-orden="2">
-              <BookPiece
-                pieza={tercera}
-                alt=""
-                sizes="(max-width: 48rem) 62vw, 34vw"
-                usarRatio={false}
-              />
+              imagen pura, y así lo pidió el brief. Se pueden abrir a pantalla
+              completa; el texto sigue sin existir para ellas. */}
+          {segunda && <Diagonal pieza={segunda} orden={1} alt={nombre} />}
+          {tercera && <Diagonal pieza={tercera} orden={2} alt={nombre} />}
+
+          {/* Capa 4 — LA FOTO DE PORTADA. Contenida, con su texto, y con el
+              desintegrado que la arma y la deshace. Debajo de las teselas queda
+              la foto entera: si el motor no llega, es lo único que se ve, y es
+              una foto perfecta. */}
+          {portada && (
+            <div className="og-book-ap-portada">
+              <div className="og-book-ap-portada-marco">
+                <div className="og-book-ap-portada-plena">
+                  <BookPiece
+                    pieza={portada}
+                    alt={portada.titulo || nombre}
+                    sizes="(max-width: 48rem) 74vw, 30vw"
+                    usarRatio={false}
+                  />
+                </div>
+                {/* Las teselas las construye el motor: dependen del tamaño real
+                    del marco, que solo se sabe en el navegador. */}
+                <div className="og-book-desint" data-src={portada.url} />
+              </div>
+
+              {(portada.titulo || portada.nota) && (
+                <div className="og-book-ap-portada-texto">
+                  {portada.titulo && (
+                    <p className="og-book-ap-portada-titulo">{portada.titulo}</p>
+                  )}
+                  {portada.nota && (
+                    <p className="og-book-ap-portada-nota">{portada.nota}</p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

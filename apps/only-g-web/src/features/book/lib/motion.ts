@@ -2,11 +2,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
 import type { RitmoId } from "@only-g/shared-types/book";
-import {
-  construirTeselas,
-  limpiarTeselas,
-  urlYaCargada,
-} from "./desintegrar";
+import { construirPolvo, fasePolvo, urlYaCargada } from "./desintegrar";
 import { paramsDeRitmo, type ParamsRitmo } from "./ritmo";
 
 /**
@@ -270,85 +266,47 @@ function montarPortada(
   }
 
   let cancelado = false;
+  let polvo: { destruir(): void } | null = null;
   alLimpiar(() => {
     cancelado = true;
-    limpiarTeselas(capa);
+    polvo?.destruir();
   });
 
-  void urlYaCargada(img).then((url) => {
-    if (cancelado || !url) return;
-    const teselas = construirTeselas(marco, capa, url);
-    if (!teselas.length) return;
+  void urlYaCargada(img)
+    .then((url) => (url ? construirPolvo(marco, capa, img, url) : null))
+    .then((p) => {
+      if (cancelado || !p) return;
+      polvo = p;
 
-    // La foto entera se apaga en cuanto las teselas existen: mientras el motor
-    // no ha llegado —o si falla— es lo único que se ve, y es una foto perfecta.
-    gsap.set(plena, { opacity: 0 });
+      // La foto del DOM se apaga en cuanto el lienzo existe: mientras el motor
+      // no ha llegado —o si el lienzo falla y devuelve `null`— es lo unico que
+      // se ve, y es una foto perfecta. El desintegrado es un adorno; la foto no.
+      gsap.set(plena, { opacity: 0 });
 
-    const els = teselas.map((t) => t.el);
-    const en = <K extends "x" | "y" | "rot">(k: K) => (i: number) =>
-      k === "rot" ? teselas[i].rot : teselas[i][k as "x" | "y"];
-
-    /**
-     * CADA TESELA VIAJA CORTO Y EL RELEVO ES LARGO, y esa proporción —no los
-     * números sueltos— es la mitad del arreglo de la "rejilla de líneas
-     * blancas".
-     *
-     * Antes cada tesela tardaba 0.2 y el escalonado repartía 0.07: o sea, TODAS
-     * estaban a medio camino a la vez. Y una tesela a medio camino está girada
-     * y encogida un poquito respecto a sus vecinas, así que entre ellas se abre
-     * una junta por la que se ve el fondo. Cien juntas a la vez son una
-     * cuadrícula sobre la foto.
-     *
-     * Con el viaje corto (0.07) y el relevo largo (0.18), en cada instante solo
-     * una franja de teselas se está moviendo: el resto están EXACTAMENTE en su
-     * sitio, pisándose con sus vecinas, sin junta ninguna. Además es como se
-     * deshace algo de verdad, y es lo que hace la demo de GSAP.
-     */
-    // SE ARMA: las piezas llegan desde su desperdigado hasta su sitio. Desde el
-    // centro hacia fuera, que es como se reconoce una cara antes que un borde.
-    tl.fromTo(
-      els,
-      {
-        x: en("x"),
-        y: en("y"),
-        rotation: en("rot"),
-        opacity: 0,
-        scale: 0.55,
-      },
-      {
-        x: 0,
-        y: 0,
-        rotation: 0,
-        opacity: 1,
-        scale: 1,
-        ease: "none",
-        duration: 0.07,
-        stagger: { from: "center", amount: 0.18 },
-      },
-      0.46,
-    );
-
-    // De 0.71 a 0.82 no pasa NADA: la foto está entera y quieta. Ese silencio es
-    // lo que la convierte en una foto que se mira en vez de en un efecto que se
-    // ve pasar, y es el único tramo del track que no se puede recortar.
-
-    // SE DESHACE: ahora desde los bordes, para que la cara sea lo último en
-    // irse. Al revés se perdería justo lo que se quiere mirar.
-    tl.to(
-      els,
-      {
-        x: en("x"),
-        y: en("y"),
-        rotation: en("rot"),
-        opacity: 0,
-        scale: 0.55,
-        ease: "none",
-        duration: 0.05,
-        stagger: { from: "edges", amount: 0.13 },
-      },
-      0.82,
-    );
-  });
+      /**
+       * UNA SOLA TWEEN para todo el tramo, y la forma —se arma, se queda, se
+       * deshace— la pone `fasePolvo`.
+       *
+       * Con dos tweens (una de armado y otra de deshecho) esto se rompe de una
+       * manera que solo aparece a veces: con `scrub`, una tween fuera de su
+       * tramo NO se queda quieta, se aparca en su valor de inicio o de fin. La
+       * de deshacer estaría escribiendo "foto entera" durante todo el armado, y
+       * gana la que se renderiza después. Resultado: la foto aparece de golpe
+       * antes de tiempo. Con una sola tween solo hay un dueño del estado.
+       */
+      const estado = { t: 0 };
+      tl.fromTo(
+        estado,
+        { t: 0 },
+        {
+          t: 1,
+          ease: "none",
+          duration: 0.54,
+          onUpdate: () => p.pintar(fasePolvo(estado.t)),
+        },
+        0.46,
+      );
+    });
 }
 
 /** A sangre: se abre como un telón y la imagen respira por dentro. */

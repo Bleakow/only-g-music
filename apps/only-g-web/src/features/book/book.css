@@ -565,22 +565,25 @@
   display: block;
 }
 
-/* SIN `border-radius` Y SIN `will-change`, y las dos ausencias son el arreglo de
-   la "rejilla de líneas blancas" que se veía sobre la foto en el móvil:
+/* UN LIENZO, no cientos de nodos. La versión de teselas era un `div` por trozo y
+   se veía lo que era: pedazos de cuadrado desarmándose, con una rejilla de
+   juntas entre ellos en cuanto se movían. Para que se lea como ARENA hacen falta
+   miles de granos de dos píxeles, y eso en el DOM no lo aguanta ningún móvil.
 
-   · el radio recortaba las cuatro esquinas de cada tesela, y donde se juntan
-     cuatro teselas eso es un agujerito por el que se ve el fondo — en las
-     atmósferas de papel, blanco. Multiplicado por un centenar de cruces, una
-     cuadrícula.
-   · `will-change` convertía CADA tesela en su propia capa de composición. Son
-     más de cien; un móvil las rasteriza por separado, cada una con sus bordes
-     suavizados, y las junta con redondeo de subpíxel. El resultado son juntas
-     visibles entre capa y capa por mucho que las cajas se solapen. Sin la
-     pista, el navegador las compone juntas y las juntas desaparecen. GSAP sigue
-     animando `transform` y `opacity`, que se mueven igual de bien. */
-.og-book-desint-tesela {
+   El lienzo se dibuja a la resolución del marco al montarlo y luego lo ESCALA el
+   CSS. Vale porque el marco tiene proporción fija (`aspect-ratio: 3/4`): un
+   cambio de tamaño de ventana es un escalado UNIFORME, así que a lo sumo se ve
+   algo más suave — nunca deformado. */
+.og-book-desint-lienzo {
+  display: block;
+  /* SE SALE DEL MARCO a propósito, hacia donde va el viento. Un lienzo recorta
+     lo que se dibuja fuera, así que con la caja pegada a la foto la arena
+     desaparecería de golpe en una línea recta invisible — como si chocara con un
+     cristal. La caja exacta la pone el motor por estilo inline: depende de
+     cuánto vuela el polvo, que es cosa suya y no del CSS. */
   position: absolute;
-  background-repeat: no-repeat;
+  left: 0;
+  pointer-events: none;
 }
 
 /* ── plena — grande, pero ya no un pantallazo ─────────────────────────────
@@ -660,6 +663,62 @@
 }
 .og-book-grid[data-escena="pliego"][data-piezas="4"] {
   grid-template-areas: "a" "b" "c" "d";
+}
+
+/* EL REVELADO DEL PLIEGO ES EL DEL ÍNDICE AL REVÉS, y esa inversión es todo el
+   gesto. En el índice la foto empieza recortada y el hover la ABRE; aquí empieza
+   entera y el hover la ENCOGE, dejando ver alrededor la misma foto ampliada y
+   desenfocada. La segunda lectura de una foto que ya habías visto.
+
+   El fondo es la misma imagen a 64 px por el mismo optimizador (`--bk-fondo`,
+   ver `fondoBorroso`): para un desenfoque de 22 px sobra, y pesa unos 2 KB.
+   `scale(1.25)` no es gusto — `blur()` difumina también hacia fuera de la caja y
+   deja los bordes translúcidos; escalar tapa ese halo. */
+.og-book-grid[data-escena="pliego"] .og-book-pieza::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--bk-fondo);
+  background-size: cover;
+  background-position: center;
+  filter: blur(20px) saturate(0.8) brightness(0.7);
+  transform: scale(1.25);
+}
+
+/* Las dos formas del recorte, con los CUATRO valores y con `round`: `inset(0)` e
+   `inset(12% 14%)` tienen distinto número de componentes y hay motores que se
+   niegan a interpolar entre ellas. */
+.og-book-grid[data-escena="pliego"] .og-book-pieza > :is(img, video) {
+  position: relative;
+  z-index: 1;
+  clip-path: inset(0% 0% 0% 0% round 2px);
+  transition: clip-path 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .og-book-grid[data-escena="pliego"]
+    .og-book-figura:is(:hover, :focus-within)
+    .og-book-pieza
+    > :is(img, video) {
+    clip-path: inset(12% 14% 12% 14% round 8px);
+  }
+}
+
+/* El asa para ampliar. Es un `<button>`, así que hay que quitarle el traje que
+   le pone el navegador: relleno y borde propios sacarían la foto de su celda. */
+.og-book-ampliar {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  appearance: none;
+  cursor: zoom-in;
+}
+.og-book-ampliar:focus-visible {
+  outline: 2px solid var(--bk-acento);
+  outline-offset: 4px;
 }
 
 /* ── retrato — una pieza vertical y su nota ────────────────────────────── */
@@ -1710,6 +1769,10 @@
   }
   .og-book-grid[data-escena="indice"] .og-book-pieza > :is(img, video) {
     clip-path: inset(15% 20% 15% 20% round 2px);
+    transition: none;
+  }
+  /* El pliego se queda con la foto ENTERA, que es su estado en reposo. */
+  .og-book-grid[data-escena="pliego"] .og-book-pieza > :is(img, video) {
     transition: none;
   }
   /* La vitrina SIGUE funcionando: el cambio de carta es instantáneo en vez de

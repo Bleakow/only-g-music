@@ -138,25 +138,20 @@ describe("book.css — el catálogo de escenas está cubierto", () => {
     ).toBeLessThan(alturas[1]);
   });
 
-  it("las teselas del desintegrado no se componen por separado ni se redondean", () => {
-    // Las dos cosas producían la MISMA avería: una rejilla de líneas claras
-    // sobre la foto en el móvil. El radio abre un agujerito en cada cruce de
-    // cuatro teselas; `will-change` convierte a cada una en su propia capa de
-    // composición —son más de cien— y el móvil las junta con redondeo de
-    // subpíxel, dejando juntas visibles por mucho que las cajas se pisen.
-    // Volver a poner cualquiera de las dos "por rendimiento" es el camino
-    // directo al mismo bug.
-    const tesela = REGLAS.find(
-      (r) => r.selector.trim() === ".og-book-desint-tesela",
+  it("el desintegrado es UN lienzo, no cientos de nodos", () => {
+    // La versión de teselas era un `div` por trozo y se veía lo que era: pedazos
+    // de cuadrado desarmándose, con una rejilla de juntas entre ellos en cuanto
+    // se movían (se reportó como "líneas de cuadrícula blancas"). Para que se
+    // lea como ARENA hacen falta miles de granos de dos píxeles, y eso en el DOM
+    // no lo aguanta ningún móvil. Si algún día vuelve un selector de tesela, es
+    // que alguien deshizo el cambio sin querer.
+    const lienzo = REGLAS.find(
+      (r) => r.selector.trim() === ".og-book-desint-lienzo",
     );
-    expect(tesela, "falta .og-book-desint-tesela").toBeDefined();
+    expect(lienzo, "falta .og-book-desint-lienzo").toBeDefined();
     expect(
-      /will-change/.test(tesela!.cuerpo),
-      "vuelve el will-change: cien capas y cien juntas",
-    ).toBe(false);
-    expect(
-      /border-radius/.test(tesela!.cuerpo),
-      "vuelve el radio: un agujero en cada cruce de teselas",
+      CSS.includes("og-book-desint-tesela"),
+      "vuelven las teselas del DOM",
     ).toBe(false);
   });
 
